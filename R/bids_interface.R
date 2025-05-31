@@ -73,12 +73,9 @@ bids_backend <- function(backend_type = "bidser", backend_config = list()) {
 #' @keywords internal
 #' @noRd
 initialize_bidser_backend <- function(backend, config) {
-  
+
   # Check bidser availability
-  if (!requireNamespace("bidser", quietly = TRUE)) {
-    stop("bidser package is required for bidser backend.\n",
-         "Install with: install.packages('bidser')")
-  }
+  check_package_available("bidser", "bidser backend", error = TRUE)
   
   # Populate standardized interface methods
   backend$find_scans <- function(bids_root, filters) {
@@ -483,18 +480,10 @@ as.fmri_dataset.bids_query <- function(x, subject_id,
 #' @keywords internal
 #' @noRd
 auto_detect_bids_backend <- function(bids_root) {
-  
-  # Try backends in order of preference
-  if (requireNamespace("bidser", quietly = TRUE)) {
-    return(bids_backend("bidser"))
-  }
-  
-  # Could add other backends here
-  # if (requireNamespace("pybids", quietly = TRUE)) {
-  #   return(bids_backend("pybids"))
-  # }
-  
-  stop("No compatible BIDS backend found. Please install 'bidser' package.")
+
+  # Currently only bidser backend is supported
+  check_package_available("bidser", "BIDS backend", error = TRUE)
+  bids_backend("bidser")
 }
 
 #' Execute Sophisticated BIDS Extraction

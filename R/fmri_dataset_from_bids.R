@@ -229,23 +229,21 @@ extract_functional_scans <- function(bids_proj, subject_id, task_id, session_id,
 #' @keywords internal
 #' @noRd
 extract_raw_scans <- function(bids_proj, subject_id, task_id, session_id, run_ids) {
-  
-  # Use bidser::func_scans to get raw functional scans
-  if (requireNamespace("bidser", quietly = TRUE)) {
-    scans <- bidser::func_scans(bids_proj, 
-                               subject_id = subject_id,
-                               task_id = task_id,
-                               session_id = session_id,
-                               run_ids = run_ids)
-    
-    if (length(scans) == 0) {
-      stop("No raw functional scans found for subject ", subject_id)
-    }
-    
-    return(scans)
-  } else {
-    stop("bidser package is required but not available")
+
+  # Ensure bidser is available
+  check_package_available("bidser", "retrieving raw functional scans", error = TRUE)
+
+  scans <- bidser::func_scans(bids_proj,
+                             subject_id = subject_id,
+                             task_id = task_id,
+                             session_id = session_id,
+                             run_ids = run_ids)
+
+  if (length(scans) == 0) {
+    stop("No raw functional scans found for subject ", subject_id)
   }
+
+  return(scans)
 }
 
 #' Try to Extract Preprocessed Scans
@@ -259,28 +257,26 @@ extract_raw_scans <- function(bids_proj, subject_id, task_id, session_id, run_id
 #' @keywords internal
 #' @noRd
 try_extract_preprocessed_scans <- function(bids_proj, subject_id, task_id, session_id, run_ids) {
-  
-  if (requireNamespace("bidser", quietly = TRUE)) {
-    tryCatch({
-      # Try to get preprocessed scans
-      scans <- bidser::preproc_scans(bids_proj,
-                                    subject_id = subject_id,
-                                    task_id = task_id,
-                                    session_id = session_id,
-                                    run_ids = run_ids)
-      
-      if (length(scans) > 0) {
-        return(scans)
-      } else {
-        return(NULL)
-      }
-    }, error = function(e) {
-      # If preproc_scans fails, return NULL to fall back
+
+  check_package_available("bidser", "retrieving preprocessed scans", error = TRUE)
+
+  tryCatch({
+    # Try to get preprocessed scans
+    scans <- bidser::preproc_scans(bids_proj,
+                                  subject_id = subject_id,
+                                  task_id = task_id,
+                                  session_id = session_id,
+                                  run_ids = run_ids)
+
+    if (length(scans) > 0) {
+      return(scans)
+    } else {
       return(NULL)
-    })
-  } else {
+    }
+  }, error = function(e) {
+    # If preproc_scans fails, return NULL to fall back
     return(NULL)
-  }
+  })
 }
 
 #' Extract Pipeline-Specific Scans
@@ -295,28 +291,26 @@ try_extract_preprocessed_scans <- function(bids_proj, subject_id, task_id, sessi
 #' @keywords internal
 #' @noRd
 extract_pipeline_scans <- function(bids_proj, subject_id, task_id, session_id, run_ids, pipeline_name) {
-  
-  if (requireNamespace("bidser", quietly = TRUE)) {
-    tryCatch({
-      # Try to get scans from specific pipeline
-      scans <- bidser::preproc_scans(bids_proj,
-                                    subject_id = subject_id,
-                                    task_id = task_id,
-                                    session_id = session_id,
-                                    run_ids = run_ids,
-                                    pipeline = pipeline_name)
-      
-      if (length(scans) == 0) {
-        stop("No scans found for pipeline '", pipeline_name, "' and subject ", subject_id)
-      }
-      
-      return(scans)
-    }, error = function(e) {
-      stop("Failed to extract scans from pipeline '", pipeline_name, "': ", e$message)
-    })
-  } else {
-    stop("bidser package is required but not available")
-  }
+
+  check_package_available("bidser", "retrieving pipeline scans", error = TRUE)
+
+  tryCatch({
+    # Try to get scans from specific pipeline
+    scans <- bidser::preproc_scans(bids_proj,
+                                  subject_id = subject_id,
+                                  task_id = task_id,
+                                  session_id = session_id,
+                                  run_ids = run_ids,
+                                  pipeline = pipeline_name)
+
+    if (length(scans) == 0) {
+      stop("No scans found for pipeline '", pipeline_name, "' and subject ", subject_id)
+    }
+
+    return(scans)
+  }, error = function(e) {
+    stop("Failed to extract scans from pipeline '", pipeline_name, "': ", e$message)
+  })
 }
 
 #' Determine Run Lengths from BIDS Files
@@ -372,24 +366,22 @@ determine_bids_run_lengths <- function(file_paths) {
 #' @keywords internal
 #' @noRd
 extract_bids_TR <- function(bids_proj, func_scans) {
-  
-  if (requireNamespace("bidser", quietly = TRUE)) {
-    tryCatch({
-      # Use bidser to get repetition time
-      TR <- bidser::get_repetition_time(bids_proj, func_scans$file_paths[1])
-      
-      if (is.null(TR) || is.na(TR) || TR <= 0) {
-        stop("Invalid or missing TR in BIDS metadata")
-      }
-      
-      return(TR)
-      
-    }, error = function(e) {
-      stop("Failed to extract TR from BIDS metadata: ", e$message)
-    })
-  } else {
-    stop("bidser package is required but not available")
-  }
+
+  check_package_available("bidser", "extracting TR from metadata", error = TRUE)
+
+  tryCatch({
+    # Use bidser to get repetition time
+    TR <- bidser::get_repetition_time(bids_proj, func_scans$file_paths[1])
+
+    if (is.null(TR) || is.na(TR) || TR <= 0) {
+      stop("Invalid or missing TR in BIDS metadata")
+    }
+
+    return(TR)
+
+  }, error = function(e) {
+    stop("Failed to extract TR from BIDS metadata: ", e$message)
+  })
 }
 
 #' Extract Brain Mask from BIDS
@@ -402,31 +394,29 @@ extract_bids_TR <- function(bids_proj, func_scans) {
 #' @keywords internal
 #' @noRd
 extract_bids_mask <- function(bids_proj, subject_id, session_id, image_type) {
-  
-  if (requireNamespace("bidser", quietly = TRUE)) {
-    tryCatch({
-      # Try to get brain mask
-      mask_path <- bidser::brain_mask(bids_proj, 
-                                     subject_id = subject_id, 
-                                     session_id = session_id)
-      
-      if (is.null(mask_path) || !file.exists(mask_path)) {
-        warning("No brain mask found in BIDS derivatives for subject ", subject_id)
-        return(list(file_path = NULL, source = "none"))
-      }
-      
-      return(list(
-        file_path = mask_path,
-        source = "bids_derivatives"
-      ))
-      
-    }, error = function(e) {
-      warning("Failed to extract brain mask from BIDS: ", e$message)
-      return(list(file_path = NULL, source = "error"))
-    })
-  } else {
-    return(list(file_path = NULL, source = "no_bidser"))
-  }
+
+  check_package_available("bidser", "extracting brain masks", error = TRUE)
+
+  tryCatch({
+    # Try to get brain mask
+    mask_path <- bidser::brain_mask(bids_proj,
+                                   subject_id = subject_id,
+                                   session_id = session_id)
+
+    if (is.null(mask_path) || !file.exists(mask_path)) {
+      warning("No brain mask found in BIDS derivatives for subject ", subject_id)
+      return(list(file_path = NULL, source = "none"))
+    }
+
+    return(list(
+      file_path = mask_path,
+      source = "bids_derivatives"
+    ))
+
+  }, error = function(e) {
+    warning("Failed to extract brain mask from BIDS: ", e$message)
+    return(list(file_path = NULL, source = "error"))
+  })
 }
 
 #' Extract Event Table from BIDS
@@ -440,6 +430,7 @@ extract_bids_mask <- function(bids_proj, subject_id, session_id, image_type) {
 #' @return Data.frame/tibble or NULL
 #' @keywords internal
 #' @noRd
+
 extract_bids_events <- function(bids_proj, subject_id, task_id, session_id, run_ids, event_table_source) {
   
   if (event_table_source == "none") {
@@ -457,8 +448,8 @@ extract_bids_events <- function(bids_proj, subject_id, task_id, session_id, run_
   }
   
   # Extract BIDS events.tsv files
-  if (requireNamespace("bidser", quietly = TRUE)) {
-    tryCatch({
+  check_package_available("bidser", "reading events tables", error = TRUE)
+  tryCatch({
       events <- bidser::read_events(bids_proj,
                                    subject_id = subject_id,
                                    task_id = task_id,
@@ -472,14 +463,10 @@ extract_bids_events <- function(bids_proj, subject_id, task_id, session_id, run_
       
       return(events)
       
-    }, error = function(e) {
-      warning("Failed to extract events from BIDS: ", e$message)
-      return(NULL)
-    })
-  } else {
-    warning("bidser package not available - cannot extract BIDS events")
+  }, error = function(e) {
+    warning("Failed to extract events from BIDS: ", e$message)
     return(NULL)
-  }
+  })
 }
 
 #' Prepare BIDS Metadata
@@ -495,17 +482,15 @@ extract_bids_events <- function(bids_proj, subject_id, task_id, session_id, run_
 #' @keywords internal
 #' @noRd
 prepare_bids_metadata <- function(bids_proj, func_scans, subject_id, task_id, session_id, run_ids, image_type) {
-  
+
   # Get BIDS project path
-  if (requireNamespace("bidser", quietly = TRUE)) {
-    project_path <- tryCatch({
-      bids_proj$path
-    }, error = function(e) {
-      "unknown"
-    })
-  } else {
-    project_path <- "unknown"
-  }
+  check_package_available("bidser", "processing BIDS metadata", error = TRUE)
+
+  project_path <- tryCatch({
+    bids_proj$path
+  }, error = function(e) {
+    "unknown"
+  })
   
   # Infer run IDs from file paths if not specified
   if (is.null(run_ids)) {
