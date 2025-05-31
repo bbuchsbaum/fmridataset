@@ -31,8 +31,9 @@ NULL
 #' # Using custom backend with configuration
 #' backend <- bids_backend("custom",
 #'   backend_config = list(
-#'     scan_finder = my_scan_function,
-#'     metadata_reader = my_metadata_function
+#'     find_scans = my_scan_function,
+#'     read_metadata = my_metadata_function,
+#'     get_run_info = my_run_info
 #'   ))
 #' }
 bids_backend <- function(backend_type = "bidser", backend_config = list()) {
@@ -81,14 +82,11 @@ bids_backend <- function(backend_type = "bidser", backend_config = list()) {
 initialize_bidser_backend <- function(backend, config) {
 
   # Check bidser availability
-  if (!requireNamespace("bidser", quietly = TRUE)) {
-    stop("bidser package is required for bidser backend.\n",
-         "Install with: install.packages('bidser')")
-  }
+  check_package_available("bidser", "bidser backend", error = TRUE)
+  
 
   backend$config <- config
 
-  # Populate standardized interface methods with config awareness
   backend$find_scans <- function(bids_root, filters) {
     bidser_find_scans(bids_root, filters, config)
   }
@@ -481,13 +479,17 @@ bids_discover <- function(bids_root, backend = NULL) {
 #' @examples
 #' \dontrun{
 #' # Elegant configuration
-#' config <- bids_config() %>%
-#'   prefer_derivatives("fmriprep", "nilearn") %>%
-#'   require_space("MNI152NLin2009cAsym") %>%
-#'   exclude_runs_with_censoring(threshold = 0.5) %>%
-#'   auto_detect_events() %>%
-#'   validate_completeness()
-#' 
+#' config <- bids_config(
+#'   image_selection = list(
+#'     strategy = "prefer_derivatives",
+#'     preferred_pipelines = c("fmriprep", "nilearn"),
+#'     required_space = "MNI152NLin2009cAsym"
+#'   ),
+#'   quality_control = list(
+#'     censoring_threshold = 0.5
+#'   )
+#' )
+#'
 #' # Use configuration
 #' dataset <- bids_query("/path/to/bids") %>%
 #'   subject("01") %>%
@@ -612,18 +614,10 @@ as.fmri_dataset.bids_query <- function(x, subject_id,
 #' @keywords internal
 #' @noRd
 auto_detect_bids_backend <- function(bids_root) {
-  
-  # Try backends in order of preference
-  if (requireNamespace("bidser", quietly = TRUE)) {
-    return(bids_backend("bidser"))
-  }
-  
-  # Could add other backends here
-  # if (requireNamespace("pybids", quietly = TRUE)) {
-  #   return(bids_backend("pybids"))
-  # }
-  
-  stop("No compatible BIDS backend found. Please install 'bidser' package.")
+
+  # Currently only bidser backend is supported
+  check_package_available("bidser", "BIDS backend", error = TRUE)
+  bids_backend("bidser")
 }
 
 #' Execute Sophisticated BIDS Extraction

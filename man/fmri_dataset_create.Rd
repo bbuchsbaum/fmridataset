@@ -26,14 +26,15 @@ fmri_dataset_create(
 \arguments{
 \item{images}{Primary image data. Can be a matrix (time x voxels), 
   character vector of file paths, or list of pre-loaded objects.}
-\item{mask}{Spatial mask. Can be a file path, logical vector/matrix, 
-  or pre-loaded mask object. If NULL, all voxels are included.}
+\item{mask}{Spatial mask. Can be a file path, logical vector/matrix,
+  or pre-loaded mask object. Numeric masks must contain only 0/1 values
+  and are converted to logical. If \code{NULL}, all voxels are included.}
 \item{TR}{Numeric repetition time in seconds.}
 \item{run_lengths}{Integer vector specifying the number of timepoints in each run.}
 \item{event_table}{Data frame or path to TSV file containing experimental events. 
   Should include 'onset' and 'duration' columns.}
-\item{censor_vector}{Logical or numeric vector indicating which timepoints to keep 
-  (TRUE/1) or exclude (FALSE/0).}
+\item{censor_vector}{Logical or numeric vector indicating which timepoints to keep
+  (TRUE/1) or exclude (FALSE/0). Numeric vectors must contain only 0/1 values.}
 \item{base_path}{Base directory path for resolving relative file paths.}
 \item{image_mode}{Loading mode for file-based images. One of "normal", "bigvec", "mmap", "filebacked".}
 \item{preload_data}{Logical indicating whether to load data immediately into memory.}

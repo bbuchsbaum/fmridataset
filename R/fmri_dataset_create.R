@@ -70,6 +70,7 @@
 #' )
 #' }
 #'
+#' @family fmri_dataset
 #' @export
 fmri_dataset_create <- function(images, 
                                mask = NULL,
@@ -165,7 +166,13 @@ fmri_dataset_create <- function(images,
     if (!is.list(images)) {
       stop("For memory_vec dataset_type, images must be a list of NeuroVec objects")
     }
-    
+
+    # Validate that number of image objects matches run_lengths
+    if (length(images) != length(run_lengths)) {
+      stop("For memory_vec dataset_type, length(images) (", length(images),
+           ") must match length(run_lengths) (", length(run_lengths), ")")
+    }
+
     # TODO: Add NeuroVec class validation when neuroim2 is available
     # This would require conditional checking since neuroim2 is in Suggests
     
@@ -193,8 +200,11 @@ fmri_dataset_create <- function(images,
         stop("For matrix dataset_type, mask must be logical/numeric vector or NULL")
       }
       
-      # Convert to logical if numeric
+      # Convert to logical if numeric and validate values
       if (is.numeric(mask)) {
+        if (!all(mask %in% c(0, 1))) {
+          stop("Numeric mask values must be 0 or 1")
+        }
         mask <- as.logical(mask)
       }
       
@@ -250,6 +260,10 @@ fmri_dataset_create <- function(images,
     if (!is.logical(censor_vector) && !is.numeric(censor_vector)) {
       stop("censor_vector must be logical, numeric, or NULL")
     }
+
+    if (is.numeric(censor_vector) && !all(censor_vector %in% c(0, 1))) {
+      stop("Numeric censor_vector values must be 0 or 1")
+    }
     
     expected_length <- sum(run_lengths)
     if (length(censor_vector) != expected_length) {
@@ -266,6 +280,9 @@ fmri_dataset_create <- function(images,
   
   # === CREATE FMRI_DATASET OBJECT ===
   obj <- new_fmri_dataset()
+
+  # Assign transformation pipeline if provided
+  obj <- set_transformation_pipeline(obj, transformation_pipeline)
   
   # Populate data sources based on dataset_type
   if (dataset_type == "file_vec") {
