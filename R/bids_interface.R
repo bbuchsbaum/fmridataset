@@ -278,6 +278,46 @@ space.bids_query <- function(query, ...) {
   return(query)
 }
 
+#' Find Scans for a BIDS Query
+#'
+#' Executes the query using the associated backend and returns the
+#' paths to matching scan files.
+#'
+#' @param x A `bids_query` object
+#' @param ... Additional arguments passed to the backend
+#' @return Character vector of scan paths
+#' @export
+find_scans.bids_query <- function(x, ...) {
+  x$backend$find_scans(x$bids_root, x$filters)
+}
+
+#' Retrieve Metadata for Scans in a Query
+#'
+#' Reads metadata for each scan returned by `find_scans()`.
+#'
+#' @param x A `bids_query` object
+#' @param ... Additional arguments passed to the backend
+#' @return List of metadata entries, one per scan
+#' @export
+get_metadata.bids_query <- function(x, ...) {
+  scans <- find_scans(x, ...)
+  lapply(scans, x$backend$read_metadata)
+}
+
+#' Get Run Information for a Query
+#'
+#' Retrieves run-level information (e.g., run lengths) for the scans
+#' matched by the query.
+#'
+#' @param x A `bids_query` object
+#' @param ... Additional arguments passed to the backend
+#' @return Backend-specific run information
+#' @export
+get_run_info.bids_query <- function(x, ...) {
+  scans <- find_scans(x, ...)
+  x$backend$get_run_info(scans)
+}
+
 # ============================================================================
 # BIDS Discovery Interface
 # ============================================================================

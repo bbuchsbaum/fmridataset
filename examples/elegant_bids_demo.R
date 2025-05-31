@@ -65,7 +65,8 @@ cat("  space('MNI152NLin2009cAsym')\n\n")
 
 cat("# Execute query:\n")
 cat("scans <- query %>% find_scans()\n")
-cat("metadata <- query %>% get_metadata()\n\n")
+cat("metadata <- query %>% get_metadata()\n")
+cat("run_info <- query %>% get_run_info()\n\n")
 
 cat("# Direct dataset creation:\n")
 cat("dataset <- query %>% as_fmri_dataset(subject_id = '01')\n\n")

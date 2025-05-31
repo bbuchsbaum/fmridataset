@@ -235,3 +235,28 @@ apply_workflow <- function(x, ...) {
 discover_best_practices <- function(...) {
   UseMethod("discover_best_practices")
 }
+
+#' Find Scans Matching a BIDS Query
+#'
+#' Generic function for locating scans that satisfy a `bids_query`.
+#'
+#' @param x Object to search for scans
+#' @param ... Additional arguments passed to methods
+#' @return Character vector of scan file paths
+#' @export
+find_scans <- function(x, ...) {
+  UseMethod("find_scans")
+}
+
+#' Get Run Information
+#'
+#' Generic function for retrieving run-level information such as run
+#' lengths from objects like `bids_query`.
+#'
+#' @param x Object to query
+#' @param ... Additional arguments passed to methods
+#' @return Run information, typically a vector of run lengths
+#' @export
+get_run_info <- function(x, ...) {
+  UseMethod("get_run_info")
+}
