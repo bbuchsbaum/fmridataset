@@ -95,6 +95,9 @@ new_fmri_dataset <- function() {
         extra = list()
       ),
 
+      # --- Transformation Pipeline ---
+      transformation_pipeline = NULL, # transformation_pipeline object
+
       # --- Internal Cache ---
       data_cache = new.env(hash = TRUE, parent = emptyenv()) # For memoized/loaded data
     ),

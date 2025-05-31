@@ -183,6 +183,20 @@ test_that("fmri_dataset_create data cache is initialized", {
   expect_equal(ls(dataset$data_cache), character(0))  # Should be empty initially
 })
 
+test_that("fmri_dataset_create stores transformation pipeline", {
+  test_matrix <- matrix(rnorm(20), nrow = 10, ncol = 2)
+  pipe <- transformation_pipeline(transform_detrend())
+
+  dataset <- fmri_dataset_create(
+    images = test_matrix,
+    TR = 1,
+    run_lengths = 10,
+    transformation_pipeline = pipe
+  )
+
+  expect_identical(get_transformation_pipeline(dataset), pipe)
+})
+
 test_that("fmri_dataset_create validates dataset_type determination", {
   # Matrix type
   test_matrix <- matrix(rnorm(1000), nrow = 100, ncol = 10)
