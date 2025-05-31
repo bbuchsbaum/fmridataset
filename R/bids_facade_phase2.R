@@ -76,14 +76,24 @@ assess_quality.bids_facade <- function(x, subject_id, session_id = NULL,
     error = function(e) NULL
   )
 
-  scans <- bidser::func_scans(x$project,
-                              subject_id = subject_id,
-                              session_id = session_id,
-                              task_id = task_id,
-                              run_ids = run_ids)
+  scans <- tryCatch(
+    bidser::func_scans(x$project,
+                       subject_id = subject_id,
+                       session_id = session_id,
+                       task_id = task_id,
+                       run_ids = run_ids),
+    error = function(e) {
+      warning("Could not retrieve functional scans: ", conditionMessage(e))
+      NULL
+    }
+  )
 
-  metrics <- tryCatch(bidser::check_func_scans(scans),
-                      error = function(e) NULL)
+  metrics <- if (is.null(scans)) {
+    NULL
+  } else {
+    tryCatch(bidser::check_func_scans(scans),
+             error = function(e) NULL)
+  }
 
   mask <- tryCatch(
     bidser::create_preproc_mask(x$project,

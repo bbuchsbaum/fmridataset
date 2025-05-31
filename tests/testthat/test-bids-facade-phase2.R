@@ -310,4 +310,20 @@ test_that("quality threshold and filtering logic", {
   # Test overall quality assessment
   percent_good_quality <- (excellent_timepoints + good_timepoints) / length(mock_fd_data) * 100
   expect_true(percent_good_quality > 50)  # Should have majority good quality
-}) 
+})
+
+test_that("warning emitted when scans cannot be retrieved", {
+  skip_if_not_installed("bidser")
+
+  bad_facade <- list(
+    path = "/bad/path",
+    project = list(),
+    cache = new.env(parent = emptyenv())
+  )
+  class(bad_facade) <- "bids_facade"
+
+  expect_warning(
+    assess_quality(bad_facade, subject_id = "sub-01"),
+    "Could not retrieve functional scans"
+  )
+})
