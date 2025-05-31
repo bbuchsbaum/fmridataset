@@ -134,10 +134,11 @@ cat("# - discovery$summary: comprehensive dataset statistics\n\n")
 cat("=== Integration with Transformation System ===\n")
 
 # Create a sophisticated transformation pipeline
-pipeline <- transformation_pipeline() %>%
-  add_transformation(transform_temporal_zscore()) %>%
-  add_transformation(transform_detrend(method = "linear")) %>%
-  add_transformation(transform_temporal_smooth(method = "gaussian", fwhm = 3))
+pipeline <- transformation_pipeline(
+  transform_temporal_zscore(),
+  transform_detrend(method = "linear"),
+  transform_temporal_smooth(window_size = 3, method = "gaussian")
+)
 
 cat("Transformation pipeline:\n")
 print(pipeline)
