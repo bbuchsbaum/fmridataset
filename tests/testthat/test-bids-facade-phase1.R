@@ -27,7 +27,7 @@ test_that("bids() creates elegant facade around bidser::bids_project", {
     participants = c("sub-01", "sub-02"),
     file_structure = file_structure_df
   )
-  
+
   # Test that we can create a facade from mock data (check mock_bids_project which is what we get)
   expect_true(inherits(mock_bids, "mock_bids_project"))
   
@@ -42,6 +42,14 @@ test_that("bids() creates elegant facade around bidser::bids_project", {
     
     unlink(temp_dir, recursive = TRUE)
   }
+})
+
+test_that("bids() errors when directory is missing", {
+  skip_if_not_installed("bidser")
+
+  fake_dir <- tempfile("no_such_bids")
+  expect_false(dir.exists(fake_dir))
+  expect_error(bids(fake_dir), "BIDS directory does not exist")
 })
 
 test_that("bids_facade object has correct structure and methods", {
@@ -152,6 +160,22 @@ test_that("discover() produces beautiful output", {
   expect_true(any(grepl("2 tasks", output)))
 })
 
+test_that("print.bids_discovery_simple handles character vectors", {
+  skip_if_not_installed("bidser")
+
+  mock_discovery <- list(
+    participants = c("sub-01", "sub-02", "sub-03"),
+    tasks = c("rest", "memory"),
+    sessions = NULL,
+    summary = list()
+  )
+  class(mock_discovery) <- "bids_discovery_simple"
+
+  output <- capture.output(print(mock_discovery))
+  expect_true(any(grepl("3 participants", output)))
+  expect_true(any(grepl("2 tasks", output)))
+})
+
 test_that("as.fmri_dataset method exists and delegates properly", {
   skip_if_not_installed("bidser")
   
@@ -165,6 +189,23 @@ test_that("as.fmri_dataset method exists and delegates properly", {
   
   # Test that method exists (actual implementation would call bidser functions)
   expect_true(exists("as.fmri_dataset.bids_facade"))
+})
+
+test_that("as.fmri_dataset.bids_facade errors on multiple tasks", {
+  skip_if_not_installed("bidser")
+
+  mock_facade <- list(
+    path = "/test/path",
+    project = list(),
+    cache = new.env()
+  )
+  class(mock_facade) <- "bids_facade"
+
+  expect_error(
+    as.fmri_dataset.bids_facade(mock_facade, subject_id = "01",
+                                task_id = c("rest", "memory")),
+    "single task_id"
+  )
 })
 
 test_that("error handling works gracefully", {
