@@ -54,6 +54,23 @@ test_that("enhanced discover() includes quality metrics", {
   expect_true(any(grepl("Quality metrics available", output)))
 })
 
+test_that("print.bids_discovery_enhanced handles character vectors", {
+  skip_if_not_installed("bidser")
+
+  mock_discovery <- list(
+    summary = list(),
+    participants = c("sub-01", "sub-02"),
+    tasks = c("rest", "memory"),
+    sessions = NULL,
+    quality = NULL
+  )
+  class(mock_discovery) <- "bids_discovery_enhanced"
+
+  output <- capture.output(print(mock_discovery))
+  expect_true(any(grepl("2 participants", output)))
+  expect_true(any(grepl("2 tasks", output)))
+})
+
 test_that("assess_quality() provides comprehensive quality metrics", {
   skip_if_not_installed("bidser")
   

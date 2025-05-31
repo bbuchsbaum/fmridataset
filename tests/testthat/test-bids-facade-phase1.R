@@ -152,6 +152,22 @@ test_that("discover() produces beautiful output", {
   expect_true(any(grepl("2 tasks", output)))
 })
 
+test_that("print.bids_discovery_simple handles character vectors", {
+  skip_if_not_installed("bidser")
+
+  mock_discovery <- list(
+    participants = c("sub-01", "sub-02", "sub-03"),
+    tasks = c("rest", "memory"),
+    sessions = NULL,
+    summary = list()
+  )
+  class(mock_discovery) <- "bids_discovery_simple"
+
+  output <- capture.output(print(mock_discovery))
+  expect_true(any(grepl("3 participants", output)))
+  expect_true(any(grepl("2 tasks", output)))
+})
+
 test_that("as.fmri_dataset method exists and delegates properly", {
   skip_if_not_installed("bidser")
   

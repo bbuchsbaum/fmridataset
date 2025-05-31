@@ -71,8 +71,18 @@ discover.bids_facade <- function(x, ...) {
 #' @export
 print.bids_discovery_simple <- function(x, ...) {
   cat("\u2728 BIDS Discovery\n")
-  cat(length(x$participants$participant_id), "participants\n")
-  cat(length(x$tasks$task_id), "tasks\n")
+  part_count <- if (is.data.frame(x$participants)) {
+    nrow(x$participants)
+  } else {
+    length(x$participants)
+  }
+  task_count <- if (is.data.frame(x$tasks)) {
+    nrow(x$tasks)
+  } else {
+    length(x$tasks)
+  }
+  cat(part_count, "participants\n")
+  cat(task_count, "tasks\n")
   invisible(x)
 }
 

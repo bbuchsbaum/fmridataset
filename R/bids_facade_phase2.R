@@ -51,8 +51,18 @@ discover.bids_facade <- function(x, ...) {
 #' @export
 print.bids_discovery_enhanced <- function(x, ...) {
   cat("\u2728 BIDS Discovery\n")
-  cat(nrow(x$participants), "participants\n")
-  cat(nrow(x$tasks), "tasks\n")
+  part_count <- if (is.data.frame(x$participants)) {
+    nrow(x$participants)
+  } else {
+    length(x$participants)
+  }
+  task_count <- if (is.data.frame(x$tasks)) {
+    nrow(x$tasks)
+  } else {
+    length(x$tasks)
+  }
+  cat(part_count, "participants\n")
+  cat(task_count, "tasks\n")
   if (!is.null(x$quality)) {
     cat("Quality metrics available\n")
   }
