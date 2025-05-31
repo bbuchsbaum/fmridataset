@@ -105,5 +105,17 @@ derivatives <- function(x, ...) {
 #' @return Modified object (for chaining)
 #' @export
 space <- function(x, ...) {
+
+
   UseMethod("space")
-} 
+}
+#' Discover details about an object
+#'
+#' Generic used for BIDS facades
+#' @param x Object
+#' @param ... Additional args
+#' @export
+discover <- function(x, ...) {
+  UseMethod("discover")
+}
+
