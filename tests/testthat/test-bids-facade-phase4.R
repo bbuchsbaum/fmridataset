@@ -226,6 +226,23 @@ test_that("create_dataset() integrates filters correctly", {
   expect_null(mock_facade_no_filters$nl_filters)
 })
 
+test_that("create_dataset() errors with multiple tasks", {
+  skip_if_not_installed("bidser")
+
+  mock_facade <- list(
+    path = "/test/path",
+    project = list(),
+    cache = new.env(parent = emptyenv()),
+    nl_filters = list(task = c("rest", "memory"))
+  )
+  class(mock_facade) <- "bids_facade"
+
+  expect_error(
+    create_dataset.bids_facade(mock_facade, subject_id = "01"),
+    "single task_id"
+  )
+})
+
 test_that("complex conversational workflows work end-to-end", {
   skip_if_not_installed("bidser")
   

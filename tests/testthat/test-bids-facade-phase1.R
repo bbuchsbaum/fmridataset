@@ -191,6 +191,23 @@ test_that("as.fmri_dataset method exists and delegates properly", {
   expect_true(exists("as.fmri_dataset.bids_facade"))
 })
 
+test_that("as.fmri_dataset.bids_facade errors on multiple tasks", {
+  skip_if_not_installed("bidser")
+
+  mock_facade <- list(
+    path = "/test/path",
+    project = list(),
+    cache = new.env()
+  )
+  class(mock_facade) <- "bids_facade"
+
+  expect_error(
+    as.fmri_dataset.bids_facade(mock_facade, subject_id = "01",
+                                task_id = c("rest", "memory")),
+    "single task_id"
+  )
+})
+
 test_that("error handling works gracefully", {
   skip_if_not_installed("bidser")
   

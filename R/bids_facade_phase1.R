@@ -98,5 +98,11 @@ print.bids_discovery_simple <- function(x, ...) {
 # ---------------------------------------------------------------------------
 #' @export
 as.fmri_dataset.bids_facade <- function(x, ...) {
-  as.fmri_dataset(x$project, ...)
+  args <- list(...)
+  task_id <- args$task_id
+  if (!is.null(task_id) && length(task_id) > 1) {
+    stop("Only one task_id may be supplied when converting a bids_facade", 
+         call. = FALSE)
+  }
+  do.call(as.fmri_dataset, c(list(x$project), args))
 }
