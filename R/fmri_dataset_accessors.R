@@ -38,19 +38,27 @@ NULL
 #' \dontrun{
 #' # Get full data matrix with transformations
 #' data_matrix <- get_data_matrix(dataset)
-#' 
+#'
 #' # Get raw data without transformations
 #' raw_data <- get_data_matrix(dataset, apply_transformations = FALSE)
-#' 
+#'
 #' # Get specific run with verbose transformation output
 #' run1_data <- get_data_matrix(dataset, run_id = 1, verbose = TRUE)
 #' }
-#' 
+#'
 #' @export
-get_data_matrix <- function(dataset, run_id = NULL, apply_transformations = TRUE, 
+get_data_matrix <- function(dataset, run_id = NULL, apply_transformations = TRUE,
+                           apply_preprocessing = NULL,
                            verbose = FALSE, ...) {
   if (!is.fmri_dataset(dataset)) {
     stop("Object is not an fmri_dataset")
+  }
+
+  # ---------------------------------------------------------------------------
+  # Backwards compatibility with legacy 'apply_preprocessing' argument
+  # ---------------------------------------------------------------------------
+  if (!is.null(apply_preprocessing)) {
+    apply_transformations <- apply_preprocessing
   }
   
   # ============================================================================
@@ -63,12 +71,6 @@ get_data_matrix <- function(dataset, run_id = NULL, apply_transformations = TRUE
     raw_data <- get(cache_key, envir = dataset$data_cache)
   } else {
     raw_data <- load_raw_data_matrix(dataset, run_id)
-    
-    # Extract specific runs if run_id is specified
-    if (!is.null(run_id)) {
-      raw_data <- extract_run_data(raw_data, dataset, run_id)
-    }
-    
     assign(cache_key, raw_data, envir = dataset$data_cache)
   }
   
@@ -267,6 +269,21 @@ get_num_runs <- function(x) {
   n_runs(x)
 }
 
+#' Get Number of Runs
+#'
+#' Convenience wrapper returning the number of runs in a dataset.
+#'
+#' @param x An `fmri_dataset` object
+#' @return Integer number of runs
+#' @export
+get_num_runs <- function(x) {
+  if (!is.fmri_dataset(x)) {
+    stop("x must be an fmri_dataset object")
+  }
+
+  n_runs(get_sampling_frame(x))
+}
+
 #' Get Number of Voxels from fmri_dataset
 #'
 #' **Ticket #13**: Returns number of voxels after masking.
@@ -344,6 +361,22 @@ n_timepoints.fmri_dataset <- function(x, run_id = NULL, ...) {
 #' @family fmri_dataset
 get_num_timepoints <- function(x, run_id = NULL) {
   n_timepoints(x, run_id = run_id)
+}
+
+#' Get Number of Timepoints
+#'
+#' Convenience wrapper returning total or per-run timepoints.
+#'
+#' @param x An `fmri_dataset` object
+#' @param run_id Optional integer vector of run IDs
+#' @return Integer number of timepoints
+#' @export
+get_num_timepoints <- function(x, run_id = NULL) {
+  if (!is.fmri_dataset(x)) {
+    stop("x must be an fmri_dataset object")
+  }
+
+  n_timepoints(get_sampling_frame(x), run_id)
 }
 
 #' Get Censor Vector from fmri_dataset
@@ -455,9 +488,9 @@ get_image_source_type <- function(x) {
 #' @keywords internal
 #' @noRd
 load_raw_data_matrix <- function(x, run_id = NULL) {
-  
-  cache_key <- "raw_data_matrix"
-  
+
+  cache_key <- paste0("raw_data_matrix_", ifelse(is.null(run_id), "all", paste(run_id, collapse = "_")))
+
   # Check cache first
   if (exists(cache_key, envir = x$data_cache)) {
     return(get(cache_key, envir = x$data_cache))
@@ -468,22 +501,41 @@ load_raw_data_matrix <- function(x, run_id = NULL) {
   if (dataset_type == "matrix") {
     # Matrix data - already in memory
     raw_data <- x$image_matrix
-    
+    if (!is.null(run_id)) {
+      raw_data <- extract_run_data(raw_data, x, run_id)
+    }
+
   } else if (dataset_type == "memory_vec") {
     # Pre-loaded NeuroVec objects
-    raw_data <- extract_data_from_neurovecs(x$image_objects)
-    
+    objs <- x$image_objects
+    if (!is.null(run_id)) {
+      objs <- objs[run_id]
+    }
+    raw_data <- extract_data_from_neurovecs(objs)
+
   } else if (dataset_type %in% c("file_vec", "bids_file")) {
     # Load from files
-    raw_data <- load_data_from_files(x$image_paths)
-    
+    paths <- x$image_paths
+    if (!is.null(run_id)) {
+      paths <- paths[run_id]
+    }
+    raw_data <- load_data_from_files(paths)
+
   } else if (dataset_type == "bids_mem") {
     # BIDS with preloaded data (should be in image_objects)
     if (!is.null(x$image_objects)) {
-      raw_data <- extract_data_from_neurovecs(x$image_objects)
+      objs <- x$image_objects
+      if (!is.null(run_id)) {
+        objs <- objs[run_id]
+      }
+      raw_data <- extract_data_from_neurovecs(objs)
     } else {
       # Fall back to loading from paths
-      raw_data <- load_data_from_files(x$image_paths)
+      paths <- x$image_paths
+      if (!is.null(run_id)) {
+        paths <- paths[run_id]
+      }
+      raw_data <- load_data_from_files(paths)
     }
     
   } else {
@@ -594,29 +646,33 @@ apply_spatial_mask <- function(data_matrix, x) {
 #' @keywords internal
 #' @noRd
 apply_temporal_censoring <- function(data_matrix, x, run_id = NULL) {
-  
+
   censor_vector <- get_censor_vector(x)
-  
+
   if (is.null(censor_vector)) {
     return(data_matrix)
   }
-  
-  # Convert to logical if numeric
-  if (is.numeric(censor_vector)) {
-    censor_logical <- as.logical(censor_vector)
-  } else {
-    censor_logical <- censor_vector
+
+  # Subset censor vector if run_id is provided
+  if (!is.null(run_id)) {
+    run_lengths <- get_run_lengths(x)
+    cum_lengths <- cumsum(c(0, run_lengths))
+    idx <- unlist(lapply(run_id, function(rid) seq(cum_lengths[rid] + 1, cum_lengths[rid + 1])))
+    censor_vector <- censor_vector[idx]
   }
-  
+
+  # Convert to logical if numeric
+  censor_logical <- if (is.numeric(censor_vector)) as.logical(censor_vector) else censor_vector
+
   # Check length
   if (length(censor_logical) != nrow(data_matrix)) {
-    stop("Censor vector length (", length(censor_logical), 
+    stop("Censor vector length (", length(censor_logical),
          ") does not match number of timepoints (", nrow(data_matrix), ")")
   }
-  
+
   # Subset rows where censor is TRUE (keep these timepoints)
   censored_data <- data_matrix[censor_logical, , drop = FALSE]
-  
+
   return(censored_data)
 }
 
@@ -653,38 +709,6 @@ apply_data_preprocessing <- function(data_matrix, x) {
   return(processed_data)
 }
 
-#' Subset Data by Runs
-#'
-#' @param data_matrix Data matrix (time x voxels)
-#' @param x fmri_dataset object
-#' @param run_id Integer vector of run IDs
-#' @return Subset data matrix
-#' @keywords internal
-#' @noRd
-subset_data_by_runs <- function(data_matrix, x, run_id) {
-  
-  run_lengths <- get_run_lengths(x)
-  
-  # Validate run IDs
-  if (any(run_id < 1 | run_id > length(run_lengths))) {
-    stop("Invalid run_id. Must be between 1 and ", length(run_lengths))
-  }
-  
-  # Calculate timepoint indices for each run
-  run_starts <- c(1, cumsum(run_lengths[-length(run_lengths)]) + 1)
-  run_ends <- cumsum(run_lengths)
-  
-  # Get timepoint indices for requested runs
-  timepoint_indices <- c()
-  for (rid in run_id) {
-    timepoint_indices <- c(timepoint_indices, run_starts[rid]:run_ends[rid])
-  }
-  
-  # Subset the data
-  subset_data <- data_matrix[timepoint_indices, , drop = FALSE]
-  
-  return(subset_data)
-}
 
 #' Extract Run Data
 #'
