@@ -200,4 +200,18 @@ test_that("fmri_dataset_create validates dataset_type determination", {
   dataset_memory$image_objects <- list("obj1", "obj2")
   dataset_memory$metadata <- list(dataset_type = "memory_vec")
   expect_equal(get_dataset_type(dataset_memory), "memory_vec")
-}) 
+})
+
+test_that("fmri_dataset_create validates run_lengths for memory_vec", {
+  img1 <- matrix(rnorm(20), nrow = 2)
+  img2 <- matrix(rnorm(20), nrow = 2)
+  img_list <- list(img1, img2)
+
+  expect_error(
+    fmri_dataset_create(images = img_list, TR = 2.0, run_lengths = 2),
+    "length(images)"
+  )
+
+  dset <- fmri_dataset_create(images = img_list, TR = 2.0, run_lengths = c(2, 2))
+  expect_equal(get_dataset_type(dset), "memory_vec")
+})
