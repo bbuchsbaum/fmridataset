@@ -147,15 +147,34 @@ test_that("bids_collect_datasets() works with multiple subjects", {
   expect_equal(length(subjects), 3)
 })
 
+
 test_that("discover.bids_facade accepts cores argument", {
   skip_if_not_installed("bidser")
   fn <- getS3method("discover", "bids_facade")
   expect_true("cores" %in% names(formals(fn)))
 })
 
-test_that("bids_collect_datasets accepts cores argument", {
+
+test_that("bids_collect_datasets() validates subjects input", {
   skip_if_not_installed("bidser")
-  expect_true("cores" %in% names(formals(bids_collect_datasets)))
+
+  mock_facade <- list(
+    path = "/test/path",
+    project = list(),
+    cache = new.env(parent = emptyenv())
+  )
+  class(mock_facade) <- "bids_facade"
+
+  expect_error(
+    bids_collect_datasets(mock_facade, 1:3),
+    "subjects must be a non-empty character vector"
+  )
+
+  expect_error(
+    bids_collect_datasets(mock_facade, character(0)),
+    "subjects must be a non-empty character vector"
+  )
+
 })
 
 test_that("parallel vs sequential processing selection works", {
