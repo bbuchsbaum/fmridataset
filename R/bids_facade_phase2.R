@@ -24,8 +24,8 @@ assess_quality <- function(x, ...) {
 # ---------------------------------------------------------------------------
 # Enhanced discover() method with quality metrics
 # ---------------------------------------------------------------------------
-#' @export
-discover.bids_facade <- function(x, ...) {
+#' @keywords internal
+discover_phase2.bids_facade <- function(x, ...) {
   check_package_available("bidser", "BIDS discovery", error = TRUE)
 
   summary_tbl <- bidser::bids_summary(x$project)

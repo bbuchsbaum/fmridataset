@@ -30,6 +30,7 @@ clear_cache.bids_facade <- function(x, ...) {
 
 # ---------------------------------------------------------------------------
 # Enhanced discover() method with caching and parallel processing
+# This is the definitive implementation used by the package.
 # ---------------------------------------------------------------------------
 #' @export
 discover.bids_facade <- function(x, ...) {
