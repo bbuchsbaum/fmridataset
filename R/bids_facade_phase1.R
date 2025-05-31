@@ -35,6 +35,13 @@ discover <- function(x, ...) {
 #' @export
 bids <- function(path, ...) {
   check_package_available("bidser", "BIDS access", error = TRUE)
+
+  if (!dir.exists(path)) {
+    stop("BIDS directory does not exist: ", path)
+  }
+
+  path <- normalizePath(path, mustWork = TRUE)
+
   proj <- bidser::bids_project(path, ...)
   obj <- list(
     path = path,
