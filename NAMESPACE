@@ -84,6 +84,7 @@ export(bids_discover)
 export(bids)
 export(discover)
 export(bids_config)
+export(assess_quality)
 
 # BIDS query generic functions
 export(subject)
@@ -129,6 +130,9 @@ S3method(print, fmri_dataset)
 S3method(print, bids_facade)
 S3method(discover, bids_facade)
 S3method(print, bids_discovery_simple)
+S3method(print, bids_discovery_enhanced)
+S3method(assess_quality, bids_facade)
+S3method(print, bids_quality_report)
 S3method(summary, fmri_dataset)
 
 # BIDS query methods
