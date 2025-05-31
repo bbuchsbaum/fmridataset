@@ -79,6 +79,12 @@ create_dataset.bids_facade <- function(x, subject_id, ...) {
       image_type <- x$nl_filters$pipeline
     }
   }
+
+  if (!is.null(task_id) && length(task_id) > 1) {
+    stop("create_dataset() expects a single task_id; found: ",
+         paste(task_id, collapse = ", "), call. = FALSE)
+  }
+
   as.fmri_dataset(x$project,
                   subject_id = subject_id,
                   task_id = task_id,
