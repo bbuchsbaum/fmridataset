@@ -320,6 +320,24 @@ safe_file_exists <- function(file_paths, context = "files") {
   # Check existence for valid paths
   exists <- rep(FALSE, length(file_paths))
   exists[valid_paths] <- file.exists(file_paths[valid_paths])
-  
+
   return(exists)
-} 
+}
+
+#' Return First Non-NULL Argument
+#'
+#' Simple helper that returns the first argument that is not NULL.
+#'
+#' @param ... Arguments to check
+#' @return The first non-NULL argument, or NULL if all are NULL
+#' @keywords internal
+#' @noRd
+first_non_null <- function(...) {
+  args <- list(...)
+  for (arg in args) {
+    if (!is.null(arg)) {
+      return(arg)
+    }
+  }
+  return(NULL)
+}

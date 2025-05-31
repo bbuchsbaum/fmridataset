@@ -183,15 +183,11 @@ validate_fmri_dataset_structure <- function(x) {
 #' @keywords internal
 #' @noRd
 get_primary_image_source <- function(x) {
-  if (!is.null(x$image_paths)) {
-    return(x$image_paths)
-  } else if (!is.null(x$image_objects)) {
-    return(x$image_objects)
-  } else if (!is.null(x$image_matrix)) {
-    return(x$image_matrix)
-  } else {
+  src <- first_non_null(x$image_paths, x$image_objects, x$image_matrix)
+  if (is.null(src)) {
     stop("No image source found")
   }
+  src
 }
 
 #' Internal Helper: Get Primary Mask Source
@@ -203,15 +199,7 @@ get_primary_image_source <- function(x) {
 #' @keywords internal
 #' @noRd
 get_primary_mask_source <- function(x) {
-  if (!is.null(x$mask_path)) {
-    return(x$mask_path)
-  } else if (!is.null(x$mask_object)) {
-    return(x$mask_object)
-  } else if (!is.null(x$mask_vector)) {
-    return(x$mask_vector)
-  } else {
-    return(NULL)
-  }
+  first_non_null(x$mask_path, x$mask_object, x$mask_vector)
 }
 
 #' Internal Helper: Get Image Source Type
