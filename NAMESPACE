@@ -81,6 +81,8 @@ export(create_legacy_pipeline)
 export(bids_backend)
 export(bids_query)
 export(bids_discover)
+export(bids)
+export(discover)
 export(bids_config)
 
 # BIDS query generic functions
@@ -100,6 +102,7 @@ S3method(as.fmri_dataset, default)
 S3method(as.fmri_dataset, character)
 S3method(as.fmri_dataset, list)
 S3method(as.fmri_dataset, matrix)
+S3method(as.fmri_dataset, bids_facade)
 S3method(as.fmri_dataset, bids_project)
 S3method(as.fmri_dataset, bids_query)
 
@@ -123,6 +126,9 @@ S3method(get_run_lengths, fmri_dataset)
 S3method(n_runs, fmri_dataset)
 S3method(n_timepoints, fmri_dataset)
 S3method(print, fmri_dataset)
+S3method(print, bids_facade)
+S3method(discover, bids_facade)
+S3method(print, bids_discovery_simple)
 S3method(summary, fmri_dataset)
 
 # BIDS query methods
