@@ -119,3 +119,69 @@ discover <- function(x, ...) {
   UseMethod("discover")
 }
 
+#' Focus on specific task
+#'
+#' Natural language verb for selecting a task of interest.
+#' @param x Object
+#' @param ... Task identifiers
+#' @return Modified object (for chaining)
+#' @export
+focus_on <- function(x, ...) {
+  UseMethod("focus_on")
+}
+
+#' Filter for young adult participants
+#'
+#' Natural language verb for selecting young adults (approx. 18-35).
+#' @param x Object
+#' @param ... Additional arguments
+#' @return Modified object (for chaining)
+#' @export
+from_young_adults <- function(x, ...) {
+  UseMethod("from_young_adults")
+}
+
+#' Require excellent quality data
+#'
+#' Natural language verb for enforcing high quality thresholds.
+#' @param x Object
+#' @param ... Additional arguments
+#' @return Modified object (for chaining)
+#' @export
+with_excellent_quality <- function(x, ...) {
+  UseMethod("with_excellent_quality")
+}
+
+#' Specify preprocessing pipeline
+#'
+#' Natural language verb for choosing a preprocessing pipeline.
+#' @param x Object
+#' @param ... Pipeline name
+#' @return Modified object (for chaining)
+#' @export
+preprocessed_with <- function(x, ...) {
+  UseMethod("preprocessed_with")
+}
+
+#' Narratively describe a BIDS project
+#'
+#' Provides a short human-friendly summary.
+#' @param x Object
+#' @param ... Additional arguments
+#' @return Invisible result
+#' @export
+tell_me_about <- function(x, ...) {
+  UseMethod("tell_me_about")
+}
+
+#' Create dataset from conversational chain
+#'
+#' Final verb that converts the chain into an `fmri_dataset`.
+#' @param x Object
+#' @param ... Additional arguments passed to dataset creation
+#' @return fmri_dataset object
+#' @export
+create_dataset <- function(x, ...) {
+  UseMethod("create_dataset")
+}
+
