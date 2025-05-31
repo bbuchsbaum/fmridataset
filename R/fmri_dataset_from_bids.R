@@ -328,39 +328,67 @@ extract_pipeline_scans <- function(bids_proj, subject_id, task_id, session_id, r
 #' @keywords internal
 #' @noRd
 determine_bids_run_lengths <- function(file_paths) {
-  
+
   # Check if neuroim2 is available for reading headers
-  if (!check_package_available("neuroim2", "reading NIfTI headers for run length detection", error = FALSE)) {
-    stop("neuroim2 package is required to automatically determine run lengths from BIDS files.\n",
-         "Install with: install.packages('neuroim2')\n",
-         "Alternatively, use fmri_dataset_create() and specify run_lengths manually.")
+  if (!check_package_available("neuroim2",
+                               "reading NIfTI headers for run length detection",
+                               error = FALSE)) {
+    stop(
+      "neuroim2 package is required to automatically determine run lengths from BIDS files.\n",
+      "Install with: install.packages('neuroim2')\n",
+      "Alternatively, use fmri_dataset_create() and specify run_lengths manually."
+    )
   }
-  
+
+  ns <- asNamespace("neuroim2")
+  header_fun <- NULL
+  if (exists("read_header", envir = ns, mode = "function")) {
+    header_fun <- get("read_header", envir = ns)
+  } else if (exists("read_nifti_header", envir = ns, mode = "function")) {
+    header_fun <- get("read_nifti_header", envir = ns)
+  } else {
+    header_fun <- neuroim2::read_vol
+    message(
+      "neuroim2 header-reading function not found; falling back to reading full volumes"
+    )
+  }
+
   run_lengths <- integer(length(file_paths))
-  
+
   for (i in seq_along(file_paths)) {
     tryCatch({
-      # Read NIfTI header to get dimensions
-      vol_info <- neuroim2::read_vol(file_paths[i])
-      dims <- dim(vol_info)
-      
+      # Read NIfTI header (or full volume as fallback) to get dimensions
+      vol_info <- header_fun(file_paths[i])
+      dims <- if (is.list(vol_info) && !is.null(vol_info$dim)) {
+        vol_info$dim
+      } else {
+        dim(vol_info)
+      }
+
       # Fourth dimension should be time
       if (length(dims) >= 4) {
         run_lengths[i] <- dims[4]
       } else {
         stop("Image file does not have a time dimension: ", file_paths[i])
       }
-      
+
     }, error = function(e) {
-      stop("Failed to read image header for ", basename(file_paths[i]), ": ", e$message)
+      stop(
+        "Failed to read image header for ",
+        basename(file_paths[i]), ": ",
+        e$message
+      )
     })
   }
-  
+
   if (any(run_lengths <= 0)) {
     invalid_files <- file_paths[run_lengths <= 0]
-    stop("Invalid run lengths detected for files: ", paste(basename(invalid_files), collapse = ", "))
+    stop(
+      "Invalid run lengths detected for files: ",
+      paste(basename(invalid_files), collapse = ", ")
+    )
   }
-  
+
   return(run_lengths)
 }
 
