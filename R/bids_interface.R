@@ -36,6 +36,10 @@ NULL
 #'   ))
 #' }
 bids_backend <- function(backend_type = "bidser", backend_config = list()) {
+
+  if (!is.list(backend_config)) {
+    stop("backend_config must be a list")
+  }
   
   # Validate backend type
   supported_backends <- c("bidser", "pybids", "custom")
@@ -219,6 +223,19 @@ bids_query <- function(bids_root, backend = NULL) {
 #' @export
 subject.bids_query <- function(query, ...) {
   subjects <- c(...)
+
+  if (length(subjects) == 0) {
+    return(query)
+  }
+  if (!is.character(subjects)) {
+    warning("subject IDs must be character; coercing")
+    subjects <- as.character(subjects)
+  }
+  if (anyNA(subjects)) {
+    warning("NA subject IDs removed")
+    subjects <- subjects[!is.na(subjects)]
+  }
+
   query$filters$subjects <- union(query$filters$subjects, subjects)
   return(query)
 }
@@ -230,6 +247,19 @@ subject.bids_query <- function(query, ...) {
 #' @export
 task.bids_query <- function(query, ...) {
   tasks <- c(...)
+
+  if (length(tasks) == 0) {
+    return(query)
+  }
+  if (!is.character(tasks)) {
+    warning("task names must be character; coercing")
+    tasks <- as.character(tasks)
+  }
+  if (anyNA(tasks)) {
+    warning("NA task names removed")
+    tasks <- tasks[!is.na(tasks)]
+  }
+
   query$filters$tasks <- union(query$filters$tasks, tasks)
   return(query)
 }
@@ -241,6 +271,19 @@ task.bids_query <- function(query, ...) {
 #' @export
 session.bids_query <- function(query, ...) {
   sessions <- c(...)
+
+  if (length(sessions) == 0) {
+    return(query)
+  }
+  if (!is.character(sessions)) {
+    warning("session IDs must be character; coercing")
+    sessions <- as.character(sessions)
+  }
+  if (anyNA(sessions)) {
+    warning("NA session IDs removed")
+    sessions <- sessions[!is.na(sessions)]
+  }
+
   query$filters$sessions <- union(query$filters$sessions, sessions)
   return(query)
 }
@@ -252,6 +295,19 @@ session.bids_query <- function(query, ...) {
 #' @export
 run.bids_query <- function(query, ...) {
   runs <- c(...)
+
+  if (length(runs) == 0) {
+    return(query)
+  }
+  if (!is.character(runs)) {
+    warning("run numbers must be character; coercing")
+    runs <- as.character(runs)
+  }
+  if (anyNA(runs)) {
+    warning("NA run numbers removed")
+    runs <- runs[!is.na(runs)]
+  }
+
   query$filters$runs <- union(query$filters$runs, runs)
   return(query)
 }
@@ -263,6 +319,19 @@ run.bids_query <- function(query, ...) {
 #' @export
 derivatives.bids_query <- function(query, ...) {
   derivatives <- c(...)
+
+  if (length(derivatives) == 0) {
+    return(query)
+  }
+  if (!is.character(derivatives)) {
+    warning("derivative names must be character; coercing")
+    derivatives <- as.character(derivatives)
+  }
+  if (anyNA(derivatives)) {
+    warning("NA derivative names removed")
+    derivatives <- derivatives[!is.na(derivatives)]
+  }
+
   query$filters$derivatives <- union(query$filters$derivatives, derivatives)
   return(query)
 }
@@ -274,6 +343,19 @@ derivatives.bids_query <- function(query, ...) {
 #' @export
 space.bids_query <- function(query, ...) {
   spaces <- c(...)
+
+  if (length(spaces) == 0) {
+    return(query)
+  }
+  if (!is.character(spaces)) {
+    warning("space names must be character; coercing")
+    spaces <- as.character(spaces)
+  }
+  if (anyNA(spaces)) {
+    warning("NA space names removed")
+    spaces <- spaces[!is.na(spaces)]
+  }
+
   query$filters$spaces <- union(query$filters$spaces, spaces)
   return(query)
 }
