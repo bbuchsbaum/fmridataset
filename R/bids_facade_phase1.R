@@ -62,8 +62,8 @@ print.bids_facade <- function(x, ...) {
 # ---------------------------------------------------------------------------
 # discover() method
 # ---------------------------------------------------------------------------
-#' @export
-discover.bids_facade <- function(x, ...) {
+#' @keywords internal
+discover_phase1.bids_facade <- function(x, ...) {
   check_package_available("bidser", "BIDS discovery", error = TRUE)
   res <- list(
     summary = bidser::bids_summary(x$project),

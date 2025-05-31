@@ -10,17 +10,18 @@ This document describes the comprehensive testing framework for the BIDS facade 
 
 1. **`test-bids-facade-phase1.R`** - Basic BIDS facade functionality
    - `bids()` constructor and facade creation
-   - `discover()` method with elegant output
+   - `discover()` method with elegant output *(internal prototype)*
    - `print.bids_facade()` methods
    - Basic integration with `bidser::bids_project()`
 
 2. **`test-bids-facade-phase2.R`** - Enhanced discovery and quality assessment
-   - Enhanced `discover()` with quality metrics
+   - Enhanced `discover()` with quality metrics *(internal prototype)*
    - `assess_quality()` functionality
    - Confound data integration
    - Quality thresholding and filtering logic
 
 3. **`test-bids-facade-phase3.R`** - Performance and caching
+   - `discover()` method (definitive implementation with caching & parallelism)
    - `clear_cache()` functionality
    - Parallel processing with `bids_collect_datasets()`
    - Performance optimization with large datasets
