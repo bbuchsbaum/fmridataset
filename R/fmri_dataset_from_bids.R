@@ -41,7 +41,11 @@ NULL
 #'   \item Loads event tables from BIDS events.tsv files
 #'   \item Populates comprehensive BIDS metadata
 #' }
-#' 
+#'
+#' The dataset type ("bids_file" or "bids_mem") is determined using
+#' \code{determine_dataset_type(..., is_bids = TRUE, preload = preload_data)} and
+#' stored in \code{dataset$metadata$dataset_type} of the returned object.
+#'
 #' **Image Type Selection (Subtask #9.2):**
 #' - "auto": Prefers preprocessed images if available, falls back to raw
 #' - "raw": Uses raw functional images from main BIDS directory
@@ -135,7 +139,7 @@ as.fmri_dataset.bids_project <- function(x, subject_id,
   final_metadata <- c(metadata, list(bids_info = bids_metadata))
   
   # Call the primary constructor
-  fmri_dataset_create(
+  dataset <- fmri_dataset_create(
     images = func_scans$file_paths,
     mask = mask_info$file_path,
     TR = TR,
@@ -150,6 +154,16 @@ as.fmri_dataset.bids_project <- function(x, subject_id,
     metadata = final_metadata,
     ...
   )
+
+  # Determine dataset type for BIDS source and store
+  dataset$metadata$dataset_type <- determine_dataset_type(
+    func_scans$file_paths,
+    mask_info$file_path,
+    is_bids = TRUE,
+    preload = preload_data
+  )
+
+  dataset
 }
 
 #' Extract Functional Scans from BIDS Project
