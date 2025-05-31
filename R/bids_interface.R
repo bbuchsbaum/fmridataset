@@ -24,9 +24,12 @@ NULL
 #' \dontrun{
 #' # Using bidser backend
 #' backend <- bids_backend("bidser")
-#' 
+#'
+#' # Configure bidser backend to prefer preprocessed images
+#' backend <- bids_backend("bidser", backend_config = list(prefer_preproc = TRUE))
+#'
 #' # Using custom backend with configuration
-#' backend <- bids_backend("custom", 
+#' backend <- bids_backend("custom",
 #'   backend_config = list(
 #'     scan_finder = my_scan_function,
 #'     metadata_reader = my_metadata_function
@@ -73,34 +76,36 @@ bids_backend <- function(backend_type = "bidser", backend_config = list()) {
 #' @keywords internal
 #' @noRd
 initialize_bidser_backend <- function(backend, config) {
-  
+
   # Check bidser availability
   if (!requireNamespace("bidser", quietly = TRUE)) {
     stop("bidser package is required for bidser backend.\n",
          "Install with: install.packages('bidser')")
   }
-  
-  # Populate standardized interface methods
+
+  backend$config <- config
+
+  # Populate standardized interface methods with config awareness
   backend$find_scans <- function(bids_root, filters) {
-    bidser_find_scans(bids_root, filters)
+    bidser_find_scans(bids_root, filters, config)
   }
-  
+
   backend$read_metadata <- function(scan_path) {
     bidser_read_metadata(scan_path)
   }
-  
+
   backend$get_run_info <- function(scan_paths) {
     bidser_get_run_info(scan_paths)
   }
-  
+
   backend$find_derivatives <- function(bids_root, filters) {
-    bidser_find_derivatives(bids_root, filters)
+    bidser_find_derivatives(bids_root, filters, config)
   }
-  
+
   backend$validate_bids <- function(bids_root) {
     bidser_validate_bids(bids_root)
   }
-  
+
   return(backend)
 }
 
@@ -290,7 +295,7 @@ space.bids_query <- function(query, ...) {
 #' \dontrun{
 #' # Discover what's available
 #' discovery <- bids_discover("/path/to/bids")
-#' 
+#'
 #' # View structure
 #' print(discovery)
 #' 
@@ -298,6 +303,10 @@ space.bids_query <- function(query, ...) {
 #' discovery$subjects
 #' discovery$tasks
 #' discovery$derivatives$pipelines
+#'
+#' # Individual helper functions
+#' subjects <- discover_subjects(discovery$backend, "/path/to/bids")
+#' tasks <- discover_tasks(discovery$backend, "/path/to/bids")
 #' }
 bids_discover <- function(bids_root, backend = NULL) {
   
@@ -524,16 +533,207 @@ execute_bids_extraction <- function(query, subject_id, config) {
 }
 
 # Placeholder implementations for backend-specific functions
-bidser_find_scans <- function(bids_root, filters) { stop("Not implemented") }
-bidser_read_metadata <- function(scan_path) { stop("Not implemented") }
-bidser_get_run_info <- function(scan_paths) { stop("Not implemented") }
-bidser_find_derivatives <- function(bids_root, filters) { stop("Not implemented") }
-bidser_validate_bids <- function(bids_root) { stop("Not implemented") }
+bidser_find_scans <- function(bids_root, filters, config = list()) {
 
-discover_subjects <- function(backend, bids_root) { stop("Not implemented") }
-discover_sessions <- function(backend, bids_root) { stop("Not implemented") }
-discover_tasks <- function(backend, bids_root) { stop("Not implemented") }
-discover_runs <- function(backend, bids_root) { stop("Not implemented") }
-discover_datatypes <- function(backend, bids_root) { stop("Not implemented") }
-discover_derivatives <- function(backend, bids_root) { stop("Not implemented") }
-create_discovery_summary <- function(backend, bids_root) { stop("Not implemented") } 
+  if (!requireNamespace("bidser", quietly = TRUE)) {
+    return(character(0))
+  }
+
+  # Allow passing either a path or a bids_project object
+  proj <- if (inherits(bids_root, "bids_project")) {
+    bids_root
+  } else if (inherits(bids_root, "mock_bids_project")) {
+    bids_root
+  } else {
+    bidser::bids_project(bids_root)
+  }
+
+  subid <- filters$subjects
+  task <- filters$tasks
+  session <- filters$sessions
+  run <- filters$runs
+
+  if (!is.null(filters$derivatives) || isTRUE(config$prefer_preproc)) {
+    pipeline <- NULL
+    if (!is.null(filters$derivatives)) pipeline <- filters$derivatives[1]
+    if (is.null(pipeline)) pipeline <- config$pipeline
+
+    space <- NULL
+    if (!is.null(filters$spaces)) space <- filters$spaces[1]
+
+    scans <- tryCatch(
+      bidser::preproc_scans(proj, subid = subid, task = task,
+                            run = run, session = session,
+                            variant = pipeline, space = space,
+                            full_path = TRUE),
+      error = function(e) character(0)
+    )
+    if (length(scans) > 0) {
+      return(scans)
+    }
+  }
+
+  tryCatch(
+    bidser::func_scans(proj, subid = subid, task = task,
+                       run = run, session = session,
+                       full_path = TRUE),
+    error = function(e) character(0)
+  )
+}
+
+bidser_read_metadata <- function(scan_path) {
+  if (!requireNamespace("jsonlite", quietly = TRUE)) {
+    return(list())
+  }
+  sidecar <- sub("\\.nii(\\.gz)?$", ".json", scan_path)
+  if (file.exists(sidecar)) {
+    tryCatch(jsonlite::read_json(sidecar, simplifyVector = TRUE),
+             error = function(e) list())
+  } else {
+    list()
+  }
+}
+
+bidser_get_run_info <- function(scan_paths) {
+  lengths <- rep(NA_integer_, length(scan_paths))
+  if (requireNamespace("neuroim2", quietly = TRUE)) {
+    lengths <- vapply(scan_paths, function(p) {
+      tryCatch(dim(neuroim2::read_vol(p))[4], error = function(e) NA_integer_)
+    }, integer(1))
+  }
+  data.frame(path = scan_paths, run_length = lengths,
+             stringsAsFactors = FALSE)
+}
+
+bidser_find_derivatives <- function(bids_root, filters, config = list()) {
+  if (!requireNamespace("bidser", quietly = TRUE)) {
+    return(character(0))
+  }
+  proj <- if (inherits(bids_root, "bids_project") ||
+                inherits(bids_root, "mock_bids_project")) {
+    bids_root
+  } else {
+    bidser::bids_project(bids_root)
+  }
+
+  pipeline <- filters$derivatives
+  if (length(pipeline) == 0) pipeline <- config$pipeline
+
+  tryCatch(
+    bidser::preproc_scans(proj, subid = filters$subjects,
+                          task = filters$tasks, run = filters$runs,
+                          session = filters$sessions, variant = pipeline,
+                          space = filters$spaces, full_path = TRUE),
+    error = function(e) character(0)
+  )
+}
+
+bidser_validate_bids <- function(bids_root) {
+  if (!requireNamespace("bidser", quietly = TRUE)) {
+    return(FALSE)
+  }
+  proj <- if (inherits(bids_root, "bids_project") ||
+                inherits(bids_root, "mock_bids_project")) {
+    bids_root
+  } else {
+    bidser::bids_project(bids_root)
+  }
+  tryCatch({
+    bidser::bids_check_compliance(proj)
+    TRUE
+  }, error = function(e) FALSE)
+}
+
+discover_subjects <- function(backend, bids_root) {
+  if (!requireNamespace("bidser", quietly = TRUE)) {
+    return(NULL)
+  }
+  proj <- if (inherits(bids_root, "bids_project") ||
+                inherits(bids_root, "mock_bids_project")) {
+    bids_root
+  } else {
+    bidser::bids_project(bids_root)
+  }
+  tryCatch(bidser::participants(proj), error = function(e) NULL)
+}
+
+discover_sessions <- function(backend, bids_root) {
+  if (!requireNamespace("bidser", quietly = TRUE)) {
+    return(NULL)
+  }
+  proj <- if (inherits(bids_root, "bids_project") ||
+                inherits(bids_root, "mock_bids_project")) {
+    bids_root
+  } else {
+    bidser::bids_project(bids_root)
+  }
+  tryCatch(bidser::sessions(proj), error = function(e) NULL)
+}
+
+discover_tasks <- function(backend, bids_root) {
+  if (!requireNamespace("bidser", quietly = TRUE)) {
+    return(NULL)
+  }
+  proj <- if (inherits(bids_root, "bids_project") ||
+                inherits(bids_root, "mock_bids_project")) {
+    bids_root
+  } else {
+    bidser::bids_project(bids_root)
+  }
+  tryCatch(bidser::tasks(proj), error = function(e) NULL)
+}
+
+discover_runs <- function(backend, bids_root) {
+  scans <- backend$find_scans(bids_root, list())
+  matches <- regmatches(scans, regexpr("run-[0-9]+", scans))
+  unique(sub("run-", "", matches))
+}
+
+discover_datatypes <- function(backend, bids_root) {
+  if (!requireNamespace("bidser", quietly = TRUE)) {
+    return(NULL)
+  }
+  proj <- if (inherits(bids_root, "bids_project") ||
+                inherits(bids_root, "mock_bids_project")) {
+    bids_root
+  } else {
+    bidser::bids_project(bids_root)
+  }
+  fl <- tryCatch(bidser::flat_list(proj, full_path = FALSE),
+                 error = function(e) NULL)
+  if (is.null(fl) || !"datatype" %in% names(fl)) return(NULL)
+  unique(fl$datatype)
+}
+
+discover_derivatives <- function(backend, bids_root) {
+  if (!requireNamespace("bidser", quietly = TRUE)) {
+    return(NULL)
+  }
+  proj <- if (inherits(bids_root, "bids_project") ||
+                inherits(bids_root, "mock_bids_project")) {
+    bids_root
+  } else {
+    bidser::bids_project(bids_root)
+  }
+  summary <- tryCatch(bidser::bids_summary(proj), error = function(e) NULL)
+  if (!is.null(summary) && "pipelines" %in% names(summary)) {
+    list(pipelines = summary$pipelines)
+  } else {
+    list(pipelines = NULL)
+  }
+}
+
+create_discovery_summary <- function(backend, bids_root) {
+  if (!requireNamespace("bidser", quietly = TRUE)) {
+    return(NULL)
+  }
+  proj <- if (inherits(bids_root, "bids_project") ||
+                inherits(bids_root, "mock_bids_project")) {
+    bids_root
+  } else {
+    bidser::bids_project(bids_root)
+  }
+  tryCatch(bidser::bids_summary(proj), error = function(e) NULL)
+}
+
+

@@ -119,6 +119,9 @@ cat("\n=== Discovery Interface ===\n")
 # This demonstrates what the discovery interface would look like
 cat("# Discover what's available in a BIDS dataset:\n")
 cat("discovery <- bids_discover('/path/to/bids')\n\n")
+cat("# Access helper functions for quick lists:\n")
+cat("subjects <- discover_subjects(discovery$backend, '/path/to/bids')\n")
+cat("tasks <- discover_tasks(discovery$backend, '/path/to/bids')\n\n")
 
 cat("# The discovery object would contain:\n")
 cat("# - discovery$subjects: c('01', '02', '03', ...)\n")
