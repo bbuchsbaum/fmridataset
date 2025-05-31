@@ -93,12 +93,17 @@ discover.bids_facade <- function(x, ...) {
 #' when possible.
 #'
 #' @param x A \code{bids_facade} object
-#' @param subjects Character vector of subject IDs
+#' @param subjects Character vector of subject IDs (must be non-empty)
 #' @param ... Additional arguments passed to \code{as.fmri_dataset}
 #' @return List of \code{fmri_dataset} objects
 #' @export
 bids_collect_datasets <- function(x, subjects, ...) {
   stopifnot(inherits(x, "bids_facade"))
+
+  # Validate subjects input
+  if (!is.character(subjects) || length(subjects) == 0) {
+    stop("subjects must be a non-empty character vector")
+  }
   if (.Platform$OS.type != "windows" && length(subjects) > 1) {
     parallel::mclapply(subjects, function(s) {
       as.fmri_dataset(x, subject_id = s, ...)
