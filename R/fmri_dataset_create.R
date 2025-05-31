@@ -70,6 +70,7 @@
 #' )
 #' }
 #'
+#' @family fmri_dataset
 #' @export
 fmri_dataset_create <- function(images, 
                                mask = NULL,
