@@ -16,13 +16,18 @@ NULL
 #'
 #' @param x A `bids_project` object from the `bidser` package
 #' @param subject_id Character string specifying the subject ID (required)
-#' @param task_id Character string specifying the task ID, or NULL to auto-detect
-#' @param session_id Character string specifying the session ID, or NULL for no session
-#' @param run_ids Numeric vector of run IDs to include, or NULL for all runs
+#' @param task_id Character string specifying the task ID, or NULL to auto-detect.
+#'   Must be a single, non-NA string if provided.
+#' @param session_id Character string specifying the session ID, or NULL for no session.
+#'   Must be a single, non-NA string if provided.
+#' @param run_ids Numeric vector of run IDs to include, or NULL for all runs.
+#'   Must contain positive integers when supplied.
 #' @param image_type Character string indicating which image type to use:
-#'   "auto" (default), "raw", "preproc", or specific preprocessing pipeline name
+#'   "auto" (default), "raw", "preproc", or specific preprocessing pipeline name.
+#'   Must be a single string; unrecognised values are treated as pipeline names.
 #' @param event_table_source Character string indicating event source:
-#'   "auto" (default), "events" (BIDS events.tsv), "none", or path to custom TSV
+#'   "auto" (default), "events" (BIDS events.tsv), "none", or path to custom TSV.
+#'   Must be a single string.
 #' @param preload_data Logical indicating whether to preload image data (default: FALSE)
 #' @param temporal_zscore Logical indicating whether to apply temporal z-scoring (default: FALSE)
 #' @param voxelwise_detrend Logical indicating whether to apply voxelwise detrending (default: FALSE)
@@ -105,12 +110,43 @@ as.fmri_dataset.bids_project <- function(x, subject_id,
   if (!is.character(subject_id) || length(subject_id) != 1) {
     stop("subject_id must be a single character string")
   }
-  
+
+  # Validate task_id if provided
+  if (!is.null(task_id)) {
+    if (!is.character(task_id) || length(task_id) != 1 || is.na(task_id)) {
+      stop("task_id must be a single, non-NA character string or NULL")
+    }
+  }
+
+  # Validate session_id if provided
+  if (!is.null(session_id)) {
+    if (!is.character(session_id) || length(session_id) != 1 || is.na(session_id)) {
+      stop("session_id must be a single, non-NA character string or NULL")
+    }
+  }
+
+  # Validate run_ids if provided
+  if (!is.null(run_ids)) {
+    if (!is.numeric(run_ids) || any(is.na(run_ids)) || any(run_ids <= 0)) {
+      stop("run_ids must be a numeric vector of positive integers or NULL")
+    }
+    run_ids <- as.integer(run_ids)
+  }
+
   # Validate image_type
+  if (!is.character(image_type) || length(image_type) != 1 || is.na(image_type)) {
+    stop("image_type must be a single, non-NA character string")
+  }
+
   valid_image_types <- c("auto", "raw", "preproc")
-  if (!image_type %in% valid_image_types && !is.character(image_type)) {
-    stop("image_type must be one of: ", paste(valid_image_types, collapse = ", "),
-         " or a specific pipeline name")
+  if (!image_type %in% valid_image_types) {
+    warning("Unrecognised image_type '", image_type, "' - treating as pipeline name")
+  }
+
+  # Validate event_table_source
+  if (!is.character(event_table_source) || length(event_table_source) != 1 ||
+      is.na(event_table_source)) {
+    stop("event_table_source must be a single, non-NA character string")
   }
   
   # Extract functional scans (Subtask #9.2)
