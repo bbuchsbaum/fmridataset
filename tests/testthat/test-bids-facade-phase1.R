@@ -27,7 +27,7 @@ test_that("bids() creates elegant facade around bidser::bids_project", {
     participants = c("sub-01", "sub-02"),
     file_structure = file_structure_df
   )
-  
+
   # Test that we can create a facade from mock data (check mock_bids_project which is what we get)
   expect_true(inherits(mock_bids, "mock_bids_project"))
   
@@ -42,6 +42,14 @@ test_that("bids() creates elegant facade around bidser::bids_project", {
     
     unlink(temp_dir, recursive = TRUE)
   }
+})
+
+test_that("bids() errors when directory is missing", {
+  skip_if_not_installed("bidser")
+
+  fake_dir <- tempfile("no_such_bids")
+  expect_false(dir.exists(fake_dir))
+  expect_error(bids(fake_dir), "BIDS directory does not exist")
 })
 
 test_that("bids_facade object has correct structure and methods", {
