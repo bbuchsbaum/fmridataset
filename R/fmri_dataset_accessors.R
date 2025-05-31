@@ -337,6 +337,19 @@ get_censor_vector <- function(x) {
   return(x$censor_vector)
 }
 
+#' Get Metadata
+#'
+#' Generic function to retrieve metadata from objects such as
+#' `fmri_dataset` or `bids_query`.
+#'
+#' @param x Object to retrieve metadata from
+#' @param ... Additional arguments passed to methods
+#' @return Metadata list or object-specific value
+#' @export
+get_metadata <- function(x, ...) {
+  UseMethod("get_metadata")
+}
+
 #' Get Metadata from fmri_dataset
 #'
 #' **Ticket #14**: Accesses metadata list with optional field selection.
@@ -346,18 +359,18 @@ get_censor_vector <- function(x) {
 #' @return Metadata list or specific field value
 #' @export
 #' @family fmri_dataset
-get_metadata <- function(x, field = NULL) {
+get_metadata.fmri_dataset <- function(x, field = NULL, ...) {
   if (!is.fmri_dataset(x)) {
     stop("x must be an fmri_dataset object")
   }
-  
+
   if (is.null(field)) {
     return(x$metadata)
   } else {
     if (field %in% names(x$metadata)) {
       return(x$metadata[[field]])
     } else {
-      stop("Metadata field '", field, "' not found. Available fields: ", 
+      stop("Metadata field '", field, "' not found. Available fields: ",
            paste(names(x$metadata), collapse = ", "))
     }
   }

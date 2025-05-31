@@ -107,6 +107,8 @@ export(session)
 export(run)
 export(derivatives)
 export(space)
+export(find_scans)
+export(get_run_info)
 
 # ============================================================================
 # S3 Methods
@@ -167,6 +169,10 @@ S3method(session, bids_query)
 S3method(run, bids_query)
 S3method(derivatives, bids_query)
 S3method(space, bids_query)
+S3method(find_scans, bids_query)
+S3method(get_metadata, fmri_dataset)
+S3method(get_metadata, bids_query)
+S3method(get_run_info, bids_query)
 
 # fmri_data_chunk methods
 S3method(print, fmri_data_chunk)
