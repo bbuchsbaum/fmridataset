@@ -266,6 +266,9 @@ fmri_dataset_create <- function(images,
   
   # === CREATE FMRI_DATASET OBJECT ===
   obj <- new_fmri_dataset()
+
+  # Assign transformation pipeline if provided
+  obj <- set_transformation_pipeline(obj, transformation_pipeline)
   
   # Populate data sources based on dataset_type
   if (dataset_type == "file_vec") {
