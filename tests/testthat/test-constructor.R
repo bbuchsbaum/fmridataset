@@ -114,9 +114,24 @@ test_that("fmri_dataset_create handles censoring", {
   expect_equal(get_censor_vector(dataset_numeric), censor_numeric)
 })
 
+test_that("numeric censor_vector values must be 0/1", {
+  test_matrix <- matrix(rnorm(1000), nrow = 100, ncol = 10)
+  bad_censor <- rep(c(0, 1, 2), length.out = 100)
+
+  expect_error(
+    fmri_dataset_create(
+      images = test_matrix,
+      TR = 2.0,
+      run_lengths = c(50, 50),
+      censor_vector = bad_censor
+    ),
+    "Numeric censor_vector values must be 0 or 1"
+  )
+})
+
 test_that("fmri_dataset_create handles masking", {
   test_matrix <- matrix(rnorm(1000), nrow = 100, ncol = 10)
-  
+
   # Logical mask vector
   mask_vector <- c(TRUE, FALSE, TRUE, TRUE, FALSE, TRUE, TRUE, TRUE, FALSE, TRUE)
   
@@ -130,6 +145,30 @@ test_that("fmri_dataset_create handles masking", {
   expect_equal(dataset$mask_vector, mask_vector)
   expect_null(dataset$mask_path)
   expect_null(dataset$mask_object)
+})
+
+test_that("numeric mask values must be 0/1", {
+  test_matrix <- matrix(rnorm(1000), nrow = 100, ncol = 10)
+
+  good_mask <- c(1, 0, 1, 1, 0, 1, 1, 1, 0, 1)
+  dset <- fmri_dataset_create(
+    images = test_matrix,
+    mask = good_mask,
+    TR = 2.0,
+    run_lengths = c(50, 50)
+  )
+  expect_equal(dset$mask_vector, as.logical(good_mask))
+
+  bad_mask <- c(1, 0, 2, 1, 0, 1, 1, 1, 0, 1)
+  expect_error(
+    fmri_dataset_create(
+      images = test_matrix,
+      mask = bad_mask,
+      TR = 2.0,
+      run_lengths = c(50, 50)
+    ),
+    "Numeric mask values must be 0 or 1"
+  )
 })
 
 test_that("fmri_dataset_create handles preprocessing options", {
