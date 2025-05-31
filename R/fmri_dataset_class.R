@@ -152,7 +152,7 @@ validate_fmri_dataset_structure <- function(x) {
     stop("dataset_type must be specified in metadata")
   }
   
-  if (!x$metadata$dataset_type %in% c("file_vec", "memory_vec", "matrix", "bids_file", "bids_mem")) {
+  if (!x$metadata$dataset_type %in% VALID_DATASET_TYPES) {
     stop("Invalid dataset_type: ", x$metadata$dataset_type)
   }
   

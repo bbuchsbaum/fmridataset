@@ -7,6 +7,12 @@
 #' @keywords internal
 NULL
 
+#' Valid dataset types recognized by the package
+#'
+#' @keywords internal
+#' @noRd
+VALID_DATASET_TYPES <- c("file_vec", "memory_vec", "matrix", "bids_file", "bids_mem")
+
 #' Determine Dataset Type from Inputs
 #'
 #' Enhanced internal helper that determines the appropriate dataset_type based on 
@@ -135,7 +141,7 @@ determine_dataset_type <- function(images, mask, is_bids = FALSE, preload = FALS
 validate_dataset_type_consistency <- function(dataset_type, images, mask) {
   
   # Validate dataset_type is recognized
-  valid_types <- c("file_vec", "memory_vec", "matrix", "bids_file", "bids_mem")
+  valid_types <- VALID_DATASET_TYPES
   if (!dataset_type %in% valid_types) {
     stop("Invalid dataset_type: ", dataset_type, ". Must be one of: ", 
          paste(valid_types, collapse = ", "))
