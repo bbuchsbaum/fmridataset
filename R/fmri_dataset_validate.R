@@ -197,7 +197,7 @@ validate_data_sources <- function(x) {
     stop("metadata$dataset_type is NULL")
   }
   
-  valid_types <- c("file_vec", "memory_vec", "matrix", "bids_file", "bids_mem")
+  valid_types <- VALID_DATASET_TYPES
   if (!dataset_type %in% valid_types) {
     stop("Invalid dataset_type: ", dataset_type, ". Must be one of: ", paste(valid_types, collapse = ", "))
   }

@@ -65,7 +65,8 @@ cat("  space('MNI152NLin2009cAsym')\n\n")
 
 cat("# Execute query:\n")
 cat("scans <- query %>% find_scans()\n")
-cat("metadata <- query %>% get_metadata()\n\n")
+cat("metadata <- query %>% get_metadata()\n")
+cat("run_info <- query %>% get_run_info()\n\n")
 
 cat("# Direct dataset creation:\n")
 cat("dataset <- query %>% as_fmri_dataset(subject_id = '01')\n\n")
@@ -119,6 +120,9 @@ cat("\n=== Discovery Interface ===\n")
 # This demonstrates what the discovery interface would look like
 cat("# Discover what's available in a BIDS dataset:\n")
 cat("discovery <- bids_discover('/path/to/bids')\n\n")
+cat("# Access helper functions for quick lists:\n")
+cat("subjects <- discover_subjects(discovery$backend, '/path/to/bids')\n")
+cat("tasks <- discover_tasks(discovery$backend, '/path/to/bids')\n\n")
 
 cat("# The discovery object would contain:\n")
 cat("# - discovery$subjects: c('01', '02', '03', ...)\n")
@@ -134,10 +138,11 @@ cat("# - discovery$summary: comprehensive dataset statistics\n\n")
 cat("=== Integration with Transformation System ===\n")
 
 # Create a sophisticated transformation pipeline
-pipeline <- transformation_pipeline() %>%
-  add_transformation(transform_temporal_zscore()) %>%
-  add_transformation(transform_detrend(method = "linear")) %>%
-  add_transformation(transform_temporal_smooth(method = "gaussian", fwhm = 3))
+pipeline <- transformation_pipeline(
+  transform_temporal_zscore(),
+  transform_detrend(method = "linear"),
+  transform_temporal_smooth(window_size = 3, method = "gaussian")
+)
 
 cat("Transformation pipeline:\n")
 print(pipeline)

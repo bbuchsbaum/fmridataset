@@ -24,8 +24,8 @@ assess_quality <- function(x, ...) {
 # ---------------------------------------------------------------------------
 # Enhanced discover() method with quality metrics
 # ---------------------------------------------------------------------------
-#' @export
-discover.bids_facade <- function(x, ...) {
+#' @keywords internal
+discover_phase2.bids_facade <- function(x, ...) {
   check_package_available("bidser", "BIDS discovery", error = TRUE)
 
   summary_tbl <- bidser::bids_summary(x$project)
@@ -51,8 +51,18 @@ discover.bids_facade <- function(x, ...) {
 #' @export
 print.bids_discovery_enhanced <- function(x, ...) {
   cat("\u2728 BIDS Discovery\n")
-  cat(nrow(x$participants), "participants\n")
-  cat(nrow(x$tasks), "tasks\n")
+  part_count <- if (is.data.frame(x$participants)) {
+    nrow(x$participants)
+  } else {
+    length(x$participants)
+  }
+  task_count <- if (is.data.frame(x$tasks)) {
+    nrow(x$tasks)
+  } else {
+    length(x$tasks)
+  }
+  cat(part_count, "participants\n")
+  cat(task_count, "tasks\n")
   if (!is.null(x$quality)) {
     cat("Quality metrics available\n")
   }
@@ -76,14 +86,24 @@ assess_quality.bids_facade <- function(x, subject_id, session_id = NULL,
     error = function(e) NULL
   )
 
-  scans <- bidser::func_scans(x$project,
-                              subject_id = subject_id,
-                              session_id = session_id,
-                              task_id = task_id,
-                              run_ids = run_ids)
+  scans <- tryCatch(
+    bidser::func_scans(x$project,
+                       subject_id = subject_id,
+                       session_id = session_id,
+                       task_id = task_id,
+                       run_ids = run_ids),
+    error = function(e) {
+      warning("Could not retrieve functional scans: ", conditionMessage(e))
+      NULL
+    }
+  )
 
-  metrics <- tryCatch(bidser::check_func_scans(scans),
-                      error = function(e) NULL)
+  metrics <- if (is.null(scans)) {
+    NULL
+  } else {
+    tryCatch(bidser::check_func_scans(scans),
+             error = function(e) NULL)
+  }
 
   mask <- tryCatch(
     bidser::create_preproc_mask(x$project,
