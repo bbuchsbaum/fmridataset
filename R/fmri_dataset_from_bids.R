@@ -470,35 +470,7 @@ extract_bids_TR <- function(bids_proj, func_scans) {
 #' @return List with file_path and metadata
 #' @keywords internal
 #' @noRd
-##<<<<<<< codex/update-extract_bids_mask-logic
 extract_bids_mask <- function(bids_proj, subject_id, session_id) {
-  
-  if (requireNamespace("bidser", quietly = TRUE)) {
-    tryCatch({
-      # Try to get brain mask
-      mask_path <- bidser::brain_mask(bids_proj, 
-                                     subject_id = subject_id, 
-                                     session_id = session_id)
-      
-      if (is.null(mask_path) || !file.exists(mask_path)) {
-        warning("No brain mask found in BIDS derivatives for subject ", subject_id)
-        return(list(file_path = NULL, source = "none"))
-      }
-      
-      return(list(
-        file_path = mask_path,
-        source = "bids_derivatives"
-      ))
-      
-    }, error = function(e) {
-      warning("Failed to extract brain mask from BIDS: ", e$message)
-      return(list(file_path = NULL, source = "error"))
-    })
-  } else {
-    return(list(file_path = NULL, source = "no_bidser"))
-  }
-##=======
-extract_bids_mask <- function(bids_proj, subject_id, session_id, image_type) {
 
   check_package_available("bidser", "extracting brain masks", error = TRUE)
 
@@ -522,7 +494,6 @@ extract_bids_mask <- function(bids_proj, subject_id, session_id, image_type) {
     warning("Failed to extract brain mask from BIDS: ", e$message)
     return(list(file_path = NULL, source = "error"))
   })
-##>>>>>>> main
 }
 
 #' Extract Event Table from BIDS
