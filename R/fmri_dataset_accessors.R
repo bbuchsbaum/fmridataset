@@ -252,7 +252,19 @@ get_run_lengths.fmri_dataset <- function(x, ...) {
 #' @family fmri_dataset
 n_runs.fmri_dataset <- function(x, ...) {
   validate_fmri_dataset_structure(x)
-  return(length(x$sampling_frame$run_lengths))
+  n_runs(x$sampling_frame)
+}
+
+#' Get Number of Runs
+#'
+#' Convenience wrapper returning the number of runs in a dataset.
+#'
+#' @param x An `fmri_dataset` object
+#' @return Integer number of runs
+#' @export
+#' @family fmri_dataset
+get_num_runs <- function(x) {
+  n_runs(x)
 }
 
 #' Get Number of Voxels from fmri_dataset
@@ -316,9 +328,22 @@ get_num_voxels <- function(x) {
 #' @return Integer total number of timepoints
 #' @export
 #' @family fmri_dataset
-n_timepoints.fmri_dataset <- function(x, ...) {
+n_timepoints.fmri_dataset <- function(x, run_id = NULL, ...) {
   validate_fmri_dataset_structure(x)
-  return(sum(x$sampling_frame$run_lengths))
+  n_timepoints(x$sampling_frame, run_id = run_id)
+}
+
+#' Get Number of Timepoints
+#'
+#' Convenience wrapper returning the number of timepoints in a dataset.
+#'
+#' @param x An `fmri_dataset` object
+#' @param run_id Optional integer vector specifying runs
+#' @return Integer number of timepoints
+#' @export
+#' @family fmri_dataset
+get_num_timepoints <- function(x, run_id = NULL) {
+  n_timepoints(x, run_id = run_id)
 }
 
 #' Get Censor Vector from fmri_dataset
