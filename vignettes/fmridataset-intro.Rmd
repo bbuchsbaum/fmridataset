@@ -1,0 +1,828 @@
+---
+title: "Creating and Using fMRI Dataset Objects"
+author: "Bradley Buchsbaum"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Creating and Using fMRI Dataset Objects}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5,
+  eval = FALSE  # Set to TRUE when package is properly installed
+)
+```
+
+# Introduction
+
+The `fmridataset` package provides a unified S3 class `fmri_dataset` for representing functional magnetic resonance imaging (fMRI) data from various sources. This vignette demonstrates how to create and use `fmri_dataset` objects effectively.
+
+## Key Features
+
+- **Unified Interface**: Work with data from NIfTI files, BIDS projects, pre-loaded objects, or matrices
+- **Lazy Loading**: Data is loaded on-demand for efficient memory usage
+- **Modular Transformation System**: Flexible, pluggable preprocessing pipelines
+- **Elegant BIDS Integration**: Advanced but loosely coupled BIDS interface with pluggable backends
+- **First-Class Sampling Frame**: Sophisticated temporal structure representation
+- **Data Chunking**: Built-in support for parallel processing workflows
+- **Comprehensive Validation**: Extensive integrity checking
+- **Rich Metadata**: Support for events, censoring, and preprocessing options
+
+## Package Philosophy
+
+The `fmri_dataset` object is designed to be:
+
+1. **Immutable**: Once created, represents a specific, unchanging dataset configuration
+2. **Lazy**: Data loading happens only when needed
+3. **Versatile**: Accommodates various data sources and formats
+4. **Modular**: Flexible transformation pipelines for preprocessing
+5. **Validated**: Ensures data integrity through comprehensive checks
+
+# Creating fMRI Dataset Objects
+
+## Basic Matrix Example
+
+The simplest way to create an `fmri_dataset` is from a matrix:
+
+```{r matrix-example}
+library(fmridataset)
+
+# Create synthetic fMRI data
+set.seed(123)
+n_timepoints <- 200
+n_voxels <- 1000
+fmri_matrix <- matrix(rnorm(n_timepoints * n_voxels), 
+                      nrow = n_timepoints, 
+                      ncol = n_voxels)
+
+# Create dataset with basic temporal structure
+dataset <- fmri_dataset_create(
+  images = fmri_matrix,
+  TR = 2.0,                    # 2-second repetition time
+  run_lengths = c(100, 100)    # Two runs of 100 timepoints each
+)
+
+print(dataset)
+```
+
+## From NIfTI Files
+
+For real fMRI data stored as NIfTI files:
+
+```{r nifti-example}
+# Paths to your NIfTI files (one per run)
+file_paths <- c(
+  "/path/to/run1.nii.gz",
+  "/path/to/run2.nii.gz",
+  "/path/to/run3.nii.gz"
+)
+
+# Path to brain mask
+mask_path <- "/path/to/mask.nii.gz"
+
+# Create dataset from files
+dataset <- fmri_dataset_create(
+  images = file_paths,
+  mask = mask_path,
+  TR = 2.5,
+  run_lengths = c(180, 180, 180),  # 180 timepoints per run
+  base_path = "/path/to/data"       # Base directory for relative paths
+)
+
+# Data is not loaded until accessed
+data_matrix <- get_data_matrix(dataset)
+```
+
+## From BIDS Projects (Elegant Interface)
+
+The package now includes an extremely elegant BIDS interface with pluggable backends:
+
+```{r bids-elegant-example}
+# Elegant BIDS interface with fluent API
+if (requireNamespace("bidser", quietly = TRUE)) {
+  
+  # Method chaining for intuitive query building
+  query <- bids_query("/path/to/bids/dataset") %>%
+    subject("01", "02") %>%
+    task("rest", "task") %>%
+    session("1") %>%
+    derivatives("fmriprep") %>%
+    space("MNI152NLin2009cAsym")
+  
+  # Direct dataset creation from query
+  dataset <- query %>% as_fmri_dataset(subject_id = "01")
+  
+  print(dataset)
+}
+```
+
+## Legacy BIDS Interface (Still Supported)
+
+For backward compatibility, the original BIDS interface is still available:
+
+```{r bids-legacy-example}
+# Legacy BIDS interface (requires bidser package)
+if (requireNamespace("bidser", quietly = TRUE)) {
+  
+  # Load BIDS project
+  bids_project <- bidser::bids_project("/path/to/bids/dataset")
+  
+  # Create dataset for specific subject and task
+  dataset <- as.fmri_dataset(
+    bids_project,
+    subject_id = "sub-01",
+    task_id = "task-rest",
+    session_id = "ses-01",        # Optional
+    run_ids = c(1, 2),            # Optional: specific runs
+    image_type = "preproc",       # "raw" or "preproc"
+    preload_data = FALSE          # Lazy loading
+  )
+  
+  print(dataset)
+}
+```
+
+# Modular Transformation System
+
+## Creating Transformation Pipelines
+
+The package now features a sophisticated modular transformation system:
+
+```{r transformation-basic}
+# Create individual transformations
+detrend_transform <- transform_detrend(method = "linear")
+zscore_transform <- transform_temporal_zscore(remove_trend = FALSE)
+smooth_transform <- transform_temporal_smooth(method = "gaussian", fwhm = 3)
+
+# Combine into pipeline
+pipeline <- transformation_pipeline(
+  detrend_transform,
+  smooth_transform,
+  zscore_transform
+)
+
+print(pipeline)
+```
+
+## Advanced Transformation Pipelines
+
+```{r transformation-advanced}
+# Sophisticated preprocessing pipeline
+advanced_pipeline <- transformation_pipeline(
+  transform_detrend(method = "quadratic"),
+  transform_outlier_removal(method = "mad", threshold = 2.5),
+  transform_temporal_smooth(window_size = 3),
+  transform_highpass(cutoff_freq = 0.008, TR = 2.0),
+  transform_temporal_zscore(remove_trend = FALSE)
+)
+
+# Create dataset with transformation pipeline
+dataset_with_transforms <- fmri_dataset_create(
+  images = fmri_matrix,
+  TR = 2.0,
+  run_lengths = c(100, 100),
+  transformation_pipeline = advanced_pipeline
+)
+
+print(dataset_with_transforms)
+```
+
+## Custom Transformations
+
+```{r custom-transformation}
+# Create custom transformation
+log_transform <- transformation(
+  name = "log_transform",
+  description = "Log transformation with positive shift",
+  params = list(shift = 1),
+  fn = function(data, shift) {
+    log(data + shift)
+  }
+)
+
+# Use in pipeline
+custom_pipeline <- transformation_pipeline(
+  transform_detrend(),
+  log_transform,
+  transform_temporal_zscore()
+)
+```
+
+## Legacy Preprocessing (Backward Compatibility)
+
+The old preprocessing parameters are automatically converted to equivalent pipelines:
+
+```{r legacy-preprocessing}
+# Legacy approach (still works - automatically converted)
+legacy_dataset <- fmri_dataset_create(
+  images = fmri_matrix,
+  TR = 2.0,
+  run_lengths = c(100, 100),
+  temporal_zscore = TRUE,        # Converted to transform_temporal_zscore()
+  voxelwise_detrend = TRUE       # Converted to transform_detrend()
+)
+
+# Check the automatically created pipeline
+pipeline <- get_transformation_pipeline(legacy_dataset)
+print(pipeline)
+```
+
+# Advanced Dataset Creation
+
+## With Events and Censoring
+
+```{r advanced-example}
+# Create event table
+events <- data.frame(
+  onset = c(10, 30, 50, 70, 90, 110, 130, 150),
+  duration = c(2, 2, 2, 2, 2, 2, 2, 2),
+  trial_type = rep(c("stimulus_A", "stimulus_B"), 4),
+  response_time = c(1.2, 1.5, 1.1, 1.8, 1.3, 1.4, 1.6, 1.2)
+)
+
+# Create censoring vector (TRUE = keep, FALSE = exclude)
+censor_vector <- rep(TRUE, 200)
+censor_vector[c(50:55, 120:125)] <- FALSE  # Exclude motion artifacts
+
+# Create sophisticated transformation pipeline
+preprocessing_pipeline <- transformation_pipeline(
+  transform_detrend(method = "linear"),
+  transform_outlier_removal(method = "zscore", threshold = 3),
+  transform_temporal_zscore(remove_trend = FALSE)
+)
+
+# Create comprehensive dataset
+dataset <- fmri_dataset_create(
+  images = fmri_matrix,
+  TR = 2.0,
+  run_lengths = c(100, 100),
+  event_table = events,
+  censor_vector = censor_vector,
+  transformation_pipeline = preprocessing_pipeline,
+  metadata = list(
+    experiment = "working_memory",
+    subject_id = "sub-001",
+    session_date = Sys.Date()
+  )
+)
+
+print(dataset)
+```
+
+## BIDS with Advanced Configuration
+
+```{r bids-advanced}
+# Sophisticated BIDS configuration
+if (requireNamespace("bidser", quietly = TRUE)) {
+  
+  # Create advanced configuration
+  config <- bids_config(
+    image_selection = list(
+      strategy = "prefer_derivatives",
+      preferred_pipelines = c("fmriprep", "nilearn"),
+      required_space = "MNI152NLin2009cAsym",
+      fallback_to_raw = FALSE
+    ),
+    quality_control = list(
+      check_completeness = TRUE,
+      validate_headers = TRUE,
+      censoring_threshold = 0.2
+    ),
+    metadata_extraction = list(
+      include_all_sidecars = TRUE,
+      extract_motion = TRUE
+    )
+  )
+  
+  # Create sophisticated preprocessing pipeline
+  pipeline <- transformation_pipeline(
+    transform_detrend(),
+    transform_highpass(cutoff_freq = 0.008, TR = 2.0),
+    transform_temporal_zscore()
+  )
+  
+  # Elegant integration
+  dataset <- bids_query("/path/to/bids") %>%
+    subject("01") %>%
+    task("rest") %>%
+    derivatives("fmriprep") %>%
+    as_fmri_dataset(
+      config = config,
+      transformation_pipeline = pipeline
+    )
+}
+```
+
+# Accessing Data and Metadata
+
+## Data Access with Transformations
+
+```{r data-access-transforms}
+# Get the data matrix with transformations applied
+processed_data <- get_data_matrix(dataset, apply_transformations = TRUE)
+cat("Processed data dimensions:", dim(processed_data), "\n")
+
+# Get raw data without transformations
+raw_data <- get_data_matrix(dataset, apply_transformations = FALSE)
+cat("Raw data dimensions:", dim(raw_data), "\n")
+
+# Get data for specific runs with transformations
+run1_processed <- get_data_matrix(dataset, run_id = 1, apply_transformations = TRUE)
+run23_processed <- get_data_matrix(dataset, run_id = c(2, 3), apply_transformations = TRUE)
+```
+
+## Legacy Data Access (Backward Compatibility)
+
+```{r data-access-legacy}
+# Legacy parameter name (still works)
+legacy_processed <- get_data_matrix(dataset, apply_preprocessing = TRUE)
+
+# This is equivalent to apply_transformations = TRUE
+all.equal(processed_data, legacy_processed)  # Should be TRUE
+```
+
+## Transformation Pipeline Management
+
+```{r pipeline-management}
+# Get current transformation pipeline
+current_pipeline <- get_transformation_pipeline(dataset)
+print(current_pipeline)
+
+# Set a new transformation pipeline
+new_pipeline <- transformation_pipeline(
+  transform_outlier_removal(method = "iqr", threshold = 1.5),
+  transform_temporal_smooth(method = "median", window_size = 5),
+  transform_temporal_zscore()
+)
+
+# Create new dataset with updated pipeline
+updated_dataset <- set_transformation_pipeline(dataset, new_pipeline)
+
+# Compare results
+original_data <- get_data_matrix(dataset, apply_transformations = TRUE)
+updated_data <- get_data_matrix(updated_dataset, apply_transformations = TRUE)
+
+cat("Data changed after pipeline update:", !all.equal(original_data, updated_data), "\n")
+```
+
+## Temporal Structure
+
+```{r temporal-access}
+# Access sampling frame
+sf <- get_sampling_frame(dataset)
+print(sf)
+
+# Get temporal properties
+cat("TR:", get_TR(dataset), "seconds\n")
+cat("Number of runs:", get_num_runs(dataset), "\n")
+cat("Total timepoints:", get_num_timepoints(dataset), "\n")
+cat("Run lengths:", get_run_lengths(dataset), "\n")
+
+# Get run-specific information
+cat("Run 2 timepoints:", get_num_timepoints(dataset, run_id = 2), "\n")
+```
+
+## Events and Design
+
+```{r events-access}
+# Access event table
+events <- get_event_table(dataset)
+if (!is.null(events)) {
+  print(head(events))
+  
+  # Analyze events by type
+  event_counts <- table(events$trial_type)
+  print(event_counts)
+}
+
+# Check censoring
+censor_info <- get_censor_vector(dataset)
+if (!is.null(censor_info)) {
+  n_censored <- sum(!censor_info)
+  cat("Censored timepoints:", n_censored, "/", length(censor_info), "\n")
+}
+```
+
+## Metadata
+
+```{r metadata-access}
+# Get all metadata
+metadata <- get_metadata(dataset)
+str(metadata)
+
+# Get specific metadata fields
+dataset_type <- get_dataset_type(dataset)
+cat("Dataset type:", dataset_type, "\n")
+
+# Check transformation pipeline in metadata
+if (!is.null(metadata$transformation_pipeline)) {
+  cat("Number of transformations:", length(metadata$transformation_pipeline$transformations), "\n")
+}
+
+# Legacy preprocessing options (if using legacy parameters)
+if (!is.null(metadata$matrix_options)) {
+  cat("Legacy temporal z-score:", metadata$matrix_options$temporal_zscore, "\n")
+  cat("Legacy voxelwise detrend:", metadata$matrix_options$voxelwise_detrend, "\n")
+}
+```
+
+# BIDS Discovery and Exploration
+
+## BIDS Dataset Discovery
+
+```{r bids-discovery}
+if (requireNamespace("bidser", quietly = TRUE)) {
+  
+  # Discover what's available in a BIDS dataset
+  discovery <- bids_discover("/path/to/bids")
+  
+  # View structure
+  print(discovery)
+  
+  # Access specific entities
+  cat("Available subjects:", discovery$subjects, "\n")
+  cat("Available tasks:", discovery$tasks, "\n")
+  
+  # Check for derivatives
+  if (!is.null(discovery$derivatives)) {
+    cat("Available pipelines:", discovery$derivatives$pipelines, "\n")
+  }
+}
+```
+
+## Pluggable BIDS Backends
+
+```{r bids-backends}
+# Use different BIDS backends
+if (requireNamespace("bidser", quietly = TRUE)) {
+  
+  # Default bidser backend
+  backend_bidser <- bids_backend("bidser")
+  
+  # Custom backend with user-defined functions
+  my_scan_finder <- function(bids_root, filters) {
+    # Custom implementation
+    return(c("scan1.nii.gz", "scan2.nii.gz"))
+  }
+  
+  my_metadata_reader <- function(scan_path) {
+    # Custom implementation
+    return(list(TR = 2.0, SliceTiming = c(0, 1)))
+  }
+  
+  my_run_info <- function(scan_paths) {
+    # Custom implementation
+    return(c(200, 180))  # run lengths
+  }
+  
+  backend_custom <- bids_backend("custom", 
+    backend_config = list(
+      find_scans = my_scan_finder,
+      read_metadata = my_metadata_reader,
+      get_run_info = my_run_info
+    ))
+  
+  # Use custom backend in query
+  query_custom <- bids_query("/path/to/bids", backend = backend_custom)
+}
+```
+
+# Data Validation
+
+## Basic Validation
+
+```{r validation}
+# Quick validation (metadata only)
+validate_fmri_dataset(dataset)
+
+# Comprehensive validation (loads data)
+validate_fmri_dataset(dataset, check_data_load = TRUE, verbose = TRUE)
+```
+
+## Summary and Inspection
+
+```{r summary}
+# Detailed summary
+summary(dataset)
+
+# Summary with data statistics (may be slow)
+summary(dataset, include_data_stats = TRUE)
+
+# Summary without validation
+summary(dataset, validate = FALSE)
+```
+
+# Data Iteration and Chunking
+
+## Chunking for Parallel Processing
+
+The `data_chunks()` function enables efficient parallel processing:
+
+```{r chunking}
+# Chunk by voxels (default) with transformations
+voxel_chunks <- data_chunks(dataset, nchunks = 4, apply_transformations = TRUE)
+
+# Iterate through chunks
+for (chunk in voxel_chunks) {
+  cat("Processing chunk", chunk$chunk_num, 
+      "with", ncol(chunk$data), "voxels\n")
+  
+  # Your analysis here...
+  # result <- analyze_chunk(chunk$data)
+}
+```
+
+### Chunking Strategies
+
+```{r chunk-strategies}
+# Chunk by runs (one chunk per run)
+run_chunks <- data_chunks(dataset, runwise = TRUE, apply_transformations = TRUE)
+
+# Chunk by timepoints
+time_chunks <- data_chunks(dataset, nchunks = 5, by = "timepoint", 
+                          apply_transformations = TRUE)
+
+# Raw data chunks (no transformations)
+raw_chunks <- data_chunks(dataset, nchunks = 4, apply_transformations = FALSE)
+
+# Use with foreach for parallel processing
+if (requireNamespace("foreach", quietly = TRUE)) {
+  library(foreach)
+  
+  # Parallel computation example
+  results <- foreach(chunk = voxel_chunks) %do% {
+    # Compute correlation matrix for this chunk
+    cor(chunk$data)
+  }
+}
+```
+
+# Advanced Transformation Examples
+
+## Task-Specific Pipelines
+
+```{r task-pipelines}
+# Create different pipelines for different analysis types
+create_pipeline_for_analysis <- function(analysis_type) {
+  base_transforms <- list(
+    transform_detrend(method = "linear"),
+    transform_outlier_removal(method = "zscore", threshold = 3)
+  )
+  
+  if (analysis_type == "resting_state") {
+    additional <- list(
+      transform_highpass(cutoff_freq = 0.008, TR = 2.0),
+      transform_temporal_smooth(window_size = 3),
+      transform_temporal_zscore()
+    )
+  } else if (analysis_type == "task_activation") {
+    additional <- list(
+      transform_temporal_zscore(remove_trend = FALSE)
+    )
+  } else if (analysis_type == "connectivity") {
+    additional <- list(
+      transform_highpass(cutoff_freq = 0.008, TR = 2.0),
+      transform_temporal_zscore(),
+      # Custom bandpass filter could go here
+    )
+  }
+  
+  transformation_pipeline(c(base_transforms, additional))
+}
+
+# Usage
+rs_pipeline <- create_pipeline_for_analysis("resting_state")
+task_pipeline <- create_pipeline_for_analysis("task_activation")
+conn_pipeline <- create_pipeline_for_analysis("connectivity")
+```
+
+## Conditional Transformations
+
+```{r conditional-transforms}
+# Transformation that adapts based on data properties
+adaptive_transform <- transformation(
+  name = "adaptive_normalization",
+  description = "Adaptive normalization based on data properties",
+  fn = function(data) {
+    # Check data properties
+    data_range <- max(abs(data))
+    
+    if (data_range > 10) {
+      # High amplitude data - use robust normalization
+      cat("Using robust normalization for high amplitude data\n")
+      return(apply(data, 2, function(x) x / mad(x)))
+    } else {
+      # Normal amplitude - use standard z-score
+      cat("Using standard z-score normalization\n")
+      return(scale(data, center = TRUE, scale = TRUE))
+    }
+  }
+)
+
+# Use adaptive transformation
+adaptive_pipeline <- transformation_pipeline(
+  transform_detrend(),
+  adaptive_transform
+)
+```
+
+# Integration with Analysis Workflows
+
+## Example: GLM Analysis with Transformations
+
+```{r glm-example}
+# Prepare design matrix from events
+if (!is.null(get_event_table(dataset))) {
+  events <- get_event_table(dataset)
+  sf <- get_sampling_frame(dataset)
+  
+  # Create design matrix (simplified example)
+  n_timepoints <- get_num_timepoints(dataset)
+  design_matrix <- matrix(0, nrow = n_timepoints, ncol = 2)
+  
+  # This would typically use a proper HRF convolution
+  for (i in 1:nrow(events)) {
+    onset_tr <- round(events$onset[i] / get_TR(dataset)) + 1
+    duration_tr <- round(events$duration[i] / get_TR(dataset))
+    
+    if (events$trial_type[i] == "stimulus_A") {
+      design_matrix[onset_tr:(onset_tr + duration_tr - 1), 1] <- 1
+    } else {
+      design_matrix[onset_tr:(onset_tr + duration_tr - 1), 2] <- 1
+    }
+  }
+  
+  # Get preprocessed data for analysis
+  data_matrix <- get_data_matrix(dataset, apply_transformations = TRUE)
+  
+  # Fit GLM for each voxel (simplified)
+  betas <- solve(t(design_matrix) %*% design_matrix) %*% 
+           t(design_matrix) %*% data_matrix
+  
+  cat("Beta coefficients computed for", ncol(betas), "voxels\n")
+  cat("Using transformation pipeline:", length(get_transformation_pipeline(dataset)$transformations), "steps\n")
+}
+```
+
+## Example: Connectivity Analysis
+
+```{r connectivity-example}
+# Create specialized connectivity preprocessing
+connectivity_pipeline <- transformation_pipeline(
+  transform_detrend(method = "linear"),
+  transform_outlier_removal(method = "mad", threshold = 2.5),
+  transform_highpass(cutoff_freq = 0.008, TR = 2.0),
+  transform_temporal_zscore()
+)
+
+# Apply to dataset
+conn_dataset <- set_transformation_pipeline(dataset, connectivity_pipeline)
+
+# Chunk-based connectivity analysis
+connectivity_chunks <- data_chunks(conn_dataset, nchunks = 10, by = "voxel", 
+                                  apply_transformations = TRUE)
+
+correlation_matrices <- list()
+
+for (chunk in connectivity_chunks) {
+  # Compute correlation within chunk (data is already preprocessed)
+  chunk_corr <- cor(chunk$data)
+  correlation_matrices[[chunk$chunk_num]] <- chunk_corr
+}
+
+cat("Computed", length(correlation_matrices), "correlation matrices\n")
+cat("Each matrix based on preprocessed data with", 
+    length(connectivity_pipeline$transformations), "transformation steps\n")
+```
+
+# Best Practices
+
+## Transformation Pipeline Design
+
+1. **Order matters**: Place transformations in logical order (detrending before filtering)
+2. **Test pipelines**: Validate pipelines on test data before applying to full datasets
+3. **Document choices**: Use descriptive names and comments for custom transformations
+4. **Consider interactions**: Some transformations may interact unexpectedly
+
+```{r best-practices-transforms}
+# Good pipeline design
+well_designed_pipeline <- transformation_pipeline(
+  # 1. Remove trends first
+  transform_detrend(method = "linear"),
+  
+  # 2. Handle outliers before other operations
+  transform_outlier_removal(method = "zscore", threshold = 3),
+  
+  # 3. Apply filtering
+  transform_highpass(cutoff_freq = 0.008, TR = 2.0),
+  
+  # 4. Smooth if needed
+  transform_temporal_smooth(window_size = 3),
+  
+  # 5. Normalize last
+  transform_temporal_zscore(remove_trend = FALSE)  # Trend already removed
+)
+```
+
+## Performance Optimization
+
+```{r performance-tips}
+# For large datasets, use chunking with transformations
+large_dataset_analysis <- function(dataset, analysis_func) {
+  # Process in chunks to manage memory
+  chunks <- data_chunks(dataset, nchunks = 10, apply_transformations = TRUE)
+  
+  results <- list()
+  for (chunk in chunks) {
+    # Data is already preprocessed in each chunk
+    results[[chunk$chunk_num]] <- analysis_func(chunk$data)
+  }
+  
+  return(results)
+}
+
+# For repeated access, consider the trade-offs
+# Option 1: Apply transformations each time (consistent, uses less memory)
+data1 <- get_data_matrix(dataset, apply_transformations = TRUE)
+data2 <- get_data_matrix(dataset, apply_transformations = TRUE)
+
+# Option 2: Apply once and cache (faster for repeated access, uses more memory)
+processed_once <- get_data_matrix(dataset, apply_transformations = TRUE)
+# Use processed_once multiple times
+```
+
+## Reproducibility
+
+```{r reproducibility}
+# Document your transformation choices
+analysis_params <- list(
+  TR = 2.0,
+  run_lengths = c(100, 100),
+  transformation_pipeline = transformation_pipeline(
+    transform_detrend(method = "linear"),
+    transform_temporal_zscore()
+  ),
+  created_on = Sys.time(),
+  r_version = R.version.string,
+  package_version = packageVersion("fmridataset")
+)
+
+# Include comprehensive metadata
+reproducible_dataset <- fmri_dataset_create(
+  images = fmri_matrix,
+  TR = analysis_params$TR,
+  run_lengths = analysis_params$run_lengths,
+  transformation_pipeline = analysis_params$transformation_pipeline,
+  metadata = analysis_params
+)
+
+# Save pipeline for later use
+pipeline_config <- get_transformation_pipeline(reproducible_dataset)
+# This can be saved and loaded later to ensure exact reproducibility
+```
+
+# Conclusion
+
+The `fmridataset` package provides a flexible and powerful framework for working with fMRI data in R. Key advantages include:
+
+- **Unified interface** across different data sources
+- **Lazy loading** for efficient memory usage
+- **Modular transformation system** for flexible preprocessing
+- **Elegant BIDS integration** with pluggable backends
+- **Comprehensive validation** to ensure data integrity
+- **Rich temporal modeling** with first-class sampling frames
+- **Built-in chunking** for parallel processing workflows
+- **Extensive metadata support** for reproducible analyses
+
+## New Features Highlights
+
+### Modular Transformation System
+- Replace hardcoded preprocessing with flexible pipelines
+- Easy to create custom transformations
+- Automatic conversion of legacy parameters
+- Clear documentation of preprocessing steps
+
+### Elegant BIDS Interface
+- Fluent API with method chaining
+- Pluggable backend architecture (bidser, custom, future PyBIDS)
+- Sophisticated configuration system
+- Rich discovery tools for dataset exploration
+
+Whether you're working with simple matrix data, complex BIDS projects, or custom preprocessing pipelines, `fmri_dataset` objects provide a consistent and robust foundation for your fMRI analyses.
+
+For more advanced usage and integration with other neuroimaging packages, see the additional vignettes and function documentation.
+
+# Session Info
+
+```{r session-info}
+sessionInfo()
+``` 
