@@ -185,3 +185,53 @@ create_dataset <- function(x, ...) {
   UseMethod("create_dataset")
 }
 
+
+#' Create a workflow object
+#'
+#' Generic constructor for creating workflow definitions used in
+#' Phase 5 community features.
+#' @param name Name of the workflow
+#' @export
+create_workflow <- function(name, ...) {
+  UseMethod("create_workflow")
+}
+
+#' Describe a workflow
+#'
+#' Generic used to add a description to a workflow object.
+#' @param x Workflow object
+#' @param ... Description text
+#' @export
+describe <- function(x, ...) {
+  UseMethod("describe")
+}
+
+#' Add a processing step to a workflow
+#' @param x Workflow object
+#' @param ... Step function or object
+#' @export
+add_step <- function(x, ...) {
+  UseMethod("add_step")
+}
+
+#' Finalize a workflow definition
+#' @param x Workflow object
+#' @export
+finish_with_flourish <- function(x, ...) {
+  UseMethod("finish_with_flourish")
+}
+
+#' Apply a workflow to data
+#' @param x Object (e.g., fmri_dataset)
+#' @param ... Additional arguments
+#' @export
+apply_workflow <- function(x, ...) {
+  UseMethod("apply_workflow")
+}
+
+#' Discover community best practices
+#' @param ... Topic or other parameters
+#' @export
+discover_best_practices <- function(...) {
+  UseMethod("discover_best_practices")
+}
