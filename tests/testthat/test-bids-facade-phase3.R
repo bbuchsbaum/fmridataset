@@ -355,3 +355,40 @@ test_that("cache persistence and retrieval", {
   expect_true(inherits(retrieved_discovery$timestamp, "POSIXct"))
   expect_true(inherits(retrieved_quality$timestamp, "POSIXct"))
 })
+
+
+test_that("discover continues when a helper fails", {
+  skip_if_not_installed("bidser")
+
+  fs <- data.frame(
+    subid = "sub-01",
+    datatype = "func",
+    suffix = "bold",
+    fmriprep = FALSE,
+    stringsAsFactors = FALSE
+  )
+  fs$task <- "rest"
+
+  mock_bids <- bidser::create_mock_bids(
+    project_name = "fail_helper",
+    participants = "sub-01",
+    file_structure = fs
+  )
+
+  facade <- list(
+    path = "test_path",
+    project = mock_bids,
+    cache = new.env(parent = emptyenv())
+  )
+  class(facade) <- "bids_facade"
+
+  orig_tasks <- bidser::tasks
+  assignInNamespace("tasks", function(...) stop("boom"), ns = "bidser")
+  on.exit(assignInNamespace("tasks", orig_tasks, ns = "bidser"))
+
+  res <- discover(facade)
+
+  expect_true(inherits(res, "bids_discovery_enhanced"))
+  expect_null(res$tasks)
+})
+

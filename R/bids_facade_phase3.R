@@ -53,13 +53,21 @@ discover.bids_facade <- function(x, cores = getOption("mc.cores", 2), ...) {
 
   check_package_available("bidser", "BIDS discovery", error = TRUE)
 
+  safe_fun <- function(name, fn) {
+    function() {
+      tryCatch(fn(), error = function(e) {
+        message("discover: ", name, " failed: ", e$message)
+        NULL
+      })
+    }
+  }
+
   funs <- list(
-    summary = function() bidser::bids_summary(x$project),
-    participants = function() bidser::participants(x$project),
-    tasks = function() bidser::tasks(x$project),
-    sessions = function() bidser::sessions(x$project),
-    quality = function() tryCatch(bidser::check_func_scans(x$project),
-                                  error = function(e) NULL)
+    summary = safe_fun("summary", function() bidser::bids_summary(x$project)),
+    participants = safe_fun("participants", function() bidser::participants(x$project)),
+    tasks = safe_fun("tasks", function() bidser::tasks(x$project)),
+    sessions = safe_fun("sessions", function() bidser::sessions(x$project)),
+    quality = safe_fun("quality", function() bidser::check_func_scans(x$project))
   )
 
   if (.Platform$OS.type != "windows" && length(funs) > 1) {
