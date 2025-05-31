@@ -193,8 +193,11 @@ fmri_dataset_create <- function(images,
         stop("For matrix dataset_type, mask must be logical/numeric vector or NULL")
       }
       
-      # Convert to logical if numeric
+      # Convert to logical if numeric and validate values
       if (is.numeric(mask)) {
+        if (!all(mask %in% c(0, 1))) {
+          stop("Numeric mask values must be 0 or 1")
+        }
         mask <- as.logical(mask)
       }
       
@@ -249,6 +252,10 @@ fmri_dataset_create <- function(images,
   if (!is.null(censor_vector)) {
     if (!is.logical(censor_vector) && !is.numeric(censor_vector)) {
       stop("censor_vector must be logical, numeric, or NULL")
+    }
+
+    if (is.numeric(censor_vector) && !all(censor_vector %in% c(0, 1))) {
+      stop("Numeric censor_vector values must be 0 or 1")
     }
     
     expected_length <- sum(run_lengths)
