@@ -114,7 +114,8 @@ is.fmri_dataset <- function(x) {
 #' Internal Helper: Validate fmri_dataset Structure
 #'
 #' Validates that an fmri_dataset object has the correct structure and
-#' that only one set of image sources is populated.
+#' that only one set of image sources is populated. Error messages
+#' explicitly list any offending fields for easier debugging.
 #'
 #' @param x An fmri_dataset object
 #' @return TRUE if valid, throws error if invalid
@@ -125,26 +126,40 @@ validate_fmri_dataset_structure <- function(x) {
     stop("Object is not an fmri_dataset")
   }
   
-  # Check that only one image source is populated
+  # Check that exactly one image source is populated
   image_sources <- c(
-    !is.null(x$image_paths),
-    !is.null(x$image_objects),
-    !is.null(x$image_matrix)
+    image_paths = !is.null(x$image_paths),
+    image_objects = !is.null(x$image_objects),
+    image_matrix = !is.null(x$image_matrix)
   )
-  
-  if (sum(image_sources) != 1) {
-    stop("Exactly one image source must be populated (paths, objects, or matrix)")
+
+  populated_images <- names(image_sources)[image_sources]
+  if (length(populated_images) != 1) {
+    if (length(populated_images) == 0) {
+      stop(
+        "Exactly one image source must be populated (image_paths, image_objects, image_matrix); none were provided"
+      )
+    } else {
+      stop(
+        "Exactly one image source must be populated. Multiple provided: ",
+        paste(populated_images, collapse = ", ")
+      )
+    }
   }
   
   # Check that only one mask source is populated (if any)
   mask_sources <- c(
-    !is.null(x$mask_path),
-    !is.null(x$mask_object),
-    !is.null(x$mask_vector)
+    mask_path = !is.null(x$mask_path),
+    mask_object = !is.null(x$mask_object),
+    mask_vector = !is.null(x$mask_vector)
   )
-  
-  if (sum(mask_sources) > 1) {
-    stop("At most one mask source can be populated (path, object, or vector)")
+
+  populated_masks <- names(mask_sources)[mask_sources]
+  if (length(populated_masks) > 1) {
+    stop(
+      "At most one mask source can be populated. Multiple provided: ",
+      paste(populated_masks, collapse = ", ")
+    )
   }
   
   # Check required metadata
