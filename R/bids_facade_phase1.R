@@ -36,7 +36,11 @@ discover <- function(x, ...) {
 bids <- function(path, ...) {
   check_package_available("bidser", "BIDS access", error = TRUE)
   proj <- bidser::bids_project(path, ...)
-  obj <- list(path = path, project = proj)
+  obj <- list(
+    path = path,
+    project = proj,
+    cache = new.env(parent = emptyenv())
+  )
   class(obj) <- "bids_facade"
   obj
 }
