@@ -123,7 +123,7 @@ as.fmri_dataset.bids_project <- function(x, subject_id,
   run_lengths <- determine_bids_run_lengths(func_scans$file_paths)
   
   # Extract brain mask
-  mask_info <- extract_bids_mask(x, subject_id, session_id, image_type)
+  mask_info <- extract_bids_mask(x, subject_id, session_id)
   
   # Extract event table
   event_table <- extract_bids_events(x, subject_id, task_id, session_id, run_ids, event_table_source)
@@ -397,11 +397,10 @@ extract_bids_TR <- function(bids_proj, func_scans) {
 #' @param bids_proj BIDS project object
 #' @param subject_id Subject ID
 #' @param session_id Session ID
-#' @param image_type Image type for mask compatibility
 #' @return List with file_path and metadata
 #' @keywords internal
 #' @noRd
-extract_bids_mask <- function(bids_proj, subject_id, session_id, image_type) {
+extract_bids_mask <- function(bids_proj, subject_id, session_id) {
   
   if (requireNamespace("bidser", quietly = TRUE)) {
     tryCatch({
