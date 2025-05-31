@@ -107,20 +107,24 @@ preload_data <- function(x, what = c("images", "mask", "all"),
   invisible(x)
 }
 
-#' Clear Data Cache
+#' Clear Cached Data
 #'
 #' Removes cached data from an fmri_dataset object to free memory.
+#' This is useful when working with large datasets or when you want to
+#' force reloading of data.
 #'
 #' @param x An `fmri_dataset` object
-#' @param what Character vector indicating what to clear:
-#'   "images", "mask", "all", or specific cache keys
-#' @param verbose Logical indicating whether to show messages (default: TRUE)
-#' 
-#' @return The input `fmri_dataset` object (invisibly), with cache cleared
+#' @param what Character vector specifying what to clear. Options:
+#'   - "all" (default): Clear all cached data
+#'   - "images": Clear cached image data matrices
+#'   - "mask": Clear cached mask data
+#'   - Specific cache keys
+#' @param verbose Logical, whether to show messages about what was cleared
+#' @return The fmri_dataset object (invisibly)
 #' 
 #' @export
 #' @family fmri_dataset
-clear_cache <- function(x, what = "all", verbose = TRUE) {
+clear_cache.fmri_dataset <- function(x, what = "all", verbose = TRUE, ...) {
   
   if (!is.fmri_dataset(x)) {
     stop("x must be an fmri_dataset object")

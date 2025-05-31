@@ -21,11 +21,6 @@ NULL
 #' @return A `bids_workflow` object
 #' @export
 create_workflow <- function(name, ...) {
-  UseMethod("create_workflow")
-}
-
-#' @export
-create_workflow.default <- function(name, ...) {
   wf <- list(
     name = name,
     description = NULL,
