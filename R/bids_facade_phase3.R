@@ -28,11 +28,25 @@ clear_cache.bids_facade <- function(x, ...) {
   invisible(x)
 }
 
+#' Default method for clear_cache
+#'
+#' Called when no class-specific method exists.
+#'
+#' @param x Object
+#' @param ... Additional arguments (unused)
+#' @return Throws an informative error
+#' @export
+clear_cache.default <- function(x, ...) {
+  stop("No clear_cache method for class: ", class(x)[1])
+}
+
 # ---------------------------------------------------------------------------
 # Enhanced discover() method with caching and parallel processing
+# This is the definitive implementation used by the package.
 # ---------------------------------------------------------------------------
+#' @param cores Number of CPU cores for parallel processing
 #' @export
-discover.bids_facade <- function(x, ...) {
+discover.bids_facade <- function(x, cores = getOption("mc.cores", 2), ...) {
   if (!is.null(x$cache) && exists("discovery", envir = x$cache)) {
     return(get("discovery", envir = x$cache))
   }
@@ -57,7 +71,7 @@ discover.bids_facade <- function(x, ...) {
   )
 
   if (.Platform$OS.type != "windows" && length(funs) > 1) {
-    res_list <- parallel::mclapply(funs, function(f) f(), mc.cores = 2)
+    res_list <- parallel::mclapply(funs, function(f) f(), mc.cores = cores)
   } else {
     res_list <- lapply(funs, function(f) f())
   }
@@ -89,15 +103,22 @@ discover.bids_facade <- function(x, ...) {
 #'
 #' @param x A \code{bids_facade} object
 #' @param subjects Character vector of subject IDs
+#' @param cores Number of CPU cores for parallel processing
 #' @param ... Additional arguments passed to \code{as.fmri_dataset}
 #' @return List of \code{fmri_dataset} objects
 #' @export
-bids_collect_datasets <- function(x, subjects, ...) {
+bids_collect_datasets <- function(x, subjects,
+                                  cores = getOption("mc.cores", 2), ...) {
   stopifnot(inherits(x, "bids_facade"))
+
+  # Validate subjects input
+  if (!is.character(subjects) || length(subjects) == 0) {
+    stop("subjects must be a non-empty character vector")
+  }
   if (.Platform$OS.type != "windows" && length(subjects) > 1) {
     parallel::mclapply(subjects, function(s) {
       as.fmri_dataset(x, subject_id = s, ...)
-    }, mc.cores = min(2, length(subjects)))
+    }, mc.cores = min(cores, length(subjects)))
   } else {
     lapply(subjects, function(s) as.fmri_dataset(x, subject_id = s, ...))
   }

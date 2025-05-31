@@ -35,6 +35,13 @@ discover <- function(x, ...) {
 #' @export
 bids <- function(path, ...) {
   check_package_available("bidser", "BIDS access", error = TRUE)
+
+  if (!dir.exists(path)) {
+    stop("BIDS directory does not exist: ", path)
+  }
+
+  path <- normalizePath(path, mustWork = TRUE)
+
   proj <- bidser::bids_project(path, ...)
   obj <- list(
     path = path,
@@ -55,8 +62,8 @@ print.bids_facade <- function(x, ...) {
 # ---------------------------------------------------------------------------
 # discover() method
 # ---------------------------------------------------------------------------
-#' @export
-discover.bids_facade <- function(x, ...) {
+#' @keywords internal
+discover_phase1.bids_facade <- function(x, ...) {
   check_package_available("bidser", "BIDS discovery", error = TRUE)
   res <- list(
     summary = bidser::bids_summary(x$project),
@@ -71,8 +78,18 @@ discover.bids_facade <- function(x, ...) {
 #' @export
 print.bids_discovery_simple <- function(x, ...) {
   cat("\u2728 BIDS Discovery\n")
-  cat(length(x$participants$participant_id), "participants\n")
-  cat(length(x$tasks$task_id), "tasks\n")
+  part_count <- if (is.data.frame(x$participants)) {
+    nrow(x$participants)
+  } else {
+    length(x$participants)
+  }
+  task_count <- if (is.data.frame(x$tasks)) {
+    nrow(x$tasks)
+  } else {
+    length(x$tasks)
+  }
+  cat(part_count, "participants\n")
+  cat(task_count, "tasks\n")
   invisible(x)
 }
 
@@ -81,5 +98,11 @@ print.bids_discovery_simple <- function(x, ...) {
 # ---------------------------------------------------------------------------
 #' @export
 as.fmri_dataset.bids_facade <- function(x, ...) {
-  as.fmri_dataset(x$project, ...)
+  args <- list(...)
+  task_id <- args$task_id
+  if (!is.null(task_id) && length(task_id) > 1) {
+    stop("Only one task_id may be supplied when converting a bids_facade", 
+         call. = FALSE)
+  }
+  do.call(as.fmri_dataset, c(list(x$project), args))
 }
