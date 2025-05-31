@@ -56,8 +56,8 @@ bids_backend <- function(backend_type = "bidser", backend_config = list()) {
   
   # Initialize backend-specific methods
   backend <- switch(backend_type,
-    "bidser" = initialize_bidser_backend(backend, backend_config),
-    "pybids" = initialize_pybids_backend(backend, backend_config),
+    "bidser" = initialize_bidser_backend(backend),
+    "pybids" = initialize_pybids_backend(backend),
     "custom" = initialize_custom_backend(backend, backend_config),
     stop("Unknown backend type: ", backend_type)
   )
@@ -68,11 +68,10 @@ bids_backend <- function(backend_type = "bidser", backend_config = list()) {
 
 #' Initialize Bidser Backend
 #' @param backend Backend object to populate
-#' @param config Configuration list
 #' @return Populated backend object
 #' @keywords internal
 #' @noRd
-initialize_bidser_backend <- function(backend, config) {
+initialize_bidser_backend <- function(backend) {
   
   # Check bidser availability
   if (!requireNamespace("bidser", quietly = TRUE)) {
@@ -106,11 +105,10 @@ initialize_bidser_backend <- function(backend, config) {
 
 #' Initialize PyBIDS Backend (Future Implementation)
 #' @param backend Backend object to populate
-#' @param config Configuration list
 #' @return Populated backend object
 #' @keywords internal
 #' @noRd
-initialize_pybids_backend <- function(backend, config) {
+initialize_pybids_backend <- function(backend) {
   stop("PyBIDS backend not yet implemented. Use 'bidser' or 'custom' backend.")
 }
 
@@ -524,16 +522,128 @@ execute_bids_extraction <- function(query, subject_id, config) {
 }
 
 # Placeholder implementations for backend-specific functions
-bidser_find_scans <- function(bids_root, filters) { stop("Not implemented") }
-bidser_read_metadata <- function(scan_path) { stop("Not implemented") }
-bidser_get_run_info <- function(scan_paths) { stop("Not implemented") }
-bidser_find_derivatives <- function(bids_root, filters) { stop("Not implemented") }
-bidser_validate_bids <- function(bids_root) { stop("Not implemented") }
+bidser_find_scans <- function(bids_root, filters) {
+  check_package_available("bidser", "BIDS scan discovery", error = TRUE)
+  proj <- bidser::bids_project(bids_root)
+  bidser::func_scans(
+    proj,
+    subid = filters$subjects,
+    session = filters$sessions,
+    task = filters$tasks,
+    run = filters$runs,
+    full_path = TRUE
+  )
+}
 
-discover_subjects <- function(backend, bids_root) { stop("Not implemented") }
-discover_sessions <- function(backend, bids_root) { stop("Not implemented") }
-discover_tasks <- function(backend, bids_root) { stop("Not implemented") }
-discover_runs <- function(backend, bids_root) { stop("Not implemented") }
-discover_datatypes <- function(backend, bids_root) { stop("Not implemented") }
-discover_derivatives <- function(backend, bids_root) { stop("Not implemented") }
-create_discovery_summary <- function(backend, bids_root) { stop("Not implemented") } 
+bidser_read_metadata <- function(scan_path) {
+  sidecar <- sub("\\.nii(\\.gz)?$", ".json", scan_path, ignore.case = TRUE)
+  if (file.exists(sidecar)) {
+    return(jsonlite::read_json(sidecar, simplifyVector = TRUE))
+  }
+  list()
+}
+
+bidser_get_run_info <- function(scan_paths) {
+  if (!check_package_available("neuroim2", "reading NIfTI headers", error = FALSE)) {
+    stop("neuroim2 package is required to determine run information")
+  }
+  vapply(scan_paths, function(p) {
+    dims <- dim(neuroim2::read_vol(p))
+    if (length(dims) < 4) {
+      stop("Image has no time dimension: ", p)
+    }
+    dims[4]
+  }, integer(1))
+}
+
+bidser_find_derivatives <- function(bids_root, filters) {
+  check_package_available("bidser", "BIDS derivative discovery", error = TRUE)
+  proj <- bidser::bids_project(bids_root)
+  bidser::preproc_scans(
+    proj,
+    subid = filters$subjects,
+    session = filters$sessions,
+    task = filters$tasks,
+    run = filters$runs,
+    space = filters$spaces,
+    variant = filters$derivatives,
+    full_path = TRUE
+  )
+}
+
+bidser_validate_bids <- function(bids_root) {
+  if (!check_package_available("bidser", "BIDS validation", error = FALSE)) {
+    return(FALSE)
+  }
+  proj <- bidser::bids_project(bids_root)
+  res <- tryCatch(bidser::bids_check_compliance(proj), error = function(e) e)
+  !inherits(res, "error")
+}
+
+discover_subjects <- function(backend, bids_root) {
+  if (backend$type == "bidser") {
+    check_package_available("bidser", "BIDS discovery", error = TRUE)
+    proj <- bidser::bids_project(bids_root)
+    return(bidser::participants(proj)$participant_id)
+  }
+  stop("discover_subjects not implemented for backend type: ", backend$type)
+}
+
+discover_sessions <- function(backend, bids_root) {
+  if (backend$type == "bidser") {
+    check_package_available("bidser", "BIDS discovery", error = TRUE)
+    proj <- bidser::bids_project(bids_root)
+    return(bidser::sessions(proj))
+  }
+  stop("discover_sessions not implemented for backend type: ", backend$type)
+}
+
+discover_tasks <- function(backend, bids_root) {
+  if (backend$type == "bidser") {
+    check_package_available("bidser", "BIDS discovery", error = TRUE)
+    proj <- bidser::bids_project(bids_root)
+    return(bidser::tasks(proj))
+  }
+  stop("discover_tasks not implemented for backend type: ", backend$type)
+}
+
+discover_runs <- function(backend, bids_root) {
+  if (backend$type == "bidser") {
+    check_package_available("bidser", "BIDS discovery", error = TRUE)
+    proj <- bidser::bids_project(bids_root)
+    scans <- bidser::func_scans(proj, full_path = FALSE)
+    info <- bidser::encode(scans)
+    return(unique(info$run))
+  }
+  stop("discover_runs not implemented for backend type: ", backend$type)
+}
+
+discover_datatypes <- function(backend, bids_root) {
+  if (backend$type == "bidser") {
+    check_package_available("bidser", "BIDS discovery", error = TRUE)
+    proj <- bidser::bids_project(bids_root)
+    summary <- bidser::bids_summary(proj)
+    return(names(summary$datatype_counts))
+  }
+  stop("discover_datatypes not implemented for backend type: ", backend$type)
+}
+
+discover_derivatives <- function(backend, bids_root) {
+  if (backend$type == "bidser") {
+    check_package_available("bidser", "BIDS discovery", error = TRUE)
+    proj <- bidser::bids_project(bids_root)
+    derivs <- bidser::preproc_scans(proj, full_path = FALSE)
+    info <- bidser::encode(derivs)
+    return(unique(info$variant))
+  }
+  stop("discover_derivatives not implemented for backend type: ", backend$type)
+}
+
+create_discovery_summary <- function(backend, bids_root) {
+  if (backend$type == "bidser") {
+    check_package_available("bidser", "BIDS discovery", error = TRUE)
+    proj <- bidser::bids_project(bids_root)
+    return(bidser::bids_summary(proj))
+  }
+  stop("create_discovery_summary not implemented for backend type: ", backend$type)
+}
