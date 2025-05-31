@@ -13,6 +13,7 @@ NULL
 #' Assess quality of a BIDS project
 #'
 #' Generic for quality assessment methods.
+#' @rdname bids_facade_phase2
 #' @param x Object
 #' @param ... Additional arguments passed to methods
 #' @export
@@ -24,6 +25,7 @@ assess_quality <- function(x, ...) {
 # ---------------------------------------------------------------------------
 # Enhanced discover() method with quality metrics
 # ---------------------------------------------------------------------------
+#' @rdname bids_facade_phase2
 #' @export
 discover.bids_facade <- function(x, ...) {
   check_package_available("bidser", "BIDS discovery", error = TRUE)
@@ -48,6 +50,7 @@ discover.bids_facade <- function(x, ...) {
   res
 }
 
+#' @rdname bids_facade_phase2
 #' @export
 print.bids_discovery_enhanced <- function(x, ...) {
   cat("\u2728 BIDS Discovery\n")
@@ -62,6 +65,7 @@ print.bids_discovery_enhanced <- function(x, ...) {
 # ---------------------------------------------------------------------------
 # assess_quality() method
 # ---------------------------------------------------------------------------
+#' @rdname bids_facade_phase2
 #' @export
 assess_quality.bids_facade <- function(x, subject_id, session_id = NULL,
                                        task_id = NULL, run_ids = NULL) {
@@ -99,6 +103,7 @@ assess_quality.bids_facade <- function(x, subject_id, session_id = NULL,
   res
 }
 
+#' @rdname bids_facade_phase2
 #' @export
 print.bids_quality_report <- function(x, ...) {
   cat("\u2728 BIDS Quality Report\n")

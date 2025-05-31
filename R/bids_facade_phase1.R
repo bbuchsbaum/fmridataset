@@ -13,6 +13,7 @@ NULL
 #' Discover information about an object
 #'
 #' Generic function used for BIDS objects in this phase.
+#' @rdname bids_facade_phase1
 #' @param x Object
 #' @param ... Additional arguments passed to methods
 #' @export
@@ -32,6 +33,7 @@ discover <- function(x, ...) {
 #' @param path Path to a BIDS dataset
 #' @param ... Additional arguments passed to `bidser::bids_project`
 #' @return An object of class `bids_facade`
+#' @rdname bids_facade_phase1
 #' @export
 bids <- function(path, ...) {
   check_package_available("bidser", "BIDS access", error = TRUE)
@@ -45,6 +47,7 @@ bids <- function(path, ...) {
   obj
 }
 
+#' @rdname bids_facade_phase1
 #' @export
 print.bids_facade <- function(x, ...) {
   cat("\u2728 Elegant BIDS Project\n")
@@ -55,6 +58,7 @@ print.bids_facade <- function(x, ...) {
 # ---------------------------------------------------------------------------
 # discover() method
 # ---------------------------------------------------------------------------
+#' @rdname bids_facade_phase1
 #' @export
 discover.bids_facade <- function(x, ...) {
   check_package_available("bidser", "BIDS discovery", error = TRUE)
@@ -68,6 +72,7 @@ discover.bids_facade <- function(x, ...) {
   res
 }
 
+#' @rdname bids_facade_phase1
 #' @export
 print.bids_discovery_simple <- function(x, ...) {
   cat("\u2728 BIDS Discovery\n")
@@ -79,6 +84,7 @@ print.bids_discovery_simple <- function(x, ...) {
 # ---------------------------------------------------------------------------
 # as.fmri_dataset method
 # ---------------------------------------------------------------------------
+#' @rdname bids_facade_phase1
 #' @export
 as.fmri_dataset.bids_facade <- function(x, ...) {
   as.fmri_dataset(x$project, ...)
