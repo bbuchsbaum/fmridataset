@@ -24,15 +24,22 @@ NULL
 #' \dontrun{
 #' # Using bidser backend
 #' backend <- bids_backend("bidser")
-#' 
+#'
+#' # Configure bidser backend to prefer preprocessed images
+#' backend <- bids_backend("bidser", backend_config = list(prefer_preproc = TRUE))
+#'
 #' # Using custom backend with configuration
-#' backend <- bids_backend("custom", 
+#' backend <- bids_backend("custom",
 #'   backend_config = list(
 #'     scan_finder = my_scan_function,
 #'     metadata_reader = my_metadata_function
 #'   ))
 #' }
 bids_backend <- function(backend_type = "bidser", backend_config = list()) {
+
+  if (!is.list(backend_config)) {
+    stop("backend_config must be a list")
+  }
   
   # Validate backend type
   supported_backends <- c("bidser", "pybids", "custom")
@@ -71,35 +78,37 @@ bids_backend <- function(backend_type = "bidser", backend_config = list()) {
 #' @return Populated backend object
 #' @keywords internal
 #' @noRd
-initialize_bidser_backend <- function(backend) {
-  
+initialize_bidser_backend <- function(backend, config) {
+
   # Check bidser availability
   if (!requireNamespace("bidser", quietly = TRUE)) {
     stop("bidser package is required for bidser backend.\n",
          "Install with: install.packages('bidser')")
   }
-  
-  # Populate standardized interface methods
+
+  backend$config <- config
+
+  # Populate standardized interface methods with config awareness
   backend$find_scans <- function(bids_root, filters) {
-    bidser_find_scans(bids_root, filters)
+    bidser_find_scans(bids_root, filters, config)
   }
-  
+
   backend$read_metadata <- function(scan_path) {
     bidser_read_metadata(scan_path)
   }
-  
+
   backend$get_run_info <- function(scan_paths) {
     bidser_get_run_info(scan_paths)
   }
-  
+
   backend$find_derivatives <- function(bids_root, filters) {
-    bidser_find_derivatives(bids_root, filters)
+    bidser_find_derivatives(bids_root, filters, config)
   }
-  
+
   backend$validate_bids <- function(bids_root) {
     bidser_validate_bids(bids_root)
   }
-  
+
   return(backend)
 }
 
@@ -212,6 +221,19 @@ bids_query <- function(bids_root, backend = NULL) {
 #' @export
 subject.bids_query <- function(query, ...) {
   subjects <- c(...)
+
+  if (length(subjects) == 0) {
+    return(query)
+  }
+  if (!is.character(subjects)) {
+    warning("subject IDs must be character; coercing")
+    subjects <- as.character(subjects)
+  }
+  if (anyNA(subjects)) {
+    warning("NA subject IDs removed")
+    subjects <- subjects[!is.na(subjects)]
+  }
+
   query$filters$subjects <- union(query$filters$subjects, subjects)
   return(query)
 }
@@ -223,6 +245,19 @@ subject.bids_query <- function(query, ...) {
 #' @export
 task.bids_query <- function(query, ...) {
   tasks <- c(...)
+
+  if (length(tasks) == 0) {
+    return(query)
+  }
+  if (!is.character(tasks)) {
+    warning("task names must be character; coercing")
+    tasks <- as.character(tasks)
+  }
+  if (anyNA(tasks)) {
+    warning("NA task names removed")
+    tasks <- tasks[!is.na(tasks)]
+  }
+
   query$filters$tasks <- union(query$filters$tasks, tasks)
   return(query)
 }
@@ -234,6 +269,19 @@ task.bids_query <- function(query, ...) {
 #' @export
 session.bids_query <- function(query, ...) {
   sessions <- c(...)
+
+  if (length(sessions) == 0) {
+    return(query)
+  }
+  if (!is.character(sessions)) {
+    warning("session IDs must be character; coercing")
+    sessions <- as.character(sessions)
+  }
+  if (anyNA(sessions)) {
+    warning("NA session IDs removed")
+    sessions <- sessions[!is.na(sessions)]
+  }
+
   query$filters$sessions <- union(query$filters$sessions, sessions)
   return(query)
 }
@@ -245,6 +293,19 @@ session.bids_query <- function(query, ...) {
 #' @export
 run.bids_query <- function(query, ...) {
   runs <- c(...)
+
+  if (length(runs) == 0) {
+    return(query)
+  }
+  if (!is.character(runs)) {
+    warning("run numbers must be character; coercing")
+    runs <- as.character(runs)
+  }
+  if (anyNA(runs)) {
+    warning("NA run numbers removed")
+    runs <- runs[!is.na(runs)]
+  }
+
   query$filters$runs <- union(query$filters$runs, runs)
   return(query)
 }
@@ -256,6 +317,19 @@ run.bids_query <- function(query, ...) {
 #' @export
 derivatives.bids_query <- function(query, ...) {
   derivatives <- c(...)
+
+  if (length(derivatives) == 0) {
+    return(query)
+  }
+  if (!is.character(derivatives)) {
+    warning("derivative names must be character; coercing")
+    derivatives <- as.character(derivatives)
+  }
+  if (anyNA(derivatives)) {
+    warning("NA derivative names removed")
+    derivatives <- derivatives[!is.na(derivatives)]
+  }
+
   query$filters$derivatives <- union(query$filters$derivatives, derivatives)
   return(query)
 }
@@ -267,8 +341,61 @@ derivatives.bids_query <- function(query, ...) {
 #' @export
 space.bids_query <- function(query, ...) {
   spaces <- c(...)
+
+  if (length(spaces) == 0) {
+    return(query)
+  }
+  if (!is.character(spaces)) {
+    warning("space names must be character; coercing")
+    spaces <- as.character(spaces)
+  }
+  if (anyNA(spaces)) {
+    warning("NA space names removed")
+    spaces <- spaces[!is.na(spaces)]
+  }
+
   query$filters$spaces <- union(query$filters$spaces, spaces)
   return(query)
+}
+
+#' Find Scans for a BIDS Query
+#'
+#' Executes the query using the associated backend and returns the
+#' paths to matching scan files.
+#'
+#' @param x A `bids_query` object
+#' @param ... Additional arguments passed to the backend
+#' @return Character vector of scan paths
+#' @export
+find_scans.bids_query <- function(x, ...) {
+  x$backend$find_scans(x$bids_root, x$filters)
+}
+
+#' Retrieve Metadata for Scans in a Query
+#'
+#' Reads metadata for each scan returned by `find_scans()`.
+#'
+#' @param x A `bids_query` object
+#' @param ... Additional arguments passed to the backend
+#' @return List of metadata entries, one per scan
+#' @export
+get_metadata.bids_query <- function(x, ...) {
+  scans <- find_scans(x, ...)
+  lapply(scans, x$backend$read_metadata)
+}
+
+#' Get Run Information for a Query
+#'
+#' Retrieves run-level information (e.g., run lengths) for the scans
+#' matched by the query.
+#'
+#' @param x A `bids_query` object
+#' @param ... Additional arguments passed to the backend
+#' @return Backend-specific run information
+#' @export
+get_run_info.bids_query <- function(x, ...) {
+  scans <- find_scans(x, ...)
+  x$backend$get_run_info(scans)
 }
 
 # ============================================================================
@@ -288,7 +415,7 @@ space.bids_query <- function(query, ...) {
 #' \dontrun{
 #' # Discover what's available
 #' discovery <- bids_discover("/path/to/bids")
-#' 
+#'
 #' # View structure
 #' print(discovery)
 #' 
@@ -296,6 +423,10 @@ space.bids_query <- function(query, ...) {
 #' discovery$subjects
 #' discovery$tasks
 #' discovery$derivatives$pipelines
+#'
+#' # Individual helper functions
+#' subjects <- discover_subjects(discovery$backend, "/path/to/bids")
+#' tasks <- discover_tasks(discovery$backend, "/path/to/bids")
 #' }
 bids_discover <- function(bids_root, backend = NULL) {
   
@@ -522,20 +653,57 @@ execute_bids_extraction <- function(query, subject_id, config) {
 }
 
 # Placeholder implementations for backend-specific functions
-bidser_find_scans <- function(bids_root, filters) {
-  check_package_available("bidser", "BIDS scan discovery", error = TRUE)
-  proj <- bidser::bids_project(bids_root)
-  bidser::func_scans(
-    proj,
-    subid = filters$subjects,
-    session = filters$sessions,
-    task = filters$tasks,
-    run = filters$runs,
-    full_path = TRUE
+bidser_find_scans <- function(bids_root, filters, config = list()) {
+
+  if (!requireNamespace("bidser", quietly = TRUE)) {
+    return(character(0))
+  }
+
+  # Allow passing either a path or a bids_project object
+  proj <- if (inherits(bids_root, "bids_project")) {
+    bids_root
+  } else if (inherits(bids_root, "mock_bids_project")) {
+    bids_root
+  } else {
+    bidser::bids_project(bids_root)
+  }
+
+  subid <- filters$subjects
+  task <- filters$tasks
+  session <- filters$sessions
+  run <- filters$runs
+
+  if (!is.null(filters$derivatives) || isTRUE(config$prefer_preproc)) {
+    pipeline <- NULL
+    if (!is.null(filters$derivatives)) pipeline <- filters$derivatives[1]
+    if (is.null(pipeline)) pipeline <- config$pipeline
+
+    space <- NULL
+    if (!is.null(filters$spaces)) space <- filters$spaces[1]
+
+    scans <- tryCatch(
+      bidser::preproc_scans(proj, subid = subid, task = task,
+                            run = run, session = session,
+                            variant = pipeline, space = space,
+                            full_path = TRUE),
+      error = function(e) character(0)
+    )
+    if (length(scans) > 0) {
+      return(scans)
+    }
+  }
+
+  tryCatch(
+    bidser::func_scans(proj, subid = subid, task = task,
+                       run = run, session = session,
+                       full_path = TRUE),
+    error = function(e) character(0)
+##>>>>>>> main
   )
 }
 
 bidser_read_metadata <- function(scan_path) {
+##<<<<<<< codex/audit-unused-function-arguments-in-r/bids_interface.r
   sidecar <- sub("\\.nii(\\.gz)?$", ".json", scan_path, ignore.case = TRUE)
   if (file.exists(sidecar)) {
     return(jsonlite::read_json(sidecar, simplifyVector = TRUE))
@@ -568,10 +736,56 @@ bidser_find_derivatives <- function(bids_root, filters) {
     space = filters$spaces,
     variant = filters$derivatives,
     full_path = TRUE
+##=======
+  if (!requireNamespace("jsonlite", quietly = TRUE)) {
+    return(list())
+  }
+  sidecar <- sub("\\.nii(\\.gz)?$", ".json", scan_path)
+  if (file.exists(sidecar)) {
+    tryCatch(jsonlite::read_json(sidecar, simplifyVector = TRUE),
+             error = function(e) list())
+  } else {
+    list()
+  }
+}
+
+bidser_get_run_info <- function(scan_paths) {
+  lengths <- rep(NA_integer_, length(scan_paths))
+  if (requireNamespace("neuroim2", quietly = TRUE)) {
+    lengths <- vapply(scan_paths, function(p) {
+      tryCatch(dim(neuroim2::read_vol(p))[4], error = function(e) NA_integer_)
+    }, integer(1))
+  }
+  data.frame(path = scan_paths, run_length = lengths,
+             stringsAsFactors = FALSE)
+}
+
+bidser_find_derivatives <- function(bids_root, filters, config = list()) {
+  if (!requireNamespace("bidser", quietly = TRUE)) {
+    return(character(0))
+  }
+  proj <- if (inherits(bids_root, "bids_project") ||
+                inherits(bids_root, "mock_bids_project")) {
+    bids_root
+  } else {
+    bidser::bids_project(bids_root)
+  }
+
+  pipeline <- filters$derivatives
+  if (length(pipeline) == 0) pipeline <- config$pipeline
+
+  tryCatch(
+    bidser::preproc_scans(proj, subid = filters$subjects,
+                          task = filters$tasks, run = filters$runs,
+                          session = filters$sessions, variant = pipeline,
+                          space = filters$spaces, full_path = TRUE),
+    error = function(e) character(0)
+##>>>>>>> main
   )
 }
 
 bidser_validate_bids <- function(bids_root) {
+##<<<<<<< codex/audit-unused-function-arguments-in-r/bids_interface.r
   if (!check_package_available("bidser", "BIDS validation", error = FALSE)) {
     return(FALSE)
   }
@@ -647,3 +861,113 @@ create_discovery_summary <- function(backend, bids_root) {
   }
   stop("create_discovery_summary not implemented for backend type: ", backend$type)
 }
+=======
+  if (!requireNamespace("bidser", quietly = TRUE)) {
+    return(FALSE)
+  }
+  proj <- if (inherits(bids_root, "bids_project") ||
+                inherits(bids_root, "mock_bids_project")) {
+    bids_root
+  } else {
+    bidser::bids_project(bids_root)
+  }
+  tryCatch({
+    bidser::bids_check_compliance(proj)
+    TRUE
+  }, error = function(e) FALSE)
+}
+
+discover_subjects <- function(backend, bids_root) {
+  if (!requireNamespace("bidser", quietly = TRUE)) {
+    return(NULL)
+  }
+  proj <- if (inherits(bids_root, "bids_project") ||
+                inherits(bids_root, "mock_bids_project")) {
+    bids_root
+  } else {
+    bidser::bids_project(bids_root)
+  }
+  tryCatch(bidser::participants(proj), error = function(e) NULL)
+}
+
+discover_sessions <- function(backend, bids_root) {
+  if (!requireNamespace("bidser", quietly = TRUE)) {
+    return(NULL)
+  }
+  proj <- if (inherits(bids_root, "bids_project") ||
+                inherits(bids_root, "mock_bids_project")) {
+    bids_root
+  } else {
+    bidser::bids_project(bids_root)
+  }
+  tryCatch(bidser::sessions(proj), error = function(e) NULL)
+}
+
+discover_tasks <- function(backend, bids_root) {
+  if (!requireNamespace("bidser", quietly = TRUE)) {
+    return(NULL)
+  }
+  proj <- if (inherits(bids_root, "bids_project") ||
+                inherits(bids_root, "mock_bids_project")) {
+    bids_root
+  } else {
+    bidser::bids_project(bids_root)
+  }
+  tryCatch(bidser::tasks(proj), error = function(e) NULL)
+}
+
+discover_runs <- function(backend, bids_root) {
+  scans <- backend$find_scans(bids_root, list())
+  matches <- regmatches(scans, regexpr("run-[0-9]+", scans))
+  unique(sub("run-", "", matches))
+}
+
+discover_datatypes <- function(backend, bids_root) {
+  if (!requireNamespace("bidser", quietly = TRUE)) {
+    return(NULL)
+  }
+  proj <- if (inherits(bids_root, "bids_project") ||
+                inherits(bids_root, "mock_bids_project")) {
+    bids_root
+  } else {
+    bidser::bids_project(bids_root)
+  }
+  fl <- tryCatch(bidser::flat_list(proj, full_path = FALSE),
+                 error = function(e) NULL)
+  if (is.null(fl) || !"datatype" %in% names(fl)) return(NULL)
+  unique(fl$datatype)
+}
+
+discover_derivatives <- function(backend, bids_root) {
+  if (!requireNamespace("bidser", quietly = TRUE)) {
+    return(NULL)
+  }
+  proj <- if (inherits(bids_root, "bids_project") ||
+                inherits(bids_root, "mock_bids_project")) {
+    bids_root
+  } else {
+    bidser::bids_project(bids_root)
+  }
+  summary <- tryCatch(bidser::bids_summary(proj), error = function(e) NULL)
+  if (!is.null(summary) && "pipelines" %in% names(summary)) {
+    list(pipelines = summary$pipelines)
+  } else {
+    list(pipelines = NULL)
+  }
+}
+
+create_discovery_summary <- function(backend, bids_root) {
+  if (!requireNamespace("bidser", quietly = TRUE)) {
+    return(NULL)
+  }
+  proj <- if (inherits(bids_root, "bids_project") ||
+                inherits(bids_root, "mock_bids_project")) {
+    bids_root
+  } else {
+    bidser::bids_project(bids_root)
+  }
+  tryCatch(bidser::bids_summary(proj), error = function(e) NULL)
+}
+
+
+##>>>>>>> main
