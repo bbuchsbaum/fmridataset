@@ -165,7 +165,13 @@ fmri_dataset_create <- function(images,
     if (!is.list(images)) {
       stop("For memory_vec dataset_type, images must be a list of NeuroVec objects")
     }
-    
+
+    # Validate that number of image objects matches run_lengths
+    if (length(images) != length(run_lengths)) {
+      stop("For memory_vec dataset_type, length(images) (", length(images),
+           ") must match length(run_lengths) (", length(run_lengths), ")")
+    }
+
     # TODO: Add NeuroVec class validation when neuroim2 is available
     # This would require conditional checking since neuroim2 is in Suggests
     
