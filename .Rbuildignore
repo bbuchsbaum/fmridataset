@@ -1,0 +1,16 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^\.github$
+DOCUMENTATION_FIXES_SUMMARY.md
+fmridataset_0.1.0.tar.gz
+REFACTORING_SUMMARY.md
+repomix-output.xml
+TEST_REFACTORING_NOTES.md
+.claude
+CLAUDE.md
+BIDS_FACADE_TESTING.md
+data-raw
+examples

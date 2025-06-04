@@ -15,21 +15,27 @@ License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.2.9000
 Depends: 
-    R (>= 4.0.0)
+    R (>= 4.3.0)
 Imports:
-    tibble,
-    iterators,
-    methods
-Suggests:
+    assertthat,
+    colorplane,
+    deflist,
+    memoise,
+    methods,
     neuroim2,
+    purrr,
+    tibble,
+    utils
+Suggests:
     bidser,
+    crayon,
+    fmristore,
+    foreach,
     testthat (>= 3.0.0),
     knitr,
-    rmarkdown,
-    purrr,
-    foreach
+    rmarkdown
 VignetteBuilder: knitr
-URL: https://github.com/bbuchsbaum/fmridataset
+URL: https://github.com/bbuchsbaum/fmridataset, https://bbuchsbaum.github.io/fmridataset/
 BugReports: https://github.com/bbuchsbaum/fmridataset/issues
