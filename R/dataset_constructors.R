@@ -167,6 +167,135 @@ latent_dataset <- function(lvec, TR, run_length, event_table = data.frame()) {
   ret
 }
 
+#' Create an fMRI Dataset Object from LatentNeuroVec Files or Objects
+#'
+#' This function creates an fMRI dataset object from LatentNeuroVec files (.lv.h5) or objects
+#' using the new backend architecture. LatentNeuroVec represents data in a compressed latent
+#' space using basis functions and spatial loadings.
+#'
+#' @param latent_files A character vector of file paths to LatentNeuroVec HDF5 files (.lv.h5),
+#'   or a list of LatentNeuroVec objects, or a pre-created latent_backend object.
+#' @param mask_source Optional mask source. If NULL, the mask will be extracted from
+#'   the first LatentNeuroVec object.
+#' @param TR The repetition time in seconds of the scan-to-scan interval.
+#' @param run_length A vector of one or more integers indicating the number of scans in each run.
+#' @param event_table A data.frame containing the event onsets and experimental variables. Default is an empty data.frame.
+#' @param base_path The file path to be prepended to relative file names. Default is "." (current directory).
+#' @param censor A binary vector indicating which scans to remove. Default is NULL.
+#' @param preload Read LatentNeuroVec objects eagerly rather than on first access. Default is FALSE.
+#'
+#' @return An fMRI dataset object of class c("fmri_file_dataset", "volumetric_dataset", "fmri_dataset", "list").
+#'
+#' @details
+#' This function uses the latent_backend to handle LatentNeuroVec data efficiently.
+#' LatentNeuroVec objects store fMRI data in a compressed format using:
+#' - Basis functions (temporal components)
+#' - Spatial loadings (voxel weights)
+#' - Optional offset terms
+#' 
+#' This is particularly efficient for data that can be well-represented by a
+#' lower-dimensional basis (e.g., from PCA, ICA, or dictionary learning).
+#' 
+#' **CRITICAL: Data Access in Latent Space**
+#' Unlike standard fMRI datasets that return voxel-wise data, this dataset returns 
+#' **latent scores** (temporal basis components) rather than reconstructed voxel data.
+#' The data matrix dimensions are (time × components), not (time × voxels). This is because:
+#' 
+#' - Time-series analyses should be performed in the efficient latent space
+#' - The latent scores capture temporal dynamics in the compressed representation  
+#' - Reconstructing to full voxel space defeats the compression benefits
+#' - Most analysis workflows (GLM, connectivity, etc.) work directly with these temporal patterns
+#'
+#' Use this dataset when you want to analyze temporal dynamics in the latent space.
+#' If you need full voxel reconstruction, use the reconstruction methods from fmristore directly.
+#'
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' # Create an fMRI dataset from LatentNeuroVec HDF5 files
+#' dset <- fmri_latent_dataset(
+#'   latent_files = c("run1.lv.h5", "run2.lv.h5", "run3.lv.h5"),
+#'   TR = 2,
+#'   run_length = c(150, 150, 150)
+#' )
+#'
+#' # Create from pre-loaded LatentNeuroVec objects
+#' lvec1 <- fmristore::read_vec("run1.lv.h5")
+#' lvec2 <- fmristore::read_vec("run2.lv.h5")
+#' dset <- fmri_latent_dataset(
+#'   latent_files = list(lvec1, lvec2),
+#'   TR = 2,
+#'   run_length = c(100, 100)
+#' )
+#'
+#' # Create from a latent_backend
+#' backend <- latent_backend(c("run1.lv.h5", "run2.lv.h5"))
+#' dset <- fmri_latent_dataset(backend, TR = 2, run_length = c(100, 100))
+#' }
+#'
+#' @seealso
+#' \code{\link{latent_backend}}, \code{\link{latent_dataset}}, \code{\link{fmri_h5_dataset}}
+fmri_latent_dataset <- function(latent_files, mask_source = NULL, TR,
+                                run_length,
+                                event_table = data.frame(),
+                                base_path = ".",
+                                censor = NULL,
+                                preload = FALSE) {
+  # Check if latent_files is actually a backend object
+  if (inherits(latent_files, "latent_backend")) {
+    backend <- latent_files
+  } else {
+    # Create a latent_backend from the input
+    if (is.character(latent_files)) {
+      # File paths - prepend base_path if needed for relative paths
+      latent_files <- ifelse(
+        grepl("^(/|[A-Za-z]:)", latent_files),  # Check if absolute path
+        latent_files,
+        file.path(base_path, latent_files)
+      )
+    }
+    
+    backend <- latent_backend(
+      source = latent_files,
+      mask_source = mask_source,
+      preload = preload
+    )
+  }
+
+  # Validate backend
+  validate_backend(backend)
+
+  # Open backend to initialize resources
+  backend <- backend_open(backend)
+
+  if (is.null(censor)) {
+    censor <- rep(0, sum(run_length))
+  }
+
+  frame <- sampling_frame(run_length, TR)
+
+  # Get dimensions to validate run_length
+  dims <- backend_get_dims(backend)
+  assert_that(sum(run_length) == dims$time,
+    msg = sprintf(
+      "Sum of run_length (%d) must equal total time points (%d)",
+      sum(run_length), dims$time
+    )
+  )
+
+  ret <- list(
+    backend = backend,
+    nruns = length(run_length),
+    event_table = suppressMessages(tibble::as_tibble(event_table, .name_repair = "check_unique")),
+    sampling_frame = frame,
+    censor = censor
+  )
+
+  class(ret) <- c("fmri_file_dataset", "volumetric_dataset", "fmri_dataset", "list")
+  ret
+}
+
 #' Create an fMRI Dataset Object from a Set of Scans
 #'
 #' This function creates an fMRI dataset object from a set of scans, design information, and other data.
