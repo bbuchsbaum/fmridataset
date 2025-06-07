@@ -6,20 +6,23 @@
 \usage{
 fmri_dataset(
   scans,
-  mask,
+  mask = NULL,
   TR,
   run_length,
   event_table = data.frame(),
   base_path = ".",
   censor = NULL,
   preload = FALSE,
-  mode = c("normal", "bigvec", "mmap", "filebacked")
+  mode = c("normal", "bigvec", "mmap", "filebacked"),
+  backend = NULL
 )
 }
 \arguments{
-\item{scans}{A vector of one or more file names of the images comprising the dataset.}
+\item{scans}{A vector of one or more file names of the images comprising the dataset,
+or a pre-created storage backend object.}
 
-\item{mask}{Name of the binary mask file indicating the voxels to include in the analysis.}
+\item{mask}{Name of the binary mask file indicating the voxels to include in the analysis.
+Ignored if scans is a backend object.}
 
 \item{TR}{The repetition time in seconds of the scan-to-scan interval.}
 
@@ -27,19 +30,25 @@ fmri_dataset(
 
 \item{event_table}{A data.frame containing the event onsets and experimental variables. Default is an empty data.frame.}
 
-\item{base_path}{The file path to be prepended to relative file names. Default is "." (current directory).}
+\item{base_path}{The file path to be prepended to relative file names. Default is "." (current directory).
+Ignored if scans is a backend object.}
 
 \item{censor}{A binary vector indicating which scans to remove. Default is NULL.}
 
-\item{preload}{Read image scans eagerly rather than on first access. Default is FALSE.}
+\item{preload}{Read image scans eagerly rather than on first access. Default is FALSE.
+Ignored if scans is a backend object.}
 
-\item{mode}{The type of storage mode ('normal', 'bigvec', 'mmap', filebacked'). Default is 'normal'.}
+\item{mode}{The type of storage mode ('normal', 'bigvec', 'mmap', filebacked'). Default is 'normal'.
+Ignored if scans is a backend object.}
+
+\item{backend}{Deprecated. Use scans parameter to pass a backend object.}
 }
 \value{
 An fMRI dataset object of class c("fmri_file_dataset", "volumetric_dataset", "fmri_dataset", "list").
 }
 \description{
-This function creates an fMRI dataset object from a set of scans, design information, and other data. The dataset is a list containing information about the scans, mask, TR, number of runs, event table, base path, sampling frame, censor, mode, and preload.
+This function creates an fMRI dataset object from a set of scans, design information, and other data.
+The new implementation uses a pluggable backend architecture.
 }
 \examples{
 # Create an fMRI dataset with 3 scans and a mask
@@ -53,5 +62,9 @@ dset <- fmri_dataset(c("scan1.nii", "scan2.nii", "scan3.nii"),
 dset <- fmri_dataset("scan1.nii", mask="mask.nii", TR=2, 
   run_length=300, 
   event_table=data.frame(onsets=c(3, 20, 99), run=rep(1, 3))
-) 
+)
+
+# Create an fMRI dataset with a backend
+backend <- nifti_backend(c("scan1.nii", "scan2.nii"), mask_source="mask.nii")
+dset <- fmri_dataset(backend, TR=2, run_length=c(150, 150))
 }

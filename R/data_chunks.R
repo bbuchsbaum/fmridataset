@@ -79,7 +79,7 @@ data_chunks.fmri_mem_dataset <- function(x, nchunks=1,runwise=FALSE,...) {
     bvec <- x$scans[[chunk_num]]
     voxel_ind <- which(mask>0)
     #print(voxel_ind)
-    row_ind <- which(x$sampling_frame$blockids == chunk_num)
+    row_ind <- which(blockids(x$sampling_frame) == chunk_num)
     ret <- data_chunk(neuroim2::series(bvec,voxel_ind), 
                       voxel_ind=voxel_ind, 
                       row_ind=row_ind, 
@@ -128,30 +128,64 @@ data_chunks.fmri_mem_dataset <- function(x, nchunks=1,runwise=FALSE,...) {
 #' @return A list of data chunks, with each chunk containing the data, voxel indices, row indices, and chunk number.
 #' @noRd
 data_chunks.fmri_file_dataset <- function(x, nchunks=1, runwise=FALSE, ...) {
-  mask <- get_mask(x)
   maskSeq <- NULL
   
-  # Define chunk getter functions first
-  get_run_chunk <- function(chunk_num) {
-    bvec <- neuroim2::read_vec(file.path(x$scans[chunk_num]), mask=mask)
-    ret <- data_chunk(bvec@data, voxel_ind=which(x$mask>0), 
-                     row_ind=which(x$sampling_frame$blockids == chunk_num), 
-                     chunk_num=chunk_num)
-  }
-  
-  get_seq_chunk <- function(chunk_num) {
-    v <- get_data(x)
-    vind <- maskSeq[[chunk_num]]
-    m <- series(v, vind)
-    ret <- data_chunk(m, voxel_ind=vind, 
-                     row_ind=1:nrow(x$event_table), 
-                     chunk_num=chunk_num)
+  if (!is.null(x$backend)) {
+    # New backend path - stream data directly
+    mask_vec <- backend_get_mask(x$backend)
+    voxel_ind <- which(mask_vec)
+    n_voxels <- sum(mask_vec)
+    dims <- backend_get_dims(x$backend)
+    
+    get_run_chunk <- function(chunk_num) {
+      # Get row indices for this run
+      row_ind <- which(blockids(x$sampling_frame) == chunk_num)
+      # Stream only the needed rows from backend
+      mat <- backend_get_data(x$backend, rows = row_ind, cols = NULL)
+      data_chunk(mat, voxel_ind = voxel_ind, row_ind = row_ind, chunk_num = chunk_num)
+    }
+    
+    get_seq_chunk <- function(chunk_num) {
+      # Get column indices for this chunk  
+      col_ind <- maskSeq[[chunk_num]]
+      # Map voxel indices to valid column indices
+      valid_cols <- match(col_ind, voxel_ind)
+      valid_cols <- valid_cols[!is.na(valid_cols)]
+      # Stream only the needed columns from backend
+      mat <- backend_get_data(x$backend, rows = NULL, cols = valid_cols)
+      data_chunk(mat, voxel_ind = col_ind, row_ind = 1:dims$time, chunk_num = chunk_num)
+    }
+  } else {
+    # Legacy path
+    mask <- get_mask(x)
+    
+    get_run_chunk <- function(chunk_num) {
+      bvec <- neuroim2::read_vec(file.path(x$scans[chunk_num]), mask=mask)
+      ret <- data_chunk(bvec@data, voxel_ind=which(x$mask>0), 
+                       row_ind=which(blockids(x$sampling_frame) == chunk_num), 
+                       chunk_num=chunk_num)
+    }
+    
+    get_seq_chunk <- function(chunk_num) {
+      v <- get_data(x)
+      vind <- maskSeq[[chunk_num]]
+      m <- series(v, vind)
+      ret <- data_chunk(m, voxel_ind=vind, 
+                       row_ind=1:nrow(x$event_table), 
+                       chunk_num=chunk_num)
+    }
   }
 
  
   # Then create iterator based on strategy
   if (runwise) {
-    chunk_iter(x, length(x$scans), get_run_chunk)
+    if (!is.null(x$backend)) {
+      # For backend, use number of runs from sampling frame
+      chunk_iter(x, x$nruns, get_run_chunk)
+    } else {
+      # Legacy path uses number of scan files
+      chunk_iter(x, length(x$scans), get_run_chunk)
+    }
   } else if (nchunks == 1) {
     maskSeq <- one_chunk(x)
     chunk_iter(x, 1, get_seq_chunk)
@@ -248,6 +282,13 @@ arbitrary_chunks <- function(x, nchunks) {
   mask <- get_mask(x)
   #print(mask)
   indices <- as.integer(which(mask != 0))
+  
+  # If more chunks requested than voxels, cap to number of voxels
+  if (nchunks > length(indices)) {
+    warning("requested number of chunks (", nchunks, ") is greater than number of voxels (", length(indices), "). Using ", length(indices), " chunks instead.")
+    nchunks <- length(indices)
+  }
+  
   chsize <- round(length(indices)/nchunks)
   #print(indices)
   

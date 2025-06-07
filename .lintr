@@ -1,0 +1,11 @@
+linters: linters_with_defaults(
+  line_length_linter(120),
+  object_name_linter = NULL,  # Allow underscore in names
+  commented_code_linter = NULL,  # Allow commented code
+  cyclocomp_linter = NULL,  # Disable complexity checks for now
+  pipe_call_linter = NULL  # Allow %>% and |> pipes
+)
+exclusions: list(
+  "tests/testthat.R",
+  "data-raw/*"
+)

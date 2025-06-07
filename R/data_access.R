@@ -26,7 +26,11 @@ get_data.matrix_dataset <- function(x, ...) {
 #' @export
 #' @importFrom neuroim2 NeuroVecSeq FileBackedNeuroVec
 get_data.fmri_file_dataset <- function(x, ...) {
-  if (is.null(x$vec)) {
+  if (!is.null(x$backend)) {
+    # New backend path - return raw data matrix
+    backend_get_data(x$backend, ...)
+  } else if (is.null(x$vec)) {
+    # Legacy path
     get_data_from_file(x,...)
   } else {
     x$vec
@@ -49,9 +53,15 @@ get_data_matrix.fmri_mem_dataset <- function(x, ...) {
 
 #' @export
 get_data_matrix.fmri_file_dataset <- function(x, ...) {
-  bvec <- get_data(x)
-  mask <- get_mask(x)
-  series(bvec, which(mask != 0))
+  if (!is.null(x$backend)) {
+    # New backend path - already returns matrix in correct format
+    backend_get_data(x$backend, ...)
+  } else {
+    # Legacy path
+    bvec <- get_data(x)
+    mask <- get_mask(x)
+    series(bvec, which(mask != 0))
+  }
 }
 
 
@@ -68,7 +78,14 @@ get_data_from_file <- memoise::memoise(function(x, ...) {
 
 #' @export
 get_mask.fmri_file_dataset <- function(x, ...) {
-  if (is.null(x$mask)) {
+  if (!is.null(x$backend)) {
+    # New backend path - returns logical vector
+    mask_vec <- backend_get_mask(x$backend)
+    # Need to reshape to 3D volume for compatibility
+    dims <- backend_get_dims(x$backend)$spatial
+    array(mask_vec, dims)
+  } else if (is.null(x$mask)) {
+    # Legacy path
     neuroim2::read_vol(x$mask_file)
   } else {
     x$mask

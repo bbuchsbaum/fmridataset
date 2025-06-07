@@ -29,6 +29,8 @@ matrix_dataset <- function(datamat, TR, run_length, event_table=data.frame()) {
   
   frame <- sampling_frame(run_length, TR)
   
+  # For backward compatibility, keep the original structure
+  # but could optionally add backend support in the future
   ret <- list(
     datamat=datamat,
     TR=TR,
@@ -169,17 +171,24 @@ latent_dataset <- function(lvec, TR, run_length, event_table = data.frame()) {
 
 #' Create an fMRI Dataset Object from a Set of Scans
 #'
-#' This function creates an fMRI dataset object from a set of scans, design information, and other data. The dataset is a list containing information about the scans, mask, TR, number of runs, event table, base path, sampling frame, censor, mode, and preload.
+#' This function creates an fMRI dataset object from a set of scans, design information, and other data. 
+#' The new implementation uses a pluggable backend architecture.
 #'
-#' @param scans A vector of one or more file names of the images comprising the dataset.
+#' @param scans A vector of one or more file names of the images comprising the dataset,
+#'   or a pre-created storage backend object.
 #' @param mask Name of the binary mask file indicating the voxels to include in the analysis.
+#'   Ignored if scans is a backend object.
 #' @param TR The repetition time in seconds of the scan-to-scan interval.
 #' @param run_length A vector of one or more integers indicating the number of scans in each run.
 #' @param event_table A data.frame containing the event onsets and experimental variables. Default is an empty data.frame.
 #' @param base_path The file path to be prepended to relative file names. Default is "." (current directory).
+#'   Ignored if scans is a backend object.
 #' @param censor A binary vector indicating which scans to remove. Default is NULL.
 #' @param preload Read image scans eagerly rather than on first access. Default is FALSE.
+#'   Ignored if scans is a backend object.
 #' @param mode The type of storage mode ('normal', 'bigvec', 'mmap', filebacked'). Default is 'normal'.
+#'   Ignored if scans is a backend object.
+#' @param backend Deprecated. Use scans parameter to pass a backend object.
 #'
 #' @return An fMRI dataset object of class c("fmri_file_dataset", "volumetric_dataset", "fmri_dataset", "list").
 #' @export
@@ -196,23 +205,46 @@ latent_dataset <- function(lvec, TR, run_length, event_table = data.frame()) {
 #' dset <- fmri_dataset("scan1.nii", mask="mask.nii", TR=2, 
 #'   run_length=300, 
 #'   event_table=data.frame(onsets=c(3, 20, 99), run=rep(1, 3))
-#' ) 
-fmri_dataset <- function(scans, mask, TR, 
+#' )
+#' 
+#' # Create an fMRI dataset with a backend
+#' backend <- nifti_backend(c("scan1.nii", "scan2.nii"), mask_source="mask.nii")
+#' dset <- fmri_dataset(backend, TR=2, run_length=c(150, 150))
+fmri_dataset <- function(scans, mask = NULL, TR, 
                          run_length, 
-                         event_table=data.frame(), 
-                         base_path=".",
-                         censor=NULL,
-                         preload=FALSE,
-                         mode=c("normal", "bigvec", "mmap", "filebacked")) {
+                         event_table = data.frame(), 
+                         base_path = ".",
+                         censor = NULL,
+                         preload = FALSE,
+                         mode = c("normal", "bigvec", "mmap", "filebacked"),
+                         backend = NULL) {
   
-  assert_that(is.character(mask), msg="'mask' should be the file name of the binary mask file")
-  mode <- match.arg(mode)
+  # Check if scans is actually a backend object
+  if (inherits(scans, "storage_backend")) {
+    backend <- scans
+  } else if (!is.null(backend)) {
+    warning("backend parameter is deprecated. Pass backend as first argument.")
+  } else {
+    # Legacy path: create a NiftiBackend from file paths
+    assert_that(is.character(mask), msg="'mask' should be the file name of the binary mask file")
+    mode <- match.arg(mode)
+    
+    maskfile <- paste0(base_path, "/", mask)
+    scan_files <- paste0(base_path, "/", scans)
+    
+    backend <- nifti_backend(
+      source = scan_files,
+      mask_source = maskfile,
+      preload = preload,
+      mode = mode
+    )
+  }
   
-  #if (length(run_length) == 1) {
-  #  run_length <- rep(run_length, length(scans))
-  #}
+  # Validate backend
+  validate_backend(backend)
   
-  ## run_length should equal total length of images in scans -- but we can 't confirm that here.
+  # Open backend to initialize resources
+  backend <- backend_open(backend)
   
   if (is.null(censor)) {
     censor <- rep(0, sum(run_length))
@@ -220,35 +252,18 @@ fmri_dataset <- function(scans, mask, TR,
   
   frame <- sampling_frame(run_length, TR)
   
-  #assert_that(length(run_length) == length(scans))
-  
-  maskfile <- paste0(base_path, "/", mask)
-  scans=paste0(base_path, "/", scans)
-
-  maskvol <- if (preload) {
-    assert_that(file.exists(maskfile))
-    message(paste("preloading masks", maskfile))
-    neuroim2::read_vol(maskfile)
-  }
-  
-  vec <- if (preload) {
-    message(paste("preloading scans", paste(scans, collapse = " ")))
-    neuroim2::read_vec(scans, mode=mode,mask=maskvol)
-  }
-  
+  # Get dimensions to validate run_length
+  dims <- backend_get_dims(backend)
+  assert_that(sum(run_length) == dims$time,
+              msg = sprintf("Sum of run_length (%d) must equal total time points (%d)", 
+                          sum(run_length), dims$time))
   
   ret <- list(
-    scans=scans,
-    vec=vec,
-    mask_file=maskfile,
-    mask=maskvol,
-    nruns=length(run_length),
-    event_table=suppressMessages(tibble::as_tibble(event_table,.name_repair="check_unique")),
-    base_path=base_path,
-    sampling_frame=frame,
-    censor=censor,
-    mode=mode,
-    preload=preload
+    backend = backend,
+    nruns = length(run_length),
+    event_table = suppressMessages(tibble::as_tibble(event_table, .name_repair = "check_unique")),
+    sampling_frame = frame,
+    censor = censor
   )
   
   class(ret) <- c("fmri_file_dataset", "volumetric_dataset", "fmri_dataset", "list")

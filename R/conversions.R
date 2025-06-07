@@ -32,10 +32,16 @@ as.matrix_dataset.fmri_mem_dataset <- function(x, ...) {
 
 #' @export
 as.matrix_dataset.fmri_file_dataset <- function(x, ...) {
-  # Get the data matrix
-  vec <- get_data(x)
-  mask <- get_mask(x)
-  datamat <- series(vec, which(mask != 0))
+  # Get the data matrix - handle both backend and legacy cases
+  if (!is.null(x$backend)) {
+    # Backend-based dataset - get_data_matrix already returns matrix
+    datamat <- get_data_matrix(x)
+  } else {
+    # Legacy dataset - need to use series
+    vec <- get_data(x)
+    mask <- get_mask(x)
+    datamat <- series(vec, which(mask != 0))
+  }
   
   # Create matrix_dataset
   matrix_dataset(

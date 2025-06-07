@@ -1,0 +1,303 @@
+---
+title: "Extending fmridataset with Custom Storage Backends"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Extending fmridataset with Custom Storage Backends}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(fmridataset)
+```
+
+## Overview
+
+The `fmridataset` package now features a pluggable backend architecture that allows you to add support for new data formats and storage systems. This vignette explains how to create your own storage backend.
+
+## Architecture
+
+The backend architecture separates data storage concerns from the high-level dataset interface:
+
+```{mermaid}
+graph TD
+    A[fmri_dataset] --> B[StorageBackend]
+    B --> C[NiftiBackend]
+    B --> D[MatrixBackend]
+    B --> E[YourCustomBackend]
+    C --> F[NIfTI Files]
+    D --> G[In-Memory Matrix]
+    E --> H[Your Storage Format]
+```
+
+## The StorageBackend Contract
+
+Every storage backend must implement the following S3 methods:
+
+### 1. Resource Management
+
+```r
+backend_open(backend)   # Acquire resources (e.g., file handles)
+backend_close(backend)  # Release resources
+```
+
+### 2. Data Access
+
+```r
+backend_get_dims(backend)     # Returns list(spatial = c(x,y,z), time = N)
+backend_get_mask(backend)     # Returns logical vector
+backend_get_data(backend, rows = NULL, cols = NULL)  # Returns matrix
+backend_get_metadata(backend) # Returns metadata list
+```
+
+## Example: Creating a CSV Backend
+
+Let's create a simple backend that reads fMRI data from CSV files:
+
+```r
+#' Create a CSV Backend
+#' 
+#' @param data_file Path to CSV file with time series data
+#' @param mask_file Path to CSV file with mask (single row)
+#' @param spatial_dims Numeric vector of length 3
+#' @return A csv_backend object
+csv_backend <- function(data_file, mask_file, spatial_dims) {
+  if (!file.exists(data_file)) {
+    stop("Data file not found: ", data_file)
+  }
+  if (!file.exists(mask_file)) {
+    stop("Mask file not found: ", mask_file)
+  }
+  
+  structure(
+    list(
+      data_file = data_file,
+      mask_file = mask_file,
+      spatial_dims = spatial_dims,
+      data = NULL,
+      mask = NULL
+    ),
+    class = c("csv_backend", "storage_backend")
+  )
+}
+
+#' Open CSV Backend
+backend_open.csv_backend <- function(backend) {
+  # Read data lazily on first access
+  backend
+}
+
+#' Close CSV Backend  
+backend_close.csv_backend <- function(backend) {
+  # CSV files don't need explicit closing
+  invisible(NULL)
+}
+
+#' Get Dimensions
+backend_get_dims.csv_backend <- function(backend) {
+  # Read just the header to get dimensions
+  header <- read.csv(backend$data_file, nrows = 1, check.names = FALSE)
+  n_timepoints <- length(readLines(backend$data_file)) - 1  # Subtract header
+  n_voxels <- ncol(header)
+  
+  list(
+    spatial = backend$spatial_dims,
+    time = n_timepoints
+  )
+}
+
+#' Get Mask
+backend_get_mask.csv_backend <- function(backend) {
+  if (is.null(backend$mask)) {
+    backend$mask <- as.logical(as.matrix(
+      read.csv(backend$mask_file, header = FALSE)
+    ))
+  }
+  backend$mask
+}
+
+#' Get Data
+backend_get_data.csv_backend <- function(backend, rows = NULL, cols = NULL) {
+  if (is.null(backend$data)) {
+    backend$data <- as.matrix(read.csv(backend$data_file))
+  }
+  
+  data <- backend$data
+  
+  if (!is.null(rows)) {
+    data <- data[rows, , drop = FALSE]
+  }
+  if (!is.null(cols)) {
+    data <- data[, cols, drop = FALSE]
+  }
+  
+  data
+}
+
+#' Get Metadata
+backend_get_metadata.csv_backend <- function(backend) {
+  list(
+    format = "csv",
+    data_file = backend$data_file,
+    mask_file = backend$mask_file
+  )
+}
+```
+
+## Using Your Custom Backend
+
+Once implemented, you can use your backend with `fmri_dataset`:
+
+```r
+# Create backend
+backend <- csv_backend(
+  data_file = "timeseries.csv",
+  mask_file = "mask.csv", 
+  spatial_dims = c(64, 64, 40)
+)
+
+# Create dataset
+dataset <- fmri_dataset(
+  backend,
+  TR = 2,
+  run_length = 300
+)
+
+# Use dataset normally
+data_matrix <- get_data_matrix(dataset)
+chunks <- data_chunks(dataset, nchunks = 10)
+```
+
+## Best Practices
+
+### 1. Lazy Loading
+
+Load data only when needed:
+
+```r
+backend_get_data.my_backend <- function(backend, rows = NULL, cols = NULL) {
+  if (is.null(backend$cached_data)) {
+    backend$cached_data <- expensive_load_operation()
+  }
+  # Return requested subset
+}
+```
+
+### 2. Error Handling
+
+Use the custom error classes:
+
+```r
+backend_open.my_backend <- function(backend) {
+  tryCatch({
+    # Open file/connection
+  }, error = function(e) {
+    stop_fmridataset(
+      fmridataset_error_backend_io,
+      message = "Failed to open backend",
+      file = backend$source,
+      operation = "open"
+    )
+  })
+}
+```
+
+### 3. Validate Invariants
+
+The mask must satisfy:
+- Length equals product of spatial dimensions
+- Contains at least one TRUE value
+- No NA values
+
+```r
+backend_get_mask.my_backend <- function(backend) {
+  mask <- load_mask_somehow()
+  
+  if (any(is.na(mask))) {
+    stop("Mask cannot contain NA values")
+  }
+  if (sum(mask) == 0) {
+    stop("Mask must contain at least one TRUE value")
+  }
+  
+  mask
+}
+```
+
+### 4. Performance Considerations
+
+For chunked iteration, implement efficient slicing:
+
+```r
+backend_get_data.my_backend <- function(backend, rows = NULL, cols = NULL) {
+  # Don't load entire dataset if only subset needed
+  if (!is.null(rows) || !is.null(cols)) {
+    return(read_subset(backend$source, rows, cols))
+  }
+  # Full data load
+  read_full_data(backend$source)
+}
+```
+
+## Testing Your Backend
+
+Always validate your backend implementation:
+
+```r
+# Create test backend
+backend <- my_backend(...)
+
+# Validate contract compliance
+validate_backend(backend)
+
+# Test with fmri_dataset
+dataset <- fmri_dataset(backend, TR = 2, run_length = 100)
+
+# Verify basic operations work
+dims <- backend_get_dims(backend)
+mask <- backend_get_mask(backend) 
+data <- backend_get_data(backend)
+
+# Test chunking doesn't load full dataset
+chunks <- data_chunks(dataset, nchunks = 10)
+```
+
+## Advanced Topics
+
+### Thread Safety
+
+If your backend might be used in parallel contexts:
+
+```r
+backend_open.my_backend <- function(backend) {
+  # Each worker gets its own file handle
+  backend$handle <- open_connection(backend$source)
+  backend
+}
+```
+
+### Metadata Standards
+
+Include standard neuroimaging metadata when available:
+
+```r
+backend_get_metadata.my_backend <- function(backend) {
+  list(
+    affine = extract_affine_matrix(),      # 4x4 transformation
+    voxel_dims = c(2, 2, 2),               # mm
+    TR = 2,                                # seconds
+    format_specific = list(...)            # Your format's metadata
+  )
+}
+```
+
+## Contributing
+
+If you create a useful backend, consider contributing it to the package! See our [Contributing Guide](https://github.com/your-repo/fmridataset/blob/main/CONTRIBUTING.md) for details.

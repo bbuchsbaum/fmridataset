@@ -137,15 +137,24 @@ print_data_source_info <- function(x) {
     n_objects <- length(x$scans)
     cat("  - Objects:", n_objects, "pre-loaded NeuroVec object(s)\n")
   } else if (inherits(x, "fmri_file_dataset")) {
-    n_files <- length(x$scans)
-    cat("  - Files:", n_files, "NIfTI file(s)\n")
-    if (n_files <= 3) {
-      file_names <- basename(x$scans)
-      cat("    ", paste(file_names, collapse = ", "), "\n")
+    if (!is.null(x$backend)) {
+      # New backend-based dataset
+      cat("  - Backend:", class(x$backend)[1], "\n")
+      dims <- backend_get_dims(x$backend)
+      cat("  - Data dimensions:", dims$time, "x", sum(backend_get_mask(x$backend)), 
+          "(timepoints x voxels)\n")
     } else {
-      file_names <- basename(x$scans)
-      cat("    ", paste(head(file_names, 2), collapse = ", "), 
-          ", ..., ", tail(file_names, 1), "\n")
+      # Legacy file-based dataset
+      n_files <- length(x$scans)
+      cat("  - Files:", n_files, "NIfTI file(s)\n")
+      if (n_files <= 3) {
+        file_names <- basename(x$scans)
+        cat("    ", paste(file_names, collapse = ", "), "\n")
+      } else {
+        file_names <- basename(x$scans)
+        cat("    ", paste(head(file_names, 2), collapse = ", "), 
+            ", ..., ", tail(file_names, 1), "\n")
+      }
     }
   }
 }

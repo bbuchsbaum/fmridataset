@@ -22,10 +22,11 @@ library(deflist)     # Required for data chunking
 # Source all R files in order - updated for refactored structure
 source_files <- c(
   "R/all_generic.R",           # Generic function declarations (must be first)
-  "R/aaa_generics.R",          # Existing BIDS generics
-  "R/utils.R", 
+  "R/errors.R",                # Error classes
+  "R/storage_backend.R",       # Backend S3 contract
+  "R/nifti_backend.R",         # NIfTI backend implementation
+  "R/matrix_backend.R",        # Matrix backend implementation
   "R/sampling_frame.R",
-  "R/transformations.R",
   "R/config.R",                # Configuration functions
   "R/dataset_constructors.R",  # Dataset creation functions  
   "R/data_access.R",           # Data access methods
@@ -33,21 +34,7 @@ source_files <- c(
   "R/print_methods.R",         # Print and display methods
   "R/conversions.R",           # Type conversion methods
   "R/fmri_dataset.R",          # Main entry point and documentation
-  "R/fmri_dataset_class.R",
-  "R/fmri_dataset_create.R",
-  "R/fmri_dataset_accessors.R",
-  "R/fmri_dataset_iterate.R",
-  "R/fmri_dataset_validate.R",
-  "R/fmri_dataset_print_summary.R",
-  "R/fmri_dataset_preload.R",
-  "R/fmri_dataset_from_paths.R",
-  "R/fmri_dataset_from_list_matrix.R",
-  "R/fmri_dataset_from_bids.R",
-  "R/matrix_dataset.R",
-  "R/bids_facade_phase1.R",
-  "R/bids_facade_phase2.R",
-  "R/bids_facade_phase3.R",
-  "R/bids_interface.R"
+  "R/fmri_dataset_legacy.R"    # Legacy implementation for compatibility
 )
 
 for (file in source_files) {
