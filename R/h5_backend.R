@@ -20,14 +20,14 @@ NULL
 #' @param source Character vector of file paths to H5 files or list of H5NeuroVec objects
 #' @param mask_source File path to H5 mask file, H5 file containing mask, or in-memory NeuroVol object
 #' @param mask_dataset Character string specifying the dataset path within H5 file for mask (default: "data/elements")
-#' @param data_dataset Character string specifying the dataset path within H5 files for data (default: "data/elements")
+#' @param data_dataset Character string specifying the dataset path within H5 files for data (default: "data")
 #' @param preload Logical, whether to eagerly load H5NeuroVec objects into memory
 #' @return An h5_backend S3 object
 #' @export
 #' @keywords internal
 h5_backend <- function(source, mask_source, 
                        mask_dataset = "data/elements",
-                       data_dataset = "data/elements",
+                       data_dataset = "data",
                        preload = FALSE) {
   
   # Check if fmristore is available FIRST

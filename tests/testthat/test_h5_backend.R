@@ -1,3 +1,178 @@
+# Tests for H5 Backend functionality
+
+# Mock methods for H5NeuroVec and H5NeuroVol objects
+dim.H5NeuroVec <- function(x) {
+  x$space$dims  # This should already be a vector
+}
+
+dim.H5NeuroVol <- function(x) {
+  x$space$dims  # This should already be a vector
+}
+
+close.H5NeuroVec <- function(con, ...) {
+  invisible(NULL)
+}
+
+close.H5NeuroVol <- function(con, ...) {
+  invisible(NULL)
+}
+
+space.H5NeuroVec <- function(x) {
+  x$space
+}
+
+space.H5NeuroVol <- function(x) {
+  x$space
+}
+
+as.array.H5NeuroVol <- function(x, ...) {
+  x$h5obj[["data/elements"]]
+}
+
+as.logical.mock_h5_dataset <- function(x, ...) {
+  as.logical(as.vector(x))
+}
+
+# Mock neuroim2 series function
+series.H5NeuroVec <- function(x, i, ...) {
+  data_arr <- x$obj[[x$dataset_name]]
+  if (missing(i)) {
+    # Return all data as matrix (time x voxels)
+    dims <- dim(data_arr)
+    matrix(as.vector(data_arr), nrow = dims[4], ncol = prod(dims[1:3]))
+  } else {
+    # Return data for specific voxel indices
+    dims <- dim(data_arr)
+    n_time <- dims[4]
+    n_voxels <- length(i)
+    
+    # Create matrix with time x voxels
+    result_matrix <- matrix(0, nrow = n_time, ncol = n_voxels)
+    
+    # Fill in data for each voxel index
+    for (v in seq_along(i)) {
+      voxel_idx <- i[v]
+      # Convert linear index to 3D coordinates
+      coords <- arrayInd(voxel_idx, dims[1:3])
+      # Extract time series for this voxel
+      result_matrix[, v] <- data_arr[coords[1], coords[2], coords[3], ]
+    }
+    
+    result_matrix
+  }
+}
+
+# Mock methods for NeuroSpace objects
+trans.NeuroSpace <- function(x) {
+  x$trans
+}
+
+spacing.NeuroSpace <- function(x) {
+  x$spacing
+}
+
+origin.NeuroSpace <- function(x) {
+  x$origin
+}
+
+dim.NeuroSpace <- function(x) {
+  x$dims
+}
+
+# Helper function to create mock H5NeuroVec objects
+create_mock_h5neurovec <- function(dims = c(10, 10, 5, 50), dataset_name = "data") {
+  # Ensure dims is a vector
+  dims <- as.numeric(dims)
+  
+  # Create a mock H5File object
+  mock_h5file <- list(
+    `[[` = function(name) {
+      if (name == dataset_name) {
+        # Return a mock dataset that acts like an array
+        structure(
+          array(rnorm(prod(dims)), dim = dims),
+          class = "mock_h5_dataset"
+        )
+      } else if (name == "space/dim") {
+        structure(dims, class = "mock_h5_attr")
+      } else if (name == "space/origin") {
+        structure(c(0, 0, 0), class = "mock_h5_attr")
+      } else if (name == "space/trans") {
+        structure(diag(4), class = "mock_h5_attr")
+      }
+    },
+    exists = function(name) name %in% c(dataset_name, "space/dim", "space/origin", "space/trans"),
+    is_valid = TRUE
+  )
+  
+  # Create mock NeuroSpace - ensure dims is a vector
+  mock_space <- structure(
+    list(
+      dims = dims,  # Keep as vector
+      origin = c(0, 0, 0),
+      trans = diag(4),
+      spacing = c(1, 1, 1)
+    ),
+    class = "NeuroSpace"
+  )
+  
+  # Create mock H5NeuroVec
+  structure(
+    list(
+      space = mock_space,
+      obj = mock_h5file,
+      dataset_name = dataset_name
+    ),
+    class = "H5NeuroVec"
+  )
+}
+
+# Helper function to create mock H5NeuroVol objects
+create_mock_h5neurovol <- function(dims = c(10, 10, 5)) {
+  # Ensure dims is a vector
+  dims <- as.numeric(dims)
+  
+  # Create a mock H5File object
+  mock_h5file <- list(
+    `[[` = function(name) {
+      if (name == "data/elements") {
+        structure(
+          array(runif(prod(dims)), dim = dims),
+          class = "mock_h5_dataset"
+        )
+      } else if (name == "space/dim") {
+        structure(dims, class = "mock_h5_attr")
+      } else if (name == "space/origin") {
+        structure(c(0, 0, 0), class = "mock_h5_attr")
+      } else if (name == "space/trans") {
+        structure(diag(4), class = "mock_h5_attr")
+      }
+    },
+    exists = function(name) name %in% c("data/elements", "space/dim", "space/origin", "space/trans"),
+    is_valid = TRUE
+  )
+  
+  # Create mock NeuroSpace - ensure dims is a vector
+  mock_space <- structure(
+    list(
+      dims = dims,  # Keep as vector
+      origin = c(0, 0, 0),
+      trans = diag(4),
+      spacing = c(1, 1, 1)
+    ),
+    class = "NeuroSpace"
+  )
+  
+  # Create mock H5NeuroVol
+  structure(
+    list(
+      space = mock_space,
+      h5obj = mock_h5file
+    ),
+    class = "H5NeuroVol"
+  )
+}
+
 test_that("h5_backend constructor validates inputs correctly", {
   skip_if_not_installed("fmristore")
   
@@ -57,38 +232,51 @@ test_that("h5_backend works with file paths", {
   # expect_equal(backend$mask_source, mask_file)
 })
 
-test_that("h5_backend works with pre-loaded H5NeuroVec objects", {
-  skip_if_not_installed("fmristore")
-  skip_if_not_installed("neuroim2")
-  skip_if_not_installed("hdf5r")
-  
-  # This test would require creating mock H5NeuroVec objects
-  # which is complex without the actual fmristore infrastructure
-  skip("Mock H5NeuroVec objects not available for testing")
-})
-
-test_that("h5_backend backend_open and backend_close work", {
+test_that("h5_backend constructor sets parameters correctly", {
   skip_if_not_installed("fmristore")
   
-  # Create a mock backend (without real files for this test)
-  backend <- structure(
-    list(
-      source = character(0),
-      mask_source = character(0),
-      preload = FALSE,
-      h5_objects = NULL,
-      mask = NULL,
-      dims = NULL
-    ),
-    class = c("h5_backend", "storage_backend")
+  # Create temporary files for validation
+  temp_file1 <- tempfile(fileext = ".h5")
+  temp_file2 <- tempfile(fileext = ".h5")
+  mask_file <- tempfile(fileext = ".h5")
+  file.create(c(temp_file1, temp_file2, mask_file))
+  on.exit(unlink(c(temp_file1, temp_file2, mask_file)))
+  
+  backend <- h5_backend(
+    source = c(temp_file1, temp_file2),
+    mask_source = mask_file,
+    data_dataset = "custom_data",
+    mask_dataset = "custom_mask",
+    preload = TRUE
   )
   
-  # Test opening (should work even with empty backend for preload=FALSE)
-  opened_backend <- backend_open(backend)
-  expect_s3_class(opened_backend, "h5_backend")
+  expect_s3_class(backend, "h5_backend")
+  expect_s3_class(backend, "storage_backend")
+  expect_equal(backend$source, c(temp_file1, temp_file2))
+  expect_equal(backend$mask_source, mask_file)
+  expect_equal(backend$data_dataset, "custom_data")
+  expect_equal(backend$mask_dataset, "custom_mask")
+  expect_true(backend$preload)
+})
+
+test_that("h5_backend handles custom dataset paths", {
+  skip_if_not_installed("fmristore")
   
-  # Test closing (should not error)
-  expect_silent(backend_close(opened_backend))
+  # Create temporary files for validation
+  temp_file <- tempfile(fileext = ".h5")
+  mask_file <- tempfile(fileext = ".h5")
+  file.create(c(temp_file, mask_file))
+  on.exit(unlink(c(temp_file, mask_file)))
+  
+  backend <- h5_backend(
+    source = temp_file,
+    mask_source = mask_file,
+    data_dataset = "scan_data",
+    mask_dataset = "brain_mask"
+  )
+  
+  expect_equal(backend$data_dataset, "scan_data")
+  expect_equal(backend$mask_dataset, "brain_mask")
 })
 
 test_that("h5_backend validates fmristore dependency", {
@@ -203,4 +391,114 @@ test_that("h5_backend integration with storage_backend interface", {
   expect_true(exists("backend_get_mask.h5_backend"))
   expect_true(exists("backend_get_data.h5_backend"))
   expect_true(exists("backend_get_metadata.h5_backend"))
+})
+
+test_that("h5_backend structure validation", {
+  skip_if_not_installed("fmristore")
+  
+  # Create temporary files
+  temp_file <- tempfile(fileext = ".h5")
+  mask_file <- tempfile(fileext = ".h5")
+  file.create(c(temp_file, mask_file))
+  on.exit(unlink(c(temp_file, mask_file)))
+  
+  backend <- h5_backend(
+    source = temp_file,
+    mask_source = mask_file
+  )
+  
+  # Test that backend has all required fields
+  expect_true("source" %in% names(backend))
+  expect_true("mask_source" %in% names(backend))
+  expect_true("preload" %in% names(backend))
+  expect_true("data_dataset" %in% names(backend))
+  expect_true("mask_dataset" %in% names(backend))
+  expect_true("h5_objects" %in% names(backend))
+  expect_true("mask" %in% names(backend))
+  expect_true("dims" %in% names(backend))
+  
+  # Test default values
+  expect_equal(backend$data_dataset, "data")
+  expect_equal(backend$mask_dataset, "data/elements")
+  expect_false(backend$preload)
+  expect_null(backend$h5_objects)
+  expect_null(backend$mask)
+  expect_null(backend$dims)
+})
+
+test_that("h5_backend handles multiple source files", {
+  skip_if_not_installed("fmristore")
+  
+  # Create temporary files
+  temp_files <- paste0(tempfile(), c("_1.h5", "_2.h5", "_3.h5"))
+  mask_file <- tempfile(fileext = ".h5")
+  file.create(c(temp_files, mask_file))
+  on.exit(unlink(c(temp_files, mask_file)))
+  
+  backend <- h5_backend(
+    source = temp_files,
+    mask_source = mask_file,
+    preload = FALSE
+  )
+  
+  expect_equal(length(backend$source), 3)
+  expect_equal(backend$source, temp_files)
+})
+
+test_that("fmri_h5_dataset validates parameters", {
+  skip_if_not_installed("fmristore")
+  
+  # Mock dependencies to focus on parameter validation
+  with_mocked_bindings(
+    h5_backend = function(...) structure(list(), class = c("h5_backend", "storage_backend")),
+    validate_backend = function(backend) TRUE,
+    backend_open = function(backend) backend,
+    backend_get_dims = function(backend) list(spatial = c(10, 10, 5), time = 100),
+    {
+      # Test that function validates TR
+      expect_error(
+        fmri_h5_dataset(
+          h5_files = "scan.h5",
+          mask_source = "mask.h5",
+          TR = -1,  # Invalid TR
+          run_length = 100
+        ),
+        "TR not greater than 0"
+      )
+      
+      # Test that valid parameters work
+      expect_silent({
+        result <- fmri_h5_dataset(
+          h5_files = c("scan1.h5", "scan2.h5"),
+          mask_source = "mask.h5",
+          TR = 2,
+          run_length = c(50, 50)  # Total matches mock time dimension
+        )
+      })
+    }
+  )
+})
+
+test_that("h5_backend basic functionality works", {
+  skip_if_not_installed("fmristore")
+  
+  # Create temporary files
+  temp_file <- tempfile(fileext = ".h5")
+  mask_file <- tempfile(fileext = ".h5")
+  file.create(c(temp_file, mask_file))
+  on.exit(unlink(c(temp_file, mask_file)))
+  
+  # Test basic backend creation and method existence
+  backend <- h5_backend(
+    source = temp_file,
+    mask_source = mask_file
+  )
+  
+  # Test that we can call basic methods without errors
+  expect_silent(backend_close(backend))
+  
+  # Test backend configuration
+  expect_false(backend$preload)
+  expect_equal(backend$source, temp_file)
+  expect_equal(backend$mask_source, mask_file)
 }) 

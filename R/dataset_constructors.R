@@ -287,14 +287,14 @@ fmri_dataset <- function(scans, mask = NULL, TR,
 #' @param censor A binary vector indicating which scans to remove. Default is NULL.
 #' @param preload Read H5NeuroVec objects eagerly rather than on first access. Default is FALSE.
 #' @param mask_dataset Character string specifying the dataset path within H5 file for mask (default: "data/elements").
-#' @param data_dataset Character string specifying the dataset path within H5 files for data (default: "data/elements").
+#' @param data_dataset Character string specifying the dataset path within H5 files for data (default: "data").
 #'
 #' @return An fMRI dataset object of class c("fmri_file_dataset", "volumetric_dataset", "fmri_dataset", "list").
 #' @export
 #'
 #' @examples
 #' \dontrun{
-#' # Create an fMRI dataset with H5 files
+#' # Create an fMRI dataset with H5NeuroVec files (standard fmristore format)
 #' dset <- fmri_h5_dataset(
 #'   h5_files = c("scan1.h5", "scan2.h5", "scan3.h5"), 
 #'   mask_source = "mask.h5", 
@@ -302,12 +302,22 @@ fmri_dataset <- function(scans, mask = NULL, TR,
 #'   run_length = c(150, 150, 150)
 #' )
 #'
-#' # Create an fMRI dataset with H5 files and regular mask
+#' # Create an fMRI dataset with H5 files and NIfTI mask
 #' dset <- fmri_h5_dataset(
 #'   h5_files = "single_scan.h5", 
 #'   mask_source = "mask.nii", 
 #'   TR = 2, 
 #'   run_length = 300
+#' )
+#' 
+#' # Custom dataset paths (if using non-standard H5 structure)
+#' dset <- fmri_h5_dataset(
+#'   h5_files = "custom_scan.h5",
+#'   mask_source = "custom_mask.h5", 
+#'   TR = 2,
+#'   run_length = 200,
+#'   data_dataset = "my_data_path",
+#'   mask_dataset = "my_mask_path"
 #' )
 #' }
 fmri_h5_dataset <- function(h5_files, mask_source, TR, 
@@ -317,7 +327,7 @@ fmri_h5_dataset <- function(h5_files, mask_source, TR,
                             censor = NULL,
                             preload = FALSE,
                             mask_dataset = "data/elements",
-                            data_dataset = "data/elements") {
+                            data_dataset = "data") {
   
   # Prepare file paths
   h5_file_paths <- if (base_path != ".") {
