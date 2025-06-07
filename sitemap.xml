@@ -5,6 +5,7 @@
 <url><loc>https://bbuchsbaum.github.io/fmridataset/SECURITY.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/articles/extending-backends.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/articles/fmridataset-intro.html</loc></url>
+<url><loc>https://bbuchsbaum.github.io/fmridataset/articles/h5-backend-usage.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/articles/index.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/authors.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/index.html</loc></url>
@@ -23,6 +24,7 @@
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/data_chunks.matrix_dataset.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/fmri_dataset.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/fmri_dataset_legacy.html</loc></url>
+<url><loc>https://bbuchsbaum.github.io/fmridataset/reference/fmri_h5_dataset.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/fmri_mem_dataset.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/fmridataset-errors.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/fmridataset_error.html</loc></url>
@@ -37,6 +39,8 @@
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/get_run_lengths.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/get_total_duration.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/global_onsets.html</loc></url>
+<url><loc>https://bbuchsbaum.github.io/fmridataset/reference/h5-backend.html</loc></url>
+<url><loc>https://bbuchsbaum.github.io/fmridataset/reference/h5_backend.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/index.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/is.sampling_frame.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/latent_dataset.html</loc></url>

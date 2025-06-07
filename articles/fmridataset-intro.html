@@ -35,6 +35,7 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/extending-backends.html">Extending fmridataset with Custom Storage Backends</a></li>
     <li><a class="dropdown-item" href="../articles/fmridataset-intro.html">Introduction to fmridataset</a></li>
+    <li><a class="dropdown-item" href="../articles/h5-backend-usage.html">Using the H5 Backend for Efficient fMRI Data Storage</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -153,15 +154,16 @@ matrix:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
 <span><span class="va">n_timepoints</span> <span class="op">&lt;-</span> <span class="fl">200</span></span>
 <span><span class="va">n_voxels</span> <span class="op">&lt;-</span> <span class="fl">1000</span></span>
-<span><span class="va">fmri_matrix</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n_timepoints</span> <span class="op">*</span> <span class="va">n_voxels</span><span class="op">)</span>, </span>
-<span>                      nrow <span class="op">=</span> <span class="va">n_timepoints</span>, </span>
-<span>                      ncol <span class="op">=</span> <span class="va">n_voxels</span><span class="op">)</span></span>
+<span><span class="va">fmri_matrix</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n_timepoints</span> <span class="op">*</span> <span class="va">n_voxels</span><span class="op">)</span>,</span>
+<span>  nrow <span class="op">=</span> <span class="va">n_timepoints</span>,</span>
+<span>  ncol <span class="op">=</span> <span class="va">n_voxels</span></span>
+<span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Create dataset with temporal structure</span></span>
 <span><span class="va">dataset</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/matrix_dataset.html">matrix_dataset</a></span><span class="op">(</span></span>
 <span>  datamat <span class="op">=</span> <span class="va">fmri_matrix</span>,</span>
-<span>  TR <span class="op">=</span> <span class="fl">2.0</span>,                    <span class="co"># 2-second repetition time</span></span>
-<span>  run_length <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">100</span>, <span class="fl">100</span><span class="op">)</span>     <span class="co"># Two runs of 100 timepoints each</span></span>
+<span>  TR <span class="op">=</span> <span class="fl">2.0</span>, <span class="co"># 2-second repetition time</span></span>
+<span>  run_length <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">100</span>, <span class="fl">100</span><span class="op">)</span> <span class="co"># Two runs of 100 timepoints each</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">dataset</span><span class="op">)</span></span></code></pre></div>
@@ -185,7 +187,7 @@ matrix:</p>
 <span>  scans <span class="op">=</span> <span class="va">file_paths</span>,</span>
 <span>  mask <span class="op">=</span> <span class="va">mask_path</span>,</span>
 <span>  TR <span class="op">=</span> <span class="fl">2.5</span>,</span>
-<span>  run_length <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">180</span>, <span class="fl">180</span><span class="op">)</span>     <span class="co"># 180 timepoints per run</span></span>
+<span>  run_length <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">180</span>, <span class="fl">180</span><span class="op">)</span> <span class="co"># 180 timepoints per run</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Data is loaded only when accessed</span></span>
@@ -197,16 +199,19 @@ matrix:</p>
 <p>If you have pre-loaded NeuroVec objects:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Create example NeuroVec objects</span></span>
-<span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">10</span>, <span class="fl">10</span>, <span class="fl">100</span><span class="op">)</span>  <span class="co"># 10x10x10 voxels, 100 timepoints</span></span>
-<span><span class="va">nvec1</span> <span class="op">&lt;-</span> <span class="fu">neuroim2</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/neuroim2/reference/NeuroVec-class.html" class="external-link">NeuroVec</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/array.html" class="external-link">array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/prod.html" class="external-link">prod</a></span><span class="op">(</span><span class="va">d</span><span class="op">)</span><span class="op">)</span>, <span class="va">d</span><span class="op">)</span>, </span>
-<span>                           space <span class="op">=</span> <span class="fu">neuroim2</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/neuroim2/reference/NeuroSpace.html" class="external-link">NeuroSpace</a></span><span class="op">(</span><span class="va">d</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">nvec2</span> <span class="op">&lt;-</span> <span class="fu">neuroim2</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/neuroim2/reference/NeuroVec-class.html" class="external-link">NeuroVec</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/array.html" class="external-link">array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/prod.html" class="external-link">prod</a></span><span class="op">(</span><span class="va">d</span><span class="op">)</span><span class="op">)</span>, <span class="va">d</span><span class="op">)</span>, </span>
-<span>                           space <span class="op">=</span> <span class="fu">neuroim2</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/neuroim2/reference/NeuroSpace.html" class="external-link">NeuroSpace</a></span><span class="op">(</span><span class="va">d</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">10</span>, <span class="fl">10</span>, <span class="fl">100</span><span class="op">)</span> <span class="co"># 10x10x10 voxels, 100 timepoints</span></span>
+<span><span class="va">nvec1</span> <span class="op">&lt;-</span> <span class="fu">neuroim2</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/neuroim2/reference/NeuroVec-class.html" class="external-link">NeuroVec</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/array.html" class="external-link">array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/prod.html" class="external-link">prod</a></span><span class="op">(</span><span class="va">d</span><span class="op">)</span><span class="op">)</span>, <span class="va">d</span><span class="op">)</span>,</span>
+<span>  space <span class="op">=</span> <span class="fu">neuroim2</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/neuroim2/reference/NeuroSpace.html" class="external-link">NeuroSpace</a></span><span class="op">(</span><span class="va">d</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">nvec2</span> <span class="op">&lt;-</span> <span class="fu">neuroim2</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/neuroim2/reference/NeuroVec-class.html" class="external-link">NeuroVec</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/array.html" class="external-link">array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/prod.html" class="external-link">prod</a></span><span class="op">(</span><span class="va">d</span><span class="op">)</span><span class="op">)</span>, <span class="va">d</span><span class="op">)</span>,</span>
+<span>  space <span class="op">=</span> <span class="fu">neuroim2</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/neuroim2/reference/NeuroSpace.html" class="external-link">NeuroSpace</a></span><span class="op">(</span><span class="va">d</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Create a mask</span></span>
 <span><span class="va">mask_dim</span> <span class="op">&lt;-</span> <span class="va">d</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">]</span></span>
-<span><span class="va">mask</span> <span class="op">&lt;-</span> <span class="fu">neuroim2</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/neuroim2/reference/NeuroVol.html" class="external-link">NeuroVol</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/array.html" class="external-link">array</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">mask_dim</span><span class="op">)</span>, </span>
-<span>                          space <span class="op">=</span> <span class="fu">neuroim2</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/neuroim2/reference/NeuroSpace.html" class="external-link">NeuroSpace</a></span><span class="op">(</span><span class="va">mask_dim</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">mask</span> <span class="op">&lt;-</span> <span class="fu">neuroim2</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/neuroim2/reference/NeuroVol.html" class="external-link">NeuroVol</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/array.html" class="external-link">array</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">mask_dim</span><span class="op">)</span>,</span>
+<span>  space <span class="op">=</span> <span class="fu">neuroim2</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/neuroim2/reference/NeuroSpace.html" class="external-link">NeuroSpace</a></span><span class="op">(</span><span class="va">mask_dim</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Create dataset from NeuroVec objects</span></span>
 <span><span class="va">dataset</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fmri_mem_dataset.html">fmri_mem_dataset</a></span><span class="op">(</span></span>
@@ -309,7 +314,7 @@ matrix:</p>
 <span><span class="va">events</span> <span class="op">&lt;-</span> <span class="va">dataset</span><span class="op">$</span><span class="va">event_table</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">events</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">events</span><span class="op">)</span><span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="co"># Analyze events by type</span></span>
 <span>  <span class="va">event_counts</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">events</span><span class="op">$</span><span class="va">trial_type</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">event_counts</span><span class="op">)</span></span>
@@ -329,10 +334,12 @@ of large datasets:</p>
 <span></span>
 <span><span class="co"># Process each chunk</span></span>
 <span><span class="kw">for</span> <span class="op">(</span><span class="va">chunk</span> <span class="kw">in</span> <span class="va">chunks</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Processing chunk"</span>, <span class="va">chunk</span><span class="op">$</span><span class="va">chunk_num</span>, </span>
-<span>      <span class="st">"with"</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">chunk</span><span class="op">$</span><span class="va">data</span><span class="op">)</span>, <span class="st">"voxels and"</span>, </span>
-<span>      <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">chunk</span><span class="op">$</span><span class="va">data</span><span class="op">)</span>, <span class="st">"timepoints\n"</span><span class="op">)</span></span>
-<span>  </span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span></span>
+<span>    <span class="st">"Processing chunk"</span>, <span class="va">chunk</span><span class="op">$</span><span class="va">chunk_num</span>,</span>
+<span>    <span class="st">"with"</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">chunk</span><span class="op">$</span><span class="va">data</span><span class="op">)</span>, <span class="st">"voxels and"</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">chunk</span><span class="op">$</span><span class="va">data</span><span class="op">)</span>, <span class="st">"timepoints\n"</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
 <span>  <span class="co"># Your analysis here...</span></span>
 <span>  <span class="co"># result &lt;- your_analysis_function(chunk$data)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
@@ -359,16 +366,16 @@ of large datasets:</p>
 <code class="sourceCode R"><span><span class="co"># Parallel processing with foreach</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"foreach"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/RevolutionAnalytics/foreach" class="external-link">foreach</a></span><span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="co"># Create chunks</span></span>
 <span>  <span class="va">chunks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/data_chunks.html">data_chunks</a></span><span class="op">(</span><span class="va">dataset</span>, nchunks <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="co"># Process in parallel (or sequentially with %do%)</span></span>
 <span>  <span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/foreach/man/foreach.html" class="external-link">foreach</a></span><span class="op">(</span>chunk <span class="op">=</span> <span class="va">chunks</span><span class="op">)</span> <span class="op"><a href="https://rdrr.io/pkg/foreach/man/foreach.html" class="external-link">%do%</a></span> <span class="op">{</span></span>
 <span>    <span class="co"># Compute mean time series for this chunk</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colMeans</a></span><span class="op">(</span><span class="va">chunk</span><span class="op">$</span><span class="va">data</span><span class="op">)</span></span>
 <span>  <span class="op">}</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Processed"</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>, <span class="st">"chunks\n"</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Each result has"</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">results</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span>, <span class="st">"values\n"</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
@@ -383,8 +390,10 @@ of large datasets:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Convert any dataset to matrix format</span></span>
 <span><span class="va">matrix_version</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as.matrix_dataset.html">as.matrix_dataset</a></span><span class="op">(</span><span class="va">dataset</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Converted to matrix dataset with"</span>, </span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">matrix_version</span><span class="op">$</span><span class="va">datamat</span><span class="op">)</span>, <span class="st">"voxels\n"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span></span>
+<span>  <span class="st">"Converted to matrix dataset with"</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">matrix_version</span><span class="op">$</span><span class="va">datamat</span><span class="op">)</span>, <span class="st">"voxels\n"</span></span>
+<span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># This loads all data into memory for file-based datasets</span></span>
 <span><span class="co"># Use with caution for large datasets</span></span></code></pre></div>
@@ -417,7 +426,7 @@ of large datasets:</p>
 <span><span class="va">analyze_chunk</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">chunk_data</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="co"># Compute voxel-wise variance</span></span>
 <span>  <span class="va">voxel_var</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">chunk_data</span>, <span class="fl">2</span>, <span class="va">var</span><span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="co"># Compute temporal correlations</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">chunk_data</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">1</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="va">corr_matrix</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="va">chunk_data</span><span class="op">)</span></span>
@@ -425,7 +434,7 @@ of large datasets:</p>
 <span>  <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
 <span>    <span class="va">mean_corr</span> <span class="op">&lt;-</span> <span class="cn">NA</span></span>
 <span>  <span class="op">}</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    n_voxels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">chunk_data</span><span class="op">)</span>,</span>
 <span>    n_timepoints <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">chunk_data</span><span class="op">)</span>,</span>
@@ -445,8 +454,10 @@ of large datasets:</p>
 <span><span class="co"># Summarize results</span></span>
 <span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">r</span> <span class="op">&lt;-</span> <span class="va">results</span><span class="op">[[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Chunk"</span>, <span class="va">i</span>, <span class="st">": "</span>, <span class="va">r</span><span class="op">$</span><span class="va">n_voxels</span>, <span class="st">"voxels, mean var ="</span>, </span>
-<span>      <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">r</span><span class="op">$</span><span class="va">mean_variance</span>, <span class="fl">3</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span></span>
+<span>    <span class="st">"Chunk"</span>, <span class="va">i</span>, <span class="st">": "</span>, <span class="va">r</span><span class="op">$</span><span class="va">n_voxels</span>, <span class="st">"voxels, mean var ="</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">r</span><span class="op">$</span><span class="va">mean_variance</span>, <span class="fl">3</span><span class="op">)</span>, <span class="st">"\n"</span></span>
+<span>  <span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 </div>
 <div class="section level3">
@@ -457,18 +468,18 @@ of large datasets:</p>
 <span><span class="va">large_dataset_analysis</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">dataset</span>, <span class="va">analysis_func</span>, <span class="va">nchunks</span> <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">chunks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/data_chunks.html">data_chunks</a></span><span class="op">(</span><span class="va">dataset</span>, nchunks <span class="op">=</span> <span class="va">nchunks</span><span class="op">)</span></span>
 <span>  <span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="kw">for</span> <span class="op">(</span><span class="va">chunk</span> <span class="kw">in</span> <span class="va">chunks</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="co"># Process chunk</span></span>
 <span>    <span class="va">chunk_result</span> <span class="op">&lt;-</span> <span class="fu">analysis_func</span><span class="op">(</span><span class="va">chunk</span><span class="op">$</span><span class="va">data</span><span class="op">)</span></span>
 <span>    <span class="va">results</span><span class="op">[[</span><span class="va">chunk</span><span class="op">$</span><span class="va">chunk_num</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">chunk_result</span></span>
-<span>    </span>
+<span></span>
 <span>    <span class="co"># Optionally save intermediate results</span></span>
 <span>    <span class="co"># saveRDS(chunk_result, paste0("chunk_", chunk$chunk_num, ".rds"))</span></span>
-<span>    </span>
+<span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Completed chunk"</span>, <span class="va">chunk</span><span class="op">$</span><span class="va">chunk_num</span>, <span class="st">"/"</span>, <span class="va">chunks</span><span class="op">$</span><span class="va">nchunks</span>, <span class="st">"\n"</span><span class="op">)</span></span>
 <span>  <span class="op">}</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
@@ -519,14 +530,14 @@ datasets</li>
 <span>  <span class="co"># Check that run lengths match data</span></span>
 <span>  <span class="va">sf</span> <span class="op">&lt;-</span> <span class="va">dataset</span><span class="op">$</span><span class="va">sampling_frame</span></span>
 <span>  <span class="va">total_timepoints</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/n_timepoints.html">n_timepoints</a></span><span class="op">(</span><span class="va">sf</span><span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="st">"datamat"</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">dataset</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="va">actual_timepoints</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">dataset</span><span class="op">$</span><span class="va">datamat</span><span class="op">)</span></span>
 <span>    <span class="kw">if</span> <span class="op">(</span><span class="va">total_timepoints</span> <span class="op">!=</span> <span class="va">actual_timepoints</span><span class="op">)</span> <span class="op">{</span></span>
 <span>      <span class="kw"><a href="https://rdrr.io/r/base/warning.html" class="external-link">warning</a></span><span class="op">(</span><span class="st">"Mismatch between sampling frame and data dimensions"</span><span class="op">)</span></span>
 <span>    <span class="op">}</span></span>
 <span>  <span class="op">}</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="co"># Check event table</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">dataset</span><span class="op">$</span><span class="va">event_table</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="va">max_onset</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">dataset</span><span class="op">$</span><span class="va">event_table</span><span class="op">$</span><span class="va">onset</span><span class="op">)</span></span>
@@ -535,7 +546,7 @@ datasets</li>
 <span>      <span class="kw"><a href="https://rdrr.io/r/base/warning.html" class="external-link">warning</a></span><span class="op">(</span><span class="st">"Events extend beyond scan duration"</span><span class="op">)</span></span>
 <span>    <span class="op">}</span></span>
 <span>  <span class="op">}</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Dataset validation completed\n"</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
@@ -576,13 +587,13 @@ datasets</li>
 <span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">inherits</a></span><span class="op">(</span><span class="va">dataset</span>, <span class="st">"matrix_dataset"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="co"># Create a simple 3D space for demonstration</span></span>
 <span>  <span class="va">space_3d</span> <span class="op">&lt;-</span> <span class="fu">neuroim2</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/neuroim2/reference/NeuroSpace.html" class="external-link">NeuroSpace</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">10</span>, <span class="fl">10</span><span class="op">)</span><span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="co"># Reshape matrix data to 4D array (x, y, z, time)</span></span>
 <span>  <span class="co"># This is a simplified example - real use would preserve actual geometry</span></span>
 <span>  <span class="va">n_voxels</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">dataset</span><span class="op">$</span><span class="va">datamat</span><span class="op">)</span></span>
 <span>  <span class="va">n_timepoints</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">dataset</span><span class="op">$</span><span class="va">datamat</span><span class="op">)</span></span>
-<span>  </span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">n_voxels</span> <span class="op">==</span> <span class="fl">1000</span><span class="op">)</span> <span class="op">{</span>  <span class="co"># Our example case</span></span>
+<span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">n_voxels</span> <span class="op">==</span> <span class="fl">1000</span><span class="op">)</span> <span class="op">{</span> <span class="co"># Our example case</span></span>
 <span>    <span class="va">arr_4d</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/array.html" class="external-link">array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="va">dataset</span><span class="op">$</span><span class="va">datamat</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">10</span>, <span class="fl">10</span>, <span class="va">n_timepoints</span><span class="op">)</span><span class="op">)</span></span>
 <span>    <span class="va">space_4d</span> <span class="op">&lt;-</span> <span class="fu">neuroim2</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/neuroim2/reference/NeuroSpace.html" class="external-link">NeuroSpace</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">10</span>, <span class="fl">10</span>, <span class="va">n_timepoints</span><span class="op">)</span><span class="op">)</span></span>
 <span>    <span class="va">nvec</span> <span class="op">&lt;-</span> <span class="fu">neuroim2</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/neuroim2/reference/NeuroVec-class.html" class="external-link">NeuroVec</a></span><span class="op">(</span><span class="va">arr_4d</span>, <span class="va">space_4d</span><span class="op">)</span></span>
@@ -601,15 +612,15 @@ datasets</li>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">events</span><span class="op">)</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="st">"No events found for GLM analysis"</span><span class="op">)</span></span>
 <span>  <span class="op">}</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="co"># Create simple design matrix (stimulus A vs B)</span></span>
 <span>  <span class="va">sf</span> <span class="op">&lt;-</span> <span class="va">dataset</span><span class="op">$</span><span class="va">sampling_frame</span></span>
 <span>  <span class="va">n_timepoints</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/n_timepoints.html">n_timepoints</a></span><span class="op">(</span><span class="va">sf</span><span class="op">)</span></span>
 <span>  <span class="va">TR</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_TR.html">get_TR</a></span><span class="op">(</span><span class="va">sf</span><span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="va">design_matrix</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">0</span>, nrow <span class="op">=</span> <span class="va">n_timepoints</span>, ncol <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">design_matrix</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"stimulus_A"</span>, <span class="st">"stimulus_B"</span><span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="co"># Fill design matrix based on events</span></span>
 <span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">events</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="va">onset_tr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">events</span><span class="op">$</span><span class="va">onset</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="op">/</span> <span class="va">TR</span><span class="op">)</span> <span class="op">+</span> <span class="fl">1</span></span>
@@ -621,31 +632,31 @@ datasets</li>
 <span>      <span class="op">}</span></span>
 <span>    <span class="op">}</span></span>
 <span>  <span class="op">}</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="co"># Fit GLM using chunking for memory efficiency</span></span>
 <span>  <span class="va">chunks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/data_chunks.html">data_chunks</a></span><span class="op">(</span><span class="va">dataset</span>, nchunks <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span>  <span class="va">all_betas</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="kw">for</span> <span class="op">(</span><span class="va">chunk</span> <span class="kw">in</span> <span class="va">chunks</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="va">data_chunk</span> <span class="op">&lt;-</span> <span class="va">chunk</span><span class="op">$</span><span class="va">data</span></span>
-<span>    </span>
+<span></span>
 <span>    <span class="co"># Fit GLM for each voxel in chunk</span></span>
 <span>    <span class="va">n_voxels</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">data_chunk</span><span class="op">)</span></span>
 <span>    <span class="va">betas</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="cn">NA</span>, nrow <span class="op">=</span> <span class="fl">2</span>, ncol <span class="op">=</span> <span class="va">n_voxels</span><span class="op">)</span></span>
-<span>    </span>
+<span></span>
 <span>    <span class="kw">for</span> <span class="op">(</span><span class="va">v</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">n_voxels</span><span class="op">)</span> <span class="op">{</span></span>
 <span>      <span class="va">y</span> <span class="op">&lt;-</span> <span class="va">data_chunk</span><span class="op">[</span>, <span class="va">v</span><span class="op">]</span></span>
-<span>      <span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">design_matrix</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span>  <span class="co"># No intercept, use design matrix directly</span></span>
+<span>      <span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">design_matrix</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span> <span class="co"># No intercept, use design matrix directly</span></span>
 <span>      <span class="va">betas</span><span class="op">[</span>, <span class="va">v</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
 <span>    <span class="op">}</span></span>
-<span>    </span>
+<span></span>
 <span>    <span class="va">all_betas</span><span class="op">[[</span><span class="va">chunk</span><span class="op">$</span><span class="va">chunk_num</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">betas</span></span>
 <span>  <span class="op">}</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="co"># Combine results</span></span>
 <span>  <span class="va">final_betas</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">cbind</span>, <span class="va">all_betas</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">final_betas</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">design_matrix</span><span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">final_betas</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
