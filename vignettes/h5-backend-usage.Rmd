@@ -24,6 +24,7 @@ The `fmridataset` package supports efficient storage and access of fMRI data usi
 To use the H5 backend, you need to install the `fmristore` package:
 
 ```{r, eval=FALSE}
+
 # Install from GitHub
 devtools::install_github("bbuchsbaum/fmristore")
 ```
