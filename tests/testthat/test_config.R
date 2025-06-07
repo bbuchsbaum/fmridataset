@@ -31,7 +31,7 @@ test_that("read_fmri_config parses configuration file", {
   cfg <- read_fmri_config(cfg_file, base_path = tmpdir)
 
   expect_s3_class(cfg, "fmri_config")
-  expect_equal(cfg$scans, c('scan1.nii', 'scan2.nii'))
+  expect_equal(cfg$scans, c("scan1.nii", "scan2.nii"))
   expect_equal(cfg$TR, 2)
   expect_equal(cfg$base_path, tmpdir)
   expect_equal(names(cfg$design), "block")
@@ -44,4 +44,3 @@ test_that("latent_dataset errors when fmristore missing", {
   dummy_vec <- structure(list(), class = "LatentNeuroVec")
   expect_error(latent_dataset(dummy_vec, TR = 2, run_length = 1), "fmristore")
 })
-
