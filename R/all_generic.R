@@ -12,7 +12,7 @@
 
 #' Generic Functions for fMRI Dataset Operations
 #'
-#' This file contains all generic function declarations for the refactored 
+#' This file contains all generic function declarations for the refactored
 #' fmridataset package. These establish the interface contracts that are
 #' implemented by dataset-specific methods in other files.
 #'
@@ -187,4 +187,4 @@ get_run_duration <- function(x, ...) {
 #
 # All original fmrireg/fmridataset functionality is preserved while
 # improving code organization and maintainability.
-# ======================================================================== 
+# ========================================================================

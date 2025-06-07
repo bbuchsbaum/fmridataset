@@ -4,11 +4,11 @@ test_that("storage backend contract validation works", {
     list(),
     class = c("nonexistent_backend_type", "storage_backend")
   )
-  
+
   # Test that validation fails without required methods
   expect_error(
     validate_backend(mock_backend),
-    class = "error"  # Will be a generic error about missing methods
+    class = "error" # Will be a generic error about missing methods
   )
 })
 
@@ -16,14 +16,14 @@ test_that("backend validation checks dimension requirements", {
   # Use an existing backend (matrix_backend) and mock the get_dims method
   test_matrix <- matrix(1:1000, 100, 10)
   mock_backend <- matrix_backend(test_matrix)
-  
+
   # Test normal case first
   expect_true(validate_backend(mock_backend))
-  
+
   # Test invalid spatial dimensions
   with_mocked_bindings(
     backend_get_dims = function(backend) {
-      list(spatial = c(10, 10), time = 100)  # Wrong length
+      list(spatial = c(10, 10), time = 100) # Wrong length
     },
     .package = "fmridataset",
     {
@@ -33,7 +33,7 @@ test_that("backend validation checks dimension requirements", {
       )
     }
   )
-  
+
   # Test invalid time dimension
   with_mocked_bindings(
     backend_get_dims = function(backend) {
@@ -53,7 +53,7 @@ test_that("backend validation checks mask requirements", {
   # Use existing backend and mock the mask method
   test_matrix <- matrix(1:1000, 100, 10)
   mock_backend <- matrix_backend(test_matrix)
-  
+
   # Test all FALSE mask
   with_mocked_bindings(
     backend_get_mask = function(backend) rep(FALSE, 10),
@@ -65,8 +65,8 @@ test_that("backend validation checks mask requirements", {
       )
     }
   )
-  
-  # Test mask with NA values  
+
+  # Test mask with NA values
   with_mocked_bindings(
     backend_get_mask = function(backend) c(rep(TRUE, 9), NA),
     .package = "fmridataset",
@@ -77,10 +77,10 @@ test_that("backend validation checks mask requirements", {
       )
     }
   )
-  
+
   # Test wrong mask length
   with_mocked_bindings(
-    backend_get_mask = function(backend) rep(TRUE, 5),  # Should be 10
+    backend_get_mask = function(backend) rep(TRUE, 5), # Should be 10
     backend_get_dims = function(backend) list(spatial = c(2, 5, 1), time = 100),
     .package = "fmridataset",
     {
@@ -99,22 +99,22 @@ test_that("error classes work correctly", {
     file = "test.nii",
     operation = "read"
   )
-  
+
   expect_s3_class(err, "fmridataset_error_backend_io")
   expect_s3_class(err, "fmridataset_error")
   expect_equal(err$file, "test.nii")
   expect_equal(err$operation, "read")
-  
+
   # Test fmridataset_error_config
   err <- fmridataset_error_config(
     message = "Invalid parameter",
     parameter = "mask",
     value = NULL
   )
-  
+
   expect_s3_class(err, "fmridataset_error_config")
   expect_equal(err$parameter, "mask")
-  
+
   # Test stop_fmridataset
   expect_error(
     stop_fmridataset(

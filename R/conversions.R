@@ -11,7 +11,7 @@
 
 #' @export
 as.matrix_dataset.matrix_dataset <- function(x, ...) {
-  x  # Already a matrix_dataset
+  x # Already a matrix_dataset
 }
 
 #' @export
@@ -20,7 +20,7 @@ as.matrix_dataset.fmri_mem_dataset <- function(x, ...) {
   bvec <- get_data(x)
   mask <- get_mask(x)
   datamat <- series(bvec, which(mask != 0))
-  
+
   # Create matrix_dataset
   matrix_dataset(
     datamat = datamat,
@@ -42,7 +42,7 @@ as.matrix_dataset.fmri_file_dataset <- function(x, ...) {
     mask <- get_mask(x)
     datamat <- series(vec, which(mask != 0))
   }
-  
+
   # Create matrix_dataset
   matrix_dataset(
     datamat = datamat,
@@ -50,4 +50,4 @@ as.matrix_dataset.fmri_file_dataset <- function(x, ...) {
     run_length = x$sampling_frame$run_length,
     event_table = x$event_table
   )
-} 
+}

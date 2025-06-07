@@ -11,7 +11,7 @@
 sampling_frame <- function(run_length, TR) {
   assertthat::assert_that(is.numeric(run_length), all(run_length > 0))
   assertthat::assert_that(is.numeric(TR), length(TR) == 1, TR > 0)
-  
+
   structure(
     list(
       run_length = run_length,
@@ -94,4 +94,4 @@ print.sampling_frame <- function(x, ...) {
   cat("  Total timepoints:", sum(x$run_length), "\n")
   cat("  Total duration:", get_total_duration(x), "seconds\n")
   invisible(x)
-} 
+}

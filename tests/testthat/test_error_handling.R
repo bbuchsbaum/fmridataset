@@ -4,25 +4,25 @@ test_that("error handling for invalid inputs", {
     matrix_dataset(matrix(1:100, 10, 10), TR = -1, run_length = 10),
     "TR"
   )
-  
+
   # Test run_length mismatch
   expect_error(
     matrix_dataset(matrix(1:100, 10, 10), TR = 2, run_length = 20),
     "sum\\(run_length\\) not equal to nrow\\(datamat\\)"
   )
-  
+
   # Test invalid backend source - fix order of validation
   expect_error(
     nifti_backend(source = 123, mask_source = "mask.nii"),
     "source must be character vector"
   )
-  
+
   # Test invalid spatial dimensions in matrix_backend
   expect_error(
     matrix_backend(matrix(1:100, 10, 10), spatial_dims = c(5, 5)),
     "spatial_dims must be a numeric vector of length 3"
   )
-  
+
   # Test spatial dims product mismatch
   expect_error(
     matrix_backend(matrix(1:100, 10, 10), spatial_dims = c(2, 2, 2)),
@@ -34,7 +34,7 @@ test_that("backend error propagation", {
   # Create a matrix backend that works and then test error propagation through dataset validation
   test_matrix <- matrix(1:100, 10, 10)
   backend <- matrix_backend(test_matrix)
-  
+
   # Mock a failing get_dims function to test error propagation
   with_mocked_bindings(
     backend_get_dims = function(x) {
@@ -54,27 +54,27 @@ test_that("edge cases in chunking", {
   # Test with single voxel
   single_voxel <- matrix_backend(matrix(1:10, nrow = 10, ncol = 1))
   dset <- fmri_dataset(single_voxel, TR = 2, run_length = 10)
-  
+
   chunks <- data_chunks(dset, nchunks = 1)
   chunk <- chunks$nextElem()
   expect_equal(ncol(chunk$data), 1)
   expect_equal(nrow(chunk$data), 10)
-  
+
   # Test with more chunks than voxels
   small_data <- matrix_backend(matrix(1:30, nrow = 10, ncol = 3))
   dset2 <- fmri_dataset(small_data, TR = 2, run_length = 10)
-  
+
   # Should handle gracefully - nchunks will be capped to number of voxels
   suppressWarnings({
     chunks2 <- data_chunks(dset2, nchunks = 10)
   })
-  
+
   # Get all chunks (should be 3 since we have 3 voxels)
   all_chunks <- list()
   for (i in 1:3) {
     all_chunks[[i]] <- chunks2$nextElem()
   }
-  
+
   # Verify we got all voxels
   total_voxels <- sum(sapply(all_chunks, function(x) ncol(x$data)))
   expect_equal(total_voxels, 3)
@@ -86,16 +86,16 @@ test_that("validate_backend catches all error conditions", {
     list(),
     class = c("nonexistent_backend_class", "storage_backend")
   )
-  
+
   expect_error(
     validate_backend(incomplete_backend),
     class = "error"
   )
-  
+
   # Test backend returning wrong dimension format
   test_matrix <- matrix(1:100, 10, 10)
   backend <- matrix_backend(test_matrix)
-  
+
   # Mock backend_get_dims to return wrong format
   with_mocked_bindings(
     backend_get_dims = function(x) {
@@ -114,21 +114,24 @@ test_that("validate_backend catches all error conditions", {
 
 test_that("mask validation in backends", {
   # Test non-logical mask
-  expect_error({
-    backend <- matrix_backend(
-      matrix(1:100, 10, 10),
-      mask = 1:10  # Should be logical
-    )
-  }, "mask must be a logical vector")
-  
+  expect_error(
+    {
+      backend <- matrix_backend(
+        matrix(1:100, 10, 10),
+        mask = 1:10 # Should be logical
+      )
+    },
+    "mask must be a logical vector"
+  )
+
   # Test NA in mask by mocking the mask function
   test_matrix <- matrix(1:100, 10, 10)
   backend <- matrix_backend(test_matrix)
-  
+
   # Mock mask with NA values
   bad_mask <- rep(TRUE, 10)
   bad_mask[5] <- NA
-  
+
   with_mocked_bindings(
     backend_get_mask = function(x) bad_mask,
     .package = "fmridataset",

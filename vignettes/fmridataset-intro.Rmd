@@ -18,7 +18,7 @@ knitr::opts_chunk$set(
   comment = "#>",
   fig.width = 7,
   fig.height = 5,
-  eval = FALSE  # Set to TRUE when examples can be run
+  eval = FALSE # Set to TRUE when examples can be run
 )
 ```
 
@@ -66,15 +66,16 @@ library(fmridataset)
 set.seed(123)
 n_timepoints <- 200
 n_voxels <- 1000
-fmri_matrix <- matrix(rnorm(n_timepoints * n_voxels), 
-                      nrow = n_timepoints, 
-                      ncol = n_voxels)
+fmri_matrix <- matrix(rnorm(n_timepoints * n_voxels),
+  nrow = n_timepoints,
+  ncol = n_voxels
+)
 
 # Create dataset with temporal structure
 dataset <- matrix_dataset(
   datamat = fmri_matrix,
-  TR = 2.0,                    # 2-second repetition time
-  run_length = c(100, 100)     # Two runs of 100 timepoints each
+  TR = 2.0, # 2-second repetition time
+  run_length = c(100, 100) # Two runs of 100 timepoints each
 )
 
 print(dataset)
@@ -99,7 +100,7 @@ dataset <- fmri_dataset(
   scans = file_paths,
   mask = mask_path,
   TR = 2.5,
-  run_length = c(180, 180)     # 180 timepoints per run
+  run_length = c(180, 180) # 180 timepoints per run
 )
 
 # Data is loaded only when accessed
@@ -112,16 +113,19 @@ If you have pre-loaded NeuroVec objects:
 
 ```{r neurovec-example}
 # Create example NeuroVec objects
-d <- c(10, 10, 10, 100)  # 10x10x10 voxels, 100 timepoints
-nvec1 <- neuroim2::NeuroVec(array(rnorm(prod(d)), d), 
-                           space = neuroim2::NeuroSpace(d))
-nvec2 <- neuroim2::NeuroVec(array(rnorm(prod(d)), d), 
-                           space = neuroim2::NeuroSpace(d))
+d <- c(10, 10, 10, 100) # 10x10x10 voxels, 100 timepoints
+nvec1 <- neuroim2::NeuroVec(array(rnorm(prod(d)), d),
+  space = neuroim2::NeuroSpace(d)
+)
+nvec2 <- neuroim2::NeuroVec(array(rnorm(prod(d)), d),
+  space = neuroim2::NeuroSpace(d)
+)
 
 # Create a mask
 mask_dim <- d[1:3]
-mask <- neuroim2::NeuroVol(array(1, mask_dim), 
-                          space = neuroim2::NeuroSpace(mask_dim))
+mask <- neuroim2::NeuroVol(array(1, mask_dim),
+  space = neuroim2::NeuroSpace(mask_dim)
+)
 
 # Create dataset from NeuroVec objects
 dataset <- fmri_mem_dataset(
@@ -223,7 +227,7 @@ cat("Voxels in mask:", sum(mask > 0), "\n")
 events <- dataset$event_table
 if (nrow(events) > 0) {
   print(head(events))
-  
+
   # Analyze events by type
   event_counts <- table(events$trial_type)
   print(event_counts)
@@ -242,10 +246,12 @@ chunks <- data_chunks(dataset, nchunks = 4)
 
 # Process each chunk
 for (chunk in chunks) {
-  cat("Processing chunk", chunk$chunk_num, 
-      "with", ncol(chunk$data), "voxels and", 
-      nrow(chunk$data), "timepoints\n")
-  
+  cat(
+    "Processing chunk", chunk$chunk_num,
+    "with", ncol(chunk$data), "voxels and",
+    nrow(chunk$data), "timepoints\n"
+  )
+
   # Your analysis here...
   # result <- your_analysis_function(chunk$data)
 }
@@ -273,16 +279,16 @@ cat("Single chunk with all data\n")
 # Parallel processing with foreach
 if (requireNamespace("foreach", quietly = TRUE)) {
   library(foreach)
-  
+
   # Create chunks
   chunks <- data_chunks(dataset, nchunks = 4)
-  
+
   # Process in parallel (or sequentially with %do%)
   results <- foreach(chunk = chunks) %do% {
     # Compute mean time series for this chunk
     colMeans(chunk$data)
   }
-  
+
   cat("Processed", length(results), "chunks\n")
   cat("Each result has", length(results[[1]]), "values\n")
 }
@@ -295,8 +301,10 @@ if (requireNamespace("foreach", quietly = TRUE)) {
 ```{r conversions}
 # Convert any dataset to matrix format
 matrix_version <- as.matrix_dataset(dataset)
-cat("Converted to matrix dataset with", 
-    ncol(matrix_version$datamat), "voxels\n")
+cat(
+  "Converted to matrix dataset with",
+  ncol(matrix_version$datamat), "voxels\n"
+)
 
 # This loads all data into memory for file-based datasets
 # Use with caution for large datasets
@@ -327,7 +335,7 @@ cat("Samples for run 1:", head(sample_indices[[1]]), "...\n")
 analyze_chunk <- function(chunk_data) {
   # Compute voxel-wise variance
   voxel_var <- apply(chunk_data, 2, var)
-  
+
   # Compute temporal correlations
   if (ncol(chunk_data) > 1) {
     corr_matrix <- cor(chunk_data)
@@ -335,7 +343,7 @@ analyze_chunk <- function(chunk_data) {
   } else {
     mean_corr <- NA
   }
-  
+
   list(
     n_voxels = ncol(chunk_data),
     n_timepoints = nrow(chunk_data),
@@ -355,8 +363,10 @@ for (chunk in chunks) {
 # Summarize results
 for (i in seq_along(results)) {
   r <- results[[i]]
-  cat("Chunk", i, ": ", r$n_voxels, "voxels, mean var =", 
-      round(r$mean_variance, 3), "\n")
+  cat(
+    "Chunk", i, ": ", r$n_voxels, "voxels, mean var =",
+    round(r$mean_variance, 3), "\n"
+  )
 }
 ```
 
@@ -367,18 +377,18 @@ for (i in seq_along(results)) {
 large_dataset_analysis <- function(dataset, analysis_func, nchunks = 10) {
   chunks <- data_chunks(dataset, nchunks = nchunks)
   results <- list()
-  
+
   for (chunk in chunks) {
     # Process chunk
     chunk_result <- analysis_func(chunk$data)
     results[[chunk$chunk_num]] <- chunk_result
-    
+
     # Optionally save intermediate results
     # saveRDS(chunk_result, paste0("chunk_", chunk$chunk_num, ".rds"))
-    
+
     cat("Completed chunk", chunk$chunk_num, "/", chunks$nchunks, "\n")
   }
-  
+
   return(results)
 }
 
@@ -418,14 +428,14 @@ validate_basic <- function(dataset) {
   # Check that run lengths match data
   sf <- dataset$sampling_frame
   total_timepoints <- n_timepoints(sf)
-  
+
   if ("datamat" %in% names(dataset)) {
     actual_timepoints <- nrow(dataset$datamat)
     if (total_timepoints != actual_timepoints) {
       warning("Mismatch between sampling frame and data dimensions")
     }
   }
-  
+
   # Check event table
   if (nrow(dataset$event_table) > 0) {
     max_onset <- max(dataset$event_table$onset)
@@ -434,7 +444,7 @@ validate_basic <- function(dataset) {
       warning("Events extend beyond scan duration")
     }
   }
-  
+
   cat("Dataset validation completed\n")
 }
 
@@ -473,13 +483,13 @@ cat("Dataset info recorded for reproducibility\n")
 if (inherits(dataset, "matrix_dataset")) {
   # Create a simple 3D space for demonstration
   space_3d <- neuroim2::NeuroSpace(c(10, 10, 10))
-  
+
   # Reshape matrix data to 4D array (x, y, z, time)
   # This is a simplified example - real use would preserve actual geometry
   n_voxels <- ncol(dataset$datamat)
   n_timepoints <- nrow(dataset$datamat)
-  
-  if (n_voxels == 1000) {  # Our example case
+
+  if (n_voxels == 1000) { # Our example case
     arr_4d <- array(t(dataset$datamat), c(10, 10, 10, n_timepoints))
     space_4d <- neuroim2::NeuroSpace(c(10, 10, 10, n_timepoints))
     nvec <- neuroim2::NeuroVec(arr_4d, space_4d)
@@ -498,15 +508,15 @@ simple_glm_analysis <- function(dataset) {
   if (nrow(events) == 0) {
     stop("No events found for GLM analysis")
   }
-  
+
   # Create simple design matrix (stimulus A vs B)
   sf <- dataset$sampling_frame
   n_timepoints <- n_timepoints(sf)
   TR <- get_TR(sf)
-  
+
   design_matrix <- matrix(0, nrow = n_timepoints, ncol = 2)
   colnames(design_matrix) <- c("stimulus_A", "stimulus_B")
-  
+
   # Fill design matrix based on events
   for (i in 1:nrow(events)) {
     onset_tr <- round(events$onset[i] / TR) + 1
@@ -518,31 +528,31 @@ simple_glm_analysis <- function(dataset) {
       }
     }
   }
-  
+
   # Fit GLM using chunking for memory efficiency
   chunks <- data_chunks(dataset, nchunks = 5)
   all_betas <- list()
-  
+
   for (chunk in chunks) {
     data_chunk <- chunk$data
-    
+
     # Fit GLM for each voxel in chunk
     n_voxels <- ncol(data_chunk)
     betas <- matrix(NA, nrow = 2, ncol = n_voxels)
-    
+
     for (v in 1:n_voxels) {
       y <- data_chunk[, v]
-      fit <- lm(y ~ design_matrix - 1)  # No intercept, use design matrix directly
+      fit <- lm(y ~ design_matrix - 1) # No intercept, use design matrix directly
       betas[, v] <- coef(fit)
     }
-    
+
     all_betas[[chunk$chunk_num]] <- betas
   }
-  
+
   # Combine results
   final_betas <- do.call(cbind, all_betas)
   rownames(final_betas) <- colnames(design_matrix)
-  
+
   return(final_betas)
 }
 

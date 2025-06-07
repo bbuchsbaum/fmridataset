@@ -8,10 +8,10 @@
 #
 # Code Organization:
 # ------------------
-# 
+#
 # 📁 config.R             - Configuration and file reading functions
 #    • default_config()
-#    • read_fmri_config() 
+#    • read_fmri_config()
 #
 # 📁 dataset_constructors.R - Dataset creation functions
 #    • matrix_dataset()
@@ -59,9 +59,9 @@
 # This refactoring improves:
 # 1. Code organization and readability
 # 2. Maintainability - easier to find and modify specific functionality
-# 3. Testing - can test individual modules in isolation  
+# 3. Testing - can test individual modules in isolation
 # 4. Development - multiple developers can work on different aspects
 # 5. Documentation - clearer separation of concerns
 #
 # All original functionality is preserved - only the organization changed.
-# ======================================================================== 
+# ========================================================================

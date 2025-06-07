@@ -27,15 +27,15 @@ matrix_backend <- function(data_matrix, mask = NULL, spatial_dims = NULL, metada
       value = class(data_matrix)
     )
   }
-  
+
   n_timepoints <- nrow(data_matrix)
   n_voxels <- ncol(data_matrix)
-  
+
   # Default mask: all voxels are valid
   if (is.null(mask)) {
     mask <- rep(TRUE, n_voxels)
   }
-  
+
   # Validate mask
   if (!is.logical(mask)) {
     stop_fmridataset(
@@ -45,22 +45,24 @@ matrix_backend <- function(data_matrix, mask = NULL, spatial_dims = NULL, metada
       value = class(mask)
     )
   }
-  
+
   if (length(mask) != n_voxels) {
     stop_fmridataset(
       fmridataset_error_config,
-      message = sprintf("mask length (%d) must equal number of columns (%d)", 
-                      length(mask), n_voxels),
+      message = sprintf(
+        "mask length (%d) must equal number of columns (%d)",
+        length(mask), n_voxels
+      ),
       parameter = "mask"
     )
   }
-  
+
   # Default spatial dimensions: try to factorize n_voxels
   if (is.null(spatial_dims)) {
     # Simple approach: create a "flat" 3D volume
     spatial_dims <- c(n_voxels, 1, 1)
   }
-  
+
   # Validate spatial dimensions
   if (length(spatial_dims) != 3 || !is.numeric(spatial_dims)) {
     stop_fmridataset(
@@ -70,23 +72,25 @@ matrix_backend <- function(data_matrix, mask = NULL, spatial_dims = NULL, metada
       value = spatial_dims
     )
   }
-  
+
   if (prod(spatial_dims) != n_voxels) {
     stop_fmridataset(
       fmridataset_error_config,
-      message = sprintf("Product of spatial_dims (%d) must equal number of voxels (%d)",
-                      prod(spatial_dims), n_voxels),
+      message = sprintf(
+        "Product of spatial_dims (%d) must equal number of voxels (%d)",
+        prod(spatial_dims), n_voxels
+      ),
       parameter = "spatial_dims"
     )
   }
-  
+
   backend <- list(
     data_matrix = data_matrix,
     mask = mask,
     spatial_dims = spatial_dims,
     metadata = metadata %||% list()
   )
-  
+
   class(backend) <- c("matrix_backend", "storage_backend")
   backend
 }
@@ -119,16 +123,16 @@ backend_get_mask.matrix_backend <- function(backend) {
 #' @export
 backend_get_data.matrix_backend <- function(backend, rows = NULL, cols = NULL) {
   data <- backend$data_matrix
-  
+
   # Apply subsetting if requested
   if (!is.null(rows)) {
     data <- data[rows, , drop = FALSE]
   }
-  
+
   if (!is.null(cols)) {
     data <- data[, cols, drop = FALSE]
   }
-  
+
   data
 }
 
