@@ -192,17 +192,17 @@ latent_dataset <- function(lvec, TR, run_length, event_table = data.frame()) {
 #' - Basis functions (temporal components)
 #' - Spatial loadings (voxel weights)
 #' - Optional offset terms
-#' 
+#'
 #' This is particularly efficient for data that can be well-represented by a
 #' lower-dimensional basis (e.g., from PCA, ICA, or dictionary learning).
-#' 
+#'
 #' **CRITICAL: Data Access in Latent Space**
-#' Unlike standard fMRI datasets that return voxel-wise data, this dataset returns 
+#' Unlike standard fMRI datasets that return voxel-wise data, this dataset returns
 #' **latent scores** (temporal basis components) rather than reconstructed voxel data.
 #' The data matrix dimensions are (time × components), not (time × voxels). This is because:
-#' 
+#'
 #' - Time-series analyses should be performed in the efficient latent space
-#' - The latent scores capture temporal dynamics in the compressed representation  
+#' - The latent scores capture temporal dynamics in the compressed representation
 #' - Reconstructing to full voxel space defeats the compression benefits
 #' - Most analysis workflows (GLM, connectivity, etc.) work directly with these temporal patterns
 #'
@@ -250,12 +250,12 @@ fmri_latent_dataset <- function(latent_files, mask_source = NULL, TR,
     if (is.character(latent_files)) {
       # File paths - prepend base_path if needed for relative paths
       latent_files <- ifelse(
-        grepl("^(/|[A-Za-z]:)", latent_files),  # Check if absolute path
+        grepl("^(/|[A-Za-z]:)", latent_files), # Check if absolute path
         latent_files,
         file.path(base_path, latent_files)
       )
     }
-    
+
     backend <- latent_backend(
       source = latent_files,
       mask_source = mask_source,
