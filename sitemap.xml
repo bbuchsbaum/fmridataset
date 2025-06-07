@@ -26,6 +26,7 @@
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/fmri_dataset.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/fmri_dataset_legacy.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/fmri_h5_dataset.html</loc></url>
+<url><loc>https://bbuchsbaum.github.io/fmridataset/reference/fmri_latent_dataset.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/fmri_mem_dataset.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/fmridataset-errors.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/fmridataset_error.html</loc></url>
@@ -44,6 +45,7 @@
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/h5_backend.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/index.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/is.sampling_frame.html</loc></url>
+<url><loc>https://bbuchsbaum.github.io/fmridataset/reference/latent_backend.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/latent_dataset.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/matrix-backend.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/fmridataset/reference/matrix_backend.html</loc></url>
