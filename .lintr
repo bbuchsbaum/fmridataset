@@ -1,12 +1,12 @@
 linters: linters_with_defaults(
-  line_length_linter(120),
-  object_length_linter(40),
-  cyclocomp_linter(15),
-  assignment_linter = NULL,
-  pipe_continuation_linter = NULL
-)
+    line_length_linter(120),
+    object_length_linter(40),
+    cyclocomp_linter(15),
+    assignment_linter = NULL,
+    pipe_continuation_linter = NULL
+  )
 exclusions: list(
-  "tests/testthat.R",
-  "data-raw",
-  "inst/doc"
-)
+    "tests/testthat.R",
+    "data-raw",
+    "inst/doc"
+  )
