@@ -25,11 +25,10 @@ NULL
 #' @return An h5_backend S3 object
 #' @export
 #' @keywords internal
-h5_backend <- function(source, mask_source, 
+h5_backend <- function(source, mask_source,
                        mask_dataset = "data/elements",
                        data_dataset = "data",
                        preload = FALSE) {
-  
   # Check if fmristore is available FIRST
   if (!requireNamespace("fmristore", quietly = TRUE)) {
     stop_fmridataset(
@@ -38,7 +37,7 @@ h5_backend <- function(source, mask_source,
       parameter = "backend_type"
     )
   }
-  
+
   # Validate inputs
   if (is.character(source)) {
     # File paths provided
@@ -56,7 +55,7 @@ h5_backend <- function(source, mask_source,
     valid_types <- vapply(source, function(x) {
       inherits(x, "H5NeuroVec")
     }, logical(1))
-    
+
     if (!all(valid_types)) {
       stop_fmridataset(
         fmridataset_error_config,
@@ -72,7 +71,7 @@ h5_backend <- function(source, mask_source,
       value = class(source)
     )
   }
-  
+
   # Validate mask source
   if (is.character(mask_source)) {
     if (!file.exists(mask_source)) {
@@ -91,7 +90,7 @@ h5_backend <- function(source, mask_source,
       value = class(mask_source)
     )
   }
-  
+
   backend <- list(
     source = source,
     mask_source = mask_source,
@@ -103,7 +102,7 @@ h5_backend <- function(source, mask_source,
     dims = NULL,
     metadata = NULL
   )
-  
+
   class(backend) <- c("h5_backend", "storage_backend")
   backend
 }
@@ -111,73 +110,78 @@ h5_backend <- function(source, mask_source,
 #' @export
 backend_open.h5_backend <- function(backend) {
   if (backend$preload && is.null(backend$h5_objects)) {
-    
     # Load H5NeuroVec objects
     backend$h5_objects <- if (is.character(backend$source)) {
       # Load from H5 files
-      tryCatch({
-        lapply(backend$source, function(file_path) {
-          fmristore::H5NeuroVec(file_path, dataset_name = backend$data_dataset)
-        })
-      }, error = function(e) {
-        stop_fmridataset(
-          fmridataset_error_backend_io,
-          message = sprintf("Failed to load H5NeuroVec from files: %s", e$message),
-          file = backend$source,
-          operation = "read"
-        )
-      })
+      tryCatch(
+        {
+          lapply(backend$source, function(file_path) {
+            fmristore::H5NeuroVec(file_path, dataset_name = backend$data_dataset)
+          })
+        },
+        error = function(e) {
+          stop_fmridataset(
+            fmridataset_error_backend_io,
+            message = sprintf("Failed to load H5NeuroVec from files: %s", e$message),
+            file = backend$source,
+            operation = "read"
+          )
+        }
+      )
     } else {
       # Use pre-loaded H5NeuroVec objects
       backend$source
     }
-    
+
     # Load mask
     backend$mask <- if (is.character(backend$mask_source)) {
-      tryCatch({
-        # Try to load as H5NeuroVol first, then fall back to regular volume
-        if (endsWith(tolower(backend$mask_source), ".h5")) {
-          # Load as H5NeuroVol and extract array
-          h5_mask <- fmristore::H5NeuroVol(backend$mask_source, dataset_name = backend$mask_dataset)
-          mask_array <- as.array(h5_mask)
-          close(h5_mask)  # Close the H5 handle
-          neuroim2::NeuroVol(mask_array, space = space(backend$h5_objects[[1]]))
-        } else {
-          # Load as regular volume file
-          neuroim2::read_vol(backend$mask_source)
+      tryCatch(
+        {
+          # Try to load as H5NeuroVol first, then fall back to regular volume
+          if (endsWith(tolower(backend$mask_source), ".h5")) {
+            # Load as H5NeuroVol and extract array
+            h5_mask <- fmristore::H5NeuroVol(backend$mask_source, dataset_name = backend$mask_dataset)
+            mask_array <- as.array(h5_mask)
+            close(h5_mask) # Close the H5 handle
+            neuroim2::NeuroVol(mask_array, space = space(backend$h5_objects[[1]]))
+          } else {
+            # Load as regular volume file
+            neuroim2::read_vol(backend$mask_source)
+          }
+        },
+        error = function(e) {
+          stop_fmridataset(
+            fmridataset_error_backend_io,
+            message = sprintf("Failed to read H5 mask: %s", e$message),
+            file = backend$mask_source,
+            operation = "read"
+          )
         }
-      }, error = function(e) {
-        stop_fmridataset(
-          fmridataset_error_backend_io,
-          message = sprintf("Failed to read H5 mask: %s", e$message),
-          file = backend$mask_source,
-          operation = "read"
-        )
-      })
+      )
     } else {
       # Use in-memory mask object
       backend$mask_source
     }
-    
+
     # Extract dimensions from first H5NeuroVec
     if (length(backend$h5_objects) > 0) {
       first_obj <- backend$h5_objects[[1]]
       d <- dim(first_obj)
-      
+
       # Calculate total time dimension across all H5 files
       total_time <- if (length(backend$h5_objects) > 1) {
         sum(sapply(backend$h5_objects, function(obj) dim(obj)[4]))
       } else {
         d[4]
       }
-      
+
       backend$dims <- list(
         spatial = d[1:3],
         time = total_time
       )
     }
   }
-  
+
   backend
 }
 
@@ -197,36 +201,39 @@ backend_get_dims.h5_backend <- function(backend) {
   if (!is.null(backend$dims)) {
     return(backend$dims)
   }
-  
+
   # Get dimensions without loading full data
   if (is.character(backend$source)) {
     # Read from first H5 file to get spatial dimensions
-    tryCatch({
-      first_h5 <- fmristore::H5NeuroVec(backend$source[1], dataset_name = backend$data_dataset)
-      d <- dim(first_h5)
-      close(first_h5)  # Close immediately after getting dimensions
-      
-      # Calculate total time dimension across all files
-      total_time <- if (length(backend$source) > 1) {
-        sum(sapply(backend$source, function(file_path) {
-          h5_obj <- fmristore::H5NeuroVec(file_path, dataset_name = backend$data_dataset)
-          time_dim <- dim(h5_obj)[4]
-          close(h5_obj)
-          time_dim
-        }))
-      } else {
-        d[4]
+    tryCatch(
+      {
+        first_h5 <- fmristore::H5NeuroVec(backend$source[1], dataset_name = backend$data_dataset)
+        d <- dim(first_h5)
+        close(first_h5) # Close immediately after getting dimensions
+
+        # Calculate total time dimension across all files
+        total_time <- if (length(backend$source) > 1) {
+          sum(sapply(backend$source, function(file_path) {
+            h5_obj <- fmristore::H5NeuroVec(file_path, dataset_name = backend$data_dataset)
+            time_dim <- dim(h5_obj)[4]
+            close(h5_obj)
+            time_dim
+          }))
+        } else {
+          d[4]
+        }
+
+        list(spatial = d[1:3], time = total_time)
+      },
+      error = function(e) {
+        stop_fmridataset(
+          fmridataset_error_backend_io,
+          message = sprintf("Failed to read H5 dimensions: %s", e$message),
+          file = backend$source[1],
+          operation = "read_header"
+        )
       }
-      
-      list(spatial = d[1:3], time = total_time)
-    }, error = function(e) {
-      stop_fmridataset(
-        fmridataset_error_backend_io,
-        message = sprintf("Failed to read H5 dimensions: %s", e$message),
-        file = backend$source[1],
-        operation = "read_header"
-      )
-    })
+    )
   } else {
     # In-memory H5NeuroVec objects
     first_obj <- backend$source[[1]]
@@ -236,7 +243,7 @@ backend_get_dims.h5_backend <- function(backend) {
     } else {
       d[4]
     }
-    
+
     list(spatial = d[1:3], time = total_time)
   }
 }
@@ -248,43 +255,46 @@ backend_get_mask.h5_backend <- function(backend) {
     mask_vol <- backend$mask
   } else if (is.character(backend$mask_source)) {
     # Load from file
-    mask_vol <- tryCatch({
-      if (endsWith(tolower(backend$mask_source), ".h5")) {
-        # Load as H5NeuroVol
-        h5_mask <- fmristore::H5NeuroVol(backend$mask_source, dataset_name = backend$mask_dataset)
-        mask_array <- as.array(h5_mask)
-        close(h5_mask)  # Close the H5 handle
-        
-        # Get space information from first data file if available
-        if (is.character(backend$source) && length(backend$source) > 0) {
-          first_h5 <- fmristore::H5NeuroVec(backend$source[1], dataset_name = backend$data_dataset)
-          space_info <- space(first_h5)
-          close(first_h5)
-          neuroim2::NeuroVol(mask_array, space = space_info)
+    mask_vol <- tryCatch(
+      {
+        if (endsWith(tolower(backend$mask_source), ".h5")) {
+          # Load as H5NeuroVol
+          h5_mask <- fmristore::H5NeuroVol(backend$mask_source, dataset_name = backend$mask_dataset)
+          mask_array <- as.array(h5_mask)
+          close(h5_mask) # Close the H5 handle
+
+          # Get space information from first data file if available
+          if (is.character(backend$source) && length(backend$source) > 0) {
+            first_h5 <- fmristore::H5NeuroVec(backend$source[1], dataset_name = backend$data_dataset)
+            space_info <- space(first_h5)
+            close(first_h5)
+            neuroim2::NeuroVol(mask_array, space = space_info)
+          } else {
+            # Create with minimal space info
+            neuroim2::NeuroVol(mask_array)
+          }
         } else {
-          # Create with minimal space info
-          neuroim2::NeuroVol(mask_array)
+          # Load as regular volume file
+          neuroim2::read_vol(backend$mask_source)
         }
-      } else {
-        # Load as regular volume file
-        neuroim2::read_vol(backend$mask_source)
+      },
+      error = function(e) {
+        stop_fmridataset(
+          fmridataset_error_backend_io,
+          message = sprintf("Failed to read H5 mask: %s", e$message),
+          file = backend$mask_source,
+          operation = "read"
+        )
       }
-    }, error = function(e) {
-      stop_fmridataset(
-        fmridataset_error_backend_io,
-        message = sprintf("Failed to read H5 mask: %s", e$message),
-        file = backend$mask_source,
-        operation = "read"
-      )
-    })
+    )
   } else {
     # In-memory mask
     mask_vol <- backend$mask_source
   }
-  
+
   # Convert to logical vector
   mask_vec <- as.logical(as.vector(mask_vol))
-  
+
   # Validate mask
   if (any(is.na(mask_vec))) {
     stop_fmridataset(
@@ -293,7 +303,7 @@ backend_get_mask.h5_backend <- function(backend) {
       parameter = "mask"
     )
   }
-  
+
   if (sum(mask_vec) == 0) {
     stop_fmridataset(
       fmridataset_error_config,
@@ -301,7 +311,7 @@ backend_get_mask.h5_backend <- function(backend) {
       parameter = "mask"
     )
   }
-  
+
   mask_vec
 }
 
@@ -313,27 +323,30 @@ backend_get_data.h5_backend <- function(backend, rows = NULL, cols = NULL) {
   } else {
     # Load on demand
     if (is.character(backend$source)) {
-      tryCatch({
-        lapply(backend$source, function(file_path) {
-          fmristore::H5NeuroVec(file_path, dataset_name = backend$data_dataset)
-        })
-      }, error = function(e) {
-        stop_fmridataset(
-          fmridataset_error_backend_io,
-          message = sprintf("Failed to load H5NeuroVec from files: %s", e$message),
-          file = backend$source,
-          operation = "read"
-        )
-      })
+      tryCatch(
+        {
+          lapply(backend$source, function(file_path) {
+            fmristore::H5NeuroVec(file_path, dataset_name = backend$data_dataset)
+          })
+        },
+        error = function(e) {
+          stop_fmridataset(
+            fmridataset_error_backend_io,
+            message = sprintf("Failed to load H5NeuroVec from files: %s", e$message),
+            file = backend$source,
+            operation = "read"
+          )
+        }
+      )
     } else {
       backend$source
     }
   }
-  
+
   # Get mask information
   mask_vec <- backend_get_mask(backend)
   voxel_indices <- which(mask_vec)
-  
+
   # Extract data matrix in timepoints × voxels format
   if (length(h5_objects) == 1) {
     # Single H5NeuroVec object
@@ -346,23 +359,23 @@ backend_get_data.h5_backend <- function(backend, rows = NULL, cols = NULL) {
     })
     data_matrix <- do.call(rbind, data_matrices)
   }
-  
+
   # Close H5 objects if we loaded them on demand
   if (is.null(backend$h5_objects)) {
     lapply(h5_objects, function(obj) {
       tryCatch(close(obj), error = function(e) invisible(NULL))
     })
   }
-  
+
   # Apply subsetting if requested
   if (!is.null(rows)) {
     data_matrix <- data_matrix[rows, , drop = FALSE]
   }
-  
+
   if (!is.null(cols)) {
     data_matrix <- data_matrix[, cols, drop = FALSE]
   }
-  
+
   data_matrix
 }
 
@@ -379,10 +392,10 @@ backend_get_metadata.h5_backend <- function(backend) {
   } else {
     backend$source[[1]]
   }
-  
+
   # Extract neuroimaging metadata
   space_obj <- space(h5_obj)
-  
+
   list(
     format = "h5",
     affine = trans(space_obj),
@@ -392,4 +405,4 @@ backend_get_metadata.h5_backend <- function(backend) {
     data_files = if (is.character(backend$source)) backend$source else NULL,
     mask_file = if (is.character(backend$mask_source)) backend$mask_source else NULL
   )
-} 
+}

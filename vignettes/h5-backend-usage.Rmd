@@ -11,7 +11,7 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  eval = FALSE  # Set to FALSE since we don't have actual H5 files in the package
+  eval = FALSE # Set to FALSE since we don't have actual H5 files in the package
 )
 ```
 
@@ -24,7 +24,6 @@ The `fmridataset` package supports efficient storage and access of fMRI data usi
 To use the H5 backend, you need to install the `fmristore` package:
 
 ```{r, eval=FALSE}
-
 # Install from GitHub
 devtools::install_github("bbuchsbaum/fmristore")
 ```
@@ -43,7 +42,7 @@ library(fmridataset)
 # Create an fMRI dataset from H5 files
 dset <- fmri_h5_dataset(
   h5_files = c("scan1.h5", "scan2.h5", "scan3.h5"),
-  mask_source = "mask.h5",  # Can also be a regular .nii file
+  mask_source = "mask.h5", # Can also be a regular .nii file
   TR = 2.0,
   run_length = c(150, 150, 150)
 )
@@ -61,9 +60,9 @@ For more control, you can create an H5 backend directly:
 backend <- h5_backend(
   source = c("functional_run1.h5", "functional_run2.h5"),
   mask_source = "brain_mask.h5",
-  data_dataset = "data/elements",  # HDF5 dataset path for data
-  mask_dataset = "data/elements",  # HDF5 dataset path for mask
-  preload = FALSE  # Load data on-demand rather than eagerly
+  data_dataset = "data/elements", # HDF5 dataset path for data
+  mask_dataset = "data/elements", # HDF5 dataset path for mask
+  preload = FALSE # Load data on-demand rather than eagerly
 )
 
 # Create dataset using the backend
@@ -115,16 +114,16 @@ The H5 backend is particularly useful for large datasets:
 ```{r}
 # For very large datasets, use preload=FALSE (default)
 large_backend <- h5_backend(
-  source = paste0("scan_", 1:20, ".h5"),  # 20 scans
+  source = paste0("scan_", 1:20, ".h5"), # 20 scans
   mask_source = "mask.h5",
-  preload = FALSE  # Data loaded only when accessed
+  preload = FALSE # Data loaded only when accessed
 )
 
 # Create dataset
 large_dset <- fmri_dataset(
   scans = large_backend,
   TR = 2.0,
-  run_length = rep(300, 20)  # 20 runs of 300 timepoints each
+  run_length = rep(300, 20) # 20 runs of 300 timepoints each
 )
 
 # Data is loaded on-demand when you access it
