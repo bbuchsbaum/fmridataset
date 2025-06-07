@@ -14,3 +14,4 @@ CLAUDE.md
 BIDS_FACADE_TESTING.md
 data-raw
 examples
+^codemeta\.json$
