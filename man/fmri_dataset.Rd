@@ -30,13 +30,11 @@ Ignored if scans is a backend object.}
 
 \item{event_table}{A data.frame containing the event onsets and experimental variables. Default is an empty data.frame.}
 
-\item{base_path}{The file path to be prepended to relative file names. Default is "." (current directory).
-Ignored if scans is a backend object.}
+\item{base_path}{The file path to be prepended to relative file names. Default is "." (current directory).}
 
 \item{censor}{A binary vector indicating which scans to remove. Default is NULL.}
 
-\item{preload}{Read image scans eagerly rather than on first access. Default is FALSE.
-Ignored if scans is a backend object.}
+\item{preload}{Read image scans eagerly rather than on first access. Default is FALSE.}
 
 \item{mode}{The type of storage mode ('normal', 'bigvec', 'mmap', filebacked'). Default is 'normal'.
 Ignored if scans is a backend object.}
@@ -51,6 +49,7 @@ This function creates an fMRI dataset object from a set of scans, design informa
 The new implementation uses a pluggable backend architecture.
 }
 \examples{
+\dontrun{
 # Create an fMRI dataset with 3 scans and a mask
 dset <- fmri_dataset(c("scan1.nii", "scan2.nii", "scan3.nii"), 
   mask="mask.nii", TR=2, run_length=rep(300, 3), 
@@ -67,4 +66,5 @@ dset <- fmri_dataset("scan1.nii", mask="mask.nii", TR=2,
 # Create an fMRI dataset with a backend
 backend <- nifti_backend(c("scan1.nii", "scan2.nii"), mask_source="mask.nii")
 dset <- fmri_dataset(backend, TR=2, run_length=c(150, 150))
+}
 }

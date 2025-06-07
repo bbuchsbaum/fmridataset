@@ -1,0 +1,188 @@
+---
+title: "Using the H5 Backend for Efficient fMRI Data Storage"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Using the H5 Backend for Efficient fMRI Data Storage}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE  # Set to FALSE since we don't have actual H5 files in the package
+)
+```
+
+# H5 Backend for fMRI Data
+
+The `fmridataset` package supports efficient storage and access of fMRI data using HDF5 files through integration with the `fmristore` package. Each scan is stored as an H5 file that loads to an `H5NeuroVec` object, providing memory-efficient access to large neuroimaging datasets.
+
+## Prerequisites
+
+To use the H5 backend, you need to install the `fmristore` package:
+
+```{r, eval=FALSE}
+# Install from GitHub
+devtools::install_github("bbuchsbaum/fmristore")
+```
+
+You also need the following dependencies:
+- `neuroim2` for neuroimaging data structures
+- `hdf5r` for HDF5 file operations
+
+## Basic Usage
+
+### Creating an fMRI Dataset from H5 Files
+
+```{r}
+library(fmridataset)
+
+# Create an fMRI dataset from H5 files
+dset <- fmri_h5_dataset(
+  h5_files = c("scan1.h5", "scan2.h5", "scan3.h5"),
+  mask_source = "mask.h5",  # Can also be a regular .nii file
+  TR = 2.0,
+  run_length = c(150, 150, 150)
+)
+
+# The dataset behaves like any other fmri_dataset
+print(dset)
+```
+
+### Using a Pre-created H5 Backend
+
+For more control, you can create an H5 backend directly:
+
+```{r}
+# Create H5 backend
+backend <- h5_backend(
+  source = c("functional_run1.h5", "functional_run2.h5"),
+  mask_source = "brain_mask.h5",
+  data_dataset = "data/elements",  # HDF5 dataset path for data
+  mask_dataset = "data/elements",  # HDF5 dataset path for mask
+  preload = FALSE  # Load data on-demand rather than eagerly
+)
+
+# Create dataset using the backend
+dset <- fmri_dataset(
+  scans = backend,
+  TR = 2.5,
+  run_length = c(200, 200),
+  event_table = my_events
+)
+```
+
+## H5 File Structure
+
+The H5 backend expects HDF5 files with the following structure (compatible with `fmristore`):
+
+```
+/
+├── space/
+│   ├── dim          # Spatial dimensions [x, y, z, t]
+│   ├── origin       # Volume origin coordinates
+│   └── trans        # Transformation matrix
+└── data/
+    └── elements     # 4D fMRI data array
+```
+
+For mask files:
+```
+/
+├── space/
+│   ├── dim          # Spatial dimensions [x, y, z]
+│   ├── origin       # Volume origin coordinates
+│   └── trans        # Transformation matrix
+└── data/
+    └── elements     # 3D mask array
+```
+
+## Advantages of H5 Backend
+
+1. **Memory Efficiency**: Data is loaded on-demand, reducing memory usage for large datasets
+2. **Fast Access**: HDF5 provides efficient random access to data subsets
+3. **Compression**: Built-in compression reduces storage requirements
+4. **Cross-platform**: HDF5 files work across different operating systems
+5. **Metadata Storage**: Rich metadata can be stored alongside the data
+
+## Working with Large Datasets
+
+The H5 backend is particularly useful for large datasets:
+
+```{r}
+# For very large datasets, use preload=FALSE (default)
+large_backend <- h5_backend(
+  source = paste0("scan_", 1:20, ".h5"),  # 20 scans
+  mask_source = "mask.h5",
+  preload = FALSE  # Data loaded only when accessed
+)
+
+# Create dataset
+large_dset <- fmri_dataset(
+  scans = large_backend,
+  TR = 2.0,
+  run_length = rep(300, 20)  # 20 runs of 300 timepoints each
+)
+
+# Data is loaded on-demand when you access it
+data_matrix <- get_data_matrix(large_dset)
+```
+
+## Converting Existing Data to H5 Format
+
+If you have existing NIfTI data, you can convert it to H5 format using `fmristore`:
+
+```{r}
+# This would be done outside of fmridataset, using fmristore directly
+library(fmristore)
+library(neuroim2)
+
+# Load NIfTI data
+nvec <- read_vec("functional.nii")
+
+# Convert to H5 format
+h5_file <- as_h5(nvec, file = "functional.h5", data_type = "FLOAT", compression = 6)
+
+# Now you can use it with the H5 backend
+dset <- fmri_h5_dataset("functional.h5", "mask.nii", TR = 2.0, run_length = 300)
+```
+
+## Performance Considerations
+
+- Use `preload = TRUE` for small datasets that fit in memory
+- Use `preload = FALSE` (default) for large datasets
+- H5 files benefit from compression - use compression levels 4-6 for good balance of speed/size
+- For optimal performance, ensure H5 files are stored on fast storage (SSD)
+
+## Error Handling
+
+The H5 backend provides informative error messages:
+
+```{r, error=TRUE}
+# File not found
+try(h5_backend("nonexistent.h5", "mask.h5"))
+
+# Invalid object types
+try(h5_backend(list("not_an_h5neurovec"), "mask.h5"))
+
+# Missing fmristore package
+# (Error shown if fmristore is not installed)
+```
+
+## Integration with Existing Workflows
+
+The H5 backend integrates seamlessly with existing `fmridataset` workflows:
+
+```{r}
+# All standard operations work the same way
+mask <- get_mask(dset)
+data <- get_data_matrix(dset)
+sampling_frame <- get_sampling_frame(dset)
+
+# Data chunking works efficiently with H5 backend
+chunks <- data_chunks(dset, nchunks = 4)
+```
+
+The H5 backend provides an efficient way to work with large fMRI datasets while maintaining the familiar `fmridataset` interface. 
