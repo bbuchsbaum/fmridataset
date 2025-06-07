@@ -12,7 +12,9 @@ test_that("arbitrary_chunks handles too many chunks", {
     "greater than number of voxels"
   )
   expect_length(ch, 2)
-  expect_equal(sort(unique(unlist(ch))), 1:2)
+  # Extract all elements from the deflist object
+  all_indices <- unlist(lapply(seq_len(length(ch)), function(i) ch[[i]]))
+  expect_equal(sort(unique(all_indices)), 1:2)
 })
 
 test_that("one_chunk returns all voxel indices", {

@@ -98,3 +98,32 @@ While not part of this sprint, the following concepts are acknowledged to guide 
 *   **Multi-Subject Collections:** The S3 class name `fmri_study` (or `fmri_collection`) will be reserved for a future milestone to manage lists of `fmri_dataset` objects.
 *   **Asynchronous I/O:** The `backend_get_data` contract is synchronous for now but does not preclude a future `async_backend` that returns a `promise` or `future` object, enabling cloud-native backends (S3/Zarr).
 *   **Python Interoperability:** The clean separation of concerns and explicit error classes will facilitate creating `reticulate` wrappers around the backend system.
+
+---
+
+#### **Addendum: Latent Backend - Special Data Access Semantics**
+
+A specialized `latent_backend` has been implemented to handle LatentNeuroVec objects from the fmristore package. This backend has **fundamentally different data access semantics** compared to other backends:
+
+**Key Differences:**
+*   **Data Orientation:** Returns **latent scores** (temporal basis components), not reconstructed voxel data
+*   **Matrix Dimensions:** Data is (time × components), not (time × voxels)  
+*   **Mask Meaning:** Logical vector indicating active components, not spatial voxels
+*   **Purpose:** Enables efficient analysis in compressed latent space
+
+**Rationale:**
+The latent backend is designed for workflows that operate directly on compressed representations. Since LatentNeuroVec stores data as `data = basis %*% t(loadings) + offset`, returning the full reconstructed voxel data would:
+1. Defeat the purpose of compression
+2. Be computationally inefficient  
+3. Not align with typical analysis workflows in latent space
+
+**Usage Pattern:**
+```r
+# Standard backends return voxel data
+nifti_data <- backend_get_data(nifti_backend)  # dim: [time, voxels]
+
+# Latent backend returns latent scores  
+latent_data <- backend_get_data(latent_backend)  # dim: [time, components]
+```
+
+This design decision prioritizes computational efficiency and aligns with the mathematical structure of latent representations. Users needing full voxel reconstruction should use fmristore's reconstruction methods directly.
