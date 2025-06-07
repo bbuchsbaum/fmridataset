@@ -1,0 +1,10 @@
+pandoc: 3.1.11
+pkgdown: 2.1.3
+pkgdown_sha: ~
+articles:
+  extending-backends: extending-backends.html
+  fmridataset-intro: fmridataset-intro.html
+last_built: 2025-06-07T16:05Z
+urls:
+  reference: https://bbuchsbaum.github.io/fmridataset/reference
+  article: https://bbuchsbaum.github.io/fmridataset/articles
