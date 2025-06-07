@@ -25,6 +25,6 @@ sampling frame, and mask.
 }
 \examples{
 # A matrix with 100 rows and 100 columns (voxels)
-X <- matrix(rnorm(100*100), 100, 100)
-dset <- matrix_dataset(X, TR=2, run_length=100)
+X <- matrix(rnorm(100 * 100), 100, 100)
+dset <- matrix_dataset(X, TR = 2, run_length = 100)
 }

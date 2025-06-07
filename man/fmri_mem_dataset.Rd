@@ -38,12 +38,12 @@ This function creates an fMRI memory dataset object, which is a list containing 
 \examples{
 # Create a NeuroVec object
 d <- c(10, 10, 10, 10)
-nvec <- neuroim2::NeuroVec(array(rnorm(prod(d)), d), space=neuroim2::NeuroSpace(d))
+nvec <- neuroim2::NeuroVec(array(rnorm(prod(d)), d), space = neuroim2::NeuroSpace(d))
 
 # Create a NeuroVol mask
-mask <- neuroim2::NeuroVol(array(rnorm(10*10*10), d[1:3]), space=neuroim2::NeuroSpace(d[1:3]))
+mask <- neuroim2::NeuroVol(array(rnorm(10 * 10 * 10), d[1:3]), space = neuroim2::NeuroSpace(d[1:3]))
 mask[mask < .5] <- 0
 
 # Create an fmri_mem_dataset
-dset <- fmri_mem_dataset(list(nvec), mask, TR=2)
+dset <- fmri_mem_dataset(list(nvec), mask, TR = 2)
 }

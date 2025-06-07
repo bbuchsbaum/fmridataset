@@ -35,8 +35,9 @@ offset <- colMeans(X)
 
 # Create a LatentNeuroVec object (requires the fmristore package)
 lvec <- fmristore::LatentNeuroVec(basis, loadings,
-            neuroim2::NeuroSpace(c(10, 10, 10, 100)),
-            mask = rep(TRUE, 1000), offset = offset)
+  neuroim2::NeuroSpace(c(10, 10, 10, 100)),
+  mask = rep(TRUE, 1000), offset = offset
+)
 
 # Create a latent_dataset
 dset <- latent_dataset(lvec, TR = 2, run_length = 100)

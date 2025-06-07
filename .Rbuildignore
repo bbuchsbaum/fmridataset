@@ -15,3 +15,9 @@ BIDS_FACADE_TESTING.md
 data-raw
 examples
 ^codemeta\.json$
+^\.lintr$
+^codecov\.yml$
+^CONTRIBUTING\.md$
+^fmristore_repomix\.xml$
+^repomix-output\.txt$
+^SECURITY\.md$

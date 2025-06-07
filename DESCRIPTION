@@ -20,15 +20,14 @@ Depends:
     R (>= 4.3.0)
 Imports:
     assertthat,
-    colorplane,
     deflist,
     memoise,
-    methods,
     neuroim2,
     purrr,
     tibble,
     utils
 Suggests:
+    bench,
     bidser,
     crayon,
     fmristore,

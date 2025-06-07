@@ -8,7 +8,7 @@ h5_backend(
   source,
   mask_source,
   mask_dataset = "data/elements",
-  data_dataset = "data/elements",
+  data_dataset = "data",
   preload = FALSE
 )
 }
@@ -19,7 +19,7 @@ h5_backend(
 
 \item{mask_dataset}{Character string specifying the dataset path within H5 file for mask (default: "data/elements")}
 
-\item{data_dataset}{Character string specifying the dataset path within H5 files for data (default: "data/elements")}
+\item{data_dataset}{Character string specifying the dataset path within H5 files for data (default: "data")}
 
 \item{preload}{Logical, whether to eagerly load H5NeuroVec objects into memory}
 }

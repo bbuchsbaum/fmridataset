@@ -133,7 +133,7 @@ data_chunks.fmri_mem_dataset <- function(x, nchunks = 1, runwise = FALSE, ...) {
 #' @param ... Additional arguments.
 #'
 #' @return A list of data chunks, with each chunk containing the data, voxel indices, row indices, and chunk number.
-#' @noRd
+#' @export
 data_chunks.fmri_file_dataset <- function(x, nchunks = 1, runwise = FALSE, ...) {
   maskSeq <- NULL
 
