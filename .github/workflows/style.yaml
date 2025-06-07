@@ -72,7 +72,7 @@ jobs:
             git config --local user.email "$GITHUB_ACTOR@users.noreply.github.com"
             git add ${FILES_TO_COMMIT[*]}
             git commit -m "Style code (GHA)"
-            git push origin HEAD:${{ github.head_ref }}
+            git push origin HEAD:${{ github.head_ref || github.ref_name }}
           else
             echo "No changes to commit."
           fi 
