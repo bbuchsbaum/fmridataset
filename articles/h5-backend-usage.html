@@ -81,8 +81,7 @@ access to large neuroimaging datasets.</p>
 <p>To use the H5 backend, you need to install the <code>fmristore</code>
 package:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
-<span><span class="co"># Install from GitHub</span></span>
+<code class="sourceCode R"><span><span class="co"># Install from GitHub</span></span>
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"bbuchsbaum/fmristore"</span><span class="op">)</span></span></code></pre></div>
 <p>You also need the following dependencies: - <code>neuroim2</code> for
 neuroimaging data structures - <code>hdf5r</code> for HDF5 file
@@ -100,7 +99,7 @@ operations</p>
 <span><span class="co"># Create an fMRI dataset from H5 files</span></span>
 <span><span class="va">dset</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fmri_h5_dataset.html">fmri_h5_dataset</a></span><span class="op">(</span></span>
 <span>  h5_files <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"scan1.h5"</span>, <span class="st">"scan2.h5"</span>, <span class="st">"scan3.h5"</span><span class="op">)</span>,</span>
-<span>  mask_source <span class="op">=</span> <span class="st">"mask.h5"</span>,  <span class="co"># Can also be a regular .nii file</span></span>
+<span>  mask_source <span class="op">=</span> <span class="st">"mask.h5"</span>, <span class="co"># Can also be a regular .nii file</span></span>
 <span>  TR <span class="op">=</span> <span class="fl">2.0</span>,</span>
 <span>  run_length <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">150</span>, <span class="fl">150</span>, <span class="fl">150</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
@@ -117,9 +116,9 @@ operations</p>
 <span><span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/h5_backend.html">h5_backend</a></span><span class="op">(</span></span>
 <span>  source <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"functional_run1.h5"</span>, <span class="st">"functional_run2.h5"</span><span class="op">)</span>,</span>
 <span>  mask_source <span class="op">=</span> <span class="st">"brain_mask.h5"</span>,</span>
-<span>  data_dataset <span class="op">=</span> <span class="st">"data/elements"</span>,  <span class="co"># HDF5 dataset path for data</span></span>
-<span>  mask_dataset <span class="op">=</span> <span class="st">"data/elements"</span>,  <span class="co"># HDF5 dataset path for mask</span></span>
-<span>  preload <span class="op">=</span> <span class="cn">FALSE</span>  <span class="co"># Load data on-demand rather than eagerly</span></span>
+<span>  data_dataset <span class="op">=</span> <span class="st">"data/elements"</span>, <span class="co"># HDF5 dataset path for data</span></span>
+<span>  mask_dataset <span class="op">=</span> <span class="st">"data/elements"</span>, <span class="co"># HDF5 dataset path for mask</span></span>
+<span>  preload <span class="op">=</span> <span class="cn">FALSE</span> <span class="co"># Load data on-demand rather than eagerly</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Create dataset using the backend</span></span>
@@ -180,16 +179,16 @@ alongside the data</li>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># For very large datasets, use preload=FALSE (default)</span></span>
 <span><span class="va">large_backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/h5_backend.html">h5_backend</a></span><span class="op">(</span></span>
-<span>  source <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"scan_"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">20</span>, <span class="st">".h5"</span><span class="op">)</span>,  <span class="co"># 20 scans</span></span>
+<span>  source <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"scan_"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">20</span>, <span class="st">".h5"</span><span class="op">)</span>, <span class="co"># 20 scans</span></span>
 <span>  mask_source <span class="op">=</span> <span class="st">"mask.h5"</span>,</span>
-<span>  preload <span class="op">=</span> <span class="cn">FALSE</span>  <span class="co"># Data loaded only when accessed</span></span>
+<span>  preload <span class="op">=</span> <span class="cn">FALSE</span> <span class="co"># Data loaded only when accessed</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Create dataset</span></span>
 <span><span class="va">large_dset</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fmri_dataset.html">fmri_dataset</a></span><span class="op">(</span></span>
 <span>  scans <span class="op">=</span> <span class="va">large_backend</span>,</span>
 <span>  TR <span class="op">=</span> <span class="fl">2.0</span>,</span>
-<span>  run_length <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">300</span>, <span class="fl">20</span><span class="op">)</span>  <span class="co"># 20 runs of 300 timepoints each</span></span>
+<span>  run_length <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">300</span>, <span class="fl">20</span><span class="op">)</span> <span class="co"># 20 runs of 300 timepoints each</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Data is loaded on-demand when you access it</span></span>
