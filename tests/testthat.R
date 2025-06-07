@@ -1,4 +1,4 @@
 library(testthat)
 library(fmridataset)
 
-test_check("fmridataset") 
+test_check("fmridataset")

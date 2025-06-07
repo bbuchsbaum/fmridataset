@@ -118,7 +118,7 @@ backend_get_metadata <- function(backend) {
 validate_backend <- function(backend) {
   backend <- backend_open(backend)
   on.exit(backend_close(backend))
-  
+
   dims <- backend_get_dims(backend)
   if (!is.list(dims) || !all(c("spatial", "time") %in% names(dims))) {
     stop_fmridataset(
@@ -126,52 +126,54 @@ validate_backend <- function(backend) {
       "backend_get_dims must return a list with 'spatial' and 'time' elements"
     )
   }
-  
+
   if (length(dims$spatial) != 3 || !is.numeric(dims$spatial)) {
     stop_fmridataset(
       fmridataset_error_config,
       "spatial dimensions must be a numeric vector of length 3"
     )
   }
-  
+
   if (!is.numeric(dims$time) || length(dims$time) != 1 || dims$time < 1) {
     stop_fmridataset(
       fmridataset_error_config,
       "time dimension must be a positive integer"
     )
   }
-  
+
   mask <- backend_get_mask(backend)
   expected_length <- prod(dims$spatial)
-  
+
   if (!is.logical(mask)) {
     stop_fmridataset(
       fmridataset_error_config,
       "backend_get_mask must return a logical vector"
     )
   }
-  
+
   if (length(mask) != expected_length) {
     stop_fmridataset(
       fmridataset_error_config,
-      sprintf("mask length (%d) must equal prod(spatial dims) (%d)", 
-              length(mask), expected_length)
+      sprintf(
+        "mask length (%d) must equal prod(spatial dims) (%d)",
+        length(mask), expected_length
+      )
     )
   }
-  
+
   if (sum(mask) == 0) {
     stop_fmridataset(
       fmridataset_error_config,
       "mask must contain at least one TRUE value"
     )
   }
-  
+
   if (any(is.na(mask))) {
     stop_fmridataset(
       fmridataset_error_config,
       "mask cannot contain NA values"
     )
   }
-  
+
   TRUE
 }

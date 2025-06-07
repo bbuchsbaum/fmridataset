@@ -2,13 +2,13 @@
 #' @import memoise
 
 #' @export
-#' @importFrom neuroim2 NeuroVecSeq 
+#' @importFrom neuroim2 NeuroVecSeq
 get_data.latent_dataset <- function(x, ...) {
   x$lvec@basis
 }
 
 #' @export
-#' @importFrom neuroim2 NeuroVecSeq 
+#' @importFrom neuroim2 NeuroVecSeq
 get_data.fmri_mem_dataset <- function(x, ...) {
   if (length(x$scans) > 1) {
     do.call(neuroim2::NeuroVecSeq, x$scans)
@@ -18,7 +18,7 @@ get_data.fmri_mem_dataset <- function(x, ...) {
 }
 
 #' @export
-#' @importFrom neuroim2 NeuroVecSeq 
+#' @importFrom neuroim2 NeuroVecSeq
 get_data.matrix_dataset <- function(x, ...) {
   x$datamat
 }
@@ -31,7 +31,7 @@ get_data.fmri_file_dataset <- function(x, ...) {
     backend_get_data(x$backend, ...)
   } else if (is.null(x$vec)) {
     # Legacy path
-    get_data_from_file(x,...)
+    get_data_from_file(x, ...)
   } else {
     x$vec
   }
@@ -71,7 +71,7 @@ get_data_matrix.fmri_file_dataset <- function(x, ...) {
 #' @noRd
 get_data_from_file <- memoise::memoise(function(x, ...) {
   m <- get_mask(x)
-  neuroim2::read_vec(x$scans, mask=m, mode=x$mode, ...)
+  neuroim2::read_vec(x$scans, mask = m, mode = x$mode, ...)
 })
 
 
@@ -111,4 +111,4 @@ get_mask.latent_dataset <- function(x, ...) {
 #' @export
 blocklens.matrix_dataset <- function(x, ...) {
   blocklens(x$sampling_frame)
-} 
+}

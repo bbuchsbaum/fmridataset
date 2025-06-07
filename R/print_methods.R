@@ -4,31 +4,31 @@
 print.fmri_dataset <- function(x, ...) {
   # Header
   cat("\n=== fMRI Dataset ===\n")
-  
+
   # Basic dimensions
   cat("\n** Dimensions:\n")
   cat("  - Timepoints:", sum(x$sampling_frame$run_length), "\n")
   cat("  - Runs:", x$nruns, "\n")
-  
+
   # Data source info
   print_data_source_info(x)
-  
+
   # Mask info
   mask <- get_mask(x)
   cat("  - Voxels in mask:", sum(mask > 0), "\n")
-  cat("  - Mask dimensions:", paste(dim(mask), collapse=" x "), "\n")
-  
+  cat("  - Mask dimensions:", paste(dim(mask), collapse = " x "), "\n")
+
   # Sampling frame info
   cat("\n** Temporal Structure:\n")
   cat("  - TR:", x$sampling_frame$TR, "seconds\n")
-  cat("  - Run lengths:", paste(x$sampling_frame$run_length, collapse=", "), "\n")
-  
+  cat("  - Run lengths:", paste(x$sampling_frame$run_length, collapse = ", "), "\n")
+
   # Event table summary
   cat("\n** Event Table:\n")
   if (nrow(x$event_table) > 0) {
     cat("  - Rows:", nrow(x$event_table), "\n")
-    cat("  - Variables:", paste(names(x$event_table), collapse=", "), "\n")
-    
+    cat("  - Variables:", paste(names(x$event_table), collapse = ", "), "\n")
+
     # Show first few events if they exist
     if (nrow(x$event_table) > 0) {
       cat("  - First few events:\n")
@@ -37,7 +37,7 @@ print.fmri_dataset <- function(x, ...) {
   } else {
     cat("  - Empty event table\n")
   }
-  
+
   cat("\n")
 }
 
@@ -46,29 +46,29 @@ print.fmri_dataset <- function(x, ...) {
 print.latent_dataset <- function(x, ...) {
   # Header
   cat("\n=== Latent Dataset ===\n")
-  
+
   # Basic dimensions
   cat("\n** Dimensions:\n")
   cat("  - Timepoints:", nrow(x$datamat), "\n")
   cat("  - Latent components:", ncol(x$datamat), "\n")
   cat("  - Runs:", x$nruns, "\n")
-  
+
   # Original space info if available
   if (!is.null(x$original_space)) {
-    cat("  - Original space:", paste(x$original_space, collapse=" x "), "\n")
+    cat("  - Original space:", paste(x$original_space, collapse = " x "), "\n")
   }
-  
+
   # Sampling frame info
   cat("\n** Temporal Structure:\n")
   cat("  - TR:", x$sampling_frame$TR, "seconds\n")
-  cat("  - Run lengths:", paste(x$sampling_frame$run_length, collapse=", "), "\n")
-  
+  cat("  - Run lengths:", paste(x$sampling_frame$run_length, collapse = ", "), "\n")
+
   # Event table summary
   cat("\n** Event Table:\n")
   if (nrow(x$event_table) > 0) {
     cat("  - Rows:", nrow(x$event_table), "\n")
-    cat("  - Variables:", paste(names(x$event_table), collapse=", "), "\n")
-    
+    cat("  - Variables:", paste(names(x$event_table), collapse = ", "), "\n")
+
     # Show first few events if they exist
     if (nrow(x$event_table) > 0) {
       cat("  - First few events:\n")
@@ -77,12 +77,12 @@ print.latent_dataset <- function(x, ...) {
   } else {
     cat("  - Empty event table\n")
   }
-  
+
   # Data summary
   cat("\n** Latent Data Summary:\n")
-  data_summary <- summary(as.vector(x$datamat[1:min(1000, length(x$datamat))]))[c(1,3,4,6)]
-  cat("  - Values (sample):", paste(names(data_summary), data_summary, sep=":", collapse=", "), "\n")
-  
+  data_summary <- summary(as.vector(x$datamat[1:min(1000, length(x$datamat))]))[c(1, 3, 4, 6)]
+  cat("  - Values (sample):", paste(names(data_summary), data_summary, sep = ":", collapse = ", "), "\n")
+
   cat("\n")
 }
 
@@ -141,8 +141,10 @@ print_data_source_info <- function(x) {
       # New backend-based dataset
       cat("  - Backend:", class(x$backend)[1], "\n")
       dims <- backend_get_dims(x$backend)
-      cat("  - Data dimensions:", dims$time, "x", sum(backend_get_mask(x$backend)), 
-          "(timepoints x voxels)\n")
+      cat(
+        "  - Data dimensions:", dims$time, "x", sum(backend_get_mask(x$backend)),
+        "(timepoints x voxels)\n"
+      )
     } else {
       # Legacy file-based dataset
       n_files <- length(x$scans)
@@ -152,8 +154,10 @@ print_data_source_info <- function(x) {
         cat("    ", paste(file_names, collapse = ", "), "\n")
       } else {
         file_names <- basename(x$scans)
-        cat("    ", paste(head(file_names, 2), collapse = ", "), 
-            ", ..., ", tail(file_names, 1), "\n")
+        cat(
+          "    ", paste(head(file_names, 2), collapse = ", "),
+          ", ..., ", tail(file_names, 1), "\n"
+        )
       }
     }
   }
@@ -164,4 +168,4 @@ print_data_source_info <- function(x) {
 print.matrix_dataset <- function(x, ...) {
   # Use the generic fmri_dataset print method
   print.fmri_dataset(x, ...)
-} 
+}
