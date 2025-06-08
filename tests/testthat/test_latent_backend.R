@@ -1,4 +1,3 @@
-
 test_that("latent_dataset errors when fmristore is absent", {
   with_mocked_bindings(
     requireNamespace = function(pkg, quietly = TRUE) FALSE,
@@ -230,4 +229,3 @@ test_that("latent_backend concept validation", {
   # real LatentNeuroVec objects which are complex S4 objects
   expect_true(TRUE) # Implementation follows these principles
 })
-
