@@ -488,3 +488,92 @@ fmri_h5_dataset <- function(h5_files, mask_source, TR,
     censor = censor
   )
 }
+
+#' Create an fmri_study_dataset
+#'
+#' High level constructor that combines multiple `fmri_dataset` objects
+#' into a single study-level dataset using `study_backend`.
+#'
+#' @param datasets A list of `fmri_dataset` objects
+#' @param subject_ids Optional vector of subject identifiers
+#' @return An object of class `fmri_study_dataset`
+#' @export
+fmri_study_dataset <- function(datasets, subject_ids = NULL) {
+  if (!is.list(datasets) || length(datasets) == 0) {
+    stop_fmridataset(
+      fmridataset_error_config,
+      "datasets must be a non-empty list"
+    )
+  }
+
+  lapply(datasets, function(d) {
+    if (!inherits(d, "fmri_dataset")) {
+      stop_fmridataset(
+        fmridataset_error_config,
+        "all elements of datasets must inherit from 'fmri_dataset'"
+      )
+    }
+  })
+
+  if (is.null(subject_ids)) {
+    subject_ids <- seq_along(datasets)
+  }
+
+  if (length(subject_ids) != length(datasets)) {
+    stop_fmridataset(
+      fmridataset_error_config,
+      "subject_ids must match length of datasets"
+    )
+  }
+
+  trs <- vapply(datasets, function(d) get_TR(d$sampling_frame), numeric(1))
+  if (!all(vapply(trs[-1], function(tr) isTRUE(all.equal(tr, trs[1])), logical(1)))) {
+    stop_fmridataset(
+      fmridataset_error_config,
+      "All datasets must have equal TR"
+    )
+  }
+
+  DelayedArray::setAutoBlockSize(64 * 1024^2)
+
+  backends <- lapply(datasets, function(d) d$backend)
+  sb <- study_backend(backends, subject_ids = subject_ids)
+
+  events <- Map(function(d, sid) {
+    et <- tibble::as_tibble(d$event_table)
+    if (nrow(et) > 0) {
+      et$subject_id <- sid
+      if (!"run_id" %in% names(et)) {
+        et$run_id <- rep(seq_len(d$nruns), length.out = nrow(et))
+      }
+    }
+    et
+  }, datasets, subject_ids)
+  combined_events <- do.call(rbind, events)
+
+  run_lengths <- unlist(lapply(datasets, function(d) d$sampling_frame$blocklens))
+  frame <- fmrihrf::sampling_frame(blocklens = run_lengths, TR = trs[1])
+
+  ret <- list(
+    backend = sb,
+    event_table = combined_events,
+    sampling_frame = frame,
+    subject_ids = subject_ids
+  )
+
+  class(ret) <- c("fmri_study_dataset", "fmri_dataset", "list")
+  ret
+}
+
+#' Attach rowData metadata to a DelayedMatrix
+#'
+#' Helper for reattaching metadata after DelayedMatrixStats operations.
+#'
+#' @param x A DelayedMatrix
+#' @param rowData A data.frame of row-wise metadata
+#' @return `x` with `rowData` attribute set
+#' @export
+with_rowData <- function(x, rowData) {
+  attr(x, "rowData") <- rowData
+  x
+}
