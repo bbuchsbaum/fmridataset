@@ -113,7 +113,7 @@ This project will be executed in two sprints, focusing on building the core infr
 
 *Goal: Implement the foundational, non-user-facing components. At the end of this sprint, the `study_backend` will be functional and return a `DelayedArray`, but the user-friendly wrappers will not yet be in place.*
 
-*   **Ticket S1-T1: Implement `as_delayed_array` Generic and Enhanced Seed Classes**
+*   **Ticket S1-T1: Implement `as_delayed_array` Generic and Enhanced Seed Classes** *(Implemented)*
     *   **Description:** Create the S4 generic `as_delayed_array` with `sparse_ok` parameter and seed classes that extend both `StorageBackendSeed` and vendor-specific seeds.
     *   **Acceptance Criteria:**
         *   `as_delayed_array` method exists for `nifti_backend` and `matrix_backend`.
@@ -122,7 +122,7 @@ This project will be executed in two sprints, focusing on building the core infr
         *   `DelayedArray` operations trigger `read_block` and return correct results.
         *   **Dependency Note:** This ticket must be merged before S1-T2.
 
-*   **Ticket S1-T1.5: Arrow Backend Proof-of-Concept**
+*   **Ticket S1-T1.5: Arrow Backend Proof-of-Concept** *(Implemented)*
     *   **Description:** Create minimal 3×3 Arrow table seed under `experiments/` to validate seed API design.
     *   **Acceptance Criteria:**
         *   Proof-of-concept `ArrowBackendSeed` successfully wraps small Arrow table.

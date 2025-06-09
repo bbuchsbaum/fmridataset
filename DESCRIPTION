@@ -26,11 +26,13 @@ Imports:
     neuroim2,
     purrr,
     tibble,
+    DelayedArray,
     utils
 Suggests:
     bench,
     bidser,
     crayon,
+    arrow,
     fmristore,
     foreach,
     testthat (>= 3.0.0),
