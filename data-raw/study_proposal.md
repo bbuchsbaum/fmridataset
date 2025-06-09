@@ -151,7 +151,7 @@ This project will be executed in two sprints, focusing on building the core infr
 
 *Goal: Build the user-friendly wrappers, ensure metadata is handled correctly, and produce documentation. At the end of this sprint, the feature will be complete and ready for users.*
 
-*   **Ticket S2-T1: Implement `fmri_study_dataset` Constructor with Memory Management**
+*   **Ticket S2-T1: Implement `fmri_study_dataset` Constructor with Memory Management** *(Implemented)*
     *   **Description:** Create high-level constructor with automatic block size configuration and metadata handling optimizations.
     *   **Acceptance Criteria:**
         *   Constructor creates `fmri_study_dataset` with `study_backend`.
