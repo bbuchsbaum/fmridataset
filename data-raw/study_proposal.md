@@ -129,7 +129,7 @@ This project will be executed in two sprints, focusing on building the core infr
         *   `read_block` method functional with basic subsetting.
         *   Documents any API assumptions that affect main implementation.
 
-*   **Ticket S1-T2: Implement the `study_backend`**
+*   **Ticket S1-T2: Implement the `study_backend`** *(Implemented)*
     *   **Description:** Create `study_backend.R` with constructor including memory guards and all S3 backend methods.
     *   **Acceptance Criteria:**
         *   Constructor validates inputs, includes caching slots, and implements mask validation with warning thresholds.
@@ -137,7 +137,7 @@ This project will be executed in two sprints, focusing on building the core infr
         *   `backend_get_data` calls `as_delayed_array` on children and returns combined `DelayedArray`.
         *   Returned `DelayedArray` has correct total dimensions.
 
-*   **Ticket S1-T3: Comprehensive Unit Tests for `study_backend`**
+*   **Ticket S1-T3: Comprehensive Unit Tests for `study_backend`** *(Implemented)*
     *   **Description:** Write `test_study_backend.R` with enhanced test coverage including edge cases and thread safety.
     *   **Acceptance Criteria:**
         *   Constructor validation tests (mask/dim mismatch).
