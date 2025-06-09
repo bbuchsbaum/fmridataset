@@ -25,7 +25,7 @@ as.matrix_dataset.fmri_mem_dataset <- function(x, ...) {
   matrix_dataset(
     datamat = datamat,
     TR = x$sampling_frame$TR,
-    run_length = x$sampling_frame$run_length,
+    run_length = x$sampling_frame$blocklens,
     event_table = x$event_table
   )
 }
@@ -47,7 +47,7 @@ as.matrix_dataset.fmri_file_dataset <- function(x, ...) {
   matrix_dataset(
     datamat = datamat,
     TR = x$sampling_frame$TR,
-    run_length = x$sampling_frame$run_length,
+    run_length = x$sampling_frame$blocklens,
     event_table = x$event_table
   )
 }

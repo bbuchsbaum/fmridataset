@@ -247,8 +247,18 @@ data_chunks.matrix_dataset <- function(x, nchunks = 1, runwise = FALSE, ...) {
   }
 }
 
-#' @keywords internal
-#' @noRd
+#' Create an Execution Strategy for Data Processing
+#'
+#' This function creates an execution strategy that can be used to process
+#' fMRI datasets in different ways: voxelwise, runwise, or chunkwise.
+#'
+#' @param strategy Character string specifying the processing strategy.
+#'   Options are "voxelwise", "runwise", or "chunkwise".
+#' @param nchunks Number of chunks to use for "chunkwise" strategy.
+#'   Ignored for other strategies.
+#' @return A function that takes a dataset and returns a chunk iterator
+#'   configured according to the specified strategy.
+#' @export
 exec_strategy <- function(strategy = c("voxelwise", "runwise", "chunkwise"), nchunks = NULL) {
   strategy <- match.arg(strategy)
 
@@ -272,8 +282,12 @@ exec_strategy <- function(strategy = c("voxelwise", "runwise", "chunkwise"), nch
 }
 
 #' Collect all chunks from a chunk iterator
-#' @keywords internal
-#' @noRd
+#'
+#' This function collects all chunks from a chunk iterator into a list.
+#'
+#' @param chunk_iter A chunk iterator object created by chunk_iter()
+#' @return A list containing all chunks from the iterator
+#' @export
 collect_chunks <- function(chunk_iter) {
   chunks <- list()
   for (i in seq_len(chunk_iter$nchunks)) {

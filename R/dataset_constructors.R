@@ -27,7 +27,7 @@ matrix_dataset <- function(datamat, TR, run_length, event_table = data.frame()) 
   }
   assert_that(sum(run_length) == nrow(datamat))
 
-  frame <- sampling_frame(run_length, TR)
+  frame <- fmrihrf::sampling_frame(blocklens = run_length, TR = TR)
 
   # For backward compatibility, keep the original structure
   # but could optionally add backend support in the future
@@ -87,7 +87,7 @@ fmri_mem_dataset <- function(scans, mask, TR,
     censor <- rep(0, sum(run_length))
   }
 
-  frame <- sampling_frame(run_length, TR)
+  frame <- fmrihrf::sampling_frame(blocklens = run_length, TR = TR)
 
   ret <- list(
     scans = scans,
@@ -151,7 +151,7 @@ latent_dataset <- function(lvec, TR, run_length, event_table = data.frame()) {
     msg = "Sum of run lengths must equal the 4th dimension of lvec"
   )
 
-  frame <- sampling_frame(run_length, TR)
+  frame <- fmrihrf::sampling_frame(blocklens = run_length, TR = TR)
 
   ret <- list(
     lvec = lvec,
@@ -379,7 +379,7 @@ fmri_dataset <- function(scans, mask = NULL, TR,
     censor <- rep(0, sum(run_length))
   }
 
-  frame <- sampling_frame(run_length, TR)
+  frame <- fmrihrf::sampling_frame(blocklens = run_length, TR = TR)
 
   # Get dimensions to validate run_length
   dims <- backend_get_dims(backend)

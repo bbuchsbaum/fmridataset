@@ -7,7 +7,7 @@ print.fmri_dataset <- function(x, ...) {
 
   # Basic dimensions
   cat("\n** Dimensions:\n")
-  cat("  - Timepoints:", sum(x$sampling_frame$run_length), "\n")
+  cat("  - Timepoints:", sum(x$sampling_frame$blocklens), "\n")
   cat("  - Runs:", x$nruns, "\n")
 
   # Data source info
@@ -21,7 +21,7 @@ print.fmri_dataset <- function(x, ...) {
   # Sampling frame info
   cat("\n** Temporal Structure:\n")
   cat("  - TR:", x$sampling_frame$TR, "seconds\n")
-  cat("  - Run lengths:", paste(x$sampling_frame$run_length, collapse = ", "), "\n")
+  cat("  - Run lengths:", paste(x$sampling_frame$blocklens, collapse = ", "), "\n")
 
   # Event table summary
   cat("\n** Event Table:\n")
@@ -61,7 +61,7 @@ print.latent_dataset <- function(x, ...) {
   # Sampling frame info
   cat("\n** Temporal Structure:\n")
   cat("  - TR:", x$sampling_frame$TR, "seconds\n")
-  cat("  - Run lengths:", paste(x$sampling_frame$run_length, collapse = ", "), "\n")
+  cat("  - Run lengths:", paste(x$sampling_frame$blocklens, collapse = ", "), "\n")
 
   # Event table summary
   cat("\n** Event Table:\n")

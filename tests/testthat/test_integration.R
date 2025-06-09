@@ -45,7 +45,7 @@ test_that("complete workflow with matrix backend", {
   )
 
   # 4. Test basic accessors
-  expect_equal(dataset$sampling_frame$TR, 2)
+  expect_equal(get_TR(dataset$sampling_frame), 2)
   expect_equal(n_runs(dataset$sampling_frame), 2)
   expect_equal(n_timepoints(dataset$sampling_frame), n_timepoints)
 

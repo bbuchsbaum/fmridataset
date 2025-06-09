@@ -21,6 +21,7 @@ Depends:
 Imports:
     assertthat,
     deflist,
+    fmrihrf,
     memoise,
     neuroim2,
     purrr,

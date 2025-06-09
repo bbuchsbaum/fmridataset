@@ -25,7 +25,7 @@ fmri_dataset_legacy <- function(scans, mask, TR,
     censor <- rep(0, sum(run_length))
   }
 
-  frame <- sampling_frame(run_length, TR)
+  frame <- fmrihrf::sampling_frame(blocklens = run_length, TR = TR)
 
   maskfile <- paste0(base_path, "/", mask)
   scans <- paste0(base_path, "/", scans)

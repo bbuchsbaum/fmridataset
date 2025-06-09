@@ -80,6 +80,6 @@ test_that("conversion preserves essential properties", {
   expect_equal(converted$TR, original$TR)
   expect_equal(converted$nruns, original$nruns)
   expect_equal(converted$event_table, original$event_table)
-  expect_equal(converted$sampling_frame$run_length, original$sampling_frame$run_length)
+  expect_equal(converted$sampling_frame$blocklens, original$sampling_frame$blocklens)
   expect_equal(length(converted$mask), ncol(test_data))
 })
