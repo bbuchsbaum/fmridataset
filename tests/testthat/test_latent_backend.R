@@ -229,3 +229,44 @@ test_that("latent_backend concept validation", {
   # real LatentNeuroVec objects which are complex S4 objects
   expect_true(TRUE) # Implementation follows these principles
 })
+
+test_that("latent_backend opens and retrieves data correctly", {
+  if (!methods::isClass("FullMockLatentNeuroVec")) {
+    setClass("FullMockLatentNeuroVec", slots = c(basis = "matrix", mask = "logical"))
+  }
+
+  create_full_lvec <- function(n_time = 4, n_comp = 3) {
+    basis <- matrix(seq_len(n_time * n_comp), nrow = n_time, ncol = n_comp)
+    mask <- rep(TRUE, n_comp)
+    new("FullMockLatentNeuroVec", basis = basis, mask = mask)
+  }
+
+  l1 <- create_full_lvec()
+  l2 <- create_full_lvec()
+
+  with_mocked_bindings(
+    requireNamespace = function(pkg, quietly = TRUE) TRUE,
+    space = function(x) structure(list(dim = c(2, 2, 2, nrow(x@basis)), origin = c(0,0,0), spacing = c(1,1,1)), class = "NeuroSpace"),
+    mask = function(x) x@mask,
+    .package = c("base", "neuroim2"),
+    {
+      backend <- latent_backend(list(l1, l2))
+      backend <- backend_open(backend)
+
+      dims <- backend_get_dims(backend)
+      expect_equal(dims$n_runs, 2)
+      expect_equal(dims$time, 8)
+      expect_equal(dims$n_components, 3)
+
+      m <- backend_get_mask(backend)
+      expect_equal(length(m), 3)
+      expect_true(all(m))
+
+      dat <- backend_get_data(backend)
+      expect_equal(dim(dat), c(8, 3))
+      # first run data should equal l1@basis
+      expect_equal(dat[1:4, ], l1@basis)
+    }
+  )
+})
+
