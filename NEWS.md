@@ -21,6 +21,7 @@
 * Added comprehensive README with badges and examples
 * Improved package architecture documentation
 * Added codecov configuration for coverage reporting
+* New vignette "From Single-Subject to Study-Level Analysis" with performance guidelines and architectural diagram
 
 ## Internal changes
 
