@@ -23,6 +23,7 @@ Imports:
     deflist,
     fmrihrf,
     memoise,
+    lifecycle,
     neuroim2,
     purrr,
     tibble,

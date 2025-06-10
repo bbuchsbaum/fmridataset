@@ -19,7 +19,7 @@ as.matrix_dataset.fmri_mem_dataset <- function(x, ...) {
   # Get the data matrix
   bvec <- get_data(x)
   mask <- get_mask(x)
-  datamat <- series(bvec, which(mask != 0))
+  datamat <- neuroim2::series(bvec, which(mask != 0))
 
   # Create matrix_dataset
   matrix_dataset(
@@ -40,7 +40,7 @@ as.matrix_dataset.fmri_file_dataset <- function(x, ...) {
     # Legacy dataset - need to use series
     vec <- get_data(x)
     mask <- get_mask(x)
-    datamat <- series(vec, which(mask != 0))
+    datamat <- neuroim2::series(vec, which(mask != 0))
   }
 
   # Create matrix_dataset

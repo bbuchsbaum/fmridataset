@@ -178,7 +178,7 @@ data_chunks.fmri_file_dataset <- function(x, nchunks = 1, runwise = FALSE, ...) 
     get_seq_chunk <- function(chunk_num) {
       v <- get_data(x)
       vind <- maskSeq[[chunk_num]]
-      m <- series(v, vind)
+    m <- neuroim2::series(v, vind)
       ret <- data_chunk(m,
         voxel_ind = vind,
         row_ind = 1:nrow(x$event_table),
