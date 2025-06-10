@@ -34,7 +34,34 @@ fmri_series.fmri_dataset <- function(dataset, selector = NULL, timepoints = NULL
   }
 
   voxel_info <- S4Vectors::DataFrame(voxel = voxel_ind)
-  temporal_info <- S4Vectors::DataFrame(timepoint = time_ind)
+  temporal_info <- build_temporal_info_lazy(dataset, time_ind)
+
+  new("FmriSeries",
+      da,
+      voxel_info = voxel_info,
+      temporal_info = temporal_info,
+      selection_info = list(selector = selector, timepoints = timepoints),
+      dataset_info = list(backend_type = class(dataset$backend)[1]))
+}
+
+#' @export
+fmri_series.fmri_study_dataset <- function(dataset, selector = NULL, timepoints = NULL,
+                                           output = c("FmriSeries", "DelayedMatrix"),
+                                           event_window = NULL, ...) {
+  output <- match.arg(output)
+
+  voxel_ind <- resolve_selector(dataset, selector)
+  time_ind <- resolve_timepoints(dataset, timepoints)
+
+  da <- as_delayed_array(dataset$backend)
+  da <- da[time_ind, voxel_ind, drop = FALSE]
+
+  if (output == "DelayedMatrix") {
+    return(da)
+  }
+
+  voxel_info <- S4Vectors::DataFrame(voxel = voxel_ind)
+  temporal_info <- build_temporal_info_lazy(dataset, time_ind)
 
   new("FmriSeries",
       da,
