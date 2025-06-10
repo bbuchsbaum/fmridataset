@@ -39,3 +39,23 @@ test_that("all_timepoints returns full range", {
   expect_equal(all_timepoints(dset), 1:5)
 })
 
+test_that("resolve_selector errors on unsupported types", {
+  dset <- create_test_dataset()
+  expect_error(
+    resolve_selector(dset, "foo"),
+    "Unsupported selector type"
+  )
+})
+
+test_that("resolve_timepoints validates inputs", {
+  dset <- create_test_dataset()
+  expect_error(
+    resolve_timepoints(dset, c(TRUE, FALSE)),
+    "Logical timepoints length"
+  )
+  expect_error(
+    resolve_timepoints(dset, "foo"),
+    "Unsupported timepoints type"
+  )
+})
+

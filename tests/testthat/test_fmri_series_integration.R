@@ -76,3 +76,23 @@ test_that("tidyverse workflow on fmri_series output", {
   res <- dplyr::filter(tb, voxel == 1) %>% dplyr::summarise(mn = mean(signal))
   expect_equal(res$mn, mean(dset$backend$data_matrix[1:4, 1]))
 })
+
+test_that("subject mapping works with uneven run lengths", {
+  d1 <- fmri_dataset(
+    matrix_backend(matrix(1:6, nrow = 3, ncol = 2), mask = rep(TRUE,2), spatial_dims = c(2,1,1)),
+    TR = 1, run_length = 3
+  )
+  d2 <- fmri_dataset(
+    matrix_backend(matrix(7:10, nrow = 2, ncol = 2), mask = rep(TRUE,2), spatial_dims = c(2,1,1)),
+    TR = 1, run_length = 2
+  )
+  study <- fmri_study_dataset(list(d1, d2), subject_ids = c("s1", "s2"))
+
+  fs <- fmri_series(study, selector = 1:2, timepoints = 1:5)
+  expected <- rbind(
+    d1$backend$data_matrix[1:3, 1:2],
+    d2$backend$data_matrix[1:2, 1:2]
+  )
+  expect_equal(as.matrix(fs), expected)
+  expect_equal(as.character(fs@temporal_info$subject_id), c("s1", "s1", "s1", "s2", "s2"))
+})
