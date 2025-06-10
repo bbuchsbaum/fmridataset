@@ -113,7 +113,7 @@ This project will be executed in two sprints, focusing on building the core infr
 
 *Goal: Implement the foundational, non-user-facing components. At the end of this sprint, the `study_backend` will be functional and return a `DelayedArray`, but the user-friendly wrappers will not yet be in place.*
 
-*   **Ticket S1-T1: Implement `as_delayed_array` Generic and Enhanced Seed Classes**
+*   **Ticket S1-T1: Implement `as_delayed_array` Generic and Enhanced Seed Classes** *(Implemented)*
     *   **Description:** Create the S4 generic `as_delayed_array` with `sparse_ok` parameter and seed classes that extend both `StorageBackendSeed` and vendor-specific seeds.
     *   **Acceptance Criteria:**
         *   `as_delayed_array` method exists for `nifti_backend` and `matrix_backend`.
@@ -122,14 +122,14 @@ This project will be executed in two sprints, focusing on building the core infr
         *   `DelayedArray` operations trigger `read_block` and return correct results.
         *   **Dependency Note:** This ticket must be merged before S1-T2.
 
-*   **Ticket S1-T1.5: Arrow Backend Proof-of-Concept**
+*   **Ticket S1-T1.5: Arrow Backend Proof-of-Concept** *(Implemented)*
     *   **Description:** Create minimal 3×3 Arrow table seed under `experiments/` to validate seed API design.
     *   **Acceptance Criteria:**
         *   Proof-of-concept `ArrowBackendSeed` successfully wraps small Arrow table.
         *   `read_block` method functional with basic subsetting.
         *   Documents any API assumptions that affect main implementation.
 
-*   **Ticket S1-T2: Implement the `study_backend`**
+*   **Ticket S1-T2: Implement the `study_backend`** *(Implemented)*
     *   **Description:** Create `study_backend.R` with constructor including memory guards and all S3 backend methods.
     *   **Acceptance Criteria:**
         *   Constructor validates inputs, includes caching slots, and implements mask validation with warning thresholds.
@@ -137,7 +137,7 @@ This project will be executed in two sprints, focusing on building the core infr
         *   `backend_get_data` calls `as_delayed_array` on children and returns combined `DelayedArray`.
         *   Returned `DelayedArray` has correct total dimensions.
 
-*   **Ticket S1-T3: Comprehensive Unit Tests for `study_backend`**
+*   **Ticket S1-T3: Comprehensive Unit Tests for `study_backend`** *(Implemented)*
     *   **Description:** Write `test_study_backend.R` with enhanced test coverage including edge cases and thread safety.
     *   **Acceptance Criteria:**
         *   Constructor validation tests (mask/dim mismatch).
@@ -151,7 +151,7 @@ This project will be executed in two sprints, focusing on building the core infr
 
 *Goal: Build the user-friendly wrappers, ensure metadata is handled correctly, and produce documentation. At the end of this sprint, the feature will be complete and ready for users.*
 
-*   **Ticket S2-T1: Implement `fmri_study_dataset` Constructor with Memory Management**
+*   **Ticket S2-T1: Implement `fmri_study_dataset` Constructor with Memory Management** *(Implemented)*
     *   **Description:** Create high-level constructor with automatic block size configuration and metadata handling optimizations.
     *   **Acceptance Criteria:**
         *   Constructor creates `fmri_study_dataset` with `study_backend`.
@@ -160,7 +160,7 @@ This project will be executed in two sprints, focusing on building the core infr
         *   Global `DelayedArray` block size set to 64MB default.
         *   `with_rowData()` helper implemented for metadata reattachment.
 
-*   **Ticket S2-T2: Implement `as_tibble.fmri_study_dataset` with Metadata Optimization**
+*   **Ticket S2-T2: Implement `as_tibble.fmri_study_dataset` with Metadata Optimization** *(Implemented)*
     *   **Description:** Create primary data access method with adaptive metadata storage for large datasets.
     *   **Acceptance Criteria:**
         *   Returns `DelayedMatrix` with `materialise = FALSE` (default).
@@ -168,7 +168,7 @@ This project will be executed in two sprints, focusing on building the core infr
         *   Materialized `tibble` when `materialise = TRUE`.
         *   Metadata order matches input dataset order.
 
-*   **Ticket S2-T3: Integration and Performance Tests**
+*   **Ticket S2-T3: Integration and Performance Tests** *(Implemented)*
     *   **Description:** End-to-end workflow tests with performance validation.
     *   **Acceptance Criteria:**
         *   Full workflow test: creation → `as_tibble` → data validation.

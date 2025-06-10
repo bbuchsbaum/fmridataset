@@ -6,6 +6,8 @@
 * Added test coverage reporting with codecov
 * Added code style checking and automatic formatting
 * Added issue and PR templates for better project management
+* Implemented `as_tibble.fmri_study_dataset` with metadata optimization
+* Added integration and performance tests for `fmri_study_dataset` workflow
 
 ## Bug fixes
 
@@ -19,6 +21,7 @@
 * Added comprehensive README with badges and examples
 * Improved package architecture documentation
 * Added codecov configuration for coverage reporting
+* New vignette "From Single-Subject to Study-Level Analysis" with performance guidelines and architectural diagram
 
 ## Internal changes
 

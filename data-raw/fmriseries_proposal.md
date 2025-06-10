@@ -12,10 +12,10 @@ This design provides a single, powerful, and lazy interface for querying voxel d
 
 The `fmri_series()` function will serve as fmridataset's primary data query interface, offering:
 
-- **Non-random access** to spatial and temporal subsets of fMRI data
+- **Random (direct) access** to spatial and temporal subsets of fMRI data
 - **Rich metadata preservation** with spatial and temporal context
 - **DelayedArray integration** for memory-efficient large dataset handling
-- **Multi-level support** for both single-subject and study-level datasets
+- **Single-subject and study-level support** for flexible analysis workflows
 - **Tidy workflow integration** with modern R data science practices
 
 ### **Key Design Principles**
@@ -33,76 +33,109 @@ The `fmri_series()` function will serve as fmridataset's primary data query inte
 ### **Core Function Signature**
 
 ```r
-fmri_series(dataset, selector, timepoints = NULL, ...)
+fmri_series(dataset, selector = NULL, timepoints = NULL, 
+           output = c("FmriSeries", "DelayedMatrix"), 
+           event_window = NULL, ...)
 ```
 
 **Parameters:**
 - **`dataset`**: An `fmri_dataset` or `fmri_study_dataset` object
-- **`selector`**: Spatial selector (voxel indices, coordinates, ROIs, masks)
-- **`timepoints`**: Optional temporal subset (indices, logical vector, event-based)
-- **`...`**: Reserved for future extensions (backend options, return type controls)
+- **`selector`**: Spatial selector (voxel indices, coordinates, ROIs, masks). `NULL` returns all voxels within mask
+- **`timepoints`**: Optional temporal subset (indices, logical vector). `NULL` returns all timepoints
+- **`output`**: Return type - `"FmriSeries"` (default) for rich metadata, `"DelayedMatrix"` for direct array access
+- **`event_window`**: Reserved for future event-based temporal selection (unused in v1)
+- **`...`**: Reserved for backend-specific options
+
+**Key Design Decisions:**
+- **Explicit arguments**: Avoids "ellipsis creep" by exposing commonly-used options as named parameters
+- **NULL as "all"**: `selector = NULL` and `timepoints = NULL` clearly indicate full data access
+- **Future-proof**: `event_window` parameter reserved to avoid breaking changes in v2
 
 ### **The Return Object: `FmriSeries`**
 
 ```r
+# S4 class definition - MUST be defined before any methods use it
 setClass("FmriSeries",
   contains = "DelayedMatrix",  # Inherit DelayedArray functionality
   slots = list(
-    voxel_info = "DataFrame",      # S4Vectors::DataFrame with spatial metadata
-    temporal_info = "DataFrame",   # Temporal metadata per timepoint
+    voxel_info = "DataFrame",      # S4Vectors::DataFrame with spatial metadata (lazy)
+    temporal_info = "DataFrame",   # Temporal metadata per timepoint (lazy)
     selection_info = "list",       # Provenance and selection criteria
     dataset_info = "list"          # Source dataset properties
   )
 )
 ```
 
+**Matrix Orientation (IMMUTABLE DECISION):**
+- **Rows = timepoints, Columns = voxels** (follows neuroim conventions)
+- Consistent with `time × voxels` expectation in neuroimaging
+- All downstream methods and documentation will enforce this orientation
+
 **Benefits:**
 - **DelayedMatrix inheritance**: Direct compatibility with DelayedMatrixStats, BiocParallel
 - **Rich metadata**: Automatic spatial/temporal annotation of results
 - **Provenance tracking**: Selection criteria preserved for reproducibility
 - **Type safety**: S4 validation ensures data integrity
+- **Lazy metadata**: `voxel_info` and `temporal_info` materialized only when accessed
 
 ---
 
 ## **2. Selector Grammar and Examples**
 
-### **Spatial Selection**
+### **Spatial Selection with Optimization**
 
 ```r
-# 1. Index-based selection (within mask)
+# 1. All voxels (optimized fast path)
+series_result <- fmri_series(dset)  # selector = NULL by default
+series_result <- fmri_series(dset, selector = NULL)  # explicit
+
+# 2. Index-based selection (within mask)
 series_result <- fmri_series(dset, selector = c(1000:2000))
 
-# 2. Coordinate-based selection (grid coordinates)
+# 3. Coordinate-based selection (grid coordinates)
 coords <- matrix(c(50, 60, 25,    # x, y, z coordinates
                    51, 60, 25), ncol = 3, byrow = TRUE)
 series_result <- fmri_series(dset, selector = coords)
 
-# 3. ROI-based selection (neuroim2 objects)
+# 4. ROI-based selection (neuroim2 objects)
 roi_vol <- neuroim2::ROIVol(...)
 series_result <- fmri_series(dset, selector = roi_vol)
 
-# 4. Mask-based selection (logical volume)
+# 5. Mask-based selection (logical volume)
 mask <- neuroim2::LogicalNeuroVol(...)
 series_result <- fmri_series(dset, selector = mask)
-
-# 5. All voxels (within dataset mask)
-series_result <- fmri_series(dset, selector = NULL)
 ```
 
-### **Temporal Selection**
+### **Temporal Selection with Helpers**
 
 ```r
-# 6. Timepoint indices
+# 1. All timepoints (explicit helper)
+series_result <- fmri_series(dset, timepoints = all_timepoints(dset))
+series_result <- fmri_series(dset, timepoints = NULL)  # equivalent
+
+# 2. Timepoint indices
 series_result <- fmri_series(dset, selector = roi_mask, timepoints = 1:100)
 
-# 7. Logical selection
+# 3. Logical selection
 valid_timepoints <- !is.na(dset$event_table$condition)
 series_result <- fmri_series(dset, selector = roi_mask, timepoints = valid_timepoints)
 
-# 8. Combined spatiotemporal query
+# 4. Combined spatiotemporal query
 series_result <- fmri_series(dset, 
                             selector = roi_mask,
                             timepoints = c(1:50, 100:150))
+```
+
+### **Output Type Control**
+
+```r
+# Rich metadata object (default)
+rich_result <- fmri_series(dset, selector = roi_mask)
+class(rich_result)  # "FmriSeries"
+
+# Direct DelayedMatrix for advanced users
+matrix_result <- fmri_series(dset, selector = roi_mask, output = "DelayedMatrix")
+class(matrix_result)  # "DelayedMatrix"
 ```
 
 ### **Study-Level Queries**
@@ -143,6 +176,7 @@ fmri_series <- function(x, ...) {
 }
 
 # S4 container - rigorous, Bioconductor-friendly
+# CRITICAL: Define setClass() before any methods use it
 setClass("FmriSeries",
   contains = "DelayedMatrix",
   slots = c(
@@ -154,25 +188,51 @@ setClass("FmriSeries",
 )
 
 # S3 → S4 bridge in the method
-fmri_series.fmri_dataset <- function(x, selector, timepoints = NULL, ...) {
-  vox <- resolve_selector(x, selector)
-  tpts <- resolve_timepoints(x, timepoints) 
+fmri_series.fmri_dataset <- function(x, selector = NULL, timepoints = NULL, 
+                                    output = c("FmriSeries", "DelayedMatrix"),
+                                    event_window = NULL, ...) {
+  output <- match.arg(output)
+  
+  # Fast path for NULL selector (all voxels)
+  if (is.null(selector)) {
+    vox <- seq_len(sum(backend_get_mask(x$backend)))
+  } else {
+    vox <- resolve_selector(x, selector)
+  }
+  
+  # Handle timepoints
+  if (is.null(timepoints)) {
+    tpts <- seq_len(backend_get_dims(x$backend)$time)
+  } else {
+    tpts <- resolve_timepoints(x, timepoints)
+  }
+  
+  # Get DelayedMatrix: rows = timepoints, cols = voxels
   dm <- as_delayed_array(x$backend, rows = tpts, cols = vox)
   
+  # Return based on output type
+  if (output == "DelayedMatrix") {
+    return(dm)
+  }
+  
+  # Build FmriSeries with lazy metadata
   new("FmriSeries",
       dm,
-      voxel_info = build_voxel_info(x, vox),
-      temporal_info = build_temporal_info(x, tpts),
+      voxel_info = build_voxel_info_lazy(x, vox),
+      temporal_info = build_temporal_info_lazy(x, tpts),
       selection_info = list(
         selector = substitute(selector),
         timepoints = substitute(timepoints),
-        timestamp = Sys.time()
+        timestamp = Sys.time(),
+        n_voxels_selected = length(vox),
+        n_timepoints_selected = length(tpts)
       ),
       dataset_info = list(
         dataset_type = class(x)[1],
         backend_type = class(x$backend)[1],
         total_voxels = sum(backend_get_mask(x$backend)),
-        total_timepoints = backend_get_dims(x$backend)$time
+        total_timepoints = backend_get_dims(x$backend)$time,
+        orientation = "timepoints × voxels"
       ))
 }
 ```
@@ -180,25 +240,33 @@ fmri_series.fmri_dataset <- function(x, selector, timepoints = NULL, ...) {
 ### **Key Helper Functions**
 
 ```r
-# Spatial resolution
+# Spatial resolution with fast NULL path
 resolve_selector <- function(dataset, selector) {
-  # Handle NULL, integer indices, coordinates, ROI objects, masks
+  # selector should already be checked for NULL by caller
+  # Handle integer indices, coordinates, ROI objects, masks
   # Return: integer vector of voxel indices within dataset mask
 }
 
-# Temporal resolution  
+# Temporal resolution helper
 resolve_timepoints <- function(dataset, timepoints) {
-  # Handle NULL, integer indices, logical vectors
+  # Handle integer indices, logical vectors
   # Return: integer vector of timepoint indices
 }
 
-# Metadata builders
-build_voxel_info <- function(dataset, voxel_indices) {
-  # Create DataFrame with x, y, z coordinates, atlas labels, etc.
+# Temporal helper for user convenience
+all_timepoints <- function(dataset) {
+  seq_len(backend_get_dims(dataset$backend)$time)
 }
 
-build_temporal_info <- function(dataset, timepoint_indices) {
-  # Create DataFrame with run_id, TR, condition, subject_id (for studies), etc.
+# Lazy metadata builders (materialize only when accessed)
+build_voxel_info_lazy <- function(dataset, voxel_indices) {
+  # Return lightweight object that builds DataFrame on first access
+  # Contains x, y, z coordinates, atlas labels, etc.
+}
+
+build_temporal_info_lazy <- function(dataset, timepoint_indices) {
+  # Return lightweight object that builds DataFrame on first access
+  # Contains run_id, TR, condition, subject_id (for studies), etc.
 }
 ```
 
@@ -212,7 +280,7 @@ build_temporal_info <- function(dataset, timepoint_indices) {
 # Concise display
 show(series_result)
 #> <FmriSeries> 1,247 voxels × 300 timepoints (lazy)
-#> Selector: ROI mask | Backend: h5_backend
+#> Selector: ROI mask | Backend: h5_backend | Orientation: time × voxels
 #> Memory: ~9.5 MB (unrealized)
 
 # Data realization
@@ -250,8 +318,8 @@ BPPARAM <- MulticoreParam(workers = 4)
 results <- bplapply(split_data, analysis_function, BPPARAM = BPPARAM)
 
 # === Machine Learning Workflow ===
-# Features: timepoints × voxels matrix
-X <- t(as.matrix(series_result))  # Transpose for sklearn-style
+# Features: timepoints × voxels matrix (already correct orientation)
+X <- as.matrix(series_result)  # No transpose needed
 y <- series_result@temporal_info$condition
 # Ready for classification/regression...
 ```
@@ -260,17 +328,23 @@ y <- series_result@temporal_info$condition
 
 ## **5. Backward Compatibility and Migration**
 
-### **Smooth Transition Strategy**
+### **Smooth Transition Strategy with Session-Level Warnings**
 
 ```r
-# Alias with deprecation warning
+# Session state for deprecation warnings
+.fmri_series_warned <- FALSE
+
+# Alias with one-time-per-session deprecation warning
 series.fmri_dataset <- function(x, ...) {
-  lifecycle::deprecate_warn(
-    "1.0.0", 
-    "series()", 
-    "fmri_series()",
-    details = "fmri_series() provides richer metadata and better performance."
-  )
+  if (!.fmri_series_warned) {
+    lifecycle::deprecate_warn(
+      "1.0.0", 
+      "series()", 
+      "fmri_series()",
+      details = "fmri_series() provides richer metadata and better performance."
+    )
+    .fmri_series_warned <<- TRUE
+  }
   fmri_series(x, ...)
 }
 ```
@@ -289,26 +363,28 @@ series.fmri_dataset <- function(x, ...) {
 **Goal**: Implement `FmriSeries` class and single-subject `fmri_series()` method
 
 **S1-T1: Define `FmriSeries` S4 Class**
-- Create `R/FmriSeries.R` with class definition
-- Implement `show()` method
+- Create `R/FmriSeries.R` with class definition (FIRST)
+- Implement `show()` method with orientation information
 - Basic validation methods
 - **AC**: Class instantiates correctly, prints expected summary
 
 **S1-T2: Implement Resolver Helpers**  
-- `resolve_selector()` for spatial selection
+- `resolve_selector()` with fast NULL path optimization
 - `resolve_timepoints()` for temporal selection
+- `all_timepoints()` helper function
 - Handle all v1 selector types (indices, coords, ROI objects, NULL)
-- **AC**: All selector types correctly resolve to integer vectors, comprehensive unit tests
+- **AC**: All selector types correctly resolve to integer vectors, NULL fast-path tested, comprehensive unit tests
 
 **S1-T3: Implement `fmri_series.fmri_dataset` Method**
 - Core S3 method orchestrating resolvers and DelayedArray creation
 - Integration with existing `as_delayed_array()` backend methods
-- **AC**: Returns valid `FmriSeries`, correct dimensions, populated metadata
+- Explicit output type handling
+- **AC**: Returns valid `FmriSeries`, correct dimensions, populated metadata, DelayedMatrix output option works
 
 **S1-T4: Implement Core Methods**
 - `as.matrix.FmriSeries()` for data materialization
-- `as_tibble.FmriSeries()` for tidy workflows  
-- **AC**: Methods return correctly formatted data structures
+- `as_tibble.FmriSeries()` for tidy workflows with lazy metadata realization
+- **AC**: Methods return correctly formatted data structures, integration test: `fmri_series() → as_tibble() → dplyr::summarise()`
 
 ### **Sprint 2: Study Integration and Polish (1-2 weeks)**
 
@@ -316,19 +392,20 @@ series.fmri_dataset <- function(x, ...) {
 
 **S2-T1: Study-Level Integration**
 - `fmri_series.fmri_study_dataset()` method
-- Multi-subject metadata handling in `build_temporal_info()`
+- Multi-subject metadata handling in `build_temporal_info_lazy()`
 - **AC**: Study datasets return correctly structured multi-subject results
 
 **S2-T2: Backward Compatibility**
-- `series()` alias with `lifecycle` deprecation warnings
+- `series()` alias with session-level `lifecycle` deprecation warnings
 - Ensure one-time warnings per session
-- **AC**: Alias works correctly, appropriate warnings displayed
+- **AC**: Alias works correctly, appropriate warnings displayed only once per session
 
 **S2-T3: Integration Testing**
 - Cross-backend compatibility tests
 - Multi-subject ordering validation
 - Edge case handling (empty selections, single timepoints, etc.)
-- **AC**: All backends pass integration tests, consistent behavior
+- Tidyverse integration test chain
+- **AC**: All backends pass integration tests, consistent behavior, chained workflow tests pass
 
 **S2-T4: Documentation and Examples**
 - Complete Roxygen documentation
@@ -338,12 +415,21 @@ series.fmri_dataset <- function(x, ...) {
 
 ---
 
-## **7. Performance Considerations**
+## **7. Performance Considerations and Global Options**
 
 ### **Memory Efficiency**
 - **Lazy evaluation**: No data loaded until `as.matrix()` or similar materialization
 - **DelayedArray chunking**: Automatic optimization for large datasets
 - **Backend-specific optimization**: H5 hyperslab selection, memory-mapped NIfTI access
+- **Lazy metadata**: voxel_info and temporal_info materialized only when accessed
+
+### **Global Performance Knobs**
+```r
+# Early exposure of key performance options
+options(fmridataset.block_mb = 64)        # DelayedArray block size
+options(fmridataset.lazy_metadata = TRUE) # Metadata materialization strategy
+options(fmridataset.parallel_backend = "BiocParallel")  # Default parallel backend
+```
 
 ### **Computational Efficiency** 
 - **Minimal overhead**: S3/S4 dispatch cost negligible vs. I/O operations
@@ -364,22 +450,22 @@ series.fmri_dataset <- function(x, ...) {
 # Atlas-based selection
 fmri_series(dset, selector = atlas("AAL", regions = c("Hippocampus_L", "Hippocampus_R")))
 
-# Event-based temporal selection  
-fmri_series(dset, timepoints = event_window("task_onset", pre = 2, post = 10))
+# Event-based temporal selection (using reserved parameter)
+fmri_series(dset, event_window = event_window("task_onset", pre = 2, post = 10))
 
 # Complex spatiotemporal queries
 fmri_series(dset, 
            selector = sphere(center = c(50, 60, 25), radius = 5),
-           timepoints = trials(condition == "high_load"))
+           event_window = trials(condition == "high_load"))
 ```
 
 ### **Return Type Flexibility**
 ```r
-# Direct DelayedArray return for advanced users
-delayed_result <- fmri_series(dset, selector = roi, return_type = "DelayedArray")
-
 # SummarizedExperiment integration
-se_result <- fmri_series(dset, selector = roi, return_type = "SummarizedExperiment")
+se_result <- fmri_series(dset, selector = roi, output = "SummarizedExperiment")
+
+# RaggedExperiment for variable-length runs
+ragged_result <- fmri_series(study_dset, output = "RaggedExperiment")
 ```
 
 ### **Advanced Analysis Integration**
@@ -393,11 +479,16 @@ se_result <- fmri_series(dset, selector = roi, return_type = "SummarizedExperime
 
 This proposal provides a comprehensive, production-ready design for the `fmri_series()` interface that:
 
-1. **Solves the core problem**: Non-random access to fMRI data with rich metadata
+1. **Solves the core problem**: Random access to fMRI data with rich metadata
 2. **Integrates seamlessly**: Works with existing backends and DelayedArray infrastructure  
 3. **Supports modern workflows**: Tidy analysis, Bioconductor ecosystem, machine learning
 4. **Scales appropriately**: From single subjects to large multi-site studies
 5. **Maintains compatibility**: Smooth migration path for existing users
+6. **Future-proofs**: Explicit parameter design prevents breaking changes
+
+**Critical Immutable Decisions:**
+- **Matrix orientation**: timepoints × voxels (rows × columns)
+- **Parameter design**: Explicit `output` and `event_window` parameters (no ellipsis creep)
 
 The two-sprint implementation plan provides a clear path from concept to production, with well-defined acceptance criteria and incremental value delivery.
 
