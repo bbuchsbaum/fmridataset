@@ -55,3 +55,50 @@ setMethod("show", "FmriSeries", function(object) {
   cat(sprintf("Selector: %s | Backend: %s | Orientation: time \u00d7 voxels\n",
               sel_desc, backend))
 })
+
+# As.matrix and as_tibble methods
+#' Materialise an FmriSeries as a standard matrix
+#'
+#' This method realises the underlying DelayedMatrix and
+#' returns an ordinary matrix with timepoints in rows and
+#' voxels in columns.
+#'
+#' @param x An `FmriSeries` object
+#' @param ... Additional arguments (ignored)
+#'
+#' @return A matrix
+#' @export
+as.matrix.FmriSeries <- function(x, ...) {
+  as.matrix(DelayedArray::DelayedArray(x))
+}
+
+#' Convert an FmriSeries to a tidy tibble
+#'
+#' The returned tibble contains one row per voxel/timepoint
+#' combination with metadata columns from `temporal_info`
+#' and `voxel_info` and a `signal` column with the data
+#' values.
+#'
+#' @param x An `FmriSeries` object
+#' @param ... Additional arguments (ignored)
+#'
+#' @return A tibble with signal and metadata columns
+#' @export
+#' @importFrom tibble as_tibble
+as_tibble.FmriSeries <- function(x, ...) {
+  mat <- as.matrix(x)
+  vox_df <- as.data.frame(x@voxel_info)
+  tmp_df <- as.data.frame(x@temporal_info)
+
+  n_time <- nrow(mat)
+  n_vox <- ncol(mat)
+  time_idx <- rep(seq_len(n_time), times = n_vox)
+  voxel_idx <- rep(seq_len(n_vox), each = n_time)
+
+  out <- cbind(
+    tmp_df[time_idx, , drop = FALSE],
+    vox_df[voxel_idx, , drop = FALSE],
+    signal = as.vector(mat)
+  )
+  tibble::as_tibble(out)
+}
