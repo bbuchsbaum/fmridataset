@@ -25,3 +25,20 @@ test_that("fmri_series can return DelayedMatrix", {
   expected <- dset$backend$data_matrix[1:2, 1:2]
   expect_equal(as.matrix(dm), expected)
 })
+
+
+test_that("as.matrix.FmriSeries materialises data", {
+  dset <- create_test_dataset()
+  fs <- fmri_series(dset, selector = 1:4, timepoints = 1:3)
+  expect_type(as.matrix(fs), "double")
+  expect_equal(as.matrix(fs), dset$backend$data_matrix[1:3, 1:4])
+})
+
+test_that("as_tibble.FmriSeries supports dplyr summarise", {
+  dset <- create_test_dataset()
+  fs <- fmri_series(dset, selector = 1:2, timepoints = 1:4)
+  tb <- as_tibble(fs)
+  res <- dplyr::group_by(tb, voxel) %>% dplyr::summarise(mean_signal = mean(signal))
+  expected <- colMeans(dset$backend$data_matrix[1:4, 1:2])
+  expect_equal(res$mean_signal, as.numeric(expected))
+})
