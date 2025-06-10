@@ -168,7 +168,7 @@ This project will be executed in two sprints, focusing on building the core infr
         *   Materialized `tibble` when `materialise = TRUE`.
         *   Metadata order matches input dataset order.
 
-*   **Ticket S2-T3: Integration and Performance Tests**
+*   **Ticket S2-T3: Integration and Performance Tests** *(Implemented)*
     *   **Description:** End-to-end workflow tests with performance validation.
     *   **Acceptance Criteria:**
         *   Full workflow test: creation → `as_tibble` → data validation.
