@@ -71,3 +71,42 @@ Blue components are lazily evaluated; orange nodes represent materialised data.
 - Set the global block size via `options(fmridataset.block_size_mb = 64)` for optimal throughput.
 - After heavy operations, explicitly call `gc()` to free memory.
 - When combining many subjects, consider storing metadata using `AltExp` to reduce memory overhead.
+
+## Querying Time Series with `fmri_series()`
+
+`fmri_series()` provides random access to voxel data while
+preserving metadata. The function works with both single-subject and
+study-level datasets.
+
+```{r series-example}
+# Select voxels 1:10 and the first five timepoints
+fs <- fmri_series(study_ds, selector = 1:10, timepoints = 1:5)
+print(fs)
+
+# Convert to tibble for tidy summaries
+tb <- as_tibble(fs)
+dplyr::group_by(tb, subject_id) %>%
+  dplyr::summarise(mean_signal = mean(signal))
+```
+
+## Benchmarks
+
+Simple benchmarks can highlight the cost of different queries.
+
+```{r benchmark-series}
+if (requireNamespace("bench", quietly = TRUE)) {
+  bench::mark(
+    full = fmri_series(study_ds),
+    small = fmri_series(study_ds, selector = 1:10, timepoints = 1:20),
+    iterations = 5
+  )
+}
+```
+
+## `fmri_series()` Best Practices
+
+- Query only the voxels and timepoints required for your analysis.
+- Keep results as `FmriSeries` objects until you need materialised
+  matrices or tibbles.
+- Adjust `options(fmridataset.block_mb)` for large datasets to tune
+  DelayedArray chunking.
