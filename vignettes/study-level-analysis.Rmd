@@ -1,0 +1,73 @@
+---
+title: "From Single-Subject to Study-Level Analysis"
+author: "fmridataset Team"
+date: "`r Sys.Date()`"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{From Single-Subject to Study-Level Analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+# Overview
+
+This vignette demonstrates how to scale analyses from a single subject to an entire study using the
+`fmri_study_dataset` abstraction. It highlights memory management strategies and points out when data
+is materialised into RAM.
+
+# Creating a Study-Level Dataset
+
+```{r create-study}
+# Assume `ds_list` is a list of fmri_dataset objects
+study_ds <- fmri_study_dataset(ds_list, subject_ids = c("sub-01", "sub-02"))
+```
+
+The returned object lazily combines the subject backends. Most operations return `DelayedArray` objects
+that remain on disk until explicitly converted.
+
+# Deliberate Materialisation
+
+```{r materialise-warning}
+# Materialising a small subset triggers a warning because data is loaded
+sub_mat <- as.matrix(study_ds[1:10, 1:5])
+```
+
+The call above converts the subset to a base matrix, causing realisation of the underlying `DelayedArray`.
+Users should only do this for small slices.
+
+# Architecture
+
+```{mermaid}
+graph TD
+    A[[fmri_study_dataset]]:::lazy --> B((study_backend)):::lazy
+    B --> C((DelayedArray)):::lazy
+    C --> D[[StorageBackendSeed]]:::lazy
+    D --> E((NIfTI files)):::mat
+    classDef lazy fill:#CDE5FD,color:#000
+    classDef mat fill:#FFD8B1,color:#000
+```
+
+Blue components are lazily evaluated; orange nodes represent materialised data.
+
+# Performance Guidelines
+
+- Keep `DelayedArray` objects lazy whenever possible.
+- Use `data_chunks()` for large jobs and parallel processing.
+- Monitor memory when calling `as.matrix()` or `as.array()` which force materialisation.
+
+# Best Practices
+
+- Set the global block size via `options(fmridataset.block_size_mb = 64)` for optimal throughput.
+- After heavy operations, explicitly call `gc()` to free memory.
+- When combining many subjects, consider storing metadata using `AltExp` to reduce memory overhead.
