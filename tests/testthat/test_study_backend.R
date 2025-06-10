@@ -37,3 +37,25 @@ test_that("empty backend allowed", {
   expect_equal(backend_get_dims(sb)$time, 0)
 })
 
+test_that("strict='intersect' validates mask overlap", {
+  b1 <- matrix_backend(matrix(1:10, nrow = 5, ncol = 2),
+                       mask = rep(TRUE, 2), spatial_dims = c(2,1,1))
+  b2 <- matrix_backend(matrix(11:20, nrow = 5, ncol = 2),
+                       mask = c(TRUE, FALSE), spatial_dims = c(2,1,1))
+
+  expect_error(
+    study_backend(list(b1, b2), strict = "intersect"),
+    "mask overlap <95%"
+  )
+
+  big_mask1 <- rep(TRUE, 100)
+  big_mask2 <- c(rep(TRUE, 96), rep(FALSE, 4))
+  bb1 <- matrix_backend(matrix(1:200, nrow = 2, ncol = 100),
+                        mask = big_mask1, spatial_dims = c(10,10,1))
+  bb2 <- matrix_backend(matrix(201:400, nrow = 2, ncol = 100),
+                        mask = big_mask2, spatial_dims = c(10,10,1))
+
+  sb <- study_backend(list(bb1, bb2), strict = "intersect")
+  expect_equal(backend_get_mask(sb), big_mask1 & big_mask2)
+})
+
