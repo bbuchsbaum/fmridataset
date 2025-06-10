@@ -160,7 +160,7 @@ This project will be executed in two sprints, focusing on building the core infr
         *   Global `DelayedArray` block size set to 64MB default.
         *   `with_rowData()` helper implemented for metadata reattachment.
 
-*   **Ticket S2-T2: Implement `as_tibble.fmri_study_dataset` with Metadata Optimization**
+*   **Ticket S2-T2: Implement `as_tibble.fmri_study_dataset` with Metadata Optimization** *(Implemented)*
     *   **Description:** Create primary data access method with adaptive metadata storage for large datasets.
     *   **Acceptance Criteria:**
         *   Returns `DelayedMatrix` with `materialise = FALSE` (default).
