@@ -47,7 +47,7 @@ get_data_matrix.matrix_dataset <- function(x, ...) {
 get_data_matrix.fmri_mem_dataset <- function(x, ...) {
   bvec <- get_data(x)
   mask <- get_mask(x)
-  series(bvec, which(mask != 0))
+  neuroim2::series(bvec, which(mask != 0))
 }
 
 
@@ -60,7 +60,7 @@ get_data_matrix.fmri_file_dataset <- function(x, ...) {
     # Legacy path
     bvec <- get_data(x)
     mask <- get_mask(x)
-    series(bvec, which(mask != 0))
+    neuroim2::series(bvec, which(mask != 0))
   }
 }
 
