@@ -27,6 +27,7 @@ Imports:
     purrr,
     tibble,
     DelayedArray,
+    S4Vectors,
     utils
 Suggests:
     bench,
