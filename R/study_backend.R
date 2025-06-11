@@ -119,7 +119,7 @@ backend_get_mask.study_backend <- function(backend) {
 #' @export
 backend_get_data.study_backend <- function(backend, rows = NULL, cols = NULL) {
   arrays <- lapply(backend$backends, as_delayed_array)
-  da <- do.call(DelayedArray::DelayedAbind, c(arrays, list(along = 1)))
+  da <- do.call(DelayedArray::arbind, arrays)
   if (!is.null(rows)) {
     da <- da[rows, , drop = FALSE]
   }
