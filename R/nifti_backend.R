@@ -227,15 +227,12 @@ backend_get_mask.nifti_backend <- function(backend) {
         )
       }
     )
-    backend$mask <- mask_vol
   } else {
     mask_vol <- backend$mask_source
   }
 
   # Convert to logical vector
   mask_vec <- as.logical(as.vector(mask_vol))
-  backend$mask_vec <- mask_vec
-
   # Validate mask
   if (any(is.na(mask_vec))) {
     stop_fmridataset(
@@ -252,6 +249,9 @@ backend_get_mask.nifti_backend <- function(backend) {
       parameter = "mask"
     )
   }
+
+  backend$mask <- mask_vol
+  backend$mask_vec <- mask_vec
 
   backend$mask_vec
 }
