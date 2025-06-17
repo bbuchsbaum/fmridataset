@@ -9,7 +9,7 @@ read_fmri_config(file_name, base_path = NULL)
 \arguments{
 \item{file_name}{name of configuration file}
 
-\item{base_path}{the file path to be prepended to relative file names}
+\item{base_path}{Base directory for relative file names. Absolute paths are used as-is.}
 }
 \value{
 a \code{fmri_config} instance

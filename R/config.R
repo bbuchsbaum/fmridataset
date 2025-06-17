@@ -55,7 +55,11 @@ read_fmri_config <- function(file_name, base_path = NULL) {
     env$nuisance <- NULL
   }
 
-  dname <- file.path(env$base_path, env$event_table)
+  dname <- ifelse(
+    is_absolute_path(env$event_table),
+    env$event_table,
+    file.path(env$base_path, env$event_table)
+  )
 
   assert_that(file.exists(dname))
   env$design <- suppressMessages(tibble::as_tibble(read.table(dname, header = TRUE), .name_repair = "check_unique"))

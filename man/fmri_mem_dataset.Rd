@@ -25,7 +25,7 @@ fmri_mem_dataset(
 
 \item{event_table}{An optional data frame containing event information. Default is an empty data frame.}
 
-\item{base_path}{An optional base path for the dataset. Default is "." (current directory).}
+\item{base_path}{Base directory for relative file names. Absolute paths are used as-is.}
 
 \item{censor}{An optional numeric vector specifying which time points to censor. Default is NULL.}
 }
