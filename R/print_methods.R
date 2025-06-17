@@ -1,7 +1,7 @@
 #' @importFrom utils head tail
 #' @export
 #' @rdname print
-print.fmri_dataset <- function(x, ...) {
+print.fmri_dataset <- function(x, full = FALSE, ...) {
   # Header
   cat("\n=== fMRI Dataset ===\n")
 
@@ -11,12 +11,15 @@ print.fmri_dataset <- function(x, ...) {
   cat("  - Runs:", x$nruns, "\n")
 
   # Data source info
-  print_data_source_info(x)
+  print_data_source_info(x, full = full)
 
-  # Mask info
-  mask <- get_mask(x)
-  cat("  - Voxels in mask:", sum(mask > 0), "\n")
-  cat("  - Mask dimensions:", paste(dim(mask), collapse = " x "), "\n")
+  if (full) {
+    mask <- get_mask(x)
+    cat("  - Voxels in mask:", sum(mask > 0), "\n")
+    cat("  - Mask dimensions:", paste(dim(mask), collapse = " x "), "\n")
+  } else {
+    cat("  - Voxels in mask: (lazy)\n")
+  }
 
   # Sampling frame info
   cat("\n** Temporal Structure:\n")
@@ -39,6 +42,12 @@ print.fmri_dataset <- function(x, ...) {
   }
 
   cat("\n")
+}
+
+#' @export
+#' @rdname print
+summary.fmri_dataset <- function(object, ...) {
+  print.fmri_dataset(object, full = FALSE, ...)
 }
 
 #' @export
@@ -130,7 +139,7 @@ print.data_chunk <- function(x, ...) {
 #' Helper function to print data source information
 #' @keywords internal
 #' @noRd
-print_data_source_info <- function(x) {
+print_data_source_info <- function(x, full = FALSE) {
   if (inherits(x, "matrix_dataset")) {
     cat("  - Matrix:", nrow(x$datamat), "x", ncol(x$datamat), "(timepoints x voxels)\n")
   } else if (inherits(x, "fmri_mem_dataset")) {
@@ -141,8 +150,13 @@ print_data_source_info <- function(x) {
       # New backend-based dataset
       cat("  - Backend:", class(x$backend)[1], "\n")
       dims <- backend_get_dims(x$backend)
+      if (full) {
+        vox <- sum(backend_get_mask(x$backend))
+      } else {
+        vox <- "?"
+      }
       cat(
-        "  - Data dimensions:", dims$time, "x", sum(backend_get_mask(x$backend)),
+        "  - Data dimensions:", dims$time, "x", vox,
         "(timepoints x voxels)\n"
       )
     } else {
