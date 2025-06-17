@@ -91,17 +91,17 @@ h5_backend <- function(source, mask_source,
     )
   }
 
-  backend <- list(
-    source = source,
-    mask_source = mask_source,
-    mask_dataset = mask_dataset,
-    data_dataset = data_dataset,
-    preload = preload,
-    h5_objects = NULL,
-    mask = NULL,
-    dims = NULL,
-    metadata = NULL
-  )
+  backend <- new.env(parent = emptyenv())
+  backend$source <- source
+  backend$mask_source <- mask_source
+  backend$mask_dataset <- mask_dataset
+  backend$data_dataset <- data_dataset
+  backend$preload <- preload
+  backend$h5_objects <- NULL
+  backend$mask <- NULL
+  backend$mask_vec <- NULL
+  backend$dims <- NULL
+  backend$metadata <- NULL
 
   class(backend) <- c("h5_backend", "storage_backend")
   backend
@@ -146,7 +146,7 @@ backend_open.h5_backend <- function(backend) {
             neuroim2::NeuroVol(mask_array, space = space(backend$h5_objects[[1]]))
           } else {
             # Load as regular volume file
-            neuroim2::read_vol(backend$mask_source)
+            suppressWarnings(neuroim2::read_vol(backend$mask_source))
           }
         },
         error = function(e) {
@@ -223,7 +223,8 @@ backend_get_dims.h5_backend <- function(backend) {
           d[4]
         }
 
-        list(spatial = d[1:3], time = total_time)
+        backend$dims <- list(spatial = d[1:3], time = total_time)
+        backend$dims
       },
       error = function(e) {
         stop_fmridataset(
@@ -244,17 +245,20 @@ backend_get_dims.h5_backend <- function(backend) {
       d[4]
     }
 
-    list(spatial = d[1:3], time = total_time)
+    backend$dims <- list(spatial = d[1:3], time = total_time)
+    backend$dims
   }
 }
 
 #' @export
 backend_get_mask.h5_backend <- function(backend) {
+  if (!is.null(backend$mask_vec)) {
+    return(backend$mask_vec)
+  }
+
   if (!is.null(backend$mask)) {
-    # Already loaded
     mask_vol <- backend$mask
   } else if (is.character(backend$mask_source)) {
-    # Load from file
     mask_vol <- tryCatch(
       {
         if (endsWith(tolower(backend$mask_source), ".h5")) {
@@ -275,7 +279,7 @@ backend_get_mask.h5_backend <- function(backend) {
           }
         } else {
           # Load as regular volume file
-          neuroim2::read_vol(backend$mask_source)
+          suppressWarnings(neuroim2::read_vol(backend$mask_source))
         }
       },
       error = function(e) {
@@ -294,6 +298,8 @@ backend_get_mask.h5_backend <- function(backend) {
 
   # Convert to logical vector
   mask_vec <- as.logical(as.vector(mask_vol))
+  backend$mask <- mask_vol
+  backend$mask_vec <- mask_vec
 
   # Validate mask
   if (any(is.na(mask_vec))) {
@@ -312,7 +318,7 @@ backend_get_mask.h5_backend <- function(backend) {
     )
   }
 
-  mask_vec
+  backend$mask_vec
 }
 
 #' @export

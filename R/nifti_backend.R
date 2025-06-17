@@ -80,16 +80,16 @@ nifti_backend <- function(source, mask_source, preload = FALSE,
     )
   }
 
-  backend <- list(
-    source = source,
-    mask_source = mask_source,
-    preload = preload,
-    mode = mode,
-    data = NULL,
-    mask = NULL,
-    dims = NULL,
-    metadata = NULL
-  )
+  backend <- new.env(parent = emptyenv())
+  backend$source <- source
+  backend$mask_source <- mask_source
+  backend$preload <- preload
+  backend$mode <- mode
+  backend$data <- NULL
+  backend$mask <- NULL
+  backend$mask_vec <- NULL
+  backend$dims <- NULL
+  backend$metadata <- NULL
 
   class(backend) <- c("nifti_backend", "storage_backend")
   backend
@@ -101,7 +101,7 @@ backend_open.nifti_backend <- function(backend) {
     # Load mask first
     backend$mask <- if (is.character(backend$mask_source)) {
       tryCatch(
-        neuroim2::read_vol(backend$mask_source),
+        suppressWarnings(neuroim2::read_vol(backend$mask_source)),
         error = function(e) {
           stop_fmridataset(
             fmridataset_error_backend_io,
@@ -118,7 +118,7 @@ backend_open.nifti_backend <- function(backend) {
     # Load data
     backend$data <- if (is.character(backend$source)) {
       tryCatch(
-        neuroim2::read_vec(backend$source, mask = backend$mask, mode = backend$mode),
+        suppressWarnings(neuroim2::read_vec(backend$source, mask = backend$mask, mode = backend$mode)),
         error = function(e) {
           stop_fmridataset(
             fmridataset_error_backend_io,
@@ -168,19 +168,20 @@ backend_get_dims.nifti_backend <- function(backend) {
     # Read header only - neuroim2 doesn't support header_only, so read minimal data
     tryCatch(
       {
-        vec <- neuroim2::read_vec(backend$source[1])
+        vec <- suppressWarnings(neuroim2::read_vec(backend$source[1]))
         d <- dim(vec)
         # Sum time dimension across all files
         total_time <- if (length(backend$source) > 1) {
           sum(sapply(backend$source, function(f) {
-            v <- neuroim2::read_vec(f)
+            v <- suppressWarnings(neuroim2::read_vec(f))
             dim(v)[4]
           }))
         } else {
           d[4]
         }
 
-        list(spatial = d[1:3], time = total_time)
+        backend$dims <- list(spatial = d[1:3], time = total_time)
+        backend$dims
       },
       error = function(e) {
         stop_fmridataset(
@@ -201,19 +202,22 @@ backend_get_dims.nifti_backend <- function(backend) {
       d[4]
     }
 
-    list(spatial = d[1:3], time = total_time)
+    backend$dims <- list(spatial = d[1:3], time = total_time)
+    backend$dims
   }
 }
 
 #' @export
 backend_get_mask.nifti_backend <- function(backend) {
+  if (!is.null(backend$mask_vec)) {
+    return(backend$mask_vec)
+  }
+
   if (!is.null(backend$mask)) {
-    # Already loaded
     mask_vol <- backend$mask
   } else if (is.character(backend$mask_source)) {
-    # Load from file
     mask_vol <- tryCatch(
-      neuroim2::read_vol(backend$mask_source),
+      suppressWarnings(neuroim2::read_vol(backend$mask_source)),
       error = function(e) {
         stop_fmridataset(
           fmridataset_error_backend_io,
@@ -223,13 +227,14 @@ backend_get_mask.nifti_backend <- function(backend) {
         )
       }
     )
+    backend$mask <- mask_vol
   } else {
-    # In-memory mask
     mask_vol <- backend$mask_source
   }
 
   # Convert to logical vector
   mask_vec <- as.logical(as.vector(mask_vol))
+  backend$mask_vec <- mask_vec
 
   # Validate mask
   if (any(is.na(mask_vec))) {
@@ -248,7 +253,7 @@ backend_get_mask.nifti_backend <- function(backend) {
     )
   }
 
-  mask_vec
+  backend$mask_vec
 }
 
 #' @export
@@ -258,15 +263,17 @@ backend_get_data.nifti_backend <- function(backend, rows = NULL, cols = NULL) {
     vec <- backend$data
   } else {
     # Load data on demand
-    mask <- if (is.character(backend$mask_source)) {
-      neuroim2::read_vol(backend$mask_source)
+    mask <- if (!is.null(backend$mask)) {
+      backend$mask
+    } else if (is.character(backend$mask_source)) {
+      suppressWarnings(neuroim2::read_vol(backend$mask_source))
     } else {
       backend$mask_source
     }
 
     vec <- if (is.character(backend$source)) {
       tryCatch(
-        neuroim2::read_vec(backend$source, mask = mask, mode = backend$mode),
+        suppressWarnings(neuroim2::read_vec(backend$source, mask = mask, mode = backend$mode)),
         error = function(e) {
           stop_fmridataset(
             fmridataset_error_backend_io,
@@ -313,7 +320,7 @@ backend_get_metadata.nifti_backend <- function(backend) {
   # Extract metadata from first source
   if (is.character(backend$source)) {
     vec <- tryCatch(
-      neuroim2::read_vec(backend$source[1]),
+      suppressWarnings(neuroim2::read_vec(backend$source[1])),
       error = function(e) {
         stop_fmridataset(
           fmridataset_error_backend_io,
