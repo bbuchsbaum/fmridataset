@@ -53,7 +53,7 @@ matrix_dataset <- function(datamat, TR, run_length, event_table = data.frame()) 
 #' @param TR Repetition time (TR) of the fMRI acquisition.
 #' @param run_length A numeric vector specifying the length of each run in the dataset. Default is the length of the scans.
 #' @param event_table An optional data frame containing event information. Default is an empty data frame.
-#' @param base_path An optional base path for the dataset. Default is "." (current directory).
+#' @param base_path Base directory for relative file names. Absolute paths are used as-is.
 #' @param censor An optional numeric vector specifying which time points to censor. Default is NULL.
 #'
 #' @return An fMRI memory dataset object of class c("fmri_mem_dataset", "volumetric_dataset", "fmri_dataset", "list").
@@ -180,7 +180,7 @@ latent_dataset <- function(lvec, TR, run_length, event_table = data.frame()) {
 #' @param TR The repetition time in seconds of the scan-to-scan interval.
 #' @param run_length A vector of one or more integers indicating the number of scans in each run.
 #' @param event_table A data.frame containing the event onsets and experimental variables. Default is an empty data.frame.
-#' @param base_path The file path to be prepended to relative file names. Default is "." (current directory).
+#' @param base_path Base directory for relative file names. Absolute paths are used as-is.
 #' @param censor A binary vector indicating which scans to remove. Default is NULL.
 #' @param preload Read LatentNeuroVec objects eagerly rather than on first access. Default is FALSE.
 #'
@@ -308,7 +308,7 @@ fmri_latent_dataset <- function(latent_files, mask_source = NULL, TR,
 #' @param TR The repetition time in seconds of the scan-to-scan interval.
 #' @param run_length A vector of one or more integers indicating the number of scans in each run.
 #' @param event_table A data.frame containing the event onsets and experimental variables. Default is an empty data.frame.
-#' @param base_path The file path to be prepended to relative file names. Default is "." (current directory).
+#' @param base_path Base directory for relative file names. Absolute paths are used as-is.
 #' @param censor A binary vector indicating which scans to remove. Default is NULL.
 #' @param preload Read image scans eagerly rather than on first access. Default is FALSE.
 #' @param mode The type of storage mode ('normal', 'bigvec', 'mmap', filebacked'). Default is 'normal'.
@@ -358,8 +358,16 @@ fmri_dataset <- function(scans, mask = NULL, TR,
     assert_that(is.character(mask), msg = "'mask' should be the file name of the binary mask file")
     mode <- match.arg(mode)
 
-    maskfile <- paste0(base_path, "/", mask)
-    scan_files <- paste0(base_path, "/", scans)
+    maskfile <- ifelse(
+      is_absolute_path(mask),
+      mask,
+      file.path(base_path, mask)
+    )
+    scan_files <- ifelse(
+      is_absolute_path(scans),
+      scans,
+      file.path(base_path, scans)
+    )
 
     backend <- nifti_backend(
       source = scan_files,
@@ -412,7 +420,7 @@ fmri_dataset <- function(scans, mask = NULL, TR,
 #' @param TR The repetition time in seconds of the scan-to-scan interval.
 #' @param run_length A vector of one or more integers indicating the number of scans in each run.
 #' @param event_table A data.frame containing the event onsets and experimental variables. Default is an empty data.frame.
-#' @param base_path The file path to be prepended to relative file names. Default is "." (current directory).
+#' @param base_path Base directory for relative file names. Absolute paths are used as-is.
 #' @param censor A binary vector indicating which scans to remove. Default is NULL.
 #' @param preload Read H5NeuroVec objects eagerly rather than on first access. Default is FALSE.
 #' @param mask_dataset Character string specifying the dataset path within H5 file for mask (default: "data/elements").
@@ -458,14 +466,16 @@ fmri_h5_dataset <- function(h5_files, mask_source, TR,
                             mask_dataset = "data/elements",
                             data_dataset = "data") {
   # Prepare file paths
-  h5_file_paths <- if (base_path != ".") {
-    paste0(base_path, "/", h5_files)
-  } else {
-    h5_files
-  }
+  h5_file_paths <- ifelse(
+    is_absolute_path(h5_files),
+    h5_files,
+    file.path(base_path, h5_files)
+  )
 
-  mask_file_path <- if (is.character(mask_source) && base_path != ".") {
-    paste0(base_path, "/", mask_source)
+  mask_file_path <- if (is.character(mask_source)) {
+    ifelse(is_absolute_path(mask_source),
+           mask_source,
+           file.path(base_path, mask_source))
   } else {
     mask_source
   }

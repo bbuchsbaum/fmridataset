@@ -353,6 +353,34 @@ test_that("h5_backend handles base_path correctly", {
   )
 })
 
+test_that("h5_backend ignores base_path for absolute paths", {
+  skip_if_not_installed("fmristore")
+
+  h5_backend_calls <- list()
+  with_mocked_bindings(
+    h5_backend = function(...) {
+      h5_backend_calls <<- append(h5_backend_calls, list(list(...)))
+      structure(list(), class = c("h5_backend", "storage_backend"))
+    },
+    validate_backend = function(backend) TRUE,
+    backend_open = function(backend) backend,
+    backend_get_dims = function(backend) list(spatial = c(10,10,5), time = 50),
+    {
+      dataset <- fmri_h5_dataset(
+        h5_files = "/abs/scan.h5",
+        mask_source = "/abs/mask.h5",
+        TR = 2,
+        run_length = 50,
+        base_path = "/ignored"
+      )
+
+      call_args <- h5_backend_calls[[1]]
+      expect_equal(call_args$source, "/abs/scan.h5")
+      expect_equal(call_args$mask_source, "/abs/mask.h5")
+    }
+  )
+})
+
 test_that("h5_backend error handling works correctly", {
   skip_if_not_installed("fmristore")
 

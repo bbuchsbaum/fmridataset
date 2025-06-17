@@ -31,6 +31,38 @@ test_that("fmri_dataset prepends base_path", {
   unlink(c(scan_file, mask_file))
 })
 
+test_that("fmri_dataset leaves absolute paths unchanged", {
+  temp_dir <- tempdir()
+  scan_file <- file.path(temp_dir, "abs_scan.nii")
+  mask_file <- file.path(temp_dir, "abs_mask.nii")
+  file.create(scan_file)
+  file.create(mask_file)
+
+  with_mocked_bindings(
+    nifti_backend = function(source, mask_source, preload = FALSE, mode = "normal", ...) {
+      structure(list(source = source, mask_source = mask_source),
+                class = c("nifti_backend", "storage_backend"))
+    },
+    validate_backend = function(backend) TRUE,
+    backend_open = function(backend) backend,
+    backend_get_dims = function(backend) list(spatial = c(1,1,1), time = 10),
+    .package = "fmridataset",
+    {
+      dset <- fmri_dataset(
+        scans = scan_file,
+        mask = mask_file,
+        TR = 1,
+        run_length = 10,
+        base_path = temp_dir
+      )
+      expect_equal(dset$backend$source, scan_file)
+      expect_equal(dset$backend$mask_source, mask_file)
+    }
+  )
+
+  unlink(c(scan_file, mask_file))
+})
+
 
 test_that("study_backend rejects unknown strict setting", {
   b <- matrix_backend(matrix(1:10, nrow = 5, ncol = 2), spatial_dims = c(2,1,1))

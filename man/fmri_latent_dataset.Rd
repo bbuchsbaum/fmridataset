@@ -28,7 +28,7 @@ the first LatentNeuroVec object.}
 
 \item{event_table}{A data.frame containing the event onsets and experimental variables. Default is an empty data.frame.}
 
-\item{base_path}{The file path to be prepended to relative file names. Default is "." (current directory).}
+\item{base_path}{Base directory for relative file names. Absolute paths are used as-is.}
 
 \item{censor}{A binary vector indicating which scans to remove. Default is NULL.}
 

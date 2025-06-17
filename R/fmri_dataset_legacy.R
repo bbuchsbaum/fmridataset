@@ -27,8 +27,8 @@ fmri_dataset_legacy <- function(scans, mask, TR,
 
   frame <- fmrihrf::sampling_frame(blocklens = run_length, TR = TR)
 
-  maskfile <- paste0(base_path, "/", mask)
-  scans <- paste0(base_path, "/", scans)
+  maskfile <- ifelse(is_absolute_path(mask), mask, file.path(base_path, mask))
+  scans <- ifelse(is_absolute_path(scans), scans, file.path(base_path, scans))
 
   maskvol <- if (preload) {
     assert_that(file.exists(maskfile))
