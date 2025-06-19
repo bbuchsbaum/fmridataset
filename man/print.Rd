@@ -2,13 +2,16 @@
 % Please edit documentation in R/print_methods.R
 \name{print.fmri_dataset}
 \alias{print.fmri_dataset}
+\alias{summary.fmri_dataset}
 \alias{print.latent_dataset}
 \alias{print.chunkiter}
 \alias{print.data_chunk}
 \alias{print.matrix_dataset}
 \title{Pretty Print a Chunk Iterator}
 \usage{
-\method{print}{fmri_dataset}(x, ...)
+\method{print}{fmri_dataset}(x, full = FALSE, ...)
+
+\method{summary}{fmri_dataset}(object, ...)
 
 \method{print}{latent_dataset}(x, ...)
 

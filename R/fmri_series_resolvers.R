@@ -16,6 +16,12 @@ NULL
 #' @keywords internal
 #' @export
 resolve_selector <- function(dataset, selector) {
+  # Handle series_selector objects
+  if (inherits(selector, "series_selector")) {
+    return(resolve_indices(selector, dataset))
+  }
+  
+  # Legacy selector handling for backward compatibility
   if (is.null(selector)) {
     mask_vec <- backend_get_mask(dataset$backend)
     return(seq_len(sum(mask_vec)))

@@ -172,6 +172,15 @@ get_run_duration <- function(x, ...) {
   UseMethod("get_run_duration")
 }
 
+#' Resolve indices from series selector
+#' @param selector Series selector object
+#' @param dataset Dataset object for context
+#' @param ... Additional arguments
+#' @export
+resolve_indices <- function(selector, dataset, ...) {
+  UseMethod("resolve_indices")
+}
+
 # ========================================================================
 # Documentation
 # ========================================================================
@@ -184,6 +193,7 @@ get_run_duration <- function(x, ...) {
 # - conversions.R implements as.matrix_dataset* methods
 # - dataset_constructors.R provides the objects these generics operate on
 # - print_methods.R provides specialized display methods
+# - series_selector.R implements resolve_indices* methods
 #
 # All original fmrireg/fmridataset functionality is preserved while
 # improving code organization and maintainability.

@@ -11,6 +11,7 @@
 #' - neuroim2 NeuroVec objects
 #'
 #' @name nifti-backend
+#' @importFrom neuroim2 read_header
 #' @keywords internal
 NULL
 
@@ -165,28 +166,31 @@ backend_get_dims.nifti_backend <- function(backend) {
 
   # Get dimensions without loading full data
   if (is.character(backend$source)) {
-    # Read header only - neuroim2 doesn't support header_only, so read minimal data
+    # Use read_header for efficient dimension extraction
     tryCatch(
       {
-        vec <- suppressWarnings(neuroim2::read_vec(backend$source[1]))
-        d <- dim(vec)
+        # Read header from first file to get spatial dimensions
+        header_info <- neuroim2::read_header(backend$source[1])
+        header_dims <- dim(header_info)
+        spatial_dims <- header_dims[1:3]
+        
         # Sum time dimension across all files
         total_time <- if (length(backend$source) > 1) {
           sum(sapply(backend$source, function(f) {
-            v <- suppressWarnings(neuroim2::read_vec(f))
-            dim(v)[4]
+            h <- neuroim2::read_header(f)
+            dim(h)[4]
           }))
         } else {
-          d[4]
+          header_dims[4]
         }
 
-        backend$dims <- list(spatial = d[1:3], time = total_time)
+        backend$dims <- list(spatial = spatial_dims, time = as.integer(total_time))
         backend$dims
       },
       error = function(e) {
         stop_fmridataset(
           fmridataset_error_backend_io,
-          message = sprintf("Failed to read dimensions: %s", e$message),
+          message = sprintf("Failed to read dimensions from header: %s", e$message),
           file = backend$source[1],
           operation = "read_header"
         )
@@ -320,28 +324,49 @@ backend_get_metadata.nifti_backend <- function(backend) {
 
   # Extract metadata from first source
   if (is.character(backend$source)) {
-    vec <- tryCatch(
-      suppressWarnings(neuroim2::read_vec(backend$source[1])),
+    # Use read_header for efficient metadata extraction
+    header_info <- tryCatch(
+      neuroim2::read_header(backend$source[1]),
       error = function(e) {
         stop_fmridataset(
           fmridataset_error_backend_io,
-          message = sprintf("Failed to read metadata: %s", e$message),
+          message = sprintf("Failed to read metadata from header: %s", e$message),
           file = backend$source[1],
           operation = "read_header"
         )
       }
     )
+    
+    # Extract key metadata from header
+    # Note: header_info is a NIFTIMetaInfo object
+    # We need to construct a NeuroSpace object to get the transformation matrix
+    neurospace <- neuroim2::NeuroSpace(
+      dim = header_info@dims[1:3],
+      spacing = header_info@spacing[1:3],
+      origin = header_info@origin[1:3],
+      axes = header_info@spatial_axes
+    )
+    
+    metadata <- list(
+      affine = neuroim2::trans(neurospace),
+      voxel_dims = header_info@spacing,
+      space = neurospace,
+      origin = header_info@origin,
+      dims = dim(header_info)  # Include full dimensions
+    )
   } else {
+    # In-memory objects
     vec <- if (is.list(backend$source)) backend$source[[1]] else backend$source
+    
+    # Extract key metadata from in-memory object
+    metadata <- list(
+      affine = neuroim2::trans(vec),
+      voxel_dims = neuroim2::spacing(vec),
+      space = neuroim2::space(vec),
+      origin = neuroim2::origin(vec),
+      dims = dim(vec)
+    )
   }
-
-  # Extract key metadata
-  metadata <- list(
-    affine = neuroim2::trans(vec),
-    voxel_dims = neuroim2::spacing(vec),
-    space = neuroim2::space(vec),
-    origin = neuroim2::origin(vec)
-  )
 
   # Cache for future use
   backend$metadata <- metadata

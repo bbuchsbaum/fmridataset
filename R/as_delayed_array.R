@@ -13,6 +13,8 @@
 #'   da <- as_delayed_array(b)
 #'   dim(da)
 #' }
+#' @importFrom DelayedArray extract_array DelayedArray
+#' @importFrom methods setClass setMethod setGeneric
 #' @export
 setGeneric("as_delayed_array", function(backend, sparse_ok = FALSE)
     standardGeneric("as_delayed_array"))

@@ -8,14 +8,15 @@
 }
 \arguments{
 \item{x}{An \code{FmriSeries} object}
-\item{...}{Ignored}
+
+\item{...}{Additional arguments (ignored)}
 }
-\value{A tibble with one row per voxel-timepoint pair.}
-\description{Coerces the series to a tibble with signal and metadata columns.}
-\examples{
-mat <- matrix(rnorm(20), nrow = 5)
-backend <- matrix_backend(mat, mask = rep(TRUE, 4), spatial_dims = c(2,2,1))
-ds <- fmri_dataset(backend, TR = 1, run_length = 5)
-fs <- fmri_series(ds, selector = 1:2, timepoints = 1:5)
-head(as_tibble(fs))
+\value{
+A tibble with signal and metadata columns
+}
+\description{
+The returned tibble contains one row per voxel/timepoint
+combination with metadata columns from \code{temporal_info}
+and \code{voxel_info} and a \code{signal} column with the data
+values.
 }

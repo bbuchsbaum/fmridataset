@@ -8,14 +8,14 @@
 }
 \arguments{
 \item{x}{An \code{FmriSeries} object}
-\item{...}{Ignored}
+
+\item{...}{Additional arguments (ignored)}
 }
-\value{A numeric matrix with timepoints in rows and voxels in columns.}
-\description{Materialises the lazy data in an \code{FmriSeries}.}
-\examples{
-mat <- matrix(rnorm(20), nrow = 5)
-backend <- matrix_backend(mat, mask = rep(TRUE, 4), spatial_dims = c(2,2,1))
-ds <- fmri_dataset(backend, TR = 1, run_length = 5)
-fs <- fmri_series(ds, selector = 1:2, timepoints = 1:5)
-as.matrix(fs)
+\value{
+A matrix
+}
+\description{
+This method realises the underlying DelayedMatrix and
+returns an ordinary matrix with timepoints in rows and
+voxels in columns.
 }
