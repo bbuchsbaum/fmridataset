@@ -132,29 +132,6 @@ n_timepoints <- function(x, ...) {
   UseMethod("n_timepoints")
 }
 
-#' Get block IDs from sampling frame
-#' @param x Sampling frame object
-#' @param ... Additional arguments
-#' @export
-blockids <- function(x, ...) {
-  UseMethod("blockids")
-}
-
-#' Get samples from sampling frame
-#' @param x Sampling frame object
-#' @param ... Additional arguments
-#' @export
-samples <- function(x, ...) {
-  UseMethod("samples")
-}
-
-#' Get global onsets from sampling frame
-#' @param x Sampling frame object
-#' @param ... Additional arguments
-#' @export
-global_onsets <- function(x, ...) {
-  UseMethod("global_onsets")
-}
 
 #' Get total duration from sampling frame
 #' @param x Sampling frame object
