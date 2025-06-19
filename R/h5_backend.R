@@ -298,8 +298,6 @@ backend_get_mask.h5_backend <- function(backend) {
 
   # Convert to logical vector
   mask_vec <- as.logical(as.vector(mask_vol))
-  backend$mask <- mask_vol
-  backend$mask_vec <- mask_vec
 
   # Validate mask
   if (any(is.na(mask_vec))) {
@@ -317,6 +315,9 @@ backend_get_mask.h5_backend <- function(backend) {
       parameter = "mask"
     )
   }
+
+  backend$mask <- mask_vol
+  backend$mask_vec <- mask_vec
 
   backend$mask_vec
 }
