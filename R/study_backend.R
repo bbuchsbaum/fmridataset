@@ -94,28 +94,38 @@ study_backend <- function(backends, subject_ids = NULL,
   backend
 }
 
+#' @rdname backend_open
+#' @method backend_open study_backend
 #' @export
 backend_open.study_backend <- function(backend) {
   backend$backends <- lapply(backend$backends, backend_open)
   backend
 }
 
+#' @rdname backend_close
+#' @method backend_close study_backend
 #' @export
 backend_close.study_backend <- function(backend) {
   lapply(backend$backends, backend_close)
   invisible(NULL)
 }
 
+#' @rdname backend_get_dims
+#' @method backend_get_dims study_backend
 #' @export
 backend_get_dims.study_backend <- function(backend) {
   backend$`_dims`
 }
 
+#' @rdname backend_get_mask
+#' @method backend_get_mask study_backend
 #' @export
 backend_get_mask.study_backend <- function(backend) {
   backend$`_mask`
 }
 
+#' @rdname backend_get_data
+#' @method backend_get_data study_backend
 #' @export
 backend_get_data.study_backend <- function(backend, rows = NULL, cols = NULL) {
   arrays <- lapply(backend$backends, as_delayed_array)

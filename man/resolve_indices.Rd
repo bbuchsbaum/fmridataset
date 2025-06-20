@@ -2,17 +2,49 @@
 % Please edit documentation in R/all_generic.R
 \name{resolve_indices}
 \alias{resolve_indices}
-\title{Resolve indices from series selector}
+\title{Resolve Indices from Series Selector}
 \usage{
 resolve_indices(selector, dataset, ...)
 }
 \arguments{
-\item{selector}{Series selector object}
+\item{selector}{A series selector object (e.g., index_selector, voxel_selector)}
 
-\item{dataset}{Dataset object for context}
+\item{dataset}{An fMRI dataset object providing spatial context}
 
-\item{...}{Additional arguments}
+\item{...}{Additional arguments passed to methods}
+}
+\value{
+Integer vector of indices into the masked data
 }
 \description{
-Resolve indices from series selector
+Converts a series selector specification into actual voxel indices
+within the dataset mask.
+}
+\details{
+Series selectors provide various ways to specify spatial subsets of
+fMRI data. This generic function resolves these specifications into
+actual indices that can be used to extract data. Different selector
+types support different selection methods:
+\itemize{
+\item \code{index_selector}: Direct indices into masked data
+\item \code{voxel_selector}: 3D coordinates
+\item \code{roi_selector}: Region of interest masks
+\item \code{sphere_selector}: Spherical regions
+}
+}
+\examples{
+\donttest{
+# Example with index selector
+sel <- index_selector(1:10)
+# indices <- resolve_indices(sel, dataset)
+
+# Example with voxel coordinates
+sel <- voxel_selector(cbind(x = 10, y = 20, z = 15))
+# indices <- resolve_indices(sel, dataset)
+}
+
+}
+\seealso{
+\code{\link{series_selector}} for selector types,
+\code{\link{fmri_series}} for using selectors to extract data
 }

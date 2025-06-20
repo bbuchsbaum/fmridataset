@@ -7,14 +7,40 @@
 get_data(x, ...)
 }
 \arguments{
-\item{x}{An fMRI dataset object}
+\item{x}{An fMRI dataset object (e.g., fmri_dataset, matrix_dataset)}
 
 \item{...}{Additional arguments passed to methods}
 }
 \value{
-Dataset-specific data object
+Dataset-specific data object:
+\itemize{
+\item For \code{fmri_dataset}: Returns the underlying NeuroVec or matrix
+\item For \code{matrix_dataset}: Returns the data matrix
+}
 }
 \description{
 Generic function to extract data from various fMRI dataset types.
 Returns the underlying data in its native format (NeuroVec, matrix, etc.).
+}
+\details{
+This function extracts the raw data from dataset objects, preserving
+the original data type. For NeuroVec-based datasets, returns a NeuroVec
+object. For matrix-based datasets, returns a matrix.
+}
+\examples{
+\donttest{
+# Create a matrix dataset
+mat <- matrix(rnorm(100 * 50), nrow = 100, ncol = 50)
+mask <- rep(TRUE, 50)
+ds <- matrix_dataset(mat, mask = mask, TR = 2, run_length = 100)
+
+# Extract the data
+data <- get_data(ds)
+identical(data, mat)  # TRUE
+}
+
+}
+\seealso{
+\code{\link{get_data_matrix}} for extracting data as a matrix,
+\code{\link{get_mask}} for extracting the mask
 }

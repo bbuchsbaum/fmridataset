@@ -2,7 +2,7 @@
 % Please edit documentation in R/FmriSeries.R
 \name{as.matrix.FmriSeries}
 \alias{as.matrix.FmriSeries}
-\title{Materialise an FmriSeries as a standard matrix}
+\title{Convert FmriSeries to Matrix}
 \usage{
 \method{as.matrix}{FmriSeries}(x, ...)
 }
@@ -12,10 +12,36 @@
 \item{...}{Additional arguments (ignored)}
 }
 \value{
-A matrix
+A matrix with timepoints as rows and voxels as columns
 }
 \description{
 This method realises the underlying DelayedMatrix and
 returns an ordinary matrix with timepoints in rows and
 voxels in columns.
+}
+\examples{
+\donttest{
+if (requireNamespace("DelayedArray", quietly = TRUE) && 
+    requireNamespace("S4Vectors", quietly = TRUE)) {
+  # Create small example
+  mat <- matrix(rnorm(20), nrow = 4, ncol = 5)
+  delayed_mat <- DelayedArray::DelayedArray(mat)
+  
+  # Create minimal FmriSeries object
+  fs <- new("FmriSeries", delayed_mat,
+            voxel_info = S4Vectors::DataFrame(idx = 1:5),
+            temporal_info = S4Vectors::DataFrame(time = 1:4),
+            selection_info = list(),
+            dataset_info = list())
+  
+  # Convert to matrix
+  mat_result <- as.matrix(fs)
+  dim(mat_result)  # 4 x 5
+}
+}
+
+}
+\seealso{
+\code{\link{FmriSeries-class}} for the class definition,
+\code{\link{as_tibble.FmriSeries}} for tibble conversion
 }

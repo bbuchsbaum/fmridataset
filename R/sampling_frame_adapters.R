@@ -10,6 +10,7 @@
 #' @importFrom fmrihrf blocklens
 #' @importFrom fmrihrf samples
 #' @importFrom fmrihrf global_onsets
+#' @importFrom fmrihrf acquisition_onsets
 NULL
 
 #' Test if Object is a Sampling Frame
@@ -23,31 +24,43 @@ is.sampling_frame <- function(x) {
   inherits(x, "sampling_frame")
 }
 
+#' @rdname get_run_lengths
+#' @method get_run_lengths sampling_frame
 #' @export
 get_run_lengths.sampling_frame <- function(x, ...) {
   x$blocklens
 }
 
+#' @rdname get_total_duration
+#' @method get_total_duration sampling_frame
 #' @export
 get_total_duration.sampling_frame <- function(x, ...) {
   sum(x$blocklens * x$TR)
 }
 
+#' @rdname get_run_duration
+#' @method get_run_duration sampling_frame
 #' @export
 get_run_duration.sampling_frame <- function(x, ...) {
   x$blocklens * x$TR
 }
 
+#' @rdname n_runs
+#' @method n_runs sampling_frame
 #' @export
 n_runs.sampling_frame <- function(x, ...) {
   length(x$blocklens)
 }
 
+#' @rdname n_timepoints
+#' @method n_timepoints sampling_frame
 #' @export
 n_timepoints.sampling_frame <- function(x, ...) {
   sum(x$blocklens)
 }
 
+#' @rdname get_TR
+#' @method get_TR sampling_frame
 #' @export
 get_TR.sampling_frame <- function(x, ...) {
   # Always return the first TR value for compatibility
@@ -56,18 +69,25 @@ get_TR.sampling_frame <- function(x, ...) {
 }
 
 # Explicit method definitions that delegate to fmrihrf
+#' @rdname blocklens
+#' @method blocklens sampling_frame
 #' @export
 blocklens.sampling_frame <- function(x, ...) {
   x$blocklens
 }
 
+#' @rdname blockids
+#' @method blockids sampling_frame
 #' @export
 blockids.sampling_frame <- function(x, ...) {
   rep(seq_along(x$blocklens), times = x$blocklens)
 }
 
+#' @rdname samples
+#' @method samples sampling_frame
 #' @export
 samples.sampling_frame <- function(x, ...) {
   # Implement samples method directly since fmrihrf method is not exported
   1:sum(x$blocklens)
-} 
+}
+

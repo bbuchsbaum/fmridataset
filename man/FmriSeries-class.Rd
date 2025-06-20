@@ -3,7 +3,10 @@
 \docType{class}
 \name{FmriSeries-class}
 \alias{FmriSeries-class}
-\title{fMRI Time Series Container}
+\title{FmriSeries: fMRI Time Series Container}
+\value{
+An object of class \code{FmriSeries} inheriting from \code{DelayedMatrix}
+}
 \description{
 An S4 class representing lazily accessed fMRI time series data. The
 underlying data is stored in a \code{DelayedMatrix} with rows corresponding
@@ -23,3 +26,34 @@ each timepoint.}
 \item{\code{dataset_info}}{A list describing the source dataset and backend.}
 }}
 
+\examples{
+\donttest{
+# Create example FmriSeries object
+if (requireNamespace("DelayedArray", quietly = TRUE) && 
+    requireNamespace("S4Vectors", quietly = TRUE)) {
+  # Create small example data
+  mat <- matrix(rnorm(100 * 50), nrow = 100, ncol = 50)
+  delayed_mat <- DelayedArray::DelayedArray(mat)
+  
+  # Create metadata
+  vox_info <- S4Vectors::DataFrame(
+    x = rep(1:10, 5),
+    y = rep(1:5, each = 10),
+    z = 1
+  )
+  
+  temp_info <- S4Vectors::DataFrame(
+    time = seq(0, 99, by = 1),
+    run = rep(1:4, each = 25)
+  )
+  
+  # Note: Direct instantiation typically not recommended
+  # Users should use constructor functions provided by the package
+}
+}
+
+}
+\seealso{
+\code{\link{as.matrix.FmriSeries}} for converting to standard matrix,
+\code{\link{as_tibble.FmriSeries}} for converting to tibble format
+}

@@ -113,6 +113,8 @@ latent_backend <- function(source, mask_source = NULL, preload = FALSE) {
 
 # Latent Backend Methods Implementation ====
 
+#' @rdname backend_open
+#' @method backend_open latent_backend
 #' @export
 backend_open.latent_backend <- function(backend) {
   if (backend$is_open) {
@@ -179,6 +181,8 @@ backend_open.latent_backend <- function(backend) {
   backend
 }
 
+#' @rdname backend_close
+#' @method backend_close latent_backend
 #' @export
 backend_close.latent_backend <- function(backend) {
   if (!backend$is_open) {
@@ -200,6 +204,8 @@ backend_close.latent_backend <- function(backend) {
   backend
 }
 
+#' @rdname backend_get_dims
+#' @method backend_get_dims latent_backend
 #' @export
 backend_get_dims.latent_backend <- function(backend) {
   if (!backend$is_open) {
@@ -230,6 +236,8 @@ backend_get_dims.latent_backend <- function(backend) {
   )
 }
 
+#' @rdname backend_get_mask
+#' @method backend_get_mask latent_backend
 #' @export
 backend_get_mask.latent_backend <- function(backend) {
   if (!backend$is_open) {
@@ -250,6 +258,8 @@ backend_get_mask.latent_backend <- function(backend) {
   rep(TRUE, n_components)
 }
 
+#' @rdname backend_get_data
+#' @method backend_get_data latent_backend
 #' @export
 backend_get_data.latent_backend <- function(backend, rows = NULL, cols = NULL) {
   if (!backend$is_open) {
@@ -314,6 +324,8 @@ backend_get_data.latent_backend <- function(backend, rows = NULL, cols = NULL) {
   result
 }
 
+#' @rdname backend_get_metadata
+#' @method backend_get_metadata latent_backend
 #' @export
 backend_get_metadata.latent_backend <- function(backend) {
   if (!backend$is_open) {

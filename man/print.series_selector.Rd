@@ -6,6 +6,23 @@
 \usage{
 \method{print}{series_selector}(x, ...)
 }
+\arguments{
+\item{x}{A series selector object}
+
+\item{...}{Additional arguments (currently unused)}
+}
+\value{
+The object invisibly
+}
 \description{
-Print Methods for Series Selectors
+Display formatted summaries of series selector objects.
+}
+\examples{
+# Print different selector types
+sel1 <- index_selector(1:10)
+print(sel1)
+
+sel2 <- voxel_selector(c(10, 20, 15))
+print(sel2)
+
 }

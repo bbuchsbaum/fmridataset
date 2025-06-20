@@ -96,6 +96,8 @@ nifti_backend <- function(source, mask_source, preload = FALSE,
   backend
 }
 
+#' @rdname backend_open
+#' @method backend_open nifti_backend
 #' @export
 backend_open.nifti_backend <- function(backend) {
   if (backend$preload && is.null(backend$data)) {
@@ -151,6 +153,8 @@ backend_open.nifti_backend <- function(backend) {
   backend
 }
 
+#' @rdname backend_close
+#' @method backend_close nifti_backend
 #' @export
 backend_close.nifti_backend <- function(backend) {
   # For NIfTI backend, we don't need to explicitly close file handles
@@ -158,6 +162,8 @@ backend_close.nifti_backend <- function(backend) {
   invisible(NULL)
 }
 
+#' @rdname backend_get_dims
+#' @method backend_get_dims nifti_backend
 #' @export
 backend_get_dims.nifti_backend <- function(backend) {
   if (!is.null(backend$dims)) {
@@ -211,6 +217,8 @@ backend_get_dims.nifti_backend <- function(backend) {
   }
 }
 
+#' @rdname backend_get_mask
+#' @method backend_get_mask nifti_backend
 #' @export
 backend_get_mask.nifti_backend <- function(backend) {
   if (!is.null(backend$mask_vec)) {
@@ -261,6 +269,8 @@ backend_get_mask.nifti_backend <- function(backend) {
   backend$mask_vec
 }
 
+#' @rdname backend_get_data
+#' @method backend_get_data nifti_backend
 #' @export
 backend_get_data.nifti_backend <- function(backend, rows = NULL, cols = NULL) {
   # Get the full data first
@@ -316,6 +326,8 @@ backend_get_data.nifti_backend <- function(backend, rows = NULL, cols = NULL) {
   data_matrix
 }
 
+#' @rdname backend_get_metadata
+#' @method backend_get_metadata nifti_backend
 #' @export
 backend_get_metadata.nifti_backend <- function(backend) {
   if (!is.null(backend$metadata)) {

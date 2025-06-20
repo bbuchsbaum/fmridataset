@@ -12,9 +12,27 @@ as.matrix_dataset(x, ...)
 \item{...}{Additional arguments passed to methods}
 }
 \value{
-A matrix_dataset object
+A matrix_dataset object with the same data as the input
 }
 \description{
 Generic function to convert various fMRI dataset types to matrix_dataset objects.
 Provides a unified interface for getting matrix-based representations.
+}
+\details{
+This function converts different dataset representations to the standard
+matrix_dataset format, which stores data as a matrix with timepoints in
+rows and voxels in columns. This is useful for algorithms that require
+matrix operations or when a consistent data format is needed.
+}
+\examples{
+\donttest{
+# Convert various dataset types to matrix_dataset
+# (example requires actual dataset object)
+# mat_ds <- as.matrix_dataset(some_dataset)
+}
+
+}
+\seealso{
+\code{\link{matrix_dataset}} for creating matrix datasets,
+\code{\link{get_data_matrix}} for extracting data as matrix
 }

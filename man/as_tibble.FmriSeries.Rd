@@ -2,7 +2,7 @@
 % Please edit documentation in R/FmriSeries.R
 \name{as_tibble.FmriSeries}
 \alias{as_tibble.FmriSeries}
-\title{Convert an FmriSeries to a tidy tibble}
+\title{Convert FmriSeries to Tibble}
 \usage{
 \method{as_tibble}{FmriSeries}(x, ...)
 }
@@ -12,11 +12,46 @@
 \item{...}{Additional arguments (ignored)}
 }
 \value{
-A tibble with signal and metadata columns
+A tibble with columns from temporal_info, voxel_info, and a
+signal column containing the fMRI signal values
 }
 \description{
 The returned tibble contains one row per voxel/timepoint
 combination with metadata columns from \code{temporal_info}
 and \code{voxel_info} and a \code{signal} column with the data
 values.
+}
+\examples{
+\donttest{
+if (requireNamespace("DelayedArray", quietly = TRUE) && 
+    requireNamespace("S4Vectors", quietly = TRUE) &&
+    requireNamespace("tibble", quietly = TRUE)) {
+  # Create small example
+  mat <- matrix(rnorm(12), nrow = 3, ncol = 4)
+  delayed_mat <- DelayedArray::DelayedArray(mat)
+  
+  # Create FmriSeries with metadata
+  fs <- new("FmriSeries", delayed_mat,
+            voxel_info = S4Vectors::DataFrame(
+              voxel_id = 1:4,
+              region = c("A", "A", "B", "B")
+            ),
+            temporal_info = S4Vectors::DataFrame(
+              time = 1:3,
+              condition = c("rest", "task", "rest")
+            ),
+            selection_info = list(),
+            dataset_info = list())
+  
+  # Convert to tibble
+  tbl_result <- as_tibble(fs)
+  # Result has 12 rows (3 timepoints x 4 voxels)
+  # with columns: time, condition, voxel_id, region, signal
+}
+}
+
+}
+\seealso{
+\code{\link{FmriSeries-class}} for the class definition,
+\code{\link{as.matrix.FmriSeries}} for matrix conversion
 }

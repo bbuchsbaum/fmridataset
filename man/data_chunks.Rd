@@ -16,9 +16,37 @@ data_chunks(x, nchunks = 1, runwise = FALSE, ...)
 \item{...}{Additional arguments passed to methods}
 }
 \value{
-A chunk iterator object
+A chunk iterator object that yields data chunks when iterated
 }
 \description{
 Generic function to create data chunks for parallel processing from
 various fMRI dataset types. Supports different chunking strategies.
+}
+\details{
+Large fMRI datasets can be processed more efficiently by dividing them
+into chunks. This function creates an iterator that yields data chunks
+for parallel or sequential processing. Two chunking strategies are supported:
+\itemize{
+\item Equal-sized chunks: Divides voxels into approximately equal groups
+\item Run-wise chunks: Each chunk contains all voxels from one or more complete runs
+}
+}
+\examples{
+\donttest{
+# Create a dataset
+mat <- matrix(rnorm(100 * 1000), nrow = 100, ncol = 1000)
+ds <- matrix_dataset(mat, mask = rep(TRUE, 1000), TR = 2, run_length = 100)
+
+# Create 4 chunks for parallel processing
+chunks <- data_chunks(ds, nchunks = 4)
+
+# Process chunks (example)
+# results <- foreach(chunk = chunks) \%dopar\% {
+#   process_chunk(chunk)
+# }
+}
+
+}
+\seealso{
+\code{\link[iterators]{iter}} for iteration concepts
 }

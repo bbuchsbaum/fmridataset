@@ -345,6 +345,22 @@ resolve_indices.mask_selector <- function(selector, dataset, ...) {
 }
 
 #' Print Methods for Series Selectors
+#' 
+#' Display formatted summaries of series selector objects.
+#' 
+#' @param x A series selector object
+#' @param ... Additional arguments (currently unused)
+#' 
+#' @return The object invisibly
+#' 
+#' @examples
+#' # Print different selector types
+#' sel1 <- index_selector(1:10)
+#' print(sel1)
+#' 
+#' sel2 <- voxel_selector(c(10, 20, 15))
+#' print(sel2)
+#' 
 #' @export
 #' @method print series_selector
 print.series_selector <- function(x, ...) {

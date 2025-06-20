@@ -95,18 +95,24 @@ matrix_backend <- function(data_matrix, mask = NULL, spatial_dims = NULL, metada
   backend
 }
 
+#' @rdname backend_open
+#' @method backend_open matrix_backend
 #' @export
 backend_open.matrix_backend <- function(backend) {
   # Matrix backend is stateless - no resources to acquire
   backend
 }
 
+#' @rdname backend_close
+#' @method backend_close matrix_backend
 #' @export
 backend_close.matrix_backend <- function(backend) {
   # Matrix backend is stateless - no resources to release
   invisible(NULL)
 }
 
+#' @rdname backend_get_dims
+#' @method backend_get_dims matrix_backend
 #' @export
 backend_get_dims.matrix_backend <- function(backend) {
   list(
@@ -115,11 +121,15 @@ backend_get_dims.matrix_backend <- function(backend) {
   )
 }
 
+#' @rdname backend_get_mask
+#' @method backend_get_mask matrix_backend
 #' @export
 backend_get_mask.matrix_backend <- function(backend) {
   backend$mask
 }
 
+#' @rdname backend_get_data
+#' @method backend_get_data matrix_backend
 #' @export
 backend_get_data.matrix_backend <- function(backend, rows = NULL, cols = NULL) {
   data <- backend$data_matrix
@@ -136,6 +146,8 @@ backend_get_data.matrix_backend <- function(backend, rows = NULL, cols = NULL) {
   data
 }
 
+#' @rdname backend_get_metadata
+#' @method backend_get_metadata matrix_backend
 #' @export
 backend_get_metadata.matrix_backend <- function(backend) {
   backend$metadata

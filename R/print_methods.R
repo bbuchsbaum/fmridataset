@@ -1,4 +1,28 @@
+#' Print Methods for fmridataset Objects
+#'
+#' Display formatted summaries of fmridataset objects including datasets,
+#' chunk iterators, and data chunks.
+#'
+#' @param x An object to print (fmri_dataset, latent_dataset, chunkiter, or data_chunk)
+#' @param object An object to summarize (for summary methods)
+#' @param full Logical; if TRUE, print additional details for datasets (default: FALSE)
+#' @param ... Additional arguments passed to print methods
+#'
+#' @return The object invisibly
+#'
+#' @examples
+#' \donttest{
+#' # Print dataset summary
+#' # dataset <- fmri_dataset(...)
+#' # print(dataset)
+#' # print(dataset, full = TRUE)  # More details
+#' }
+#'
+#' @name print
+#' @aliases print.fmri_dataset print.latent_dataset print.chunkiter print.data_chunk
 #' @importFrom utils head tail
+NULL
+
 #' @export
 #' @rdname print
 print.fmri_dataset <- function(x, full = FALSE, ...) {

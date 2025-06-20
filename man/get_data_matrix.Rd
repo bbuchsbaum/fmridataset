@@ -7,14 +7,41 @@
 get_data_matrix(x, ...)
 }
 \arguments{
-\item{x}{An fMRI dataset object}
+\item{x}{An fMRI dataset object (e.g., fmri_dataset, matrix_dataset)}
 
 \item{...}{Additional arguments passed to methods}
 }
 \value{
-A matrix with timepoints as rows and voxels as columns
+A numeric matrix with dimensions:
+\itemize{
+\item Rows: Number of timepoints
+\item Columns: Number of voxels (within mask)
+}
 }
 \description{
 Generic function to extract data as a matrix from various fMRI dataset types.
 Always returns a matrix with timepoints as rows and voxels as columns.
+}
+\details{
+This function provides a unified interface for accessing fMRI data as a
+matrix, regardless of the underlying storage format. The returned matrix
+always has timepoints in rows and voxels in columns, matching the
+conventional fMRI data organization.
+}
+\examples{
+\donttest{
+# Create a matrix dataset
+mat <- matrix(rnorm(100 * 50), nrow = 100, ncol = 50)
+mask <- rep(TRUE, 50)
+ds <- matrix_dataset(mat, mask = mask, TR = 2, run_length = 100)
+
+# Extract as matrix
+data_mat <- get_data_matrix(ds)
+dim(data_mat)  # 100 x 50
+}
+
+}
+\seealso{
+\code{\link{get_data}} for extracting data in native format,
+\code{\link{as.matrix_dataset}} for converting to matrix dataset
 }
