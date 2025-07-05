@@ -132,7 +132,8 @@ backend_get_mask.matrix_backend <- function(backend) {
 #' @method backend_get_data matrix_backend
 #' @export
 backend_get_data.matrix_backend <- function(backend, rows = NULL, cols = NULL) {
-  data <- backend$data_matrix
+  # First, apply the mask to get the matrix of valid voxels
+  data <- backend$data_matrix[, backend$mask, drop = FALSE]
 
   # Apply subsetting if requested
   if (!is.null(rows)) {

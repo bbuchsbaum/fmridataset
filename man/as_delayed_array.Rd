@@ -2,9 +2,18 @@
 % Please edit documentation in R/as_delayed_array.R
 \name{as_delayed_array}
 \alias{as_delayed_array}
+\alias{as_delayed_array,nifti_backend-method}
+\alias{as_delayed_array,matrix_backend-method}
+\alias{as_delayed_array,study_backend-method}
 \title{Convert Backend to DelayedArray}
 \usage{
 as_delayed_array(backend, sparse_ok = FALSE)
+
+\S4method{as_delayed_array}{nifti_backend}(backend, sparse_ok = FALSE)
+
+\S4method{as_delayed_array}{matrix_backend}(backend, sparse_ok = FALSE)
+
+\S4method{as_delayed_array}{study_backend}(backend, sparse_ok = FALSE)
 }
 \arguments{
 \item{backend}{A storage backend object}

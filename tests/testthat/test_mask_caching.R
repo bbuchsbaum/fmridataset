@@ -33,22 +33,19 @@ test_that("nifti_backend caches mask only after validation", {
 
 test_that("h5_backend caches mask only after validation", {
   invalid_mask <- structure(
-    array(c(TRUE, NA), c(1, 1, 1)),
+    array(c(TRUE, NA), c(2, 1, 1)),
     class = c("LogicalNeuroVol", "NeuroVol", "array"),
-    dim = c(1, 1, 1)
+    dim = c(2, 1, 1)
   )
 
-  backend <- structure(
-    list(
-      mask_source = invalid_mask,
-      mask = NULL,
-      mask_vec = NULL,
-      source = list(),
-      mask_dataset = "data/elements",
-      data_dataset = "data"
-    ),
-    class = c("h5_backend", "storage_backend")
-  )
+  backend <- new.env(parent = emptyenv())
+  backend$mask_source <- invalid_mask
+  backend$mask <- NULL
+  backend$mask_vec <- NULL
+  backend$source <- list()
+  backend$mask_dataset <- "data/elements"
+  backend$data_dataset <- "data"
+  class(backend) <- c("h5_backend", "storage_backend")
 
   expect_error(backend_get_mask(backend), "H5 mask contains NA values")
   expect_null(backend$mask_vec)

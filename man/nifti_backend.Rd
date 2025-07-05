@@ -12,7 +12,7 @@ nifti_backend(
 )
 }
 \arguments{
-\item{source}{Character vector of file paths or list of in-memory niftiImage/NeuroVec objects}
+\item{source}{Character vector of file paths or list of in-memory NeuroVec objects}
 
 \item{mask_source}{File path to mask or in-memory NeuroVol object}
 

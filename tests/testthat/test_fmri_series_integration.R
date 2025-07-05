@@ -8,7 +8,7 @@ create_matrix_dataset <- function() {
 
 create_nifti_dataset <- function() {
   skip_if_not_installed("neuroim2")
-  dims <- c(2, 2, 1, 5)
+  dims <- c(2, 2, 2, 5)  # Match matrix dataset spatial dims
   data_array <- array(seq_len(prod(dims)), dims)
   mock_vec <- structure(
     data_array,

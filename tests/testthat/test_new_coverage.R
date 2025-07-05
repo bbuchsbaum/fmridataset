@@ -14,7 +14,7 @@ test_that("slicewise_chunks generates one mask per slice", {
   slices <- fmridataset:::slicewise_chunks(dset)
 
   expect_length(slices, dims[3])
-  expect_s3_class(slices[[1]], "NeuroVol")
+  expect_true(inherits(slices[[1]], "NeuroVol"))
   expect_true(all(slices[[1]][,,1] == 1))
   expect_true(all(slices[[1]][,,2] == 0))
 })

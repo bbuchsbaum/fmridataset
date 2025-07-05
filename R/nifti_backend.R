@@ -7,8 +7,7 @@
 #' @details
 #' The NiftiBackend can work with:
 #' - File paths to NIfTI images
-#' - Pre-loaded niftiImage objects (from RNifti package)
-#' - neuroim2 NeuroVec objects
+#' - Pre-loaded neuroim2 NeuroVec objects
 #'
 #' @name nifti-backend
 #' @importFrom neuroim2 read_header
@@ -17,7 +16,7 @@ NULL
 
 #' Create a NIfTI Backend
 #'
-#' @param source Character vector of file paths or list of in-memory niftiImage/NeuroVec objects
+#' @param source Character vector of file paths or list of in-memory NeuroVec objects
 #' @param mask_source File path to mask or in-memory NeuroVol object
 #' @param preload Logical, whether to eagerly load data into memory
 #' @param mode Storage mode for file-backed data: 'normal', 'bigvec', 'mmap', or 'filebacked'
@@ -43,13 +42,13 @@ nifti_backend <- function(source, mask_source, preload = FALSE,
   } else if (is.list(source)) {
     # In-memory objects provided
     valid_types <- vapply(source, function(x) {
-      inherits(x, "NeuroVec") || inherits(x, "niftiImage")
+      inherits(x, "NeuroVec")
     }, logical(1))
 
     if (!all(valid_types)) {
       stop_fmridataset(
         fmridataset_error_config,
-        message = "All source objects must be NeuroVec or niftiImage objects",
+        message = "All source objects must be NeuroVec objects",
         parameter = "source"
       )
     }

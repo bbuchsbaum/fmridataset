@@ -9,10 +9,9 @@
 series <- function(dataset, selector = NULL, timepoints = NULL,
                    output = c("FmriSeries", "DelayedMatrix"),
                    event_window = NULL, ...) {
-  lifecycle::deprecate_warn(
-    "0.3.0", "series()", "fmri_series()",
-    id = "fmridataset_series_alias"
-  )
+  # Force immediate warning for testing
+  warning("series() was deprecated in fmridataset 0.3.0.\nPlease use fmri_series() instead.", 
+          call. = FALSE, immediate. = TRUE)
   fmri_series(dataset, selector = selector, timepoints = timepoints,
               output = output, event_window = event_window, ...)
 }

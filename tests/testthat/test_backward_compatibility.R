@@ -18,6 +18,25 @@ test_that("legacy file-based interface still works", {
     .package = "base",
     code = {
       with_mocked_bindings(
+        read_header = function(fname) {
+          # Create a proper S4 object mock that has all needed slots
+          if (!methods::isClass("MockNIFTIHeader")) {
+            setClass("MockNIFTIHeader", slots = c(
+              dims = "integer", 
+              pixdims = "numeric", 
+              spacing = "numeric", 
+              origin = "numeric",
+              spatial_axes = "character"
+            ))
+            setMethod("dim", "MockNIFTIHeader", function(x) x@dims)
+          }
+          new("MockNIFTIHeader", 
+              dims = c(10L, 10L, 10L, 20L),
+              pixdims = c(-1.0, 2.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0),
+              spacing = c(2.0, 2.0, 2.0),
+              origin = c(0.0, 0.0, 0.0),
+              spatial_axes = c("x", "y", "z"))
+        },
         read_vol = function(x) {
           if (grepl("mask", x)) mask_data else NULL
         },
@@ -28,11 +47,10 @@ test_that("legacy file-based interface still works", {
         {
           # Create dataset using legacy interface
           dset <- fmri_dataset(
-            scans = "test_scan.nii",
-            mask = "test_mask.nii",
+            scans = scan_file,
+            mask = mask_file,
             TR = 2,
-            run_length = 20,
-            base_path = temp_dir
+            run_length = 20
           )
 
           expect_s3_class(dset, "fmri_dataset")

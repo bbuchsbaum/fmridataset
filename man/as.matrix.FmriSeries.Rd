@@ -4,7 +4,7 @@
 \alias{as.matrix.FmriSeries}
 \title{Convert FmriSeries to Matrix}
 \usage{
-\method{as.matrix}{FmriSeries}(x, ...)
+as.matrix.FmriSeries(x, ...)
 }
 \arguments{
 \item{x}{An \code{FmriSeries} object}

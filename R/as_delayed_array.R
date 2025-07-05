@@ -14,7 +14,7 @@
 #'   dim(da)
 #' }
 #' @importFrom DelayedArray extract_array DelayedArray
-#' @importFrom methods setClass setMethod setGeneric
+#' @importFrom methods setClass setMethod setGeneric new
 #' @export
 setGeneric("as_delayed_array", function(backend, sparse_ok = FALSE)
     standardGeneric("as_delayed_array"))
@@ -25,11 +25,21 @@ setClass("StorageBackendSeed",
          slots = list(backend = "ANY"),
          contains = "Array")
 
+#' Dimensions of StorageBackendSeed
+#' 
+#' @param x A StorageBackendSeed object
+#' @return An integer vector of length 2 (timepoints, voxels)
+#' @rdname dim-StorageBackendSeed-method
+#' @aliases dim,StorageBackendSeed-method
+#' @keywords internal
 setMethod("dim", "StorageBackendSeed", function(x) {
   d <- backend_get_dims(x@backend)
-  c(d$time, prod(d$spatial))
+  # The number of voxels is the number of TRUE values in the mask
+  num_voxels <- sum(backend_get_mask(x@backend))
+  c(d$time, num_voxels)
 })
 
+#' @keywords internal
 setMethod("extract_array", "StorageBackendSeed", function(x, index) {
   rows <- if (length(index) >= 1) index[[1]] else NULL
   cols <- if (length(index) >= 2) index[[2]] else NULL
@@ -43,12 +53,28 @@ setClass("MatrixBackendSeed", contains = "StorageBackendSeed")
 
 # Methods for backends ---------------------------------------------------
 
+#' @rdname as_delayed_array
+#' @aliases as_delayed_array,nifti_backend-method
 setMethod("as_delayed_array", "nifti_backend", function(backend, sparse_ok = FALSE) {
   seed <- new("NiftiBackendSeed", backend = backend)
   DelayedArray::DelayedArray(seed)
 })
 
+#' @rdname as_delayed_array
+#' @aliases as_delayed_array,matrix_backend-method
 setMethod("as_delayed_array", "matrix_backend", function(backend, sparse_ok = FALSE) {
   seed <- new("MatrixBackendSeed", backend = backend)
+  DelayedArray::DelayedArray(seed)
+})
+
+#' @rdname as_delayed_array
+#' @aliases as_delayed_array,study_backend-method
+setMethod("as_delayed_array", "study_backend", function(backend, sparse_ok = FALSE) {
+  # Use the new StudyBackendSeed for true lazy evaluation
+  seed <- StudyBackendSeed(
+    backends = backend$backends,
+    subject_ids = backend$subject_ids
+  )
+  
   DelayedArray::DelayedArray(seed)
 })

@@ -21,3 +21,5 @@ examples
 ^fmristore_repomix\.xml$
 ^repomix-output\.txt$
 ^SECURITY\.md$
+^CRAN_guidance\.md$
+^experiments$

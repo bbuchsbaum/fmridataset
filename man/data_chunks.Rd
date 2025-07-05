@@ -35,7 +35,7 @@ for parallel or sequential processing. Two chunking strategies are supported:
 \donttest{
 # Create a dataset
 mat <- matrix(rnorm(100 * 1000), nrow = 100, ncol = 1000)
-ds <- matrix_dataset(mat, mask = rep(TRUE, 1000), TR = 2, run_length = 100)
+ds <- matrix_dataset(mat, TR = 2, run_length = 100)
 
 # Create 4 chunks for parallel processing
 chunks <- data_chunks(ds, nchunks = 4)

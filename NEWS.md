@@ -1,4 +1,18 @@
-# fmridataset (development version)
+# fmridataset 0.8.9 (Hotfix)
+
+## Critical fixes
+
+* Added bounded memory cache to prevent unbounded memory growth (#1)
+  - Memoization now uses `cachem` with configurable size limit (default 512MB)
+  - Added `fmri_clear_cache()` function to manually clear cache
+  - Cache size configurable via `options(fmridataset.cache_max_mb = 1024)`
+
+* Added memory warnings and mitigation for study_backend (#2)
+  - Warning when operations will load >1GB into memory
+  - Automatic chunking for operations that would load >2GB
+  - Recommends using `data_chunks()` for large datasets
+
+# fmridataset 0.1.0
 
 ## New features
 

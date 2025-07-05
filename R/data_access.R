@@ -67,12 +67,37 @@ get_data_matrix.fmri_file_dataset <- function(x, ...) {
 
 
 #' @import memoise
+#' @importFrom cachem cache_mem
 #' @keywords internal
 #' @noRd
+# Create bounded cache - default 512MB, configurable via option
+.get_cache_size <- function() {
+  getOption("fmridataset.cache_max_mb", 512) * 1024^2
+}
+
+.data_cache <- cachem::cache_mem(max_size = .get_cache_size())
+
 get_data_from_file <- memoise::memoise(function(x, ...) {
   m <- get_mask(x)
   neuroim2::read_vec(x$scans, mask = m, mode = x$mode, ...)
-})
+}, cache = .data_cache)
+
+#' Clear fmridataset cache
+#' 
+#' Clears the internal cache used by fmridataset for memoized file operations.
+#' This can be useful to free memory or force re-reading of files.
+#' 
+#' @return NULL (invisibly)
+#' @export
+#' @examples
+#' \dontrun{
+#' # Clear the cache to free memory
+#' fmri_clear_cache()
+#' }
+fmri_clear_cache <- function() {
+  .data_cache$reset()
+  invisible(NULL)
+}
 
 
 

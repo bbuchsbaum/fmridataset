@@ -1,7 +1,7 @@
 Package: fmridataset
 Type: Package
 Title: Unified Container for fMRI Datasets
-Version: 0.1.0
+Version: 0.8.9
 Authors@R: person("Bradley", "Buchsbaum", 
                   email = "bbuchsbaum@gmail.com", 
                   role = c("aut", "cre"),
@@ -20,10 +20,11 @@ Depends:
     R (>= 4.3.0)
 Imports:
     assertthat,
+    cachem,
     deflist,
     fmrihrf,
     memoise,
-    lifecycle,
+    Matrix,
     methods,
     neuroim2,
     purrr,
@@ -36,8 +37,10 @@ Suggests:
     bidser,
     crayon,
     arrow,
+    dplyr,
     fmristore,
     foreach,
+    mockery,
     testthat (>= 3.0.0),
     knitr,
     rmarkdown

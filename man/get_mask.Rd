@@ -30,14 +30,13 @@ for mask extraction.
 }
 \examples{
 \donttest{
-# Create a matrix dataset with specific mask
+# Create a matrix dataset (matrix_dataset creates default mask internally)
 mat <- matrix(rnorm(100 * 50), nrow = 100, ncol = 50)
-mask <- c(rep(TRUE, 30), rep(FALSE, 20))
-ds <- matrix_dataset(mat, mask = mask, TR = 2, run_length = 100)
+ds <- matrix_dataset(mat, TR = 2, run_length = 100)
 
-# Extract the mask
+# Extract the mask (matrix_dataset creates all TRUE mask by default)
 extracted_mask <- get_mask(ds)
-sum(extracted_mask)  # 30 (number of TRUE values)
+sum(extracted_mask)  # 50 (all TRUE values)
 }
 
 }

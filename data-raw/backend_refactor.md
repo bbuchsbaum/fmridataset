@@ -33,7 +33,7 @@ This sprint refactors `fmridataset` into a storage-agnostic container system bui
 *   **Goal:** Refactor the current `fmri_file_dataset` logic into the first concrete `StorageBackend`, making it more flexible.
 *   **Acceptance Criteria:**
     1.  A new constructor, `nifti_backend(source, mask_source, preload, mode)`, is created.
-        *   `source` can be a character vector of file paths *or* a list of in-memory `niftiImage` objects.
+        *   `source` can be a character vector of file paths *or* a list of in-memory `NeuroVec` objects.
         *   `mask_source` can be a file path or an in-memory `NeuroVol` object.
     2.  All methods from the `StorageBackend` contract (`FDT-01`) are implemented.
     3.  `backend_get_metadata()` extracts and returns the affine matrix and other key header fields from the NIfTI source.

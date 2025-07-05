@@ -31,8 +31,7 @@ object. For matrix-based datasets, returns a matrix.
 \donttest{
 # Create a matrix dataset
 mat <- matrix(rnorm(100 * 50), nrow = 100, ncol = 50)
-mask <- rep(TRUE, 50)
-ds <- matrix_dataset(mat, mask = mask, TR = 2, run_length = 100)
+ds <- matrix_dataset(mat, TR = 2, run_length = 100)
 
 # Extract the data
 data <- get_data(ds)

@@ -47,6 +47,7 @@
 #' @export
 #' @importClassesFrom DelayedArray DelayedMatrix
 #' @importClassesFrom S4Vectors DataFrame
+#' @importFrom methods setClass setMethod setValidity new
 setClass("FmriSeries",
          contains = "DelayedMatrix",
          slots = list(
@@ -99,17 +100,19 @@ setValidity("FmriSeries", function(object) {
 #' }
 #' }
 #' 
-#' @export
+#' @rdname FmriSeries-class
+#' @importFrom methods show
+#' @exportMethod show
 setMethod("show", "FmriSeries", function(object) {
   n_time <- nrow(object)
   n_vox <- ncol(object)
-  cat(sprintf("<FmriSeries> %s voxels × %s timepoints (lazy)\n",
+  cat(sprintf("<FmriSeries> %s voxels \u00d7 %s timepoints (lazy)\n",
               n_vox, n_time))
   sel <- object@selection_info
   dataset <- object@dataset_info
   sel_desc <- if (!is.null(sel$selector)) "custom" else "NULL"
   backend <- if (!is.null(dataset$backend_type)) dataset$backend_type else "?"
-  cat(sprintf("Selector: %s | Backend: %s | Orientation: time × voxels\n",
+  cat(sprintf("Selector: %s | Backend: %s | Orientation: time \u00d7 voxels\n",
               sel_desc, backend))
   invisible(object)
 })
@@ -154,7 +157,8 @@ setMethod("show", "FmriSeries", function(object) {
 #' 
 #' @export
 as.matrix.FmriSeries <- function(x, ...) {
-  as.matrix(DelayedArray::DelayedArray(x))
+  # FmriSeries already inherits from DelayedMatrix, so we can use its as.matrix method
+  DelayedArray::as.matrix(x)
 }
 
 #' Convert FmriSeries to Tibble
@@ -198,7 +202,7 @@ as.matrix.FmriSeries <- function(x, ...) {
 #'             dataset_info = list())
 #'   
 #'   # Convert to tibble
-#'   tbl_result <- as_tibble(fs)
+#'   tbl_result <- tibble::as_tibble(fs)
 #'   # Result has 12 rows (3 timepoints x 4 voxels)
 #'   # with columns: time, condition, voxel_id, region, signal
 #' }

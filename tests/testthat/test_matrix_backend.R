@@ -79,9 +79,9 @@ test_that("matrix_backend methods work correctly", {
   retrieved_mask <- backend_get_mask(backend)
   expect_identical(retrieved_mask, mask)
 
-  # Test full data retrieval
+  # Test full data retrieval - should return only masked columns
   data <- backend_get_data(backend)
-  expect_identical(data, test_matrix)
+  expect_identical(data, test_matrix[, mask, drop = FALSE])
 
   # Test metadata
   metadata <- backend_get_metadata(backend)

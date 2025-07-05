@@ -21,15 +21,18 @@ devtools::install()
 
 ### Testing
 ```bash
-# Run custom test suite
-Rscript tests/run_tests.R
-
 # Run testthat tests
 devtools::test()
 testthat::test_dir("tests/testthat")
 
 # Run a single test file
 testthat::test_file("tests/testthat/test-sampling-frame.R")
+
+# Run tests matching a pattern
+devtools::test(filter = "backend")
+
+# Run with coverage
+covr::package_coverage()
 ```
 
 ### Documentation
@@ -42,6 +45,18 @@ roxygen2::roxygenize()
 pkgdown::build_site()
 ```
 
+### Development Workflow
+```r
+# Load all functions for interactive development
+devtools::load_all()
+
+# Check for common issues
+devtools::check()
+
+# Run specific checks
+rcmdcheck::rcmdcheck(args = "--no-manual")
+```
+
 ## High-Level Architecture
 
 ### Core Classes
@@ -49,58 +64,106 @@ pkgdown::build_site()
 1. **`fmri_dataset`** - Central S3 class for unified fMRI data representation
    - Supports multiple data sources: file paths, pre-loaded objects, matrices, BIDS datasets
    - Lazy loading and chunked iteration capabilities
-   - Constructor: `fmri_dataset_create()` with various helper functions
+   - Main constructor: `fmri_dataset()` with backend-specific helpers
 
-2. **`sampling_frame`** - Temporal structure representation
+2. **`FmriSeries`** - S4 class for lazy time series access
+   - Built on DelayedArray/DelayedMatrix for memory efficiency
+   - Contains both data and spatial/temporal metadata
+   - Access via `as_delayed_array()`, `as_tibble()` methods
+
+3. **`sampling_frame`** - Temporal structure representation
    - Encapsulates TR, run lengths, and temporal properties
    - Bridges fmrireg and fmridataset conventions
    - Constructor: `sampling_frame()`
 
-3. **`bids_facade`** - BIDS integration (Phases 1-3)
-   - Basic BIDS project wrapping
-   - Discovery and quality assessment features
-   - Simple caching and parallel processing
+4. **Storage Backends** - Pluggable data access layer
+   - `matrix_backend` - In-memory matrix storage
+   - `nifti_backend` - NIfTI file access (optimized with caching)
+   - `h5_backend` - HDF5 storage
+   - `study_backend` - Multi-subject study data
+   - `latent_backend` - Deferred computation backend
 
 ### Key Design Patterns
 
 1. **S3 Object System**
-   - Generic functions in `R/aaa_generics.R`
+   - Generic functions in `R/all_generic.R` (loaded first alphabetically)
    - Method dispatch pattern throughout
    - Constructor pattern: `new_*()` (internal) → `*()` (user-facing)
+   - Validation pattern: constructors validate inputs
 
-2. **Fluent Interface**
-   - BIDS queries use method chaining: `bids_query() %>% subject("01") %>% task("rest")`
+2. **Storage Backend Interface**
+   - Contract defined in `storage_backend.R`
+   - Required methods: `backend_open()`, `backend_close()`, `backend_get_dims()`, `backend_get_data()`
+   - Backend validation via `validate_backend()`
+   - Lazy loading pattern for efficient memory use
 
-3. **Transformation System**
-   - Modular preprocessing pipeline in `R/transformations.R`
-   - Composable transformations via `transformation_pipeline()`
-   - Backwards compatible with legacy `apply_preprocessing`
+3. **Chunking/Iterator Pattern**
+   - `data_chunks()` for memory-efficient processing
+   - Supports both voxel-wise and run-wise chunking strategies
+   - Iterator protocol for sequential data access
 
 ### File Organization
 
-- `R/aaa_generics.R` - S3 generic function definitions (loaded first)
-- `R/fmri_dataset_*.R` - Core dataset functionality split by concern
-- `R/bids_facade_phase*.R` - BIDS implementation phases (1-3)
-- `R/sampling_frame.R` - Temporal structure handling
-- `R/utils.R` - Helper functions
-- `tests/testthat/test-*.R` - Comprehensive test coverage
+**Core Generic Functions:**
+- `R/all_generic.R` - S3 generic function definitions (loaded first)
+
+**Data Structures:**
+- `R/FmriSeries.R` - S4 class for lazy time series
+- `R/fmri_dataset.R` - Core dataset class
+- `R/dataset_constructors.R` - Dataset creation functions
+- `R/sampling_frame_adapters.R` - Temporal structure handling
+
+**Storage Backends:**
+- `R/storage_backend.R` - Backend interface definition
+- `R/matrix_backend.R` - In-memory matrix storage
+- `R/nifti_backend.R` - NIfTI file backend (with caching)
+- `R/h5_backend.R` - HDF5 storage backend
+- `R/study_backend.R` - Multi-subject study backend
+- `R/latent_backend.R` - Deferred computation backend
+
+**Data Access & Processing:**
+- `R/data_access.R` - Data retrieval methods
+- `R/data_chunks.R` - Chunking functionality
+- `R/conversions.R` - Type conversion methods
+- `R/as_delayed_array.R` - DelayedArray conversions
+
+**Utilities:**
+- `R/config.R` - Configuration management
+- `R/errors.R` - Custom error classes
+- `R/print_methods.R` - Display methods for objects
 
 ### Testing Strategy
 
-The package uses extensive testthat testing covering:
-- Constructor validation
-- Data access patterns
-- Chunking and iteration
-- BIDS integration phases
-- Edge cases and error handling
+The package uses comprehensive testthat testing with 40+ test files:
 
-Note: Some tests may fail as placeholders for future implementation - this is intentional and documented in test files.
+**Test Organization:**
+- `test-*_backend.R` - Backend-specific tests
+- `test-dataset_constructors.R` - Constructor validation
+- `test-data_chunks*.R` - Chunking functionality
+- `test-fmri_series_*.R` - FmriSeries class tests
+- `test-integration.R` - Cross-component integration
+- `test-error_constructors.R` - Error handling
+- `test-backward_compatibility.R` - Legacy API support
+
+**Coverage Areas:**
+- All backend implementations
+- Data access patterns and chunking strategies
+- Type conversions and metadata handling
+- Edge cases and error conditions
+- Performance optimizations (e.g., NIfTI caching)
 
 ### Integration Points
 
-- **neuroim2**: Optional dependency for NeuroVec objects
-- **bidser**: Optional BIDS backend
-- **iterators**: Core dependency for chunked data access
-- **tibble**: Data frame representation
+**Core Dependencies:**
+- **neuroim2**: NeuroVec objects and neuroimaging data structures
+- **DelayedArray**: Lazy array operations for FmriSeries
+- **Matrix**: Sparse matrix support
+- **iterators**: Chunked data iteration
 
-The architecture emphasizes loose coupling, allowing components to evolve independently while maintaining stable interfaces through S3 generics.
+**Optional Dependencies:**
+- **bidser**: BIDS dataset integration
+- **fmristore**: Advanced storage backends
+- **arrow**: Parquet file support
+- **dplyr**: Data manipulation
+
+The architecture emphasizes loose coupling through S3 generic functions, allowing backends and components to evolve independently while maintaining stable APIs.

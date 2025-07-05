@@ -33,14 +33,19 @@ test_that("get_data_from_file memoises loaded data", {
   call_count <- 0
   with_mocked_bindings(
     file.exists = function(x) TRUE,
-    read_vol = function(x) array(TRUE, c(1,1,1)),
-    read_vec = function(x, ...) { call_count <<- call_count + 1; matrix(1:4, nrow = 2) },
-    .package = c("base", "neuroim2"),
+    .package = "base",
     {
-      dset <- fmri_dataset_legacy(scans = scan_file, mask = mask_file, TR = 1, run_length = 2, preload = FALSE)
-      r1 <- fmridataset:::get_data_from_file(dset)
-      r2 <- fmridataset:::get_data_from_file(dset)
-      expect_identical(r1, r2)
+      with_mocked_bindings(
+        read_vol = function(x) array(TRUE, c(1,1,1)),
+        read_vec = function(x, ...) { call_count <<- call_count + 1; matrix(1:4, nrow = 2) },
+        .package = "neuroim2",
+        {
+          dset <- fmri_dataset_legacy(scans = scan_file, mask = mask_file, TR = 1, run_length = 2, preload = FALSE)
+          r1 <- fmridataset:::get_data_from_file(dset)
+          r2 <- fmridataset:::get_data_from_file(dset)
+          expect_identical(r1, r2)
+        }
+      )
     }
   )
   expect_equal(call_count, 1)

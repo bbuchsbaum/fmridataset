@@ -24,7 +24,7 @@ time series analysis or indexing operations.
 \examples{
 \donttest{
 # Create a sampling frame
-sf <- sampling_frame(blocklens = c(100, 120), TR = 2)
+sf <- fmrihrf::sampling_frame(blocklens = c(100, 120), TR = 2)
 s <- samples(sf)
 length(s)  # 220
 range(s)   # c(1, 220)

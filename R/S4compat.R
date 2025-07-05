@@ -9,3 +9,4 @@ NULL
 setOldClass("storage_backend")
 setOldClass(c("nifti_backend", "storage_backend"))
 setOldClass(c("matrix_backend", "storage_backend"))
+setOldClass(c("study_backend", "storage_backend"))

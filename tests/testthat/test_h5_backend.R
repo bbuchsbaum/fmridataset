@@ -491,7 +491,7 @@ test_that("fmri_h5_dataset validates parameters", {
           TR = -1, # Invalid TR
           run_length = 100
         ),
-        "TR not greater than 0"
+        "TR values must be positive"
       )
 
       # Test that valid parameters work

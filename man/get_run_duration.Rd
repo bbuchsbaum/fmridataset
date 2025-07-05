@@ -24,7 +24,7 @@ Calculates the duration of each run in seconds.
 \examples{
 \donttest{
 # Create a sampling frame with different run lengths
-sf <- sampling_frame(blocklens = c(100, 120), TR = 2)
+sf <- fmrihrf::sampling_frame(blocklens = c(100, 120), TR = 2)
 get_run_duration(sf)  # Returns: c(200, 240) seconds
 }
 

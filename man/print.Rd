@@ -12,7 +12,7 @@
 \usage{
 \method{print}{fmri_dataset}(x, full = FALSE, ...)
 
-\method{summary}{fmri_dataset}(object, ...)
+summary.fmri_dataset(object, ...)
 
 \method{print}{latent_dataset}(x, ...)
 

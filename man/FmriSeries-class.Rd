@@ -3,14 +3,27 @@
 \docType{class}
 \name{FmriSeries-class}
 \alias{FmriSeries-class}
+\alias{show,FmriSeries-method}
 \title{FmriSeries: fMRI Time Series Container}
+\usage{
+\S4method{show}{FmriSeries}(object)
+}
+\arguments{
+\item{object}{An \code{FmriSeries} object}
+}
 \value{
 An object of class \code{FmriSeries} inheriting from \code{DelayedMatrix}
+
+Returns \code{object} invisibly. Called for its side effect of
+printing to the console.
 }
 \description{
 An S4 class representing lazily accessed fMRI time series data. The
 underlying data is stored in a \code{DelayedMatrix} with rows corresponding
 to timepoints and columns corresponding to voxels.
+
+Display a concise summary of an FmriSeries object, including dimensions,
+selector type, backend, and data orientation.
 }
 \section{Slots}{
 
@@ -49,6 +62,16 @@ if (requireNamespace("DelayedArray", quietly = TRUE) &&
   
   # Note: Direct instantiation typically not recommended
   # Users should use constructor functions provided by the package
+}
+}
+
+\donttest{
+# This method is called automatically when printing
+if (requireNamespace("DelayedArray", quietly = TRUE) && 
+    requireNamespace("S4Vectors", quietly = TRUE)) {
+  # Create example object (see FmriSeries class documentation)
+  # fs <- new("FmriSeries", ...)
+  # fs  # Automatically calls show method
 }
 }
 

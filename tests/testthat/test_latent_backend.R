@@ -172,6 +172,7 @@ test_that("latent_backend validates input types correctly", {
 
 test_that("fmri_latent_dataset constructor parameter validation", {
   skip_if_not_installed("fmristore")
+  skip_if_not_installed("mockery")
 
   # Create a simple mock backend for testing parameter validation
   mock_lvec <- structure(list(), class = "LatentNeuroVec")
@@ -246,10 +247,15 @@ test_that("latent_backend opens and retrieves data correctly", {
 
   with_mocked_bindings(
     requireNamespace = function(pkg, quietly = TRUE) TRUE,
-    space = function(x) structure(list(dim = c(2, 2, 2, nrow(x@basis)), origin = c(0,0,0), spacing = c(1,1,1)), class = "NeuroSpace"),
-    mask = function(x) x@mask,
-    .package = c("base", "neuroim2"),
+    .package = "base",
     {
+      with_mocked_bindings(
+        space = function(x) {
+          dims <- c(2, 2, 2, nrow(x@basis))
+          structure(dims, class = "NeuroSpace", origin = c(0,0,0), spacing = c(1,1,1))
+        },
+        .package = "neuroim2",
+        {
       backend <- latent_backend(list(l1, l2))
       backend <- backend_open(backend)
 
@@ -262,10 +268,12 @@ test_that("latent_backend opens and retrieves data correctly", {
       expect_equal(length(m), 3)
       expect_true(all(m))
 
-      dat <- backend_get_data(backend)
-      expect_equal(dim(dat), c(8, 3))
-      # first run data should equal l1@basis
-      expect_equal(dat[1:4, ], l1@basis)
+          dat <- backend_get_data(backend)
+          expect_equal(dim(dat), c(8, 3))
+          # first run data should equal l1@basis
+          expect_equal(dat[1:4, ], l1@basis)
+        }
+      )
     }
   )
 })

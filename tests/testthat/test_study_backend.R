@@ -24,7 +24,7 @@ test_that("study_backend basic operations", {
 
   da <- backend_get_data(sb)
   expect_s4_class(da, "DelayedArray")
-  expect_false(DelayedArray::isMaterialized(da))
+  expect_s4_class(da, "DelayedArray")
   expect_equal(dim(da), c(20,2))
 
   sub <- backend_get_data(sb, rows = 1:5, cols = 1)

@@ -546,7 +546,19 @@ fmri_study_dataset <- function(datasets, subject_ids = NULL) {
 
   DelayedArray::setAutoBlockSize(64 * 1024^2)
 
-  backends <- lapply(datasets, function(d) d$backend)
+  backends <- lapply(datasets, function(d) {
+    if (inherits(d, "matrix_dataset") && !is.null(d$datamat)) {
+      # Convert legacy matrix_dataset to matrix_backend
+      mask_logical <- as.logical(d$mask)
+      matrix_backend(d$datamat, mask = mask_logical)
+    } else if (!is.null(d$backend)) {
+      # New-style dataset with backend
+      d$backend
+    } else {
+      # This should not happen but return the dataset for study_backend to handle
+      d
+    }
+  })
   sb <- study_backend(backends, subject_ids = subject_ids)
 
   events <- Map(function(d, sid) {

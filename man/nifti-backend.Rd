@@ -11,8 +11,7 @@ Supports both file-based and in-memory NIfTI data.
 The NiftiBackend can work with:
 \itemize{
 \item File paths to NIfTI images
-\item Pre-loaded niftiImage objects (from RNifti package)
-\item neuroim2 NeuroVec objects
+\item Pre-loaded neuroim2 NeuroVec objects
 }
 }
 \keyword{internal}

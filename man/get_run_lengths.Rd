@@ -31,7 +31,7 @@ of timepoints (volumes) in that run.
 \examples{
 \donttest{
 # Create a sampling frame with 3 runs
-sf <- sampling_frame(blocklens = c(100, 120, 110), TR = 2)
+sf <- fmrihrf::sampling_frame(blocklens = c(100, 120, 110), TR = 2)
 get_run_lengths(sf)  # Returns: c(100, 120, 110)
 }
 

@@ -44,7 +44,7 @@ if (requireNamespace("DelayedArray", quietly = TRUE) &&
             dataset_info = list())
   
   # Convert to tibble
-  tbl_result <- as_tibble(fs)
+  tbl_result <- tibble::as_tibble(fs)
   # Result has 12 rows (3 timepoints x 4 voxels)
   # with columns: time, condition, voxel_id, region, signal
 }

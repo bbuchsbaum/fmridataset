@@ -16,6 +16,25 @@ study_backend <- function(backends, subject_ids = NULL,
     )
   }
 
+  # Coerce fmri_dataset objects to their backends  
+  backends <- lapply(backends, function(b) {
+    if (!inherits(b, "storage_backend")) {
+      if (inherits(b, "matrix_dataset") && !is.null(b$datamat)) {
+        # Legacy matrix_dataset - convert to matrix_backend
+        mask_logical <- as.logical(b$mask)
+        matrix_backend(b$datamat, mask = mask_logical)
+      } else if (!is.null(b$backend)) {
+        # New-style dataset with backend
+        b$backend
+      } else {
+        # Return as-is and let validation catch it
+        b
+      }
+    } else {
+      b
+    }
+  })
+  
   lapply(backends, function(b) {
     if (!inherits(b, "storage_backend")) {
       stop_fmridataset(
@@ -40,11 +59,13 @@ study_backend <- function(backends, subject_ids = NULL,
   options(fmridataset.block_size_mb = 64)
 
   dims_list <- lapply(backends, backend_get_dims)
-  spatial_dims <- lapply(dims_list, function(x) x$spatial)
+  # Ensure consistent numeric type for spatial dimensions
+  spatial_dims <- lapply(dims_list, function(x) as.numeric(x$spatial))
   time_dims <- vapply(dims_list, function(x) x$time, numeric(1))
 
   ref_spatial <- spatial_dims[[1]]
-  for (sd in spatial_dims[-1]) {
+  for (i in seq_along(spatial_dims[-1])) {
+    sd <- spatial_dims[[i + 1]]
     if (!identical(sd, ref_spatial)) {
       stop_fmridataset(
         fmridataset_error_config,
@@ -128,13 +149,18 @@ backend_get_mask.study_backend <- function(backend) {
 #' @method backend_get_data study_backend
 #' @export
 backend_get_data.study_backend <- function(backend, rows = NULL, cols = NULL) {
-  arrays <- lapply(backend$backends, as_delayed_array)
-  da <- do.call(DelayedArray::arbind, arrays)
-  if (!is.null(rows)) {
-    da <- da[rows, , drop = FALSE]
+  # Use the lazy DelayedArray approach
+  da <- as_delayed_array(backend)
+  
+  # Subset if needed
+  if (!is.null(rows) || !is.null(cols)) {
+    # Convert NULL to full range
+    if (is.null(rows)) rows <- seq_len(nrow(da))
+    if (is.null(cols)) cols <- seq_len(ncol(da))
+    
+    # Extract only what's needed
+    da[rows, cols, drop = FALSE]
+  } else {
+    da
   }
-  if (!is.null(cols)) {
-    da <- da[, cols, drop = FALSE]
-  }
-  da
 }

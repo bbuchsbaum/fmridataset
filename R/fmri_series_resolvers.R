@@ -27,16 +27,30 @@ resolve_selector <- function(dataset, selector) {
     return(seq_len(sum(mask_vec)))
   }
 
+  # Handle 3-column coordinate matrices BEFORE numeric check
+  if (is.matrix(selector) && ncol(selector) == 3) {
+    dims <- backend_get_dims(dataset$backend)$spatial
+    # Convert coordinates to linear indices in the full volume
+    full_vol_indices <- selector[,1] + (selector[,2] - 1) * dims[1] + (selector[,3] - 1) * dims[1] * dims[2]
+    
+    # Get the indices of voxels that are inside the mask
+    mask_vec <- backend_get_mask(dataset$backend)
+    mask_indices <- which(mask_vec)
+    
+    # Map from full volume indices to masked data indices
+    final_indices <- match(full_vol_indices, mask_indices)
+    
+    # Remove any coordinates that fall outside the mask
+    final_indices <- final_indices[!is.na(final_indices)]
+    
+    return(as.integer(final_indices))
+  }
+
   if (is.numeric(selector)) {
     return(as.integer(selector))
   }
 
-  if (is.matrix(selector) && ncol(selector) == 3) {
-    dims <- backend_get_dims(dataset$backend)$spatial
-    ind <- selector[,1] + (selector[,2] - 1) * dims[1] + (selector[,3] - 1) * dims[1] * dims[2]
-    return(as.integer(ind))
-  }
-
+  # Handle general arrays, ROI volumes, and logical arrays as masks
   if (is.array(selector) || inherits(selector, "ROIVol") || inherits(selector, "LogicalNeuroVol")) {
     ind <- which(as.logical(as.vector(selector)))
     return(as.integer(ind))

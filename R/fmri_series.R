@@ -10,6 +10,7 @@
 #' @param ... Additional arguments passed to methods.
 #'
 #' @return Either an `FmriSeries` object or a `DelayedMatrix`.
+#' @importFrom methods new
 #' @export
 fmri_series <- function(dataset, selector = NULL, timepoints = NULL,
                         output = c("FmriSeries", "DelayedMatrix"),
