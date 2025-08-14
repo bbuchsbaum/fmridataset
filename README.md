@@ -11,7 +11,7 @@
 
 ## Overview
 
-`fmridataset` provides a unified S3 class for representing functional magnetic resonance imaging (fMRI) data from various sources. The package supports multiple data backends and offers a consistent interface for working with fMRI datasets regardless of their underlying storage format.
+`fmridataset` provides a unified framework for representing functional magnetic resonance imaging (fMRI) data from various sources. The package supports multiple data backends and offers a consistent interface for working with fMRI datasets regardless of their underlying storage format.
 
 ## Features
 

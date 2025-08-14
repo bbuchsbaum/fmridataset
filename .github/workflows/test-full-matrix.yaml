@@ -1,0 +1,177 @@
+# GitHub Actions workflow for testing with all optional packages
+# This ensures that tests don't silently pass due to missing dependencies
+name: test-full-matrix
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref }}-full
+  cancel-in-progress: true
+
+jobs:
+  test-all-optional:
+    runs-on: ${{ matrix.config.os }}
+    
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }}) - all optional packages
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: ubuntu-latest,   r: 'release'}
+          - {os: ubuntu-latest,   r: 'devel'}
+          - {os: macos-latest,    r: 'release'}
+          - {os: windows-latest,  r: 'release'}
+    
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      # Ensure tests are not skipped
+      NOT_CRAN: true
+      _R_CHECK_CRAN_INCOMING_: false
+      _R_CHECK_FORCE_SUGGESTS_: true
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: r-lib/actions/setup-pandoc@v2
+      
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          use-public-rspm: true
+      
+      # Install system dependencies for optional packages
+      - name: Install system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libhdf5-dev libudunits2-dev libgdal-dev libgeos-dev libproj-dev
+      
+      # Install BiocManager for Bioconductor packages
+      - name: Install BiocManager
+        run: |
+          Rscript -e 'install.packages("BiocManager")'
+          Rscript -e 'BiocManager::install(version = "3.19", ask = FALSE)'
+      
+      # Install all dependencies including suggests
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            any::rcmdcheck
+            any::testthat
+            any::covr
+          needs: check
+          dependencies: '"all"'
+      
+      # Install Bioconductor packages that might be missed
+      - name: Install Bioconductor packages
+        run: |
+          Rscript -e 'BiocManager::install(c("Rarr", "rhdf5", "DelayedArray", "S4Arrays"), ask = FALSE, update = FALSE)'
+      
+      # Install GitHub packages if needed
+      - name: Install GitHub packages
+        run: |
+          Rscript -e 'if (!requireNamespace("remotes", quietly = TRUE)) install.packages("remotes")'
+          Rscript -e 'tryCatch(remotes::install_github("bbuchsbaum/fmristore", dependencies = TRUE), error = function(e) warning("Could not install fmristore: ", e$message))'
+          Rscript -e 'tryCatch(remotes::install_github("bbuchsbaum/bidser", dependencies = TRUE), error = function(e) warning("Could not install bidser: ", e$message))'
+      
+      # Verify all optional packages are installed
+      - name: Check optional packages
+        run: |
+          Rscript -e '
+          optional_pkgs <- c("bench", "bidser", "crayon", "arrow", "dplyr", 
+                            "fmristore", "foreach", "Rarr", "rhdf5", 
+                            "jsonlite", "yaml", "S4Arrays")
+          missing <- optional_pkgs[!sapply(optional_pkgs, requireNamespace, quietly = TRUE)]
+          if (length(missing) > 0) {
+            stop("Missing optional packages: ", paste(missing, collapse = ", "))
+          }
+          cat("All optional packages installed successfully\n")
+          '
+      
+      # Run tests with coverage
+      - name: Test with all optional packages
+        run: |
+          Rscript -e '
+          # Run tests and ensure none are skipped due to missing packages
+          test_results <- testthat::test_dir("tests/testthat", reporter = "summary")
+          
+          # Check for skipped tests
+          skipped <- sum(test_results$skipped)
+          if (skipped > 0) {
+            cat("WARNING:", skipped, "tests were skipped\n")
+            # Check if skips are due to missing packages
+            skip_msgs <- attr(test_results, "skip_messages")
+            pkg_skips <- grep("not installed|not available", skip_msgs, value = TRUE)
+            if (length(pkg_skips) > 0) {
+              stop("Tests skipped due to missing packages:\n", paste(pkg_skips, collapse = "\n"))
+            }
+          }
+          '
+      
+      # Run R CMD check
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          error-on: '"error"'
+          check-dir: '"check"'
+          build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+          args: 'c("--no-manual", "--as-cran", "--no-vignettes")'
+      
+      # Upload test results
+      - name: Upload check results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ runner.os }}-r${{ matrix.config.r }}-results
+          path: check
+
+  test-minimal:
+    runs-on: ubuntu-latest
+    
+    name: ubuntu-latest (release) - minimal dependencies only
+    
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      _R_CHECK_FORCE_SUGGESTS_: false
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: r-lib/actions/setup-pandoc@v2
+      
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+      
+      # Install only required dependencies
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+          dependencies: '"hard"'
+      
+      # Verify optional packages are NOT installed
+      - name: Check minimal setup
+        run: |
+          Rscript -e '
+          optional_pkgs <- c("bench", "bidser", "arrow", "fmristore", "Rarr")
+          installed <- optional_pkgs[sapply(optional_pkgs, requireNamespace, quietly = TRUE)]
+          if (length(installed) > 0) {
+            warning("Optional packages installed in minimal test: ", 
+                   paste(installed, collapse = ", "))
+          }
+          '
+      
+      # Run R CMD check with minimal deps
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          error-on: '"error"'
+          check-dir: '"check"'
+          args: 'c("--no-manual", "--no-vignettes", "--no-build-vignettes")'

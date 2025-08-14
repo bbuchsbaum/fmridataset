@@ -1,3 +1,32 @@
+#' @export
+get_data_matrix.fmri_study_dataset <- function(x, subject_id = NULL, ...) {
+  if (!is.null(subject_id)) {
+    # Return data for specific subject(s)
+    if (is.character(subject_id)) {
+      idx <- match(subject_id, x$subject_ids)
+      if (any(is.na(idx))) {
+        stop("Subject ID(s) not found: ", paste(subject_id[is.na(idx)], collapse = ", "))
+      }
+    } else if (is.numeric(subject_id)) {
+      idx <- subject_id
+    } else {
+      stop("subject_id must be character or numeric")
+    }
+    
+    # Get data from specific backend(s)
+    if (length(idx) == 1) {
+      backend_get_data(x$backend$backends[[idx]], ...)
+    } else {
+      # Combine data from multiple subjects
+      data_list <- lapply(idx, function(i) backend_get_data(x$backend$backends[[i]], ...))
+      do.call(rbind, data_list)
+    }
+  } else {
+    # Return all data
+    backend_get_data(x$backend, ...)
+  }
+}
+
 #' Convert fmri_study_dataset to a tibble or DelayedMatrix
 #'
 #' Primary data access method for study-level datasets. By default this

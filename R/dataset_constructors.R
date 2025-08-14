@@ -1,6 +1,8 @@
 #' @importFrom assertthat assert_that
+#' @importFrom fs is_absolute_path
 #' @importFrom purrr map_lgl
 #' @importFrom tibble as_tibble
+#' @importFrom lifecycle deprecate_warn
 NULL
 
 #' Matrix Dataset Constructor
@@ -37,7 +39,7 @@ matrix_dataset <- function(datamat, TR, run_length, event_table = data.frame()) 
     nruns = length(run_length),
     event_table = event_table,
     sampling_frame = frame,
-    mask = rep(1, ncol(datamat))
+    mask = rep(TRUE, ncol(datamat))
   )
 
   class(ret) <- c("matrix_dataset", "fmri_dataset", "list")
@@ -138,6 +140,36 @@ fmri_mem_dataset <- function(scans, mask, TR,
 #' dset <- latent_dataset(lvec, TR = 2, run_length = 100)
 #' }
 latent_dataset <- function(lvec, TR, run_length, event_table = data.frame()) {
+  # Handle new backend-based interface
+  if (is.character(lvec) || (is.list(lvec) && length(lvec) > 0)) {
+    # New interface with backend using registry
+    backend <- create_backend("latent", source = lvec)
+    backend <- backend_open(backend)
+    
+    # Get dimensions to validate run_length
+    dims <- backend_get_dims(backend)
+    assert_that(sum(run_length) == dims$time,
+      msg = sprintf(
+        "Sum of run_length (%d) must equal total time points (%d)",
+        sum(run_length), dims$time
+      )
+    )
+    
+    frame <- fmrihrf::sampling_frame(blocklens = run_length, TR = TR)
+    
+    ret <- list(
+      backend = backend,
+      nruns = length(run_length),
+      event_table = suppressMessages(tibble::as_tibble(event_table, .name_repair = "check_unique")),
+      sampling_frame = frame,
+      censor = rep(0, sum(run_length))
+    )
+    
+    class(ret) <- c("latent_dataset", "fmri_dataset", "list")
+    return(ret)
+  }
+  
+  # Legacy interface for single LatentNeuroVec object
   # Lazy check: make sure fmristore is installed (fmristore is not a hard dependency)
   if (!requireNamespace("fmristore", quietly = TRUE)) {
     stop("The 'fmristore' package is required to create a latent_dataset. Please install fmristore.",
@@ -160,7 +192,7 @@ latent_dataset <- function(lvec, TR, run_length, event_table = data.frame()) {
     nruns = length(run_length),
     event_table = event_table,
     sampling_frame = frame,
-    mask = rep(1, ncol(lvec@basis))
+    mask = rep(TRUE, ncol(lvec@basis))
   )
 
   class(ret) <- c("latent_dataset", "matrix_dataset", "fmri_dataset", "list")
@@ -169,131 +201,58 @@ latent_dataset <- function(lvec, TR, run_length, event_table = data.frame()) {
 
 #' Create an fMRI Dataset Object from LatentNeuroVec Files or Objects
 #'
-#' This function creates an fMRI dataset object from LatentNeuroVec files (.lv.h5) or objects
-#' using the new backend architecture. LatentNeuroVec represents data in a compressed latent
-#' space using basis functions and spatial loadings.
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#' 
+#' This function is deprecated. Please use `latent_dataset()` instead,
+#' which provides a proper interface for latent space data.
 #'
-#' @param latent_files A character vector of file paths to LatentNeuroVec HDF5 files (.lv.h5),
-#'   or a list of LatentNeuroVec objects, or a pre-created latent_backend object.
-#' @param mask_source Optional mask source. If NULL, the mask will be extracted from
-#'   the first LatentNeuroVec object.
-#' @param TR The repetition time in seconds of the scan-to-scan interval.
-#' @param run_length A vector of one or more integers indicating the number of scans in each run.
-#' @param event_table A data.frame containing the event onsets and experimental variables. Default is an empty data.frame.
-#' @param base_path Base directory for relative file names. Absolute paths are used as-is.
-#' @param censor A binary vector indicating which scans to remove. Default is NULL.
-#' @param preload Read LatentNeuroVec objects eagerly rather than on first access. Default is FALSE.
+#' @param latent_files Source files or objects
+#' @param mask_source Ignored
+#' @param TR The repetition time in seconds
+#' @param run_length Vector of run lengths
+#' @param event_table Event table
+#' @param base_path Base path for files
+#' @param censor Censor vector
+#' @param preload Whether to preload data
 #'
-#' @return An fMRI dataset object of class c("fmri_file_dataset", "volumetric_dataset", "fmri_dataset", "list").
-#'
-#' @details
-#' This function uses the latent_backend to handle LatentNeuroVec data efficiently.
-#' LatentNeuroVec objects store fMRI data in a compressed format using:
-#' - Basis functions (temporal components)
-#' - Spatial loadings (voxel weights)
-#' - Optional offset terms
-#'
-#' This is particularly efficient for data that can be well-represented by a
-#' lower-dimensional basis (e.g., from PCA, ICA, or dictionary learning).
-#'
-#' **CRITICAL: Data Access in Latent Space**
-#' Unlike standard fMRI datasets that return voxel-wise data, this dataset returns
-#' **latent scores** (temporal basis components) rather than reconstructed voxel data.
-#' The data matrix dimensions are (time × components), not (time × voxels). This is because:
-#'
-#' - Time-series analyses should be performed in the efficient latent space
-#' - The latent scores capture temporal dynamics in the compressed representation
-#' - Reconstructing to full voxel space defeats the compression benefits
-#' - Most analysis workflows (GLM, connectivity, etc.) work directly with these temporal patterns
-#'
-#' Use this dataset when you want to analyze temporal dynamics in the latent space.
-#' If you need full voxel reconstruction, use the reconstruction methods from fmristore directly.
-#'
+#' @return A latent_dataset object
 #' @export
 #'
 #' @examples
 #' \dontrun{
-#' # Create an fMRI dataset from LatentNeuroVec HDF5 files
-#' dset <- fmri_latent_dataset(
-#'   latent_files = c("run1.lv.h5", "run2.lv.h5", "run3.lv.h5"),
+#' # Use latent_dataset() instead:
+#' dset <- latent_dataset(
+#'   source = c("run1.lv.h5", "run2.lv.h5", "run3.lv.h5"),
 #'   TR = 2,
 #'   run_length = c(150, 150, 150)
 #' )
-#'
-#' # Create from pre-loaded LatentNeuroVec objects
-#' lvec1 <- fmristore::read_vec("run1.lv.h5")
-#' lvec2 <- fmristore::read_vec("run2.lv.h5")
-#' dset <- fmri_latent_dataset(
-#'   latent_files = list(lvec1, lvec2),
-#'   TR = 2,
-#'   run_length = c(100, 100)
-#' )
-#'
-#' # Create from a latent_backend
-#' backend <- latent_backend(c("run1.lv.h5", "run2.lv.h5"))
-#' dset <- fmri_latent_dataset(backend, TR = 2, run_length = c(100, 100))
 #' }
 #'
-#' @seealso
-#' \code{\link{latent_backend}}, \code{\link{latent_dataset}}, \code{\link{fmri_h5_dataset}}
+#' @seealso \code{\link{latent_dataset}}
 fmri_latent_dataset <- function(latent_files, mask_source = NULL, TR,
                                 run_length,
                                 event_table = data.frame(),
                                 base_path = ".",
                                 censor = NULL,
                                 preload = FALSE) {
-  # Check if latent_files is actually a backend object
-  if (inherits(latent_files, "latent_backend")) {
-    backend <- latent_files
-  } else {
-    # Create a latent_backend from the input
-    if (is.character(latent_files)) {
-      # File paths - prepend base_path if needed for relative paths
-      latent_files <- ifelse(
-        grepl("^(/|[A-Za-z]:)", latent_files), # Check if absolute path
-        latent_files,
-        file.path(base_path, latent_files)
-      )
-    }
-
-    backend <- latent_backend(
-      source = latent_files,
-      mask_source = mask_source,
-      preload = preload
-    )
-  }
-
-  # Validate backend
-  validate_backend(backend)
-
-  # Open backend to initialize resources
-  backend <- backend_open(backend)
-
-  if (is.null(censor)) {
-    censor <- rep(0, sum(run_length))
-  }
-
-  frame <- sampling_frame(run_length, TR)
-
-  # Get dimensions to validate run_length
-  dims <- backend_get_dims(backend)
-  assert_that(sum(run_length) == dims$time,
-    msg = sprintf(
-      "Sum of run_length (%d) must equal total time points (%d)",
-      sum(run_length), dims$time
-    )
+  lifecycle::deprecate_warn(
+    "0.9.0",
+    "fmri_latent_dataset()",
+    "latent_dataset()",
+    details = "The new interface provides proper handling of latent space data."
   )
-
-  ret <- list(
-    backend = backend,
-    nruns = length(run_length),
-    event_table = suppressMessages(tibble::as_tibble(event_table, .name_repair = "check_unique")),
-    sampling_frame = frame,
-    censor = censor
+  
+  # Forward to new function
+  latent_dataset(
+    source = latent_files,
+    TR = TR,
+    run_length = run_length,
+    event_table = event_table,
+    base_path = base_path,
+    censor = censor,
+    preload = preload
   )
-
-  class(ret) <- c("fmri_file_dataset", "volumetric_dataset", "fmri_dataset", "list")
-  ret
 }
 
 #' Create an fMRI Dataset Object from a Set of Scans
@@ -314,6 +273,7 @@ fmri_latent_dataset <- function(latent_files, mask_source = NULL, TR,
 #' @param mode The type of storage mode ('normal', 'bigvec', 'mmap', filebacked'). Default is 'normal'.
 #'   Ignored if scans is a backend object.
 #' @param backend Deprecated. Use scans parameter to pass a backend object.
+#' @param dummy_mode Logical, if TRUE allows non-existent files (for testing purposes only). Default is FALSE.
 #'
 #' @return An fMRI dataset object of class c("fmri_file_dataset", "volumetric_dataset", "fmri_dataset", "list").
 #' @export
@@ -339,6 +299,15 @@ fmri_latent_dataset <- function(latent_files, mask_source = NULL, TR,
 #' # Create an fMRI dataset with a backend
 #' backend <- nifti_backend(c("scan1.nii", "scan2.nii"), mask_source = "mask.nii")
 #' dset <- fmri_dataset(backend, TR = 2, run_length = c(150, 150))
+#' 
+#' # Create a dummy dataset for testing (files don't need to exist)
+#' dset_dummy <- fmri_dataset(
+#'   scans = c("dummy1.nii", "dummy2.nii"),
+#'   mask = "dummy_mask.nii", 
+#'   TR = 2,
+#'   run_length = c(100, 100),
+#'   dummy_mode = TRUE  # Enable dummy mode for testing
+#' )
 #' }
 fmri_dataset <- function(scans, mask = NULL, TR,
                          run_length,
@@ -347,7 +316,8 @@ fmri_dataset <- function(scans, mask = NULL, TR,
                          censor = NULL,
                          preload = FALSE,
                          mode = c("normal", "bigvec", "mmap", "filebacked"),
-                         backend = NULL) {
+                         backend = NULL,
+                         dummy_mode = FALSE) {
   # Check if scans is actually a backend object
   if (inherits(scans, "storage_backend")) {
     backend <- scans
@@ -355,26 +325,41 @@ fmri_dataset <- function(scans, mask = NULL, TR,
     warning("backend parameter is deprecated. Pass backend as first argument.")
   } else {
     # Legacy path: create a NiftiBackend from file paths
-    assert_that(is.character(mask), msg = "'mask' should be the file name of the binary mask file")
+    assert_that(is.character(mask) && length(mask) == 1, msg = "'mask' should be the file name of the binary mask file")
     mode <- match.arg(mode)
 
-    maskfile <- ifelse(
-      is_absolute_path(mask),
-      mask,
+    # Handle paths
+    abs_mask <- fs::is_absolute_path(mask)
+    maskfile <- if (length(abs_mask) == 1 && abs_mask) {
+      mask
+    } else {
       file.path(base_path, mask)
-    )
-    scan_files <- ifelse(
-      is_absolute_path(scans),
-      scans,
-      file.path(base_path, scans)
-    )
+    }
+    
+    # For scan files, handle each one
+    abs_scans <- fs::is_absolute_path(scans)
+    scan_files <- character(length(scans))
+    for (i in seq_along(scans)) {
+      scan_files[i] <- if (length(abs_scans) >= i && abs_scans[i]) {
+        scans[i]
+      } else {
+        file.path(base_path, scans[i])
+      }
+    }
 
-    backend <- nifti_backend(
+    # Use registry to create backend for future extensibility
+    backend <- create_backend("nifti",
       source = scan_files,
       mask_source = maskfile,
       preload = preload,
-      mode = mode
+      mode = mode,
+      dummy_mode = dummy_mode
     )
+  }
+  
+  # Store run_length in backend for dummy mode (must be before validation)
+  if (inherits(backend, "nifti_backend") && isTRUE(backend$dummy_mode)) {
+    backend$run_length <- run_length
   }
 
   # Validate backend
@@ -467,21 +452,21 @@ fmri_h5_dataset <- function(h5_files, mask_source, TR,
                             data_dataset = "data") {
   # Prepare file paths
   h5_file_paths <- ifelse(
-    is_absolute_path(h5_files),
+    fs::is_absolute_path(h5_files),
     h5_files,
     file.path(base_path, h5_files)
   )
 
   mask_file_path <- if (is.character(mask_source)) {
-    ifelse(is_absolute_path(mask_source),
+    ifelse(fs::is_absolute_path(mask_source),
            mask_source,
            file.path(base_path, mask_source))
   } else {
     mask_source
   }
 
-  # Create H5 backend
-  backend <- h5_backend(
+  # Create H5 backend using registry
+  backend <- create_backend("h5",
     source = h5_file_paths,
     mask_source = mask_file_path,
     mask_dataset = mask_dataset,
@@ -548,9 +533,9 @@ fmri_study_dataset <- function(datasets, subject_ids = NULL) {
 
   backends <- lapply(datasets, function(d) {
     if (inherits(d, "matrix_dataset") && !is.null(d$datamat)) {
-      # Convert legacy matrix_dataset to matrix_backend
+      # Convert legacy matrix_dataset to matrix_backend using registry
       mask_logical <- as.logical(d$mask)
-      matrix_backend(d$datamat, mask = mask_logical)
+      create_backend("matrix", data_matrix = d$datamat, mask = mask_logical)
     } else if (!is.null(d$backend)) {
       # New-style dataset with backend
       d$backend
@@ -559,7 +544,7 @@ fmri_study_dataset <- function(datasets, subject_ids = NULL) {
       d
     }
   })
-  sb <- study_backend(backends, subject_ids = subject_ids)
+  sb <- create_backend("study", backends = backends, subject_ids = subject_ids)
 
   events <- Map(function(d, sid) {
     et <- tibble::as_tibble(d$event_table)

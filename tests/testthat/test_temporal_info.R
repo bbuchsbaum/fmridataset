@@ -18,7 +18,7 @@ create_study_dataset <- function() {
 test_that("build_temporal_info_lazy.fmri_dataset returns correct metadata", {
   dset <- create_temp_dataset()
   info <- fmridataset:::build_temporal_info_lazy(dset, 1:5)
-  expect_s4_class(info, "DataFrame")
+  expect_s3_class(info, "data.frame")
   expect_equal(info$run_id, c(1, 1, 1, 2, 2))
   expect_equal(info$timepoint, 1:5)
 })
@@ -27,7 +27,7 @@ test_that("build_temporal_info_lazy.fmri_dataset returns correct metadata", {
 test_that("build_temporal_info_lazy.fmri_study_dataset includes subject mapping", {
   study <- create_study_dataset()
   info <- fmridataset:::build_temporal_info_lazy(study, 4:7)
-  expect_s4_class(info, "DataFrame")
+  expect_s3_class(info, "data.frame")
   expect_equal(as.character(info$subject_id), c("s1", "s1", "s2", "s2"))
   expect_equal(info$run_id, c(1, 1, 2, 2))
   expect_equal(info$timepoint, 4:7)

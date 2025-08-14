@@ -16,82 +16,42 @@ fmri_latent_dataset(
 )
 }
 \arguments{
-\item{latent_files}{A character vector of file paths to LatentNeuroVec HDF5 files (.lv.h5),
-or a list of LatentNeuroVec objects, or a pre-created latent_backend object.}
+\item{latent_files}{Source files or objects}
 
-\item{mask_source}{Optional mask source. If NULL, the mask will be extracted from
-the first LatentNeuroVec object.}
+\item{mask_source}{Ignored}
 
-\item{TR}{The repetition time in seconds of the scan-to-scan interval.}
+\item{TR}{The repetition time in seconds}
 
-\item{run_length}{A vector of one or more integers indicating the number of scans in each run.}
+\item{run_length}{Vector of run lengths}
 
-\item{event_table}{A data.frame containing the event onsets and experimental variables. Default is an empty data.frame.}
+\item{event_table}{Event table}
 
-\item{base_path}{Base directory for relative file names. Absolute paths are used as-is.}
+\item{base_path}{Base path for files}
 
-\item{censor}{A binary vector indicating which scans to remove. Default is NULL.}
+\item{censor}{Censor vector}
 
-\item{preload}{Read LatentNeuroVec objects eagerly rather than on first access. Default is FALSE.}
+\item{preload}{Whether to preload data}
 }
 \value{
-An fMRI dataset object of class c("fmri_file_dataset", "volumetric_dataset", "fmri_dataset", "list").
+A latent_dataset object
 }
 \description{
-This function creates an fMRI dataset object from LatentNeuroVec files (.lv.h5) or objects
-using the new backend architecture. LatentNeuroVec represents data in a compressed latent
-space using basis functions and spatial loadings.
-}
-\details{
-This function uses the latent_backend to handle LatentNeuroVec data efficiently.
-LatentNeuroVec objects store fMRI data in a compressed format using:
-\itemize{
-\item Basis functions (temporal components)
-\item Spatial loadings (voxel weights)
-\item Optional offset terms
-}
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
 
-This is particularly efficient for data that can be well-represented by a
-lower-dimensional basis (e.g., from PCA, ICA, or dictionary learning).
-
-\strong{CRITICAL: Data Access in Latent Space}
-Unlike standard fMRI datasets that return voxel-wise data, this dataset returns
-\strong{latent scores} (temporal basis components) rather than reconstructed voxel data.
-The data matrix dimensions are (time × components), not (time × voxels). This is because:
-\itemize{
-\item Time-series analyses should be performed in the efficient latent space
-\item The latent scores capture temporal dynamics in the compressed representation
-\item Reconstructing to full voxel space defeats the compression benefits
-\item Most analysis workflows (GLM, connectivity, etc.) work directly with these temporal patterns
-}
-
-Use this dataset when you want to analyze temporal dynamics in the latent space.
-If you need full voxel reconstruction, use the reconstruction methods from fmristore directly.
+This function is deprecated. Please use \code{latent_dataset()} instead,
+which provides a proper interface for latent space data.
 }
 \examples{
 \dontrun{
-# Create an fMRI dataset from LatentNeuroVec HDF5 files
-dset <- fmri_latent_dataset(
-  latent_files = c("run1.lv.h5", "run2.lv.h5", "run3.lv.h5"),
+# Use latent_dataset() instead:
+dset <- latent_dataset(
+  source = c("run1.lv.h5", "run2.lv.h5", "run3.lv.h5"),
   TR = 2,
   run_length = c(150, 150, 150)
 )
-
-# Create from pre-loaded LatentNeuroVec objects
-lvec1 <- fmristore::read_vec("run1.lv.h5")
-lvec2 <- fmristore::read_vec("run2.lv.h5")
-dset <- fmri_latent_dataset(
-  latent_files = list(lvec1, lvec2),
-  TR = 2,
-  run_length = c(100, 100)
-)
-
-# Create from a latent_backend
-backend <- latent_backend(c("run1.lv.h5", "run2.lv.h5"))
-dset <- fmri_latent_dataset(backend, TR = 2, run_length = c(100, 100))
 }
 
 }
 \seealso{
-\code{\link{latent_backend}}, \code{\link{latent_dataset}}, \code{\link{fmri_h5_dataset}}
+\code{\link{latent_dataset}}
 }

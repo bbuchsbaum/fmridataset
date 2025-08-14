@@ -12,12 +12,14 @@ create_test_dataset <- function(spatial_dims = c(4, 5, 2), n_time = 10) {
 # Helper to create partial mask dataset
 create_masked_dataset <- function() {
   spatial_dims <- c(4, 4, 2)
-  n_voxels <- prod(spatial_dims)
-  mat <- matrix(rnorm(10 * 20), nrow = 10, ncol = 20)  # Only 20 voxels active
+  n_voxels <- prod(spatial_dims)  # 32 voxels
   
   # Create mask with only some voxels active
   mask <- rep(FALSE, n_voxels)
   mask[c(1:5, 10:15, 20:25, 30:32)] <- TRUE  # 20 active voxels
+  
+  # Create data matrix with columns equal to total voxels (32)
+  mat <- matrix(rnorm(10 * n_voxels), nrow = 10, ncol = n_voxels)
   
   backend <- matrix_backend(mat, mask = mask, spatial_dims = spatial_dims)
   fmri_dataset(backend, TR = 2, run_length = 10)
@@ -51,8 +53,8 @@ test_that("resolve_selector handles numeric indices", {
 test_that("resolve_selector handles 3-column coordinate matrices", {
   dset <- create_test_dataset(spatial_dims = c(4, 5, 2))
   
-  # Single coordinate (as vector)
-  coords <- c(2, 3, 1)  # x=2, y=3, z=1
+  # Single coordinate (as 1-row matrix)
+  coords <- matrix(c(2, 3, 1), nrow = 1, ncol = 3)  # x=2, y=3, z=1
   indices <- fmridataset:::resolve_selector(dset, coords)
   expect_length(indices, 1)
   expect_true(is.integer(indices))
@@ -73,16 +75,16 @@ test_that("resolve_selector handles coordinate mapping with partial mask", {
   dset <- create_masked_dataset()
   
   # Test coordinate that should be in mask
-  coords <- c(1, 1, 1)  # Should correspond to linear index 1
+  coords <- matrix(c(1, 1, 1), nrow = 1, ncol = 3)  # Should correspond to linear index 1
   indices <- fmridataset:::resolve_selector(dset, coords)
   expect_length(indices, 1)
   expect_true(indices > 0)
   
   # Test coordinates that map to masked-out voxels
-  coords <- c(4, 4, 2)  # Should be outside active mask
+  coords <- matrix(c(2, 2, 1), nrow = 1, ncol = 3)  # Should be outside active mask (linear index 6)
   indices <- fmridataset:::resolve_selector(dset, coords)
-  # Should return empty or NA depending on implementation
-  expect_true(length(indices) == 0 || is.na(indices))
+  # Should return empty 
+  expect_equal(length(indices), 0)
 })
 
 test_that("resolve_selector handles logical arrays", {
@@ -225,7 +227,7 @@ test_that("resolvers work together in fmri_series integration", {
   
   # This should work without errors
   fs <- fmri_series(dset, selector = coords, timepoints = timepoints)
-  expect_s4_class(fs, "FmriSeries")
+  expect_s3_class(fs, "fmri_series")
   expect_equal(nrow(fs), 3)  # 3 timepoints
   expect_equal(ncol(fs), 2)  # 2 voxels
 })

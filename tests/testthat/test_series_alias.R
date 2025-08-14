@@ -10,7 +10,7 @@ test_that("series() returns FmriSeries and shows deprecation", {
   
   # Test that the function works and returns correct type
   res <- suppressWarnings(series(dset, selector = 1:2, timepoints = 1:2))
-  expect_s4_class(res, "FmriSeries")
+  expect_s3_class(res, "fmri_series")
   
   # Test that it produces the same result as fmri_series
   direct_res <- fmri_series(dset, selector = 1:2, timepoints = 1:2)

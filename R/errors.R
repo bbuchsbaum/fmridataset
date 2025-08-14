@@ -67,9 +67,16 @@ fmridataset_error_config <- function(message, parameter = NULL, value = NULL, ..
 #' Stop with a Custom Error
 #'
 #' @param error_fn Error constructor function
+#' @param message Error message (optional if provided as first ... argument)
 #' @param ... Arguments passed to the error constructor
 #' @keywords internal
-stop_fmridataset <- function(error_fn, ...) {
-  err <- error_fn(...)
+stop_fmridataset <- function(error_fn, message = NULL, ...) {
+  if (!is.null(message)) {
+    # New calling pattern with explicit message
+    err <- error_fn(message = message, ...)
+  } else {
+    # Original calling pattern
+    err <- error_fn(...)
+  }
   stop(err)
 }

@@ -8,7 +8,7 @@ series(
   dataset,
   selector = NULL,
   timepoints = NULL,
-  output = c("FmriSeries", "DelayedMatrix"),
+  output = c("fmri_series", "DelayedMatrix"),
   event_window = NULL,
   ...
 )

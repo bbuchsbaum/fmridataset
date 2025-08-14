@@ -32,7 +32,7 @@ print.fmri_dataset <- function(x, full = FALSE, ...) {
   # Basic dimensions
   cat("\n** Dimensions:\n")
   cat("  - Timepoints:", sum(x$sampling_frame$blocklens), "\n")
-  cat("  - Runs:", x$nruns, "\n")
+  cat("  - Runs:", x$nruns, if(x$nruns > 10) " runs" else "", "\n")
 
   # Data source info
   print_data_source_info(x, full = full)
@@ -47,12 +47,22 @@ print.fmri_dataset <- function(x, full = FALSE, ...) {
 
   # Sampling frame info
   cat("\n** Temporal Structure:\n")
-  cat("  - TR:", x$sampling_frame$TR, "seconds\n")
-  cat("  - Run lengths:", paste(x$sampling_frame$blocklens, collapse = ", "), "\n")
+  # Handle TR being a vector - use first value
+  tr_value <- if(length(x$sampling_frame$TR) > 1) x$sampling_frame$TR[1] else x$sampling_frame$TR
+  cat("  - TR: ", tr_value, " seconds\n", sep="")
+  # Handle long run lengths
+  run_lens <- x$sampling_frame$blocklens
+  if (length(run_lens) > 10) {
+    run_str <- paste0(paste(head(run_lens, 5), collapse = ", "), 
+                      ", ... (", length(run_lens), " runs total)")
+  } else {
+    run_str <- paste(run_lens, collapse = ", ")
+  }
+  cat("  - Run lengths:", run_str, "\n")
 
   # Event table summary
   cat("\n** Event Table:\n")
-  if (nrow(x$event_table) > 0) {
+  if (!is.null(x$event_table) && !is.null(nrow(x$event_table)) && nrow(x$event_table) > 0) {
     cat("  - Rows:", nrow(x$event_table), "\n")
     cat("  - Variables:", paste(names(x$event_table), collapse = ", "), "\n")
 
@@ -66,12 +76,51 @@ print.fmri_dataset <- function(x, full = FALSE, ...) {
   }
 
   cat("\n")
+  invisible(x)
 }
 
 #' @export
+#' @method summary fmri_dataset
 #' @rdname print
 summary.fmri_dataset <- function(object, ...) {
-  print.fmri_dataset(object, full = FALSE, ...)
+  # Header
+  cat("\n=== fMRI Dataset Summary ===\n")
+
+  # Basic dimensions
+  cat("\n** Dimensions:\n")
+  cat("  - Timepoints:", sum(object$sampling_frame$blocklens), "\n")
+  cat("  - Runs:", object$nruns, "\n")
+
+  # Data source info
+  print_data_source_info(object, full = FALSE)
+
+  cat("  - Voxels in mask: (lazy)\n")
+
+  # Sampling frame info
+  cat("\n** Temporal Structure:\n")
+  cat("  - TR: ", object$sampling_frame$TR, " seconds\n", sep="")
+  cat("  - Run lengths:", paste(object$sampling_frame$blocklens, collapse = ", "), "\n")
+
+  # Event table summary
+  cat("\n** Event Summary:\n")
+  if (!is.null(object$event_table) && !is.null(nrow(object$event_table)) && nrow(object$event_table) > 0) {
+    cat("  - Total events:", nrow(object$event_table), "\n")
+    cat("  - Variables:", paste(names(object$event_table), collapse = ", "), "\n")
+    
+    # Summary by trial type if available
+    if ("trial_type" %in% names(object$event_table)) {
+      tt_summary <- table(object$event_table$trial_type)
+      cat("  - Trial types:\n")
+      for (i in seq_along(tt_summary)) {
+        cat("    -", names(tt_summary)[i], ":", tt_summary[i], "events\n")
+      }
+    }
+  } else {
+    cat("  - No events\n")
+  }
+
+  cat("\n")
+  invisible(object)
 }
 
 #' @export
@@ -82,9 +131,32 @@ print.latent_dataset <- function(x, ...) {
 
   # Basic dimensions
   cat("\n** Dimensions:\n")
-  cat("  - Timepoints:", nrow(x$datamat), "\n")
-  cat("  - Latent components:", ncol(x$datamat), "\n")
-  cat("  - Runs:", x$nruns, "\n")
+  
+  # Get dimensions from storage
+  storage <- x$storage
+  if (!is.null(storage) && !is.null(storage$data) && length(storage$data) > 0) {
+    first_item <- storage$data[[1]]
+    if (isS4(first_item) && "basis" %in% methods::slotNames(first_item)) {
+      basis <- methods::slot(first_item, "basis")
+      total_timepoints <- sum(x$sampling_frame$blocklens)
+      n_components <- ncol(basis)
+      cat("  - Timepoints:", total_timepoints, "\n")
+      cat("  - Components:", n_components, "\n")
+    }
+  }
+  
+  cat("  - Runs:", x$n_runs, "\n")
+
+  # Original voxel info - try to infer from storage
+  if (!is.null(x$storage) && !is.null(x$storage$data) && length(x$storage$data) > 0) {
+    first_item <- x$storage$data[[1]]
+    if (isS4(first_item) && "loadings" %in% methods::slotNames(first_item)) {
+      loadings <- methods::slot(first_item, "loadings")
+      if (is.matrix(loadings)) {
+        cat("  - Original voxels:", nrow(loadings), "\n")
+      }
+    }
+  }
 
   # Original space info if available
   if (!is.null(x$original_space)) {
@@ -93,12 +165,22 @@ print.latent_dataset <- function(x, ...) {
 
   # Sampling frame info
   cat("\n** Temporal Structure:\n")
-  cat("  - TR:", x$sampling_frame$TR, "seconds\n")
-  cat("  - Run lengths:", paste(x$sampling_frame$blocklens, collapse = ", "), "\n")
+  # Handle TR being a vector - use first value
+  tr_value <- if(length(x$sampling_frame$TR) > 1) x$sampling_frame$TR[1] else x$sampling_frame$TR
+  cat("  - TR: ", tr_value, " seconds\n", sep="")
+  # Handle long run lengths
+  run_lens <- x$sampling_frame$blocklens
+  if (length(run_lens) > 10) {
+    run_str <- paste0(paste(head(run_lens, 5), collapse = ", "), 
+                      ", ... (", length(run_lens), " runs total)")
+  } else {
+    run_str <- paste(run_lens, collapse = ", ")
+  }
+  cat("  - Run lengths:", run_str, "\n")
 
   # Event table summary
   cat("\n** Event Table:\n")
-  if (nrow(x$event_table) > 0) {
+  if (!is.null(x$event_table) && !is.null(nrow(x$event_table)) && nrow(x$event_table) > 0) {
     cat("  - Rows:", nrow(x$event_table), "\n")
     cat("  - Variables:", paste(names(x$event_table), collapse = ", "), "\n")
 
@@ -111,52 +193,68 @@ print.latent_dataset <- function(x, ...) {
     cat("  - Empty event table\n")
   }
 
-  # Data summary
-  cat("\n** Latent Data Summary:\n")
-  data_summary <- summary(as.vector(x$datamat[1:min(1000, length(x$datamat))]))[c(1, 3, 4, 6)]
-  cat("  - Values (sample):", paste(names(data_summary), data_summary, sep = ":", collapse = ", "), "\n")
+  # Data summary - get sample from basis
+  if (!is.null(storage) && !is.null(storage$data) && length(storage$data) > 0) {
+    first_item <- storage$data[[1]]
+    if (isS4(first_item) && "basis" %in% methods::slotNames(first_item)) {
+      basis <- methods::slot(first_item, "basis")
+      cat("\n** Latent Data Summary:\n")
+      data_summary <- summary(as.vector(basis[1:min(1000, length(basis))]))[c(1, 3, 4, 6)]
+      cat("  - Values (sample):", paste(names(data_summary), data_summary, sep = ":", collapse = ", "), "\n")
+    }
+  }
 
   cat("\n")
+  invisible(x)
 }
 
 #' Pretty Print a Chunk Iterator
 #'
-#' This function prints a summary of a chunk iterator using colored output.
+#' This function prints a summary of a chunk iterator.
 #'
 #' @param x A chunkiter object.
 #' @param ... Additional arguments (ignored).
 #' @export
 #' @rdname print
 print.chunkiter <- function(x, ...) {
-  if (!requireNamespace("crayon", quietly = TRUE)) {
-    stop("Please install the crayon package to use this function.")
-  }
-  cat(crayon::blue("Chunk Iterator:\n"))
-  cat(crayon::magenta("  Total number of chunks: "), x$nchunks, "\n")
+  cat("Chunk Iterator\n")
+  cat("  nchunks: ", x$nchunks, "\n", sep="")
   invisible(x)
 }
 
 #' Pretty Print a Data Chunk Object
 #'
-#' This function prints a summary of a data chunk using crayon for colored output.
+#' This function prints a summary of a data chunk.
 #'
 #' @param x A data_chunk object.
 #' @param ... Additional arguments (ignored).
 #' @export
 #' @rdname print
 print.data_chunk <- function(x, ...) {
-  if (!requireNamespace("crayon", quietly = TRUE)) {
-    stop("Please install the crayon package to use this function.")
+  cat("Data Chunk Object\n")
+  
+  # Handle both possible field names for chunk id
+  chunk_id <- if (!is.null(x$chunkid)) x$chunkid else x$chunk_num
+  total_chunks <- if (!is.null(x$nchunks)) x$nchunks else 1
+  
+  cat("  chunk ", chunk_id, " of ", total_chunks, "\n", sep="")
+  
+  # Handle different possible field names
+  if (!is.null(x$voxel_ind)) {
+    cat("  Number of voxels:", length(x$voxel_ind), "\n")
   }
-  cat(crayon::blue("Data Chunk Object\n"))
-  cat(crayon::magenta("  Chunk number: "), x$chunk_num, "\n")
-  cat(crayon::magenta("  Number of voxels: "), length(x$voxel_ind), "\n")
-  cat(crayon::magenta("  Number of rows: "), length(x$row_ind), "\n")
-  if (!is.null(dim(x$data))) {
-    cat(crayon::magenta("  Data dimensions: "), paste(dim(x$data), collapse = " x "), "\n")
-  } else {
-    cat(crayon::magenta("  Data: "), paste(head(x$data, 10), collapse = ", "), "\n")
+  if (!is.null(x$row_ind)) {
+    cat("  Number of rows:", length(x$row_ind), "\n")
   }
+  
+  if (!is.null(x$data)) {
+    if (!is.null(dim(x$data))) {
+      cat("  Data dimensions:", paste(dim(x$data), collapse = " x "), "\n")
+    } else {
+      cat("  Data length:", length(x$data), "\n")
+    }
+  }
+  
   invisible(x)
 }
 
@@ -206,4 +304,5 @@ print_data_source_info <- function(x, full = FALSE) {
 print.matrix_dataset <- function(x, ...) {
   # Use the generic fmri_dataset print method
   print.fmri_dataset(x, ...)
+  invisible(x)
 }

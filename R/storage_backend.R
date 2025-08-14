@@ -116,6 +116,29 @@ backend_get_metadata <- function(backend) {
 #' @return TRUE if valid, otherwise throws an error
 #' @keywords internal
 validate_backend <- function(backend) {
+  # First check basic inheritance
+  if (!inherits(backend, "storage_backend")) {
+    stop_fmridataset(
+      fmridataset_error_config,
+      "Invalid backend object: must inherit from 'storage_backend'"
+    )
+  }
+  
+  # Check that required methods are implemented
+  backend_class <- class(backend)[1]
+  required_methods <- c("backend_open", "backend_close", "backend_get_dims", 
+                       "backend_get_mask", "backend_get_data", "backend_get_metadata")
+  
+  for (method in required_methods) {
+    method_name <- paste0(method, ".", backend_class)
+    if (!exists(method_name, mode = "function")) {
+      stop_fmridataset(
+        fmridataset_error_config,
+        sprintf("Backend class '%s' must implement method '%s'", backend_class, method)
+      )
+    }
+  }
+  
   backend <- backend_open(backend)
   on.exit(backend_close(backend))
 

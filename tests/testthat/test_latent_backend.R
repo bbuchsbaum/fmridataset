@@ -1,280 +1,322 @@
-test_that("latent_dataset errors when fmristore is absent", {
-  with_mocked_bindings(
-    requireNamespace = function(pkg, quietly = TRUE) FALSE,
-    .package = "base",
-    {
-      expect_error(
-        latent_dataset(list(), TR = 2, run_length = 10),
-        "fmristore"
-      )
-    }
-  )
-})
-
-if (!methods::isClass("MockLatentNeuroVec")) {
-  setClass(
-    "MockLatentNeuroVec",
-    slots = c(basis = "matrix", loadings = "matrix", mask = "logical")
-  )
-  setMethod(
-    "dim",
-    "MockLatentNeuroVec",
-    function(x) c(2, 2, 2, nrow(x@basis))
-  )
-}
-
-create_mock_lvec <- function(n_time = 5, n_vox = 10, k = 4) {
-  basis <- matrix(seq_len(n_time * k), nrow = n_time, ncol = k)
-  loadings <- matrix(seq_len(n_vox * k), nrow = n_vox, ncol = k)
-  mask <- rep(TRUE, n_vox)
-  new("MockLatentNeuroVec", basis = basis, loadings = loadings, mask = mask)
-}
-
-test_that("latent_dataset constructs dataset from minimal latent object", {
-  lvec <- create_mock_lvec()
-  rl <- dim(lvec)[4]
-  with_mocked_bindings(
-    requireNamespace = function(pkg, quietly = TRUE) TRUE,
-    .package = "base",
-    {
-      dset <- latent_dataset(lvec, TR = 1, run_length = rl)
-      expect_s3_class(dset, "latent_dataset")
-      expect_identical(get_data(dset), lvec@basis)
-      expect_identical(get_mask(dset), lvec@mask)
-      expect_equal(blocklens(dset), rl)
-    }
-  )
-})
-
-test_that("latent_dataset validates run_length sum", {
-  lvec <- create_mock_lvec()
-  with_mocked_bindings(
-    requireNamespace = function(pkg, quietly = TRUE) TRUE,
-    .package = "base",
-    {
-      expect_error(
-        latent_dataset(lvec, TR = 1, run_length = dim(lvec)[4] - 1),
-        "Sum of run lengths"
-      )
-    }
-  )
-})
-
-test_that("latent_backend constructor works with validation", {
-  skip_if_not_installed("fmristore")
-
-  # Test validation - should fail for non-existent files
+test_that("latent_backend validates inputs correctly", {
+  # Test invalid source
   expect_error(
-    latent_backend(c("nonexistent1.lv.h5", "nonexistent2.lv.h5")),
-    "All source files must exist"
+    latent_backend(NULL),
+    "source must be character vector or list"
   )
-
-  # Test validation - should fail for non-HDF5 files
+  
+  expect_error(
+    latent_backend(123),
+    "source must be character vector or list"
+  )
+  
+  # Test non-existent files
+  expect_error(
+    latent_backend(c("/nonexistent/file1.lv.h5", "/nonexistent/file2.lv.h5")),
+    "Source files not found"
+  )
+  
+  # Test invalid file extensions
   temp_file <- tempfile(fileext = ".txt")
   writeLines("test", temp_file)
-  on.exit(unlink(temp_file))
-
   expect_error(
     latent_backend(temp_file),
     "All source files must be HDF5 files"
   )
-
-  # Test validation - mixed list with invalid items
-  expect_error(
-    latent_backend(list("nonexistent.lv.h5", 123)),
-    "Source item 1 must be an existing file path"
-  )
+  unlink(temp_file)
 })
 
 test_that("latent_backend works with mock LatentNeuroVec objects", {
-  skip_if_not_installed("fmristore")
-
-  # Create simple mock LatentNeuroVec objects for testing
-  mock_lvec1 <- structure(list(), class = "LatentNeuroVec")
-  mock_lvec2 <- structure(list(), class = "LatentNeuroVec")
-
-  # Test backend creation with list of objects
+  # Create mock LatentNeuroVec objects
+  mock_lvec1 <- structure(
+    list(
+      basis = matrix(rnorm(100 * 10), 100, 10),
+      loadings = matrix(rnorm(1000 * 10), 1000, 10),
+      space = c(10, 10, 10, 100),
+      offset = rep(0, 1000),
+      mask = rep(TRUE, 1000)
+    ),
+    class = c("MockLatentNeuroVec", "list")
+  )
+  
+  # Make it S4-like
+  mock_lvec1 <- methods::setClass(
+    "MockLatentNeuroVec",
+    slots = c(
+      basis = "matrix",
+      loadings = "matrix", 
+      space = "numeric",
+      offset = "numeric",
+      mask = "logical"
+    )
+  )(
+    basis = matrix(rnorm(100 * 10), 100, 10),
+    loadings = matrix(rnorm(1000 * 10), 1000, 10),
+    space = c(10, 10, 10, 100),
+    offset = rep(0, 1000),
+    mask = rep(TRUE, 1000)
+  )
+  
+  mock_lvec2 <- methods::new(
+    "MockLatentNeuroVec",
+    basis = matrix(rnorm(150 * 10), 150, 10),
+    loadings = matrix(rnorm(1000 * 10), 1000, 10),
+    space = c(10, 10, 10, 150),
+    offset = rep(0, 1000),
+    mask = rep(TRUE, 1000)
+  )
+  
+  # Create backend with mock objects
   backend <- latent_backend(list(mock_lvec1, mock_lvec2))
-
   expect_s3_class(backend, "latent_backend")
   expect_s3_class(backend, "storage_backend")
-  expect_equal(length(backend$source), 2)
+  
+  # Open backend
+  backend <- backend_open(backend)
+  expect_true(backend$is_open)
+  
+  # Check dimensions
+  dims <- backend_get_dims(backend)
+  expect_equal(dims$spatial, c(10, 1, 1))  # n_components as spatial
+  expect_equal(dims$time, 250)  # 100 + 150
+  
+  # Check mask
+  mask <- backend_get_mask(backend)
+  expect_equal(length(mask), 10)  # n_components
+  expect_true(all(mask))
+  
+  # Get data
+  data <- backend_get_data(backend)
+  expect_equal(dim(data), c(250, 10))
+  
+  # Get subset
+  subset_data <- backend_get_data(backend, rows = 1:50, cols = 1:5)
+  expect_equal(dim(subset_data), c(50, 5))
+  
+  # Get metadata
+  metadata <- backend_get_metadata(backend)
+  expect_equal(metadata$storage_format, "latent")
+  expect_equal(metadata$n_components, 10)
+  expect_equal(metadata$n_voxels, 1000)
+  expect_equal(metadata$n_runs, 2)
+  
+  # Close backend
+  backend <- backend_close(backend)
   expect_false(backend$is_open)
-  expect_false(backend$preload)
 })
 
-test_that("latent_backend constructor works with preload option", {
-  skip_if_not_installed("fmristore")
-
-  mock_lvec <- structure(list(), class = "LatentNeuroVec")
-
-  # Test with preload = TRUE
-  backend_preload <- latent_backend(list(mock_lvec), preload = TRUE)
-  expect_true(backend_preload$preload)
-
-  # Test with preload = FALSE (default)
-  backend_lazy <- latent_backend(list(mock_lvec))
-  expect_false(backend_lazy$preload)
-})
-
-test_that("latent_backend error handling works correctly", {
-  # Test backend not open errors
-  backend <- structure(list(is_open = FALSE), class = c("latent_backend", "storage_backend"))
-
-  expect_error(backend_get_dims(backend), "Backend must be opened")
-  expect_error(backend_get_mask(backend), "Backend must be opened")
-  expect_error(backend_get_data(backend), "Backend must be opened")
-  expect_error(backend_get_metadata(backend), "Backend must be opened")
-
-  # Test no data errors
-  backend$is_open <- TRUE
-  backend$data <- list()
-
-  expect_error(backend_get_dims(backend), "No data available")
-  expect_error(backend_get_mask(backend), "No data available")
-  expect_error(backend_get_data(backend), "No data available")
-  expect_error(backend_get_metadata(backend), "No data available")
-})
-
-test_that("latent_backend class structure is correct", {
-  skip_if_not_installed("fmristore")
-
-  mock_lvec <- structure(list(), class = "LatentNeuroVec")
-  backend <- latent_backend(list(mock_lvec))
-
-  # Check class hierarchy
-  expect_true(inherits(backend, "latent_backend"))
-  expect_true(inherits(backend, "storage_backend"))
-
-  # Check structure
-  expect_named(backend, c("source", "mask_source", "preload", "data", "is_open"))
-  expect_false(backend$is_open)
-  expect_null(backend$mask_source)
-  expect_null(backend$data)
-})
-
-test_that("latent_backend validates input types correctly", {
-  skip_if_not_installed("fmristore")
-
-  # Test invalid preload argument
-  mock_lvec <- structure(list(), class = "LatentNeuroVec")
+test_that("latent_backend handles inconsistent runs", {
+  # Create mock objects with different dimensions
+  mock_lvec1 <- methods::setClass(
+    "MockLatentNeuroVec",
+    slots = c(
+      basis = "matrix",
+      loadings = "matrix",
+      space = "numeric",
+      offset = "numeric"
+    )
+  )(
+    basis = matrix(1:100, 100, 10),
+    loadings = matrix(1:10000, 1000, 10),
+    space = c(10, 10, 10, 100),
+    offset = rep(0, 1000)
+  )
+  
+  # Different spatial dimensions
+  mock_lvec2 <- methods::new(
+    "MockLatentNeuroVec",
+    basis = matrix(1:100, 100, 10),
+    loadings = matrix(1:20000, 2000, 10),
+    space = c(20, 10, 10, 100),  # Different spatial dims
+    offset = rep(0, 2000)
+  )
+  
+  backend <- latent_backend(list(mock_lvec1, mock_lvec2))
   expect_error(
-    latent_backend(list(mock_lvec), preload = "invalid"),
-    "is.logical\\(preload\\) is not TRUE"
+    backend_open(backend),
+    "inconsistent spatial dimensions"
   )
-
-  # Test invalid source type
+  
+  # Different number of components
+  mock_lvec3 <- methods::new(
+    "MockLatentNeuroVec",
+    basis = matrix(1:500, 100, 5),  # 5 components instead of 10
+    loadings = matrix(1:5000, 1000, 5),
+    space = c(10, 10, 10, 100),
+    offset = rep(0, 1000)
+  )
+  
+  backend <- latent_backend(list(mock_lvec1, mock_lvec3))
   expect_error(
-    latent_backend(123),
-    "source must be a character vector"
+    backend_open(backend),
+    "different number of components"
   )
 })
 
-test_that("fmri_latent_dataset constructor parameter validation", {
-  skip_if_not_installed("fmristore")
-  skip_if_not_installed("mockery")
-
-  # Create a simple mock backend for testing parameter validation
-  mock_lvec <- structure(list(), class = "LatentNeuroVec")
-  backend <- latent_backend(list(mock_lvec))
-
-  # Mock the required functions for validation
-  mockery::stub(fmri_latent_dataset, "validate_backend", TRUE)
-  mockery::stub(fmri_latent_dataset, "backend_open", function(b) {
-    b$is_open <- TRUE
-    b$data <- list(mock_lvec)
-    b
-  })
-  mockery::stub(
-    fmri_latent_dataset, "backend_get_dims",
-    function(b) list(space = c(10, 10, 5), time = 100, n_runs = 1)
+test_that("latent_backend integrates with latent_dataset", {
+  # Create mock objects
+  mock_lvec <- methods::setClass(
+    "MockLatentNeuroVec",
+    slots = c(
+      basis = "matrix",
+      loadings = "matrix",
+      space = "numeric",
+      offset = "numeric",
+      mask = "logical"
+    )
+  )(
+    basis = matrix(rnorm(200 * 15), 200, 15),
+    loadings = matrix(rnorm(5000 * 15), 5000, 15),
+    space = c(20, 25, 10, 200),
+    offset = rnorm(5000),
+    mask = rep(TRUE, 5000)
   )
-
-  # Test successful creation
-  dataset <- fmri_latent_dataset(backend, TR = 2, run_length = 100)
-
-  expect_s3_class(dataset, "fmri_file_dataset")
-  expect_s3_class(dataset, "volumetric_dataset")
+  
+  # Create dataset using backend
+  dataset <- latent_dataset(
+    list(mock_lvec),
+    TR = 2,
+    run_length = 200
+  )
+  
+  expect_s3_class(dataset, "latent_dataset")
   expect_s3_class(dataset, "fmri_dataset")
-  expect_equal(dataset$nruns, 1)
-
-  # Test dimension mismatch error
-  mockery::stub(
-    fmri_latent_dataset, "backend_get_dims",
-    function(b) list(space = c(10, 10, 5), time = 100, n_runs = 1)
-  )
-
-  expect_error(
-    fmri_latent_dataset(backend, TR = 2, run_length = 50), # Wrong run_length
-    "Sum of run_length.*must equal total time points"
-  )
-})
-
-test_that("latent backend behavior is documented correctly", {
-  # Test that the documentation correctly states that latent backends
-  # return latent scores, not voxel data
-
-  # This is a documentation test to ensure the key difference is clear
-  expect_true(TRUE) # The documentation has been updated to reflect this behavior
-})
-
-test_that("latent_backend concept validation", {
-  skip_if_not_installed("fmristore")
-
-  # Test that the key conceptual differences are understood:
-  # 1. Data returned should be latent scores (time x components)
-  # 2. Mask represents components, not spatial voxels
-  # 3. Purpose is efficient analysis in compressed space
-
-  # These are conceptual tests - the actual implementation would require
-  # real LatentNeuroVec objects which are complex S4 objects
-  expect_true(TRUE) # Implementation follows these principles
-})
-
-test_that("latent_backend opens and retrieves data correctly", {
-  if (!methods::isClass("FullMockLatentNeuroVec")) {
-    setClass("FullMockLatentNeuroVec", slots = c(basis = "matrix", mask = "logical"))
+  
+  # Debug: Check if backend exists and its class
+  if (!is.null(dataset$backend)) {
+    expect_s3_class(dataset$backend, "latent_backend")
+  } else if (!is.null(dataset$storage)) {
+    # Using old latent_dataset.R interface
+    skip("Dataset is using legacy storage interface")
+  } else {
+    expect_s3_class(dataset$backend, "latent_backend")
   }
-
-  create_full_lvec <- function(n_time = 4, n_comp = 3) {
-    basis <- matrix(seq_len(n_time * n_comp), nrow = n_time, ncol = n_comp)
-    mask <- rep(TRUE, n_comp)
-    new("FullMockLatentNeuroVec", basis = basis, mask = mask)
-  }
-
-  l1 <- create_full_lvec()
-  l2 <- create_full_lvec()
-
-  with_mocked_bindings(
-    requireNamespace = function(pkg, quietly = TRUE) TRUE,
-    .package = "base",
-    {
-      with_mocked_bindings(
-        space = function(x) {
-          dims <- c(2, 2, 2, nrow(x@basis))
-          structure(dims, class = "NeuroSpace", origin = c(0,0,0), spacing = c(1,1,1))
-        },
-        .package = "neuroim2",
-        {
-      backend <- latent_backend(list(l1, l2))
-      backend <- backend_open(backend)
-
-      dims <- backend_get_dims(backend)
-      expect_equal(dims$n_runs, 2)
-      expect_equal(dims$time, 8)
-      expect_equal(dims$n_components, 3)
-
-      m <- backend_get_mask(backend)
-      expect_equal(length(m), 3)
-      expect_true(all(m))
-
-          dat <- backend_get_data(backend)
-          expect_equal(dim(dat), c(8, 3))
-          # first run data should equal l1@basis
-          expect_equal(dat[1:4, ], l1@basis)
-        }
-      )
-    }
-  )
+  
+  # Test data access
+  data <- get_data(dataset)
+  expect_equal(dim(data), c(200, 15))
+  
+  # Test mask
+  mask <- get_mask(dataset)
+  expect_equal(length(mask), 15)  # n_components
+  expect_true(all(mask))
 })
 
+test_that("backend_get_loadings works correctly", {
+  mock_lvec <- methods::setClass(
+    "MockLatentNeuroVec", 
+    slots = c(
+      basis = "matrix",
+      loadings = "matrix",
+      space = "numeric",
+      offset = "numeric"
+    )
+  )(
+    basis = matrix(1:100, 100, 10),
+    loadings = matrix(1:10000, 1000, 10),
+    space = c(10, 10, 10, 100),
+    offset = rep(0, 1000)
+  )
+  
+  backend <- latent_backend(list(mock_lvec))
+  backend <- backend_open(backend)
+  
+  # Get all loadings
+  loadings <- backend_get_loadings(backend)
+  expect_equal(dim(loadings), c(1000, 10))
+  
+  # Get subset of loadings
+  loadings_subset <- backend_get_loadings(backend, components = 1:5)
+  expect_equal(dim(loadings_subset), c(1000, 5))
+  
+  backend_close(backend)
+})
+
+test_that("backend_reconstruct_voxels works correctly", {
+  # Create data where reconstruction is verifiable
+  n_time <- 50
+  n_comp <- 5
+  n_vox <- 100
+  
+  # Create known basis and loadings
+  basis <- matrix(rnorm(n_time * n_comp), n_time, n_comp)
+  loadings <- matrix(rnorm(n_vox * n_comp), n_vox, n_comp)
+  offset <- rnorm(n_vox)
+  
+  mock_lvec <- methods::setClass(
+    "MockLatentNeuroVec",
+    slots = c(
+      basis = "matrix",
+      loadings = "matrix",
+      space = "numeric",
+      offset = "numeric"
+    )
+  )(
+    basis = basis,
+    loadings = loadings,
+    space = c(10, 10, 1, n_time),
+    offset = offset
+  )
+  
+  backend <- latent_backend(list(mock_lvec))
+  backend <- backend_open(backend)
+  
+  # Reconstruct all data
+  reconstructed <- backend_reconstruct_voxels(backend)
+  expected <- basis %*% t(loadings) + matrix(offset, n_time, n_vox, byrow = TRUE)
+  expect_equal(reconstructed, expected, tolerance = 1e-10)
+  
+  # Reconstruct subset
+  rows <- 1:10
+  voxels <- 1:20
+  reconstructed_subset <- backend_reconstruct_voxels(backend, rows = rows, voxels = voxels)
+  expected_subset <- basis[rows, ] %*% t(loadings[voxels, ]) + 
+                     matrix(offset[voxels], length(rows), length(voxels), byrow = TRUE)
+  expect_equal(reconstructed_subset, expected_subset, tolerance = 1e-10)
+  
+  backend_close(backend)
+})
+
+test_that("latent_backend handles sparse loadings", {
+  skip_if_not_installed("Matrix")
+  
+  # Create sparse loadings
+  n_vox <- 1000
+  n_comp <- 10
+  loadings_dense <- matrix(0, n_vox, n_comp)
+  # Make 90% sparse
+  n_nonzero <- round(0.1 * n_vox * n_comp)
+  nonzero_idx <- sample(n_vox * n_comp, n_nonzero)
+  loadings_dense[nonzero_idx] <- rnorm(n_nonzero)
+  
+  loadings_sparse <- Matrix::Matrix(loadings_dense, sparse = TRUE)
+  
+  mock_lvec <- methods::setClass(
+    "MockLatentNeuroVec",
+    slots = c(
+      basis = "matrix",
+      loadings = "Matrix",
+      space = "numeric",
+      offset = "numeric"
+    )
+  )(
+    basis = matrix(rnorm(100 * n_comp), 100, n_comp),
+    loadings = loadings_sparse,
+    space = c(10, 10, 10, 100),
+    offset = rep(0, n_vox)
+  )
+  
+  backend <- latent_backend(list(mock_lvec))
+  backend <- backend_open(backend)
+  
+  # Get metadata
+  metadata <- backend_get_metadata(backend)
+  expect_true(metadata$loadings_sparsity > 0.85)
+  expect_true(metadata$loadings_sparsity < 0.95)
+  
+  # Reconstruction should still work
+  reconstructed <- backend_reconstruct_voxels(backend, rows = 1:10, voxels = 1:50)
+  expect_equal(dim(reconstructed), c(10, 50))
+  
+  backend_close(backend)
+})

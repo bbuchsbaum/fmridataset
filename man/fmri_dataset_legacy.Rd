@@ -2,10 +2,38 @@
 % Please edit documentation in R/fmri_dataset_legacy.R
 \name{fmri_dataset_legacy}
 \alias{fmri_dataset_legacy}
-\title{Legacy fMRI Dataset Implementation}
-\description{
-This file contains the original fmri_file_dataset implementation,
-preserved for backwards compatibility and testing during the transition
-to the new backend architecture.
+\title{Legacy fMRI Dataset Constructor}
+\usage{
+fmri_dataset_legacy(scans, mask, TR, run_length, preload = FALSE, ...)
 }
-\keyword{internal}
+\arguments{
+\item{scans}{Either a character vector of file paths to scans or a list of NeuroVec objects}
+
+\item{mask}{Either a character file path to a mask or a NeuroVol mask object}
+
+\item{TR}{The repetition time}
+
+\item{run_length}{Numeric vector of run lengths}
+
+\item{preload}{Whether to preload data into memory}
+
+\item{...}{Additional arguments passed to fmri_dataset}
+}
+\value{
+An fmri_dataset object
+}
+\description{
+Backward compatibility wrapper for fmri_dataset. This function provides
+the same interface as the original fmri_dataset function.
+}
+\examples{
+\dontrun{
+# Create dataset from files
+dset <- fmri_dataset_legacy(
+  scans = c("scan1.nii", "scan2.nii"),
+  mask = "mask.nii",
+  TR = 2,
+  run_length = c(100, 100)
+)
+}
+}

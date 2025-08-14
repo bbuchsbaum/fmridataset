@@ -1,3 +1,5 @@
+library(fmridataset)
+
 test_that("fmri_dataset prepends base_path", {
   temp_dir <- tempdir()
   # create placeholder files so existence checks pass

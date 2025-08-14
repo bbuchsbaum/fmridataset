@@ -134,7 +134,7 @@ test_that("selectors integrate with fmri_series", {
   
   # Test each selector type
   fs1 <- fmri_series(dset, selector = index_selector(1:5))
-  expect_s4_class(fs1, "FmriSeries")
+  expect_s3_class(fs1, "fmri_series")
   expect_equal(ncol(fs1), 5)
   
   fs2 <- fmri_series(dset, selector = voxel_selector(cbind(5, 5, 1)))

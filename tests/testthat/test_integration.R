@@ -56,8 +56,8 @@ test_that("complete workflow with matrix backend", {
 
   # 6. Test mask
   mask <- get_mask(dataset)
-  expect_true(is.array(mask))
-  expect_equal(dim(mask), c(10, 5, 1))
+  expect_true(is.logical(mask))
+  expect_length(mask, n_voxels)
 
   # 7. Test chunking
   chunks <- data_chunks(dataset, nchunks = 5)

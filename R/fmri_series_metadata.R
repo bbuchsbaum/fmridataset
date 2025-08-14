@@ -1,7 +1,7 @@
 #' Temporal metadata builders for fmri_series
 #'
-#' Internal helpers used to construct the `temporal_info` slot of
-#' `FmriSeries` objects. These functions return `S4Vectors::DataFrame`
+#' Internal helpers used to construct the `temporal_info` component of
+#' `fmri_series` objects. These functions return data.frame
 #' objects describing each selected timepoint. They are not exported
 #' for users.
 #'
@@ -13,7 +13,7 @@ build_temporal_info_lazy <- function(dataset, time_indices) {
 #' @export
 build_temporal_info_lazy.fmri_dataset <- function(dataset, time_indices) {
   run_ids <- fmrihrf::blockids(dataset$sampling_frame)
-  S4Vectors::DataFrame(
+  data.frame(
     run_id = run_ids[time_indices],
     timepoint = time_indices
   )
@@ -45,7 +45,7 @@ build_temporal_info_lazy.fmri_study_dataset <- function(dataset, time_indices) {
   }
 
   row_subject <- rep(run_subject, run_lengths)
-  S4Vectors::DataFrame(
+  data.frame(
     subject_id = row_subject[time_indices],
     run_id = run_ids[time_indices],
     timepoint = time_indices

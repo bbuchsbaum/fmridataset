@@ -235,6 +235,13 @@ data_chunks.matrix_dataset <- function(x, nchunks = 1, runwise = FALSE, ...) {
   } else if (nchunks == 1) {
     chunk_iter(x, 1, get_one_chunk)
   } else {
+    # Check if more chunks requested than voxels
+    if (nchunks > ncol(x$datamat)) {
+      warning("requested number of chunks (", nchunks, ") is greater than number of voxels (", 
+              ncol(x$datamat), "). Using ", ncol(x$datamat), " chunks instead.")
+      nchunks <- ncol(x$datamat)
+    }
+    
     sidx <- split(1:ncol(x$datamat), sort(rep(1:nchunks, length.out = ncol(x$datamat))))
     get_chunk <- function(chunk_num) {
       data_chunk(x$datamat[, sidx[[chunk_num]], drop = FALSE],

@@ -4,10 +4,12 @@
 \alias{stop_fmridataset}
 \title{Stop with a Custom Error}
 \usage{
-stop_fmridataset(error_fn, ...)
+stop_fmridataset(error_fn, message = NULL, ...)
 }
 \arguments{
 \item{error_fn}{Error constructor function}
+
+\item{message}{Error message (optional if provided as first ... argument)}
 
 \item{...}{Arguments passed to the error constructor}
 }

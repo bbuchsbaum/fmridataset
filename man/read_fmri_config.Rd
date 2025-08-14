@@ -7,7 +7,7 @@
 read_fmri_config(file_name, base_path = NULL)
 }
 \arguments{
-\item{file_name}{name of configuration file}
+\item{file_name}{name of configuration file (YAML or JSON format)}
 
 \item{base_path}{the file path to be prepended to relative file names}
 }
@@ -15,5 +15,6 @@ read_fmri_config(file_name, base_path = NULL)
 a \code{fmri_config} instance
 }
 \description{
-read a basic fMRI configuration file
+Reads a fMRI configuration file in YAML or JSON format. This replaces the
+previous implementation that used source() for security reasons.
 }

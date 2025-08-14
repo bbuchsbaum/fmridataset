@@ -12,7 +12,7 @@
 \usage{
 \method{print}{fmri_dataset}(x, full = FALSE, ...)
 
-summary.fmri_dataset(object, ...)
+\method{summary}{fmri_dataset}(object, ...)
 
 \method{print}{latent_dataset}(x, ...)
 
@@ -38,9 +38,9 @@ The object invisibly
 Display formatted summaries of fmridataset objects including datasets,
 chunk iterators, and data chunks.
 
-This function prints a summary of a chunk iterator using colored output.
+This function prints a summary of a chunk iterator.
 
-This function prints a summary of a data chunk using crayon for colored output.
+This function prints a summary of a data chunk.
 }
 \examples{
 \donttest{

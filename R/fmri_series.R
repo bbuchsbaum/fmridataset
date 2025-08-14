@@ -9,18 +9,17 @@
 #' @param event_window Reserved for future use.
 #' @param ... Additional arguments passed to methods.
 #'
-#' @return Either an `FmriSeries` object or a `DelayedMatrix`.
-#' @importFrom methods new
+#' @return Either an `fmri_series` object or a `DelayedMatrix`.
 #' @export
 fmri_series <- function(dataset, selector = NULL, timepoints = NULL,
-                        output = c("FmriSeries", "DelayedMatrix"),
+                        output = c("fmri_series", "DelayedMatrix"),
                         event_window = NULL, ...) {
   UseMethod("fmri_series")
 }
 
 #' @export
 fmri_series.fmri_dataset <- function(dataset, selector = NULL, timepoints = NULL,
-                                     output = c("FmriSeries", "DelayedMatrix"),
+                                     output = c("fmri_series", "DelayedMatrix"),
                                      event_window = NULL, ...) {
   output <- match.arg(output)
 
@@ -37,17 +36,17 @@ fmri_series.fmri_dataset <- function(dataset, selector = NULL, timepoints = NULL
   voxel_info <- S4Vectors::DataFrame(voxel = voxel_ind)
   temporal_info <- build_temporal_info_lazy(dataset, time_ind)
 
-  new("FmriSeries",
-      da,
-      voxel_info = voxel_info,
-      temporal_info = temporal_info,
+  new_fmri_series(
+      data = da,
+      voxel_info = as.data.frame(voxel_info),
+      temporal_info = as.data.frame(temporal_info),
       selection_info = list(selector = selector, timepoints = timepoints),
       dataset_info = list(backend_type = class(dataset$backend)[1]))
 }
 
 #' @export
 fmri_series.fmri_study_dataset <- function(dataset, selector = NULL, timepoints = NULL,
-                                           output = c("FmriSeries", "DelayedMatrix"),
+                                           output = c("fmri_series", "DelayedMatrix"),
                                            event_window = NULL, ...) {
   output <- match.arg(output)
 
@@ -64,10 +63,10 @@ fmri_series.fmri_study_dataset <- function(dataset, selector = NULL, timepoints 
   voxel_info <- S4Vectors::DataFrame(voxel = voxel_ind)
   temporal_info <- build_temporal_info_lazy(dataset, time_ind)
 
-  new("FmriSeries",
-      da,
-      voxel_info = voxel_info,
-      temporal_info = temporal_info,
+  new_fmri_series(
+      data = da,
+      voxel_info = as.data.frame(voxel_info),
+      temporal_info = as.data.frame(temporal_info),
       selection_info = list(selector = selector, timepoints = timepoints),
       dataset_info = list(backend_type = class(dataset$backend)[1]))
 }

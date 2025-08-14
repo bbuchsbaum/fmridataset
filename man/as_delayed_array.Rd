@@ -2,23 +2,28 @@
 % Please edit documentation in R/as_delayed_array.R
 \name{as_delayed_array}
 \alias{as_delayed_array}
-\alias{as_delayed_array,nifti_backend-method}
-\alias{as_delayed_array,matrix_backend-method}
-\alias{as_delayed_array,study_backend-method}
+\alias{as_delayed_array.nifti_backend}
+\alias{as_delayed_array.matrix_backend}
+\alias{as_delayed_array.study_backend}
+\alias{as_delayed_array.default}
 \title{Convert Backend to DelayedArray}
 \usage{
-as_delayed_array(backend, sparse_ok = FALSE)
+as_delayed_array(backend, sparse_ok = FALSE, ...)
 
-\S4method{as_delayed_array}{nifti_backend}(backend, sparse_ok = FALSE)
+\method{as_delayed_array}{nifti_backend}(backend, sparse_ok = FALSE, ...)
 
-\S4method{as_delayed_array}{matrix_backend}(backend, sparse_ok = FALSE)
+\method{as_delayed_array}{matrix_backend}(backend, sparse_ok = FALSE, ...)
 
-\S4method{as_delayed_array}{study_backend}(backend, sparse_ok = FALSE)
+\method{as_delayed_array}{study_backend}(backend, sparse_ok = FALSE, ...)
+
+\method{as_delayed_array}{default}(backend, sparse_ok = FALSE, ...)
 }
 \arguments{
 \item{backend}{A storage backend object}
 
 \item{sparse_ok}{Logical, allow sparse representation when possible}
+
+\item{...}{Additional arguments passed to methods}
 }
 \value{
 A DelayedArray object

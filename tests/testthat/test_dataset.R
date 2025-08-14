@@ -14,13 +14,14 @@ test_that("can construct an fmri_dataset", {
 
   # Mock the validation step that checks file existence
   with_mocked_bindings(
-    nifti_backend = function(source, mask_source, preload = FALSE, ...) {
+    nifti_backend = function(source, mask_source, preload = FALSE, mode = "normal", dummy_mode = FALSE, ...) {
       # Create a mock nifti backend that bypasses file validation
       backend <- matrix_backend(matrix(rnorm(1000), 100, 10))
       class(backend) <- c("nifti_backend", "storage_backend")
       backend$source <- source
       backend$mask_source <- mask_source
       backend$preload <- preload
+      backend$dummy_mode <- dummy_mode
       backend$data <- NULL # Add this to avoid the boolean error
       backend
     },

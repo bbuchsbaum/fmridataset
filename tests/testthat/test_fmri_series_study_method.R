@@ -12,7 +12,7 @@ create_study_dataset <- function() {
 test_that("fmri_series.fmri_study_dataset returns valid FmriSeries", {
   study <- create_study_dataset()
   fs <- fmri_series(study, selector = 2:3, timepoints = 4:7)
-  expect_s4_class(fs, "FmriSeries")
+  expect_s3_class(fs, "fmri_series")
   expect_equal(dim(fs), c(4, 2))
 
   expected <- rbind(
@@ -21,7 +21,7 @@ test_that("fmri_series.fmri_study_dataset returns valid FmriSeries", {
   )
   expect_equal(as.matrix(fs), expected)
 
-  md <- fs@temporal_info
+  md <- fs$temporal_info
   run_ids <- fmrihrf::blockids(study$sampling_frame)
   expect_equal(md$timepoint, 4:7)
   expect_equal(md$run_id, run_ids[4:7])

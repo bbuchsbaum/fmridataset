@@ -1,0 +1,216 @@
+# GitHub Actions workflow for vignette quality checks
+name: vignette-quality
+
+on:
+  push:
+    paths:
+      - 'vignettes/**'
+      - '.github/workflows/vignette-quality.yaml'
+  pull_request:
+    paths:
+      - 'vignettes/**'
+
+jobs:
+  quality-checks:
+    runs-on: ubuntu-latest
+    
+    name: Vignette quality and spell check
+    
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: r-lib/actions/setup-pandoc@v2
+      
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+      
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            any::spelling
+            any::lintr
+            any::pkgdown
+            any::hunspell
+          needs: vignettes
+      
+      # Spell check vignettes
+      - name: Spell check vignettes
+        run: |
+          Rscript -e '
+          # Custom dictionary for neuroimaging terms
+          custom_words <- c(
+            "fMRI", "neuroimaging", "voxel", "voxels", "timestep", "timesteps",
+            "NIfTI", "HDF5", "Zarr", "BIDS", "preprocessing", "coregistration",
+            "backend", "backends", "dataset", "datasets", "metadata",
+            "chunking", "parallelization", "neuroimaging", "multimodal"
+          )
+          
+          # Write custom dictionary
+          writeLines(custom_words, "inst/WORDLIST")
+          
+          # Run spell check
+          results <- spelling::spell_check_package()
+          if (nrow(results) > 0) {
+            print(results)
+            stop("Spelling errors found in vignettes")
+          }
+          cat("✓ No spelling errors found\n")
+          '
+      
+      # Check for broken links in vignettes
+      - name: Check vignette links
+        run: |
+          Rscript -e '
+          # Build site to check links
+          pkgdown::build_site(preview = FALSE, lazy = TRUE)
+          
+          # Check for broken links
+          link_check <- try(pkgdown::check_pkgdown(), silent = TRUE)
+          if (inherits(link_check, "try-error")) {
+            warning("Link checking encountered issues")
+          }
+          '
+      
+      # Lint R code in vignettes
+      - name: Lint vignette code
+        run: |
+          Rscript -e '
+          library(lintr)
+          
+          # Custom linters for vignettes
+          linters <- with_defaults(
+            line_length_linter = line_length_linter(120),
+            object_name_linter = NULL,  # Allow flexible naming in examples
+            cyclocomp_linter = NULL     # Vignettes can have complex examples
+          )
+          
+          # Lint each vignette
+          vignette_files <- list.files("vignettes", pattern = "\\.Rmd$", full.names = TRUE)
+          issues <- lapply(vignette_files, function(f) {
+            lint(f, linters = linters)
+          })
+          
+          total_issues <- sum(sapply(issues, length))
+          if (total_issues > 0) {
+            print(issues)
+            message(sprintf("Found %d linting issues in vignettes", total_issues))
+          } else {
+            cat("✓ No linting issues found\n")
+          }
+          '
+      
+      # Check vignette readability metrics
+      - name: Check readability metrics
+        run: |
+          Rscript -e '
+          # Function to calculate Flesch-Kincaid grade level
+          calc_readability <- function(text) {
+            # Remove code chunks and YAML header
+            text <- gsub("```\\{[^}]+\\}[^`]*```", "", text)
+            text <- gsub("^---\n.*?\n---\n", "", text, perl = TRUE)
+            
+            # Count sentences, words, syllables
+            sentences <- length(unlist(strsplit(text, "[.!?]+")))
+            words <- length(unlist(strsplit(text, "\\s+")))
+            
+            # Simplified syllable counting
+            syllables <- sum(nchar(gsub("[^aeiouAEIOU]", "", unlist(strsplit(text, "\\s+")))))
+            
+            if (words > 0 && sentences > 0) {
+              # Flesch-Kincaid Grade Level
+              fk_grade <- 0.39 * (words/sentences) + 11.8 * (syllables/words) - 15.59
+              return(fk_grade)
+            }
+            return(NA)
+          }
+          
+          # Check each vignette
+          vignettes <- list.files("vignettes", pattern = "\\.Rmd$", full.names = TRUE)
+          
+          results <- data.frame(
+            vignette = basename(vignettes),
+            grade_level = numeric(length(vignettes)),
+            word_count = numeric(length(vignettes))
+          )
+          
+          for (i in seq_along(vignettes)) {
+            text <- readLines(vignettes[i], warn = FALSE)
+            text <- paste(text, collapse = "\n")
+            
+            results$grade_level[i] <- calc_readability(text)
+            results$word_count[i] <- length(unlist(strsplit(text, "\\s+")))
+          }
+          
+          # Report results
+          cat("\nVignette Readability Report:\n")
+          print(results)
+          
+          avg_grade <- mean(results$grade_level, na.rm = TRUE)
+          if (!is.na(avg_grade) && avg_grade > 14) {
+            warning(sprintf("Average grade level (%.1f) exceeds target of 14", avg_grade))
+          } else {
+            cat(sprintf("\n✓ Average grade level: %.1f (target: ≤14)\n", avg_grade))
+          }
+          '
+      
+      # Count bullets vs prose ratio
+      - name: Check bullet usage
+        run: |
+          Rscript -e '
+          check_bullets <- function(file) {
+            lines <- readLines(file, warn = FALSE)
+            
+            # Count bullet points (-, *, +)
+            bullets <- sum(grepl("^\\s*[-*+]\\s", lines))
+            
+            # Count words (rough estimate)
+            text <- paste(lines, collapse = " ")
+            text <- gsub("```\\{[^}]+\\}[^`]*```", "", text)  # Remove code
+            words <- length(unlist(strsplit(text, "\\s+")))
+            
+            if (words > 0) {
+              bullets_per_100 <- (bullets / words) * 100
+              return(c(bullets = bullets, words = words, ratio = bullets_per_100))
+            }
+            return(c(bullets = 0, words = 0, ratio = 0))
+          }
+          
+          vignettes <- list.files("vignettes", pattern = "\\.Rmd$", full.names = TRUE)
+          
+          total_bullets <- 0
+          total_words <- 0
+          
+          cat("\nBullet Point Usage:\n")
+          for (v in vignettes) {
+            stats <- check_bullets(v)
+            cat(sprintf("  %s: %d bullets in %d words (%.1f per 100 words)\n",
+                       basename(v), stats["bullets"], stats["words"], stats["ratio"]))
+            total_bullets <- total_bullets + stats["bullets"]
+            total_words <- total_words + stats["words"]
+          }
+          
+          overall_ratio <- (total_bullets / total_words) * 100
+          cat(sprintf("\nOverall: %.1f bullets per 100 words (target: <10)\n", overall_ratio))
+          
+          if (overall_ratio > 10) {
+            warning("Bullet usage exceeds target")
+          } else {
+            cat("✓ Bullet usage within target\n")
+          }
+          '
+      
+      # Upload artifacts if checks fail
+      - name: Upload check results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vignette-quality-results
+          path: |
+            inst/WORDLIST
+            docs/

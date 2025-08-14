@@ -6,6 +6,7 @@
 #'
 #' @param backend A storage backend object
 #' @param sparse_ok Logical, allow sparse representation when possible
+#' @param ... Additional arguments passed to methods
 #' @return A DelayedArray object
 #' @examples
 #' \dontrun{
@@ -13,14 +14,25 @@
 #'   da <- as_delayed_array(b)
 #'   dim(da)
 #' }
-#' @importFrom DelayedArray extract_array DelayedArray
-#' @importFrom methods setClass setMethod setGeneric new
 #' @export
-setGeneric("as_delayed_array", function(backend, sparse_ok = FALSE)
-    standardGeneric("as_delayed_array"))
+as_delayed_array <- function(backend, sparse_ok = FALSE, ...) {
+  UseMethod("as_delayed_array")
+}
+
+# We need to keep S4 seeds for DelayedArray compatibility
+# Register S3 classes with S4 system
+setOldClass("matrix_backend")
+setOldClass("nifti_backend") 
+setOldClass("study_backend")
+setOldClass("study_backend_seed")
+setOldClass("matrix_dataset")
+setOldClass("fmri_file_dataset")
+setOldClass("fmri_mem_dataset")
 
 # Base seed class ---------------------------------------------------------
 
+#' @importFrom methods setClass setMethod new setOldClass
+#' @importFrom DelayedArray extract_array DelayedArray
 setClass("StorageBackendSeed",
          slots = list(backend = "ANY"),
          contains = "Array")
@@ -51,30 +63,40 @@ setMethod("extract_array", "StorageBackendSeed", function(x, index) {
 setClass("NiftiBackendSeed", contains = "StorageBackendSeed")
 setClass("MatrixBackendSeed", contains = "StorageBackendSeed")
 
-# Methods for backends ---------------------------------------------------
+# S3 Methods for backends ---------------------------------------------------
 
 #' @rdname as_delayed_array
-#' @aliases as_delayed_array,nifti_backend-method
-setMethod("as_delayed_array", "nifti_backend", function(backend, sparse_ok = FALSE) {
+#' @method as_delayed_array nifti_backend
+#' @export
+as_delayed_array.nifti_backend <- function(backend, sparse_ok = FALSE, ...) {
   seed <- new("NiftiBackendSeed", backend = backend)
   DelayedArray::DelayedArray(seed)
-})
+}
 
 #' @rdname as_delayed_array
-#' @aliases as_delayed_array,matrix_backend-method
-setMethod("as_delayed_array", "matrix_backend", function(backend, sparse_ok = FALSE) {
+#' @method as_delayed_array matrix_backend
+#' @export
+as_delayed_array.matrix_backend <- function(backend, sparse_ok = FALSE, ...) {
   seed <- new("MatrixBackendSeed", backend = backend)
   DelayedArray::DelayedArray(seed)
-})
+}
 
 #' @rdname as_delayed_array
-#' @aliases as_delayed_array,study_backend-method
-setMethod("as_delayed_array", "study_backend", function(backend, sparse_ok = FALSE) {
-  # Use the new StudyBackendSeed for true lazy evaluation
-  seed <- StudyBackendSeed(
+#' @method as_delayed_array study_backend
+#' @export
+as_delayed_array.study_backend <- function(backend, sparse_ok = FALSE, ...) {
+  # Use the new S3 study_backend_seed for true lazy evaluation
+  seed <- study_backend_seed(
     backends = backend$backends,
     subject_ids = backend$subject_ids
   )
   
   DelayedArray::DelayedArray(seed)
-})
+}
+
+#' @rdname as_delayed_array
+#' @method as_delayed_array default
+#' @export
+as_delayed_array.default <- function(backend, sparse_ok = FALSE, ...) {
+  stop("No as_delayed_array method for class: ", class(backend)[1])
+}

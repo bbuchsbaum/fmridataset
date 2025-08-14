@@ -23,6 +23,8 @@ Imports:
     cachem,
     deflist,
     fmrihrf,
+    fs,
+    lifecycle,
     memoise,
     Matrix,
     methods,
@@ -41,6 +43,8 @@ Suggests:
     fmristore,
     foreach,
     mockery,
+    Rarr,
+    S4Arrays,
     testthat (>= 3.0.0),
     knitr,
     rmarkdown

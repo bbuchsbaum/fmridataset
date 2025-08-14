@@ -38,8 +38,8 @@ test_that("StudyBackendSeed provides true lazy evaluation", {
   # Verify the data contains expected values
   # Rows 150-200 should be from subject 2 (value = 2)
   # Rows 201-250 should be from subject 3 (value = 3)
-  expect_equal(unique(subset_data[1:51, 1]), 2)   # Rows 150-200 (subset rows 1-51)
-  expect_equal(unique(subset_data[52:101, 1]), 3) # Rows 201-250 (subset rows 52-101)
+  expect_equal(unique(as.vector(subset_data[1:51, 1])), 2)   # Rows 150-200 (subset rows 1-51)
+  expect_equal(unique(as.vector(subset_data[52:101, 1])), 3) # Rows 201-250 (subset rows 52-101)
 })
 
 test_that("StudyBackendSeed respects memory bounds", {
@@ -60,38 +60,36 @@ test_that("StudyBackendSeed respects memory bounds", {
     backend
   }
   
-  # Define methods for mock backend in global environment
-  backend_get_dims.mock_large_backend <<- function(backend) {
-    list(
-      spatial = c(100L, 100L, 1L),  # Fake spatial dims
-      time = as.integer(backend$n_time)
-    )
-  }
+  # Define methods for mock backend - register as S3 methods
+  registerS3method("backend_get_dims", "mock_large_backend", 
+    function(backend) {
+      list(
+        spatial = c(100L, 100L, 1L),  # Fake spatial dims
+        time = as.integer(backend$n_time)
+      )
+    })
   
-  backend_get_data.mock_large_backend <<- function(backend, rows = NULL, cols = NULL) {
-    if (is.null(rows)) rows <- seq_len(backend$n_time)
-    if (is.null(cols)) cols <- seq_len(backend$n_voxels)
+  registerS3method("backend_get_data", "mock_large_backend",
+    function(backend, rows = NULL, cols = NULL) {
+      if (is.null(rows)) rows <- seq_len(backend$n_time)
+      if (is.null(cols)) cols <- seq_len(backend$n_voxels)
+      
+      # Return small matrix with backend ID
+      matrix(backend$id, nrow = length(rows), ncol = length(cols))
+    })
+  
+  registerS3method("backend_get_mask", "mock_large_backend",
+    function(backend) {
+      rep(TRUE, backend$n_voxels)
+    })
+  
+  registerS3method("backend_open", "mock_large_backend", 
+    function(backend) backend)
     
-    # Return small matrix with backend ID
-    matrix(backend$id, nrow = length(rows), ncol = length(cols))
-  }
+  registerS3method("backend_close", "mock_large_backend", 
+    function(backend) invisible(NULL))
   
-  backend_get_mask.mock_large_backend <<- function(backend) {
-    rep(TRUE, backend$n_voxels)
-  }
-  
-  backend_open.mock_large_backend <<- function(backend) backend
-  backend_close.mock_large_backend <<- function(backend) invisible(NULL)
-  
-  # Clean up on test exit
-  on.exit({
-    rm(backend_get_dims.mock_large_backend, 
-       backend_get_data.mock_large_backend,
-       backend_get_mask.mock_large_backend,
-       backend_open.mock_large_backend,
-       backend_close.mock_large_backend,
-       envir = .GlobalEnv)
-  }, add = TRUE)
+  # No cleanup needed when using registerS3method
   
   # Register as_delayed_array method
   setMethod("as_delayed_array", "mock_large_backend", function(backend, sparse_ok = FALSE) {
@@ -216,7 +214,7 @@ test_that("study_backend works with data_chunks", {
   expect_equal(length(chunk_list), 3)
   
   # Each chunk should have correct data
-  expect_equal(unique(chunk_list[[1]]$data[, 1]), 1)
-  expect_equal(unique(chunk_list[[2]]$data[, 1]), 2)
-  expect_equal(unique(chunk_list[[3]]$data[, 1]), 3)
+  expect_equal(unique(as.vector(chunk_list[[1]]$data[, 1])), 1)
+  expect_equal(unique(as.vector(chunk_list[[2]]$data[, 1])), 2)
+  expect_equal(unique(as.vector(chunk_list[[3]]$data[, 1])), 3)
 })

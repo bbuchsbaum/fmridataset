@@ -154,10 +154,8 @@ get_mask <- function(x, ...) {
 #' @examples
 #' \donttest{
 #' # Create a dataset with 3 runs
-#' if (requireNamespace("fmrihrf", quietly = TRUE)) {
-#'   sf <- fmrihrf::sampling_frame(blocklens = c(100, 120, 110), TR = 2)
-#'   blocklens(sf)  # c(100, 120, 110)
-#' }
+#' sf <- fmrihrf::sampling_frame(blocklens = c(100, 120, 110), TR = 2)
+#' blocklens(sf)  # c(100, 120, 110)
 #' 
 #' # Create dataset with multiple runs
 #' mat <- matrix(rnorm(330 * 50), nrow = 330, ncol = 50)
@@ -529,3 +527,22 @@ resolve_indices <- function(selector, dataset, ...) {
 # All original fmrireg/fmridataset functionality is preserved while
 # improving code organization and maintainability.
 # ========================================================================
+#' Get Subject IDs from Multi-Subject Dataset
+#' 
+#' Generic function to extract subject identifiers from multi-subject
+#' fMRI dataset objects.
+#' 
+#' @param x A multi-subject dataset object (e.g., fmri_study_dataset)
+#' @param ... Additional arguments passed to methods
+#' 
+#' @details
+#' Multi-subject datasets contain data from multiple participants. This
+#' function extracts the subject identifiers associated with each dataset.
+#' The order of subject IDs corresponds to the order of datasets.
+#' 
+#' @return Character vector of subject identifiers
+#' 
+#' @export
+subject_ids <- function(x, ...) {
+  UseMethod("subject_ids")
+}

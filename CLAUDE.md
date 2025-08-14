@@ -80,8 +80,8 @@ rcmdcheck::rcmdcheck(args = "--no-manual")
    - `matrix_backend` - In-memory matrix storage
    - `nifti_backend` - NIfTI file access (optimized with caching)
    - `h5_backend` - HDF5 storage
+   - `zarr_backend` - Zarr array format (cloud-native, chunked storage)
    - `study_backend` - Multi-subject study data
-   - `latent_backend` - Deferred computation backend
 
 ### Key Design Patterns
 
@@ -118,8 +118,12 @@ rcmdcheck::rcmdcheck(args = "--no-manual")
 - `R/matrix_backend.R` - In-memory matrix storage
 - `R/nifti_backend.R` - NIfTI file backend (with caching)
 - `R/h5_backend.R` - HDF5 storage backend
+- `R/zarr_backend.R` - Zarr array backend (cloud-native)
 - `R/study_backend.R` - Multi-subject study backend
-- `R/latent_backend.R` - Deferred computation backend
+- `R/study_backend_seed.R` - Lazy evaluation for study backend
+
+**Latent Space Interface:**
+- `R/latent_dataset.R` - Specialized interface for latent space data
 
 **Data Access & Processing:**
 - `R/data_access.R` - Data retrieval methods

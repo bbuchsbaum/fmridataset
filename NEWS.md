@@ -1,3 +1,13 @@
+# fmridataset 0.9.0 (Development)
+
+## New features
+
+* Added `dummy_mode` parameter to `fmri_dataset()` and `nifti_backend()` (#3)
+  - Allows creation of datasets with non-existent file paths for testing
+  - Returns placeholder data (zeros) and standard dimensions
+  - Useful for testing dependent packages without requiring actual data files
+  - Enable with `dummy_mode = TRUE` in `fmri_dataset()` constructor
+
 # fmridataset 0.8.9 (Hotfix)
 
 ## Critical fixes

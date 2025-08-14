@@ -372,13 +372,11 @@ print.series_selector <- function(x, ...) {
 #' @method print index_selector
 print.index_selector <- function(x, ...) {
   cat("<index_selector>\n")
-  cat("  indices: ", 
-      if(length(x$indices) <= 10) {
-        paste(x$indices, collapse = ", ")
-      } else {
-        paste0(paste(head(x$indices, 5), collapse = ", "), 
-               ", ... (", length(x$indices), " total)")
-      }, "\n", sep = "")
+  if (length(x$indices) <= 5) {
+    cat("  indices: ", paste(x$indices, collapse = ", "), "\n", sep = "")
+  } else {
+    cat("  indices: ", paste(head(x$indices, 3), collapse = ", "), ", ... (", length(x$indices), " total)\n", sep = "")
+  }
   invisible(x)
 }
 
@@ -404,8 +402,8 @@ print.voxel_selector <- function(x, ...) {
 #' @method print sphere_selector
 print.sphere_selector <- function(x, ...) {
   cat("<sphere_selector>\n")
-  cat("  center: [", paste(x$center, collapse = ", "), "]\n", sep = "")
-  cat("  radius: ", x$radius, " voxels\n", sep = "")
+  cat("  Center: ", paste(x$center, collapse = ", "), "\n", sep = "")
+  cat("  Radius: ", x$radius, "\n", sep = "")
   invisible(x)
 }
 

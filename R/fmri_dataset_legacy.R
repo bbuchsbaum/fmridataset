@@ -1,61 +1,37 @@
-#' Legacy fMRI Dataset Implementation
+#' Legacy fMRI Dataset Constructor
 #'
 #' @description
-#' This file contains the original fmri_file_dataset implementation,
-#' preserved for backwards compatibility and testing during the transition
-#' to the new backend architecture.
+#' Backward compatibility wrapper for fmri_dataset. This function provides
+#' the same interface as the original fmri_dataset function.
 #'
-#' @name fmri_dataset_legacy
-#' @keywords internal
-NULL
-
+#' @param scans Either a character vector of file paths to scans or a list of NeuroVec objects
+#' @param mask Either a character file path to a mask or a NeuroVol mask object
+#' @param TR The repetition time
+#' @param run_length Numeric vector of run lengths
+#' @param preload Whether to preload data into memory
+#' @param ... Additional arguments passed to fmri_dataset
+#'
+#' @return An fmri_dataset object
 #' @export
-#' @keywords internal
-fmri_dataset_legacy <- function(scans, mask, TR,
-                                run_length,
-                                event_table = data.frame(),
-                                base_path = ".",
-                                censor = NULL,
-                                preload = FALSE,
-                                mode = c("normal", "bigvec", "mmap", "filebacked")) {
-  assert_that(is.character(mask), msg = "'mask' should be the file name of the binary mask file")
-  mode <- match.arg(mode)
-
-  if (is.null(censor)) {
-    censor <- rep(0, sum(run_length))
-  }
-
-  frame <- fmrihrf::sampling_frame(blocklens = run_length, TR = TR)
-
-  maskfile <- ifelse(is_absolute_path(mask), mask, file.path(base_path, mask))
-  scans <- ifelse(is_absolute_path(scans), scans, file.path(base_path, scans))
-
-  maskvol <- if (preload) {
-    assert_that(file.exists(maskfile))
-    message(paste("preloading masks", maskfile))
-    neuroim2::read_vol(maskfile)
-  }
-
-  vec <- if (preload) {
-    message(paste("preloading scans", paste(scans, collapse = " ")))
-    neuroim2::read_vec(scans, mode = mode, mask = maskvol)
-  }
-
-
-  ret <- list(
+#'
+#' @examples
+#' \dontrun{
+#' # Create dataset from files
+#' dset <- fmri_dataset_legacy(
+#'   scans = c("scan1.nii", "scan2.nii"),
+#'   mask = "mask.nii",
+#'   TR = 2,
+#'   run_length = c(100, 100)
+#' )
+#' }
+fmri_dataset_legacy <- function(scans, mask, TR, run_length, preload = FALSE, ...) {
+  # Simply delegate to fmri_dataset with the same arguments
+  fmri_dataset(
     scans = scans,
-    vec = vec,
-    mask_file = maskfile,
-    mask = maskvol,
-    nruns = length(run_length),
-    event_table = suppressMessages(tibble::as_tibble(event_table, .name_repair = "check_unique")),
-    base_path = base_path,
-    sampling_frame = frame,
-    censor = censor,
-    mode = mode,
-    preload = preload
+    mask = mask,
+    TR = TR,
+    run_length = run_length,
+    preload = preload,
+    ...
   )
-
-  class(ret) <- c("fmri_file_dataset", "volumetric_dataset", "fmri_dataset", "list")
-  ret
 }

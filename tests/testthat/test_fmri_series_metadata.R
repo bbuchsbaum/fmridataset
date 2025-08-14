@@ -31,7 +31,7 @@ test_that("build_temporal_info_lazy works for fmri_dataset", {
   time_indices <- 1:10
   temporal_info <- fmridataset:::build_temporal_info_lazy(dset, time_indices)
   
-  expect_s4_class(temporal_info, "DataFrame")
+  expect_s3_class(temporal_info, "data.frame")
   expect_equal(nrow(temporal_info), 10)
   expect_true("run_id" %in% colnames(temporal_info))
   expect_true("timepoint" %in% colnames(temporal_info))
@@ -76,7 +76,7 @@ test_that("build_temporal_info_lazy works for fmri_study_dataset", {
   time_indices <- 1:11
   temporal_info <- fmridataset:::build_temporal_info_lazy(study_dset, time_indices)
   
-  expect_s4_class(temporal_info, "DataFrame")
+  expect_s3_class(temporal_info, "data.frame")
   expect_equal(nrow(temporal_info), 11)
   expect_true("subject_id" %in% colnames(temporal_info))
   expect_true("run_id" %in% colnames(temporal_info))
@@ -154,10 +154,10 @@ test_that("build_temporal_info_lazy edge cases", {
   expect_equal(temporal_info$run_id, 1)
 })
 
-test_that("build_temporal_info_lazy preserves S4Vectors::DataFrame class", {
+test_that("build_temporal_info_lazy returns data.frame", {
   dset <- create_test_dataset()
   temporal_info <- fmridataset:::build_temporal_info_lazy(dset, 1:5)
   
-  expect_s4_class(temporal_info, "DataFrame")
-  expect_true(methods::is(temporal_info, "DataFrame"))
+  expect_s3_class(temporal_info, "data.frame")
+  expect_true(is.data.frame(temporal_info))
 })

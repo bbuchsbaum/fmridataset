@@ -7,15 +7,15 @@ create_test_dataset <- function() {
 }
 
 
-test_that("fmri_series.fmri_dataset returns FmriSeries", {
+test_that("fmri_series.fmri_dataset returns fmri_series", {
   dset <- create_test_dataset()
   fs <- fmri_series(dset, selector = 3:5, timepoints = 2:4)
-  expect_s4_class(fs, "FmriSeries")
-  expect_equal(dim(fs), c(3, 3))
+  expect_s3_class(fs, "fmri_series")
+  expect_equal(dim(fs$data), c(3, 3))
   expected <- dset$backend$data_matrix[2:4, 3:5]
   expect_equal(as.matrix(fs), expected)
-  expect_equal(fs@voxel_info$voxel, 3:5)
-  expect_equal(fs@temporal_info$timepoint, 2:4)
+  expect_equal(fs$voxel_info$voxel, 3:5)
+  expect_equal(fs$temporal_info$timepoint, 2:4)
 })
 
 test_that("fmri_series can return DelayedMatrix", {
@@ -27,14 +27,15 @@ test_that("fmri_series can return DelayedMatrix", {
 })
 
 
-test_that("as.matrix.FmriSeries materialises data", {
+test_that("as.matrix.fmri_series materialises data", {
   dset <- create_test_dataset()
   fs <- fmri_series(dset, selector = 1:4, timepoints = 1:3)
   expect_type(as.matrix(fs), "double")
   expect_equal(as.matrix(fs), dset$backend$data_matrix[1:3, 1:4])
 })
 
-test_that("as_tibble.FmriSeries supports dplyr summarise", {
+test_that("as_tibble.fmri_series supports dplyr summarise", {
+  skip_if_not_installed("dplyr")
   dset <- create_test_dataset()
   fs <- fmri_series(dset, selector = 1:2, timepoints = 1:4)
   tb <- as_tibble(fs)

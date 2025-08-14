@@ -7,8 +7,8 @@
 build_temporal_info_lazy(dataset, time_indices)
 }
 \description{
-Internal helpers used to construct the \code{temporal_info} slot of
-\code{FmriSeries} objects. These functions return \code{S4Vectors::DataFrame}
+Internal helpers used to construct the \code{temporal_info} component of
+\code{fmri_series} objects. These functions return data.frame
 objects describing each selected timepoint. They are not exported
 for users.
 }
