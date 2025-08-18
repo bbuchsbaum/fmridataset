@@ -1,17 +1,6 @@
 #' @importFrom neuroim2 series
 #' @import memoise
 
-#' @export
-#' @importFrom neuroim2 NeuroVecSeq
-get_data.latent_dataset <- function(x, ...) {
-  if (!is.null(x$backend)) {
-    # New backend path
-    backend_get_data(x$backend, ...)
-  } else {
-    # Legacy path
-    x$lvec@basis
-  }
-}
 
 #' @export
 #' @importFrom neuroim2 NeuroVecSeq
@@ -269,16 +258,6 @@ get_mask.matrix_dataset <- function(x, ...) {
   as.logical(x$mask)
 }
 
-#' @export
-get_mask.latent_dataset <- function(x, ...) {
-  if (!is.null(x$backend)) {
-    # New backend path - returns logical vector
-    backend_get_mask(x$backend)
-  } else {
-    # Legacy path - ensure logical type
-    as.logical(x$lvec@mask)
-  }
-}
 
 #' @export
 blocklens.matrix_dataset <- function(x, ...) {

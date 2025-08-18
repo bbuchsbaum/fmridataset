@@ -23,32 +23,29 @@ values.
 }
 \examples{
 \donttest{
-if (requireNamespace("DelayedArray", quietly = TRUE) &&
-    requireNamespace("tibble", quietly = TRUE)) {
-  # Create small example
-  mat <- matrix(rnorm(12), nrow = 3, ncol = 4)
-  delayed_mat <- DelayedArray::DelayedArray(mat)
-  
-  # Create fmri_series with metadata
-  fs <- new_fmri_series(
-    data = delayed_mat,
-    voxel_info = data.frame(
-      voxel_id = 1:4,
-      region = c("A", "A", "B", "B")
-    ),
-    temporal_info = data.frame(
-      time = 1:3,
-      condition = c("rest", "task", "rest")
-    ),
-    selection_info = list(),
-    dataset_info = list()
-  )
-  
-  # Convert to tibble
-  tbl_result <- tibble::as_tibble(fs)
-  # Result has 12 rows (3 timepoints x 4 voxels)
-  # with columns: time, condition, voxel_id, region, signal
-}
+# Create small example
+mat <- matrix(rnorm(12), nrow = 3, ncol = 4)
+delayed_mat <- DelayedArray::DelayedArray(mat)
+
+# Create fmri_series with metadata
+fs <- new_fmri_series(
+  data = delayed_mat,
+  voxel_info = data.frame(
+    voxel_id = 1:4,
+    region = c("A", "A", "B", "B")
+  ),
+  temporal_info = data.frame(
+    time = 1:3,
+    condition = c("rest", "task", "rest")
+  ),
+  selection_info = list(),
+  dataset_info = list()
+)
+
+# Convert to tibble
+tbl_result <- tibble::as_tibble(fs)
+# Result has 12 rows (3 timepoints x 4 voxels)
+# with columns: time, condition, voxel_id, region, signal
 }
 
 }

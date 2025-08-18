@@ -3,7 +3,6 @@
 \name{print}
 \alias{print}
 \alias{print.fmri_dataset}
-\alias{print.latent_dataset}
 \alias{print.chunkiter}
 \alias{print.data_chunk}
 \alias{summary.fmri_dataset}
@@ -13,8 +12,6 @@
 \method{print}{fmri_dataset}(x, full = FALSE, ...)
 
 \method{summary}{fmri_dataset}(object, ...)
-
-\method{print}{latent_dataset}(x, ...)
 
 \method{print}{chunkiter}(x, ...)
 

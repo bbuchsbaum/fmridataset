@@ -51,32 +51,30 @@ An fmri_series object contains:
 \examples{
 \donttest{
 # Create example fmri_series object
-if (requireNamespace("DelayedArray", quietly = TRUE)) {
-  # Create small example data
-  mat <- matrix(rnorm(100 * 50), nrow = 100, ncol = 50)
-  delayed_mat <- DelayedArray::DelayedArray(mat)
-  
-  # Create metadata
-  vox_info <- data.frame(
-    x = rep(1:10, 5),
-    y = rep(1:5, each = 10),
-    z = 1
-  )
-  
-  temp_info <- data.frame(
-    time = seq(0, 99, by = 1),
-    run = rep(1:4, each = 25)
-  )
-  
-  # Create fmri_series object
-  fs <- new_fmri_series(
-    data = delayed_mat,
-    voxel_info = vox_info,
-    temporal_info = temp_info,
-    selection_info = list(),
-    dataset_info = list()
-  )
-}
+# Create small example data
+mat <- matrix(rnorm(100 * 50), nrow = 100, ncol = 50)
+delayed_mat <- DelayedArray::DelayedArray(mat)
+
+# Create metadata
+vox_info <- data.frame(
+  x = rep(1:10, 5),
+  y = rep(1:5, each = 10),
+  z = 1
+)
+
+temp_info <- data.frame(
+  time = seq(0, 99, by = 1),
+  run = rep(1:4, each = 25)
+)
+
+# Create fmri_series object
+fs <- new_fmri_series(
+  data = delayed_mat,
+  voxel_info = vox_info,
+  temporal_info = temp_info,
+  selection_info = list(),
+  dataset_info = list()
+)
 }
 
 }

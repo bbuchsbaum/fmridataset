@@ -22,11 +22,9 @@ selector type, backend, and data orientation.
 \examples{
 \donttest{
 # This method is called automatically when printing
-if (requireNamespace("DelayedArray", quietly = TRUE)) {
-  # Create example object (see fmri_series documentation)
-  # fs <- new_fmri_series(...)
-  # fs  # Automatically calls print method
-}
+# Create example object (see fmri_series documentation)
+# fs <- new_fmri_series(...)
+# fs  # Automatically calls print method
 }
 
 }

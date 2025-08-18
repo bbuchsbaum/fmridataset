@@ -21,24 +21,22 @@ voxels in columns.
 }
 \examples{
 \donttest{
-if (requireNamespace("DelayedArray", quietly = TRUE)) {
-  # Create small example
-  mat <- matrix(rnorm(20), nrow = 4, ncol = 5)
-  delayed_mat <- DelayedArray::DelayedArray(mat)
-  
-  # Create minimal fmri_series object
-  fs <- new_fmri_series(
-    data = delayed_mat,
-    voxel_info = data.frame(idx = 1:5),
-    temporal_info = data.frame(time = 1:4),
-    selection_info = list(),
-    dataset_info = list()
-  )
-  
-  # Convert to matrix
-  mat_result <- as.matrix(fs)
-  dim(mat_result)  # 4 x 5
-}
+# Create small example
+mat <- matrix(rnorm(20), nrow = 4, ncol = 5)
+delayed_mat <- DelayedArray::DelayedArray(mat)
+
+# Create minimal fmri_series object
+fs <- new_fmri_series(
+  data = delayed_mat,
+  voxel_info = data.frame(idx = 1:5),
+  temporal_info = data.frame(time = 1:4),
+  selection_info = list(),
+  dataset_info = list()
+)
+
+# Convert to matrix
+mat_result <- as.matrix(fs)
+dim(mat_result)  # 4 x 5
 }
 
 }

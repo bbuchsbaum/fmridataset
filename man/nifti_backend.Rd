@@ -8,7 +8,8 @@ nifti_backend(
   source,
   mask_source,
   preload = FALSE,
-  mode = c("normal", "bigvec", "mmap", "filebacked")
+  mode = c("normal", "bigvec", "mmap", "filebacked"),
+  dummy_mode = FALSE
 )
 }
 \arguments{
@@ -19,6 +20,8 @@ nifti_backend(
 \item{preload}{Logical, whether to eagerly load data into memory}
 
 \item{mode}{Storage mode for file-backed data: 'normal', 'bigvec', 'mmap', or 'filebacked'}
+
+\item{dummy_mode}{Logical, if TRUE allows non-existent files (for testing). Default FALSE.}
 }
 \value{
 A nifti_backend S3 object

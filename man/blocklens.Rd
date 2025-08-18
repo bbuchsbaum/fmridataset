@@ -46,10 +46,8 @@ The sum of block lengths equals the total number of timepoints.
 \examples{
 \donttest{
 # Create a dataset with 3 runs
-if (requireNamespace("fmrihrf", quietly = TRUE)) {
-  sf <- fmrihrf::sampling_frame(blocklens = c(100, 120, 110), TR = 2)
-  blocklens(sf)  # c(100, 120, 110)
-}
+sf <- fmrihrf::sampling_frame(blocklens = c(100, 120, 110), TR = 2)
+blocklens(sf)  # c(100, 120, 110)
 
 # Create dataset with multiple runs
 mat <- matrix(rnorm(330 * 50), nrow = 330, ncol = 50)

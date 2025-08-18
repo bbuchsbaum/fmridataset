@@ -44,15 +44,17 @@ NULL
 #' This is the primary constructor for latent datasets.
 #'
 #' @param source Character vector of file paths to LatentNeuroVec HDF5 files (.lv.h5),
-#'   or a list of LatentNeuroVec objects from the fmristore package.
+#'   a list of LatentNeuroVec objects from the fmristore package, or a single 
+#'   LatentNeuroVec object (legacy interface).
 #' @param TR The repetition time in seconds.
 #' @param run_length Vector of integers indicating the number of scans in each run.
 #' @param event_table Optional data.frame containing event onsets and experimental variables.
-#' @param base_path Base directory for relative file paths.
-#' @param censor Optional binary vector indicating which scans to remove.
-#' @param preload Logical indicating whether to preload all data into memory.
+#' @param base_path Base directory for relative file paths (ignored for LatentNeuroVec objects).
+#' @param censor Optional binary vector indicating which scans to remove (ignored for LatentNeuroVec objects).
+#' @param preload Logical indicating whether to preload all data into memory (ignored for LatentNeuroVec objects).
 #'
-#' @return A `latent_dataset` object with class `c("latent_dataset", "fmri_dataset")`.
+#' @return A `latent_dataset` object with class `c("latent_dataset", "fmri_dataset")` for the new interface,
+#'   or `c("latent_dataset", "matrix_dataset", "fmri_dataset")` for the legacy interface.
 #'
 #' @export
 #' @family latent_data
@@ -65,6 +67,10 @@ NULL
 #'   TR = 2,
 #'   run_length = c(100, 100)
 #' )
+#'
+#' # Legacy interface with single LatentNeuroVec object
+#' lvec <- fmristore::LatentNeuroVec(basis, loadings, space)
+#' dataset <- latent_dataset(lvec, TR = 2, run_length = 100)
 #'
 #' # Access latent scores
 #' scores <- get_latent_scores(dataset)
@@ -79,6 +85,40 @@ latent_dataset <- function(source,
                           base_path = ".",
                           censor = NULL,
                           preload = FALSE) {
+  
+  # Support legacy parameter name 'lvec' via ... or direct call
+  # Check if this is a LatentNeuroVec object (legacy interface)
+  if (inherits(source, "LatentNeuroVec")) {
+    # Legacy interface for single LatentNeuroVec object
+    # Lazy check: make sure fmristore is installed (fmristore is not a hard dependency)
+    if (!requireNamespace("fmristore", quietly = TRUE)) {
+      stop("The 'fmristore' package is required to create a latent_dataset. Please install fmristore.",
+        call. = FALSE
+      )
+    }
+
+    # Ensure the total run length matches the number of time points in lvec
+    lvec <- source  # Rename for clarity
+    assertthat::assert_that(
+      sum(run_length) == dim(lvec)[4],
+      msg = "Sum of run lengths must equal the 4th dimension of lvec"
+    )
+
+    frame <- fmrihrf::sampling_frame(blocklens = run_length, TR = TR)
+
+    ret <- list(
+      lvec = lvec,
+      datamat = lvec@basis,
+      TR = TR,
+      nruns = length(run_length),
+      event_table = event_table,
+      sampling_frame = frame,
+      mask = rep(TRUE, ncol(lvec@basis))
+    )
+
+    class(ret) <- c("latent_dataset", "matrix_dataset", "fmri_dataset", "list")
+    return(ret)
+  }
   
   # Process source paths
   if (is.character(source)) {
@@ -494,6 +534,11 @@ print.latent_dataset <- function(x, ...) {
 
 #' @export
 get_data.latent_dataset <- function(x, ...) {
+  # Handle legacy interface
+  if (!is.null(x$lvec)) {
+    return(x$lvec@basis)
+  }
+  
   warning("get_data() on latent_dataset returns latent scores, not voxel data. ",
           "Use get_latent_scores() for clarity or reconstruct_voxels() for voxel data.")
   get_latent_scores(x, ...)
@@ -506,6 +551,11 @@ get_data_matrix.latent_dataset <- function(x, ...) {
 
 #' @export
 get_mask.latent_dataset <- function(x, ...) {
+  # Handle legacy interface
+  if (!is.null(x$mask)) {
+    return(x$mask)
+  }
+  
   # For latent datasets, return a component mask (all TRUE)
   dims <- get_latent_dims(x$storage)
   rep(TRUE, dims$n_components)

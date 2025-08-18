@@ -14,7 +14,8 @@ fmri_dataset(
   censor = NULL,
   preload = FALSE,
   mode = c("normal", "bigvec", "mmap", "filebacked"),
-  backend = NULL
+  backend = NULL,
+  dummy_mode = FALSE
 )
 }
 \arguments{
@@ -40,6 +41,8 @@ Ignored if scans is a backend object.}
 Ignored if scans is a backend object.}
 
 \item{backend}{Deprecated. Use scans parameter to pass a backend object.}
+
+\item{dummy_mode}{Logical, if TRUE allows non-existent files (for testing purposes only). Default is FALSE.}
 }
 \value{
 An fMRI dataset object of class c("fmri_file_dataset", "volumetric_dataset", "fmri_dataset", "list").
@@ -69,5 +72,14 @@ dset <- fmri_dataset("scan1.nii",
 # Create an fMRI dataset with a backend
 backend <- nifti_backend(c("scan1.nii", "scan2.nii"), mask_source = "mask.nii")
 dset <- fmri_dataset(backend, TR = 2, run_length = c(150, 150))
+
+# Create a dummy dataset for testing (files don't need to exist)
+dset_dummy <- fmri_dataset(
+  scans = c("dummy1.nii", "dummy2.nii"),
+  mask = "dummy_mask.nii", 
+  TR = 2,
+  run_length = c(100, 100),
+  dummy_mode = TRUE  # Enable dummy mode for testing
+)
 }
 }

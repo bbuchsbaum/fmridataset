@@ -19,7 +19,7 @@
 #' }
 #'
 #' @name print
-#' @aliases print.fmri_dataset print.latent_dataset print.chunkiter print.data_chunk
+#' @aliases print.fmri_dataset print.chunkiter print.data_chunk
 #' @importFrom utils head tail
 NULL
 
@@ -123,90 +123,6 @@ summary.fmri_dataset <- function(object, ...) {
   invisible(object)
 }
 
-#' @export
-#' @rdname print
-print.latent_dataset <- function(x, ...) {
-  # Header
-  cat("\n=== Latent Dataset ===\n")
-
-  # Basic dimensions
-  cat("\n** Dimensions:\n")
-  
-  # Get dimensions from storage
-  storage <- x$storage
-  if (!is.null(storage) && !is.null(storage$data) && length(storage$data) > 0) {
-    first_item <- storage$data[[1]]
-    if (isS4(first_item) && "basis" %in% methods::slotNames(first_item)) {
-      basis <- methods::slot(first_item, "basis")
-      total_timepoints <- sum(x$sampling_frame$blocklens)
-      n_components <- ncol(basis)
-      cat("  - Timepoints:", total_timepoints, "\n")
-      cat("  - Components:", n_components, "\n")
-    }
-  }
-  
-  cat("  - Runs:", x$n_runs, "\n")
-
-  # Original voxel info - try to infer from storage
-  if (!is.null(x$storage) && !is.null(x$storage$data) && length(x$storage$data) > 0) {
-    first_item <- x$storage$data[[1]]
-    if (isS4(first_item) && "loadings" %in% methods::slotNames(first_item)) {
-      loadings <- methods::slot(first_item, "loadings")
-      if (is.matrix(loadings)) {
-        cat("  - Original voxels:", nrow(loadings), "\n")
-      }
-    }
-  }
-
-  # Original space info if available
-  if (!is.null(x$original_space)) {
-    cat("  - Original space:", paste(x$original_space, collapse = " x "), "\n")
-  }
-
-  # Sampling frame info
-  cat("\n** Temporal Structure:\n")
-  # Handle TR being a vector - use first value
-  tr_value <- if(length(x$sampling_frame$TR) > 1) x$sampling_frame$TR[1] else x$sampling_frame$TR
-  cat("  - TR: ", tr_value, " seconds\n", sep="")
-  # Handle long run lengths
-  run_lens <- x$sampling_frame$blocklens
-  if (length(run_lens) > 10) {
-    run_str <- paste0(paste(head(run_lens, 5), collapse = ", "), 
-                      ", ... (", length(run_lens), " runs total)")
-  } else {
-    run_str <- paste(run_lens, collapse = ", ")
-  }
-  cat("  - Run lengths:", run_str, "\n")
-
-  # Event table summary
-  cat("\n** Event Table:\n")
-  if (!is.null(x$event_table) && !is.null(nrow(x$event_table)) && nrow(x$event_table) > 0) {
-    cat("  - Rows:", nrow(x$event_table), "\n")
-    cat("  - Variables:", paste(names(x$event_table), collapse = ", "), "\n")
-
-    # Show first few events if they exist
-    if (nrow(x$event_table) > 0) {
-      cat("  - First few events:\n")
-      print(head(x$event_table, 3))
-    }
-  } else {
-    cat("  - Empty event table\n")
-  }
-
-  # Data summary - get sample from basis
-  if (!is.null(storage) && !is.null(storage$data) && length(storage$data) > 0) {
-    first_item <- storage$data[[1]]
-    if (isS4(first_item) && "basis" %in% methods::slotNames(first_item)) {
-      basis <- methods::slot(first_item, "basis")
-      cat("\n** Latent Data Summary:\n")
-      data_summary <- summary(as.vector(basis[1:min(1000, length(basis))]))[c(1, 3, 4, 6)]
-      cat("  - Values (sample):", paste(names(data_summary), data_summary, sep = ":", collapse = ", "), "\n")
-    }
-  }
-
-  cat("\n")
-  invisible(x)
-}
 
 #' Pretty Print a Chunk Iterator
 #'
