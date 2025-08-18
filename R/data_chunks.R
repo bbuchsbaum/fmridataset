@@ -1,8 +1,30 @@
+#' Create a Data Chunk Object
+#'
+#' Creates a data chunk object that represents a subset of data from an fMRI dataset.
+#' A data chunk contains the data matrix along with indices indicating which voxels
+#' and time points (rows) are included in the chunk.
+#'
+#' @param mat A matrix containing the chunk data (rows = time points, columns = voxels)
+#' @param voxel_ind Integer vector of voxel indices included in this chunk
+#' @param row_ind Integer vector of row (time point) indices included in this chunk
+#' @param chunk_num Integer indicating the chunk number
+#'
+#' @return A data_chunk object containing:
+#' \describe{
+#'   \item{data}{The data matrix for this chunk}
+#'   \item{voxel_ind}{Indices of voxels in this chunk}
+#'   \item{row_ind}{Indices of rows (time points) in this chunk}
+#'   \item{chunk_num}{The chunk number}
+#' }
+#'
 #' @importFrom assertthat assert_that
 #' @importFrom deflist deflist
-
-#' @keywords internal
-#' @noRd
+#' @export
+#' @examples
+#' # Create a simple data chunk
+#' mat <- matrix(rnorm(100), nrow = 10, ncol = 10)
+#' chunk <- data_chunk(mat, voxel_ind = 1:10, row_ind = 1:10, chunk_num = 1)
+#' print(chunk)
 data_chunk <- function(mat, voxel_ind, row_ind, chunk_num) {
   ret <- list(
     data = mat,
