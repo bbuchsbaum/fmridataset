@@ -15,9 +15,8 @@ latent_dataset(
 )
 }
 \arguments{
-\item{source}{Character vector of file paths to LatentNeuroVec HDF5 files (.lv.h5),
-a list of LatentNeuroVec objects from the fmristore package, or a single
-LatentNeuroVec object (legacy interface).}
+\item{source}{Character vector of file paths to LatentNeuroVec HDF5 files (.lv.h5) or
+a list of LatentNeuroVec objects from the fmristore package.}
 
 \item{TR}{The repetition time in seconds.}
 
@@ -25,15 +24,14 @@ LatentNeuroVec object (legacy interface).}
 
 \item{event_table}{Optional data.frame containing event onsets and experimental variables.}
 
-\item{base_path}{Base directory for relative file paths (ignored for LatentNeuroVec objects).}
+\item{base_path}{Base directory for relative file paths.}
 
-\item{censor}{Optional binary vector indicating which scans to remove (ignored for LatentNeuroVec objects).}
+\item{censor}{Optional binary vector indicating which scans to remove.}
 
-\item{preload}{Logical indicating whether to preload all data into memory (ignored for LatentNeuroVec objects).}
+\item{preload}{Logical indicating whether to preload all data into memory.}
 }
 \value{
-A \code{latent_dataset} object with class \code{c("latent_dataset", "fmri_dataset")} for the new interface,
-or \code{c("latent_dataset", "matrix_dataset", "fmri_dataset")} for the legacy interface.
+A \code{latent_dataset} object with class \code{c("latent_dataset", "fmri_dataset")}.
 }
 \description{
 A specialized dataset interface for working with latent space representations
@@ -77,9 +75,14 @@ dataset <- latent_dataset(
   run_length = c(100, 100)
 )
 
-# Legacy interface with single LatentNeuroVec object
-lvec <- fmristore::LatentNeuroVec(basis, loadings, space)
-dataset <- latent_dataset(lvec, TR = 2, run_length = 100)
+# From pre-loaded objects
+lvec1 <- fmristore::read_vec("run1.lv.h5")
+lvec2 <- fmristore::read_vec("run2.lv.h5")
+dataset <- latent_dataset(
+  source = list(lvec1, lvec2),
+  TR = 2,
+  run_length = c(100, 100)
+)
 
 # Access latent scores
 scores <- get_latent_scores(dataset)

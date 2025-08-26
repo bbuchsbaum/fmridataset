@@ -421,34 +421,100 @@ Once you understand the basic architectural patterns, these advanced concepts he
 The architecture is designed with performance as a primary consideration. Understanding the performance implications of different architectural choices helps you optimize your analyses:
 
 ```{r performance-architecture}
-# Lazy evaluation architecture
-create_file_dataset_simulation <- function() {
-  # Simulates file dataset creation (no actual files needed)
-  list(
-    files = c("run1.nii", "run2.nii"),
-    mask = "mask.nii",
-    backend_created = Sys.time(),
-    data_loaded = NULL
+# Benchmark different backend types
+benchmark_backends <- function(n_timepoints = 100, n_voxels = 1000) {
+  # Generate test data
+  test_data <- generate_example_fmri_data(n_timepoints, n_voxels)
+  
+  # Benchmark matrix backend
+  start_time <- Sys.time()
+  matrix_ds <- matrix_dataset(
+    datamat = test_data,
+    TR = 2.0,
+    run_length = n_timepoints
   )
+  matrix_create_time <- difftime(Sys.time(), start_time, units = "secs")
+  
+  start_time <- Sys.time()
+  matrix_data <- get_data_matrix(matrix_ds)
+  matrix_access_time <- difftime(Sys.time(), start_time, units = "secs")
+  
+  cat("Performance Comparison:\n")
+  cat("====================\n")
+  cat(sprintf("Dataset size: %d timepoints × %d voxels\n", n_timepoints, n_voxels))
+  cat(sprintf("Memory size: %.1f MB\n\n", object.size(test_data) / 1024^2))
+  
+  cat("Matrix Backend:\n")
+  cat(sprintf("  Creation time: %.3f seconds\n", matrix_create_time))
+  cat(sprintf("  Data access time: %.3f seconds\n", matrix_access_time))
+  cat("  Memory model: All data in RAM\n")
+  cat("  Best for: Small datasets, repeated access\n\n")
+  
+  # Simulate file backend performance
+  cat("File Backend (simulated):\n")
+  cat("  Creation time: ~0.001 seconds (lazy)\n")
+  cat("  First access time: ~1-5 seconds (disk I/O)\n")
+  cat("  Memory model: Load on demand\n")
+  cat("  Best for: Large datasets, sequential access\n\n")
+  
+  # Simulate study backend performance
+  cat("Study Backend (simulated):\n")
+  cat("  Creation time: ~0.01 seconds (metadata only)\n")
+  cat("  Access time: Varies by subject\n")
+  cat("  Memory model: Per-subject lazy loading\n")
+  cat("  Best for: Multi-subject analyses\n")
 }
 
-simulate_data_access <- function(dataset_sim) {
-  # Simulates first data access triggering loading
-  dataset_sim$data_loaded <- Sys.time()
-  dataset_sim$data_size_mb <- 150  # Simulated data size
-  return(dataset_sim)
+# Run benchmark
+benchmark_backends(n_timepoints = 200, n_voxels = 5000)
+```
+
+The performance characteristics guide backend selection based on your specific use case.
+
+```{r chunking-performance}
+# Benchmark chunking strategies
+benchmark_chunking <- function(dataset, chunk_sizes = c(1, 5, 10, 20)) {
+  cat("\nChunking Performance Analysis:\n")
+  cat("============================\n")
+  
+  results <- data.frame(
+    chunks = chunk_sizes,
+    time = numeric(length(chunk_sizes)),
+    memory_peak = numeric(length(chunk_sizes))
+  )
+  
+  for (i in seq_along(chunk_sizes)) {
+    n_chunks <- chunk_sizes[i]
+    
+    start_time <- Sys.time()
+    chunks <- data_chunks(dataset, nchunks = n_chunks)
+    
+    # Simulate processing
+    for (chunk in chunks) {
+      # Simple operation on each chunk
+      chunk_mean <- mean(chunk$data)
+    }
+    
+    results$time[i] <- as.numeric(difftime(Sys.time(), start_time, units = "secs"))
+    results$memory_peak[i] <- n_timepoints(dataset) * ncol(dataset$datamat) / n_chunks * 8 / 1024^2
+  }
+  
+  print(results)
+  
+  cat("\nRecommendations:\n")
+  cat("- More chunks = Lower memory usage\n")
+  cat("- Fewer chunks = Better performance (less overhead)\n")
+  cat("- Optimal chunk size depends on available RAM\n")
 }
 
-# Demonstrate lazy evaluation timing
-file_sim <- create_file_dataset_simulation()
-cat("Dataset created at:", format(file_sim$backend_created), "\n")
-cat("Data loaded:", is.null(file_sim$data_loaded), "\n")
+# Create test dataset and benchmark
+test_ds <- matrix_dataset(
+  generate_example_fmri_data(100, 1000),
+  TR = 2.0,
+  run_length = 100
+)
 
-# First access triggers loading
-file_sim <- simulate_data_access(file_sim)
-cat("Data loaded at:", format(file_sim$data_loaded), "\n")
-cat("Loading delay:", 
-    difftime(file_sim$data_loaded, file_sim$backend_created, units = "secs"), "seconds\n")
+benchmark_chunking(test_ds)
 ```
 
 The lazy evaluation architecture enables working with datasets larger than memory by deferring expensive operations until absolutely necessary.

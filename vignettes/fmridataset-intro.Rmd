@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
   comment = "#>",
   fig.width = 7,
   fig.height = 5,
-  eval = FALSE,
+  eval = TRUE,  # Enable evaluation for demonstration
   warning = FALSE,
   message = FALSE
 )
@@ -27,6 +27,11 @@ knitr::opts_chunk$set(
 suppressPackageStartupMessages({
   library(fmridataset)
 })
+
+# Source helper functions for examples
+if (file.exists("../R/vignette_helpers.R")) {
+  source("../R/vignette_helpers.R")
+}
 ```
 
 # Motivation: Unified fMRI Data Access Made Simple
@@ -42,18 +47,15 @@ Let's jump into a concrete example that shows how fmridataset simplifies a typic
 ```{r real-example}
 library(fmridataset)
 
-# Create realistic synthetic fMRI data
-set.seed(123)
-n_timepoints <- 200
-n_voxels <- 1000
-fmri_matrix <- matrix(rnorm(n_timepoints * n_voxels), 
-                      nrow = n_timepoints, ncol = n_voxels)
-
-# Add some realistic signal structure
-# Simulate activation in first 100 voxels during certain timepoints
+# Create realistic synthetic fMRI data using helper function
 activation_periods <- c(20:30, 50:60, 120:130, 150:160)
-fmri_matrix[activation_periods, 1:100] <- 
-  fmri_matrix[activation_periods, 1:100] + 0.5
+fmri_matrix <- generate_example_fmri_data(
+  n_timepoints = 200,
+  n_voxels = 1000,
+  n_active = 100,
+  activation_periods = activation_periods,
+  signal_strength = 0.5
+)
 
 # Create dataset with temporal structure
 dataset <- matrix_dataset(
@@ -62,28 +64,18 @@ dataset <- matrix_dataset(
   run_length = c(100, 100)            # Two runs of 100 timepoints each
 )
 
-# Add experimental design
-events <- data.frame(
-  onset = c(20, 50, 120, 150),        # Event start times in seconds
-  duration = c(10, 10, 10, 10),       # Event durations
-  trial_type = c("task", "task", "task", "task"),
-  run = c(1, 1, 2, 2)                 # Which run each event belongs to
+# Add experimental design using helper function
+events <- generate_example_events(
+  n_runs = 2,
+  events_per_run = 2,
+  TR = 2.0,
+  run_length = 100
 )
 
 dataset$event_table <- events
 
 # Display the dataset
-print(dataset)
-```
-
-```{r real-example-output, echo=FALSE}
-# Expected output:
-# fMRI Dataset (matrix_dataset)
-# Data dimensions: 200 timepoints × 1000 voxels
-# Temporal structure: 2 runs (100, 100 timepoints)
-# TR: 2 seconds
-# Total duration: 400 seconds
-# Events: 4 events across 2 runs
+print_dataset_info(dataset, "Dataset Summary")
 ```
 
 Now let's see the unified interface in action:
@@ -104,22 +96,8 @@ run1_data <- get_data_matrix(dataset, run_id = 1)
 cat("Run 1 dimensions:", dim(run1_data), "\n")
 
 # Access experimental events
-print(dataset$event_table)
-```
-
-```{r output-example, echo=FALSE}
-# Expected output:
-# TR: 2 seconds
-# Number of runs: 2
-# Total timepoints: 200
-# Run durations: 200 200 seconds
-# Full data dimensions: 200 1000
-# Run 1 dimensions: 100 1000
-#   onset duration trial_type run
-# 1    20       10       task   1
-# 2    50       10       task   1
-# 3   120       10       task   2
-# 4   150       10       task   2
+cat("\nEvent Table:\n")
+print(head(dataset$event_table, 4))
 ```
 
 > **💡 Key Insight**: The same interface works whether your data comes from matrices, NIfTI files, or any other supported format. You write your analysis code once and it works everywhere.
