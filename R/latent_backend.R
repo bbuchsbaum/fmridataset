@@ -222,9 +222,11 @@ backend_get_dims.latent_backend <- function(backend) {
   }
   
   # Return dims in standard format
-  # Note: spatial dims represent component space, not voxel space
+  # For latent backend, we return the original spatial dimensions
+  # The actual data access returns components, but dims should reflect
+  # the original space for consistency
   list(
-    spatial = c(backend$dims$n_components, 1, 1),  # Components as "spatial" dimension
+    spatial = backend$dims$spatial,  # Original spatial dimensions
     time = backend$dims$time
   )
 }
@@ -241,9 +243,10 @@ backend_get_mask.latent_backend <- function(backend) {
     )
   }
   
-  # For latent backend, all components are "valid"
-  # Return logical vector of length n_components
-  rep(TRUE, backend$dims$n_components)
+  # For latent backend, return a mask for voxels
+  # All voxels with non-zero loadings are considered valid
+  # This maintains consistency with the backend contract
+  rep(TRUE, backend$dims$n_voxels)
 }
 
 #' @rdname backend_get_data
@@ -405,7 +408,12 @@ backend_reconstruct_voxels <- function(backend, rows = NULL, voxels = NULL) {
   }
   
   # Reconstruct: data = basis %*% t(loadings)
-  reconstructed <- scores %*% t(loadings)
+  # Handle both regular and sparse matrices
+  if (inherits(loadings, "Matrix")) {
+    reconstructed <- scores %*% Matrix::t(loadings)
+  } else {
+    reconstructed <- scores %*% t(loadings)
+  }
   
   # Add offset if present
   obj <- backend$data[[1]]

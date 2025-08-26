@@ -77,12 +77,12 @@ test_that("latent_backend works with mock LatentNeuroVec objects", {
   
   # Check dimensions
   dims <- backend_get_dims(backend)
-  expect_equal(dims$spatial, c(10, 1, 1))  # n_components as spatial
+  expect_equal(dims$spatial, c(10, 10, 10))  # original spatial dims
   expect_equal(dims$time, 250)  # 100 + 150
   
   # Check mask
   mask <- backend_get_mask(backend)
-  expect_equal(length(mask), 10)  # n_components
+  expect_equal(length(mask), 1000)  # n_voxels
   expect_true(all(mask))
   
   # Get data
