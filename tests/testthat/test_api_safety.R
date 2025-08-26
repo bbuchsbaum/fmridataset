@@ -4,14 +4,14 @@ library(fmridataset)
 test_that("matrix_dataset handles type coercion with appropriate messages", {
   # Test vector to matrix coercion
   vec <- rnorm(100)
-  
+
   # Should convert vector to matrix silently (no message in current implementation)
   dset <- matrix_dataset(vec, TR = 2, run_length = 100)
-  
+
   # Result should be a valid dataset
   expect_s3_class(dset, "matrix_dataset")
   expect_equal(dim(dset$datamat), c(100, 1))
-  
+
   # Test data.frame input
   df <- data.frame(v1 = rnorm(100), v2 = rnorm(100))
   dset <- matrix_dataset(as.matrix(df), TR = 2, run_length = 100)
@@ -20,27 +20,27 @@ test_that("matrix_dataset handles type coercion with appropriate messages", {
 
 test_that("matrix_dataset validates run_length properly", {
   mat <- matrix(rnorm(100 * 50), 100, 50)
-  
+
   # Should accept single value
   dset <- matrix_dataset(mat, TR = 2, run_length = 100)
   expect_equal(dset$nruns, 1)
-  
+
   # Should accept vector
   dset <- matrix_dataset(mat, TR = 2, run_length = c(50, 50))
   expect_equal(dset$nruns, 2)
-  
+
   # Should reject negative values (but actually gives sum error)
   expect_error(
     matrix_dataset(mat, TR = 2, run_length = c(50, -50)),
     "sum\\(run_length\\) not equal to nrow\\(datamat\\)"
   )
-  
+
   # Should reject non-numeric
   expect_error(
     matrix_dataset(mat, TR = 2, run_length = "invalid"),
     "invalid 'type' \\(character\\) of argument"
   )
-  
+
   # Should give clear error when sum doesn't match
   expect_error(
     matrix_dataset(mat, TR = 2, run_length = 50),
@@ -55,14 +55,14 @@ test_that("get_mask returns consistent types across backends", {
   mask1 <- get_mask(mat_dset)
   expect_type(mask1, "double")
   expect_equal(length(mask1), 50)
-  
+
   # Matrix backend - returns logical vector
   backend <- matrix_backend(mat, mask = rep(TRUE, 50))
   dset <- fmri_dataset(backend, TR = 2, run_length = 100)
   mask2 <- get_mask(dset)
   expect_type(mask2, "logical")
   expect_equal(length(mask2), 50)
-  
+
   # Both should work for masking operations
   expect_true(all(mask1 > 0))
   expect_true(all(mask2))
@@ -83,12 +83,12 @@ test_that("fmri_dataset validates file existence early", {
 
 test_that("parameter names are consistent across dataset types", {
   mat <- matrix(rnorm(100 * 50), 100, 50)
-  
+
   # All dataset constructors should accept 'TR' and 'run_length'
   # Matrix dataset
   d1 <- matrix_dataset(mat, TR = 2, run_length = 100)
   expect_equal(get_TR(d1), 2)
-  
+
   # Check that backend constructors use consistent names
   backend <- matrix_backend(mat)
   d2 <- fmri_dataset(backend, TR = 2, run_length = 100)
@@ -97,19 +97,21 @@ test_that("parameter names are consistent across dataset types", {
 
 test_that("resource cleanup happens automatically", {
   skip_if_not_installed("neuroim2")
-  
+
   # Create a backend that tracks cleanup
   cleanup_called <- FALSE
-  
+
   # Mock backend with finalizer
   backend <- structure(
     list(
       data = matrix(rnorm(100), 10, 10),
-      cleanup = function() { cleanup_called <<- TRUE }
+      cleanup = function() {
+        cleanup_called <<- TRUE
+      }
     ),
     class = c("mock_backend", "storage_backend")
   )
-  
+
   # Add methods
   backend_open.mock_backend <- function(backend) backend
   backend_close.mock_backend <- function(backend) {
@@ -126,7 +128,7 @@ test_that("resource cleanup happens automatically", {
     backend$data
   }
   backend_get_metadata.mock_backend <- function(backend) list()
-  
+
   # Register methods temporarily
   registerS3method("backend_open", "mock_backend", backend_open.mock_backend)
   registerS3method("backend_close", "mock_backend", backend_close.mock_backend)
@@ -134,10 +136,10 @@ test_that("resource cleanup happens automatically", {
   registerS3method("backend_get_mask", "mock_backend", backend_get_mask.mock_backend)
   registerS3method("backend_get_data", "mock_backend", backend_get_data.mock_backend)
   registerS3method("backend_get_metadata", "mock_backend", backend_get_metadata.mock_backend)
-  
+
   # Create dataset
   dset <- fmri_dataset(backend, TR = 2, run_length = 10)
-  
+
   # Cleanup should be called when backend is closed
   backend_close(dset$backend)
   expect_true(cleanup_called)
@@ -145,13 +147,13 @@ test_that("resource cleanup happens automatically", {
 
 test_that("TR parameter is required", {
   mat <- matrix(rnorm(100 * 50), 100, 50)
-  
+
   # Currently TR is required
   expect_error(
     matrix_dataset(mat, run_length = 100),
     "TR"
   )
-  
+
   # TR parameter works when provided
   dset <- matrix_dataset(mat, TR = 1, run_length = 100)
   expect_equal(get_TR(dset), 1)
@@ -159,12 +161,12 @@ test_that("TR parameter is required", {
 
 test_that("mask defaults are consistent and documented", {
   mat <- matrix(rnorm(100 * 50), 100, 50)
-  
+
   # Matrix dataset creates default mask of 1s
   dset1 <- matrix_dataset(mat, TR = 2, run_length = 100)
   expect_equal(unique(dset1$mask), 1)
   expect_equal(length(dset1$mask), 50)
-  
+
   # Matrix backend creates default mask of TRUEs
   backend <- matrix_backend(mat)
   expect_true(all(backend$mask))
@@ -173,16 +175,16 @@ test_that("mask defaults are consistent and documented", {
 
 test_that("error messages are informative and actionable", {
   mat <- matrix(rnorm(100 * 50), 100, 50)
-  
+
   # Run length mismatch should show actual vs expected
   err <- tryCatch(
     matrix_dataset(mat, TR = 2, run_length = 50),
     error = function(e) e
   )
-  
+
   # Standard assert_that error shows condition
   expect_match(err$message, "sum\\(run_length\\) not equal to nrow\\(datamat\\)")
-  
+
   # Better would be something like:
   # "Total run length (50) must equal number of timepoints (100)"
 })
@@ -190,30 +192,33 @@ test_that("error messages are informative and actionable", {
 test_that("side effects are properly documented", {
   # get_data_matrix on latent_dataset returns different shape
   skip_if_not_installed("fmristore")
-  
+
   # Create mock latent dataset
   if (!isClass("mock_LatentNeuroVec")) {
     setClass("mock_LatentNeuroVec",
-      slots = c(basis = "matrix", loadings = "matrix", offset = "numeric", 
-                mask = "array", space = "ANY"))
+      slots = c(
+        basis = "matrix", loadings = "matrix", offset = "numeric",
+        mask = "array", space = "ANY"
+      )
+    )
   }
-  
+
   lvec <- methods::new("mock_LatentNeuroVec",
-    basis = matrix(rnorm(100 * 5), 100, 5),    # 100 time x 5 components
+    basis = matrix(rnorm(100 * 5), 100, 5), # 100 time x 5 components
     loadings = matrix(rnorm(1000 * 5), 1000, 5), # 1000 voxels x 5 components
     offset = numeric(0),
     mask = array(TRUE, c(10, 10, 10)),
     space = structure(c(10, 10, 10, 100), class = "mock_space")
   )
-  
+
   dset <- latent_dataset(list(lvec), TR = 2, run_length = 100)
-  
+
   # get_data returns latent scores, not voxel data
   expect_warning(
     data <- get_data(dset),
     "returns latent scores, not voxel data"
   )
-  
+
   # Shape is time x components, not time x voxels
   expect_equal(dim(data), c(100, 5))
 })
@@ -221,11 +226,11 @@ test_that("side effects are properly documented", {
 test_that("functions handle NULL mask correctly", {
   # Some constructors allow NULL mask
   mat <- matrix(rnorm(100 * 50), 100, 50)
-  
+
   # Matrix backend with NULL mask
   backend <- matrix_backend(mat, mask = NULL)
-  expect_true(all(backend$mask))  # Should create default
-  
+  expect_true(all(backend$mask)) # Should create default
+
   # H5 backend constructor
   if (requireNamespace("rhdf5", quietly = TRUE)) {
     # Would test h5_backend with NULL mask_source
@@ -235,7 +240,7 @@ test_that("functions handle NULL mask correctly", {
 test_that("input validation happens before expensive operations", {
   # Large matrix that would be expensive to process
   large_mat <- matrix(rnorm(10000 * 1000), 10000, 1000)
-  
+
   # Invalid run_length should fail fast
   start_time <- Sys.time()
   expect_error(
@@ -243,9 +248,9 @@ test_that("input validation happens before expensive operations", {
     "sum\\(run_length\\) not equal to nrow\\(datamat\\)"
   )
   elapsed <- as.numeric(Sys.time() - start_time, units = "secs")
-  
+
   # Should fail quickly without processing the large matrix
-  expect_lt(elapsed, 0.1)  # Less than 100ms
+  expect_lt(elapsed, 0.1) # Less than 100ms
 })
 
 test_that("type checking provides helpful error messages", {
@@ -254,12 +259,12 @@ test_that("type checking provides helpful error messages", {
     matrix_dataset(datamat = "not a matrix", TR = 2, run_length = 100),
     "datamat"
   )
-  
+
   expect_error(
     matrix_dataset(matrix(1:10, 5, 2), TR = "invalid", run_length = 5),
     "non-numeric argument to binary operator"
   )
-  
+
   expect_error(
     matrix_dataset(matrix(1:10, 5, 2), TR = 2, run_length = list(5)),
     "invalid 'type' \\(list\\) of argument"

@@ -33,14 +33,13 @@ NULL
 #' \dontrun{
 #' # From HDF5 files
 #' backend <- latent_backend(c("run1.lv.h5", "run2.lv.h5"))
-#' 
+#'
 #' # From pre-loaded objects
 #' lvec1 <- fmristore::read_vec("run1.lv.h5")
 #' lvec2 <- fmristore::read_vec("run2.lv.h5")
 #' backend <- latent_backend(list(lvec1, lvec2))
 #' }
 latent_backend <- function(source, preload = FALSE) {
-  
   # Validate source
   if (is.character(source)) {
     if (!all(file.exists(source))) {
@@ -91,7 +90,7 @@ latent_backend <- function(source, preload = FALSE) {
       value = class(source)
     )
   }
-  
+
   # Create backend object
   backend <- list(
     source = source,
@@ -100,7 +99,7 @@ latent_backend <- function(source, preload = FALSE) {
     dims = NULL,
     is_open = FALSE
   )
-  
+
   class(backend) <- c("latent_backend", "storage_backend")
   backend
 }
@@ -112,7 +111,7 @@ backend_open.latent_backend <- function(backend) {
   if (backend$is_open) {
     return(backend)
   }
-  
+
   # Check if fmristore is available
   if (!requireNamespace("fmristore", quietly = TRUE)) {
     stop_fmridataset(
@@ -121,43 +120,46 @@ backend_open.latent_backend <- function(backend) {
       details = "Install with: remotes::install_github('bbuchsbaum/fmristore')"
     )
   }
-  
+
   # Load data
   data <- list()
-  
-  tryCatch({
-    if (is.character(backend$source)) {
-      read_vec <- get("read_vec", envir = asNamespace("fmristore"))
-      for (i in seq_along(backend$source)) {
-        data[[i]] <- read_vec(backend$source[i])
-      }
-    } else {
-      for (i in seq_along(backend$source)) {
-        if (is.character(backend$source[[i]])) {
-          read_vec <- get("read_vec", envir = asNamespace("fmristore"))
-          data[[i]] <- read_vec(backend$source[[i]])
-        } else {
-          data[[i]] <- backend$source[[i]]
+
+  tryCatch(
+    {
+      if (is.character(backend$source)) {
+        read_vec <- get("read_vec", envir = asNamespace("fmristore"))
+        for (i in seq_along(backend$source)) {
+          data[[i]] <- read_vec(backend$source[i])
+        }
+      } else {
+        for (i in seq_along(backend$source)) {
+          if (is.character(backend$source[[i]])) {
+            read_vec <- get("read_vec", envir = asNamespace("fmristore"))
+            data[[i]] <- read_vec(backend$source[[i]])
+          } else {
+            data[[i]] <- backend$source[[i]]
+          }
         }
       }
+    },
+    error = function(e) {
+      stop_fmridataset(
+        fmridataset_error_backend_io,
+        sprintf("Failed to load latent data: %s", e$message),
+        operation = "open"
+      )
     }
-  }, error = function(e) {
-    stop_fmridataset(
-      fmridataset_error_backend_io,
-      sprintf("Failed to load latent data: %s", e$message),
-      operation = "open"
-    )
-  })
-  
+  )
+
   # Validate consistency across runs
   if (length(data) > 1) {
     first_dims <- get_latent_space_dims(data[[1]])[1:3]
     first_ncomp <- ncol(data[[1]]@basis)
-    
+
     for (i in 2:length(data)) {
       dims <- get_latent_space_dims(data[[i]])[1:3]
       ncomp <- ncol(data[[i]]@basis)
-      
+
       if (!identical(first_dims, dims)) {
         stop_fmridataset(
           fmridataset_error_config,
@@ -168,35 +170,37 @@ backend_open.latent_backend <- function(backend) {
       if (first_ncomp != ncomp) {
         stop_fmridataset(
           fmridataset_error_config,
-          sprintf("Run %d has different number of components (%d vs %d)", 
-                  i, ncomp, first_ncomp),
+          sprintf(
+            "Run %d has different number of components (%d vs %d)",
+            i, ncomp, first_ncomp
+          ),
           parameter = "source"
         )
       }
     }
   }
-  
+
   # Store dimensions
   first_obj <- data[[1]]
   spatial_dims <- get_latent_space_dims(first_obj)[1:3]
   n_components <- ncol(first_obj@basis)
   n_voxels <- nrow(first_obj@loadings)
-  
+
   # Total time across all runs
   total_time <- sum(sapply(data, function(obj) {
     get_latent_space_dims(obj)[4]
   }))
-  
+
   backend$data <- data
   backend$dims <- list(
-    spatial = spatial_dims,     # Original spatial dimensions
-    time = total_time,         # Total timepoints
+    spatial = spatial_dims, # Original spatial dimensions
+    time = total_time, # Total timepoints
     n_components = n_components, # Number of latent components
-    n_voxels = n_voxels,       # Number of voxels
+    n_voxels = n_voxels, # Number of voxels
     n_runs = length(data)
   )
   backend$is_open <- TRUE
-  
+
   backend
 }
 
@@ -220,13 +224,13 @@ backend_get_dims.latent_backend <- function(backend) {
       operation = "get_dims"
     )
   }
-  
+
   # Return dims in standard format
   # For latent backend, we return the original spatial dimensions
   # The actual data access returns components, but dims should reflect
   # the original space for consistency
   list(
-    spatial = backend$dims$spatial,  # Original spatial dimensions
+    spatial = backend$dims$spatial, # Original spatial dimensions
     time = backend$dims$time
   )
 }
@@ -242,7 +246,7 @@ backend_get_mask.latent_backend <- function(backend) {
       operation = "get_mask"
     )
   }
-  
+
   # For latent backend, return a mask for voxels
   # All voxels with non-zero loadings are considered valid
   # This maintains consistency with the backend contract
@@ -260,11 +264,11 @@ backend_get_data.latent_backend <- function(backend, rows = NULL, cols = NULL) {
       operation = "get_data"
     )
   }
-  
+
   # Default to all rows/cols
   if (is.null(rows)) rows <- seq_len(backend$dims$time)
   if (is.null(cols)) cols <- seq_len(backend$dims$n_components)
-  
+
   # Validate indices
   if (any(rows < 1 | rows > backend$dims$time)) {
     stop_fmridataset(
@@ -273,7 +277,7 @@ backend_get_data.latent_backend <- function(backend, rows = NULL, cols = NULL) {
       parameter = "rows"
     )
   }
-  
+
   if (any(cols < 1 | cols > backend$dims$n_components)) {
     stop_fmridataset(
       fmridataset_error_config,
@@ -281,32 +285,32 @@ backend_get_data.latent_backend <- function(backend, rows = NULL, cols = NULL) {
       parameter = "cols"
     )
   }
-  
+
   # Calculate time offsets for runs
   time_offsets <- c(0, cumsum(sapply(backend$data, function(obj) {
     get_latent_space_dims(obj)[4]
   })))
-  
+
   # Pre-allocate result
   result <- matrix(NA_real_, nrow = length(rows), ncol = length(cols))
-  
+
   # Vectorized extraction
   for (run_idx in seq_along(backend$data)) {
     run_start <- time_offsets[run_idx] + 1
     run_end <- time_offsets[run_idx + 1]
-    
+
     # Find rows in this run
     run_rows <- which(rows >= run_start & rows <= run_end)
     if (length(run_rows) == 0) next
-    
+
     # Local indices within run
     local_rows <- rows[run_rows] - time_offsets[run_idx]
-    
+
     # Extract data from basis matrix
     obj <- backend$data[[run_idx]]
     result[run_rows, ] <- as.matrix(obj@basis[local_rows, cols, drop = FALSE])
   }
-  
+
   result
 }
 
@@ -321,9 +325,9 @@ backend_get_metadata.latent_backend <- function(backend) {
       operation = "get_metadata"
     )
   }
-  
+
   obj <- backend$data[[1]]
-  
+
   # Calculate variance explained by each component
   basis_var <- apply(obj@basis, 2, var)
   loadings_norm <- if (inherits(obj@loadings, "Matrix")) {
@@ -331,7 +335,7 @@ backend_get_metadata.latent_backend <- function(backend) {
   } else {
     sqrt(colSums(obj@loadings^2))
   }
-  
+
   metadata <- list(
     storage_format = "latent",
     n_components = backend$dims$n_components,
@@ -343,10 +347,10 @@ backend_get_metadata.latent_backend <- function(backend) {
     loadings_sparsity = if (inherits(obj@loadings, "Matrix")) {
       1 - Matrix::nnzero(obj@loadings) / length(obj@loadings)
     } else {
-      0  # Dense matrix has 0 sparsity
+      0 # Dense matrix has 0 sparsity
     }
   )
-  
+
   metadata
 }
 
@@ -367,15 +371,15 @@ backend_get_loadings <- function(backend, components = NULL) {
       operation = "get_loadings"
     )
   }
-  
+
   # Get loadings from first object (all should be identical)
   obj <- backend$data[[1]]
   loadings <- obj@loadings
-  
+
   if (!is.null(components)) {
     loadings <- loadings[, components, drop = FALSE]
   }
-  
+
   loadings
 }
 
@@ -395,18 +399,18 @@ backend_reconstruct_voxels <- function(backend, rows = NULL, voxels = NULL) {
       operation = "reconstruct"
     )
   }
-  
+
   # Get latent scores
   scores <- backend_get_data(backend, rows = rows)
-  
+
   # Get spatial loadings
   loadings <- backend_get_loadings(backend)
-  
+
   # Apply voxel subset if requested
   if (!is.null(voxels)) {
     loadings <- loadings[voxels, , drop = FALSE]
   }
-  
+
   # Reconstruct: data = basis %*% t(loadings)
   # Handle both regular and sparse matrices
   if (inherits(loadings, "Matrix")) {
@@ -414,14 +418,14 @@ backend_reconstruct_voxels <- function(backend, rows = NULL, voxels = NULL) {
   } else {
     reconstructed <- scores %*% t(loadings)
   }
-  
+
   # Add offset if present
   obj <- backend$data[[1]]
   if (length(obj@offset) > 0) {
     offset <- if (!is.null(voxels)) obj@offset[voxels] else obj@offset
     reconstructed <- sweep(reconstructed, 2, offset, "+")
   }
-  
+
   reconstructed
 }
 
@@ -433,14 +437,14 @@ get_latent_space_dims <- function(obj) {
       return(obj@space)
     }
   }
-  
+
   # Try to get space
   sp <- try(neuroim2::space(obj), silent = TRUE)
   if (inherits(sp, "try-error")) {
     # Fallback for objects without proper space
     return(c(dim(obj@loadings)[1], 1, 1, dim(obj@basis)[1]))
   }
-  
+
   d <- dim(sp)
   if (is.null(d)) {
     # Fallback for mock objects

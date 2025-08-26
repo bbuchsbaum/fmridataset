@@ -200,7 +200,7 @@ data_chunks.fmri_file_dataset <- function(x, nchunks = 1, runwise = FALSE, ...) 
     get_seq_chunk <- function(chunk_num) {
       v <- get_data(x)
       vind <- maskSeq[[chunk_num]]
-    m <- neuroim2::series(v, vind)
+      m <- neuroim2::series(v, vind)
       ret <- data_chunk(m,
         voxel_ind = vind,
         row_ind = 1:nrow(x$event_table),
@@ -259,11 +259,13 @@ data_chunks.matrix_dataset <- function(x, nchunks = 1, runwise = FALSE, ...) {
   } else {
     # Check if more chunks requested than voxels
     if (nchunks > ncol(x$datamat)) {
-      warning("requested number of chunks (", nchunks, ") is greater than number of voxels (", 
-              ncol(x$datamat), "). Using ", ncol(x$datamat), " chunks instead.")
+      warning(
+        "requested number of chunks (", nchunks, ") is greater than number of voxels (",
+        ncol(x$datamat), "). Using ", ncol(x$datamat), " chunks instead."
+      )
       nchunks <- ncol(x$datamat)
     }
-    
+
     sidx <- split(1:ncol(x$datamat), sort(rep(1:nchunks, length.out = ncol(x$datamat))))
     get_chunk <- function(chunk_num) {
       data_chunk(x$datamat[, sidx[[chunk_num]], drop = FALSE],

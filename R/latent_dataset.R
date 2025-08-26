@@ -19,17 +19,17 @@ NULL
 #'
 #' @details
 #' ## Key Differences from Standard Datasets:
-#' 
+#'
 #' - **Data Access**: Returns latent scores (time × components) instead of voxel data
 #' - **Mask**: Represents active components, not spatial voxels
 #' - **Dimensions**: Component space rather than voxel space
 #' - **Reconstruction**: Can optionally reconstruct to voxel space on demand
 #'
 #' ## Data Structure:
-#' 
+#'
 #' Latent representations store data as:
 #' - `basis`: Temporal components (n_timepoints × k_components)
-#' - `loadings`: Spatial components (n_voxels × k_components)  
+#' - `loadings`: Spatial components (n_voxels × k_components)
 #' - `offset`: Optional per-voxel offset terms
 #' - Reconstruction: `data = basis %*% t(loadings) + offset`
 #'
@@ -77,18 +77,17 @@ NULL
 #'
 #' # Access latent scores
 #' scores <- get_latent_scores(dataset)
-#' 
+#'
 #' # Get component metadata
 #' comp_info <- get_component_info(dataset)
 #' }
 latent_dataset <- function(source,
-                          TR,
-                          run_length,
-                          event_table = data.frame(),
-                          base_path = ".",
-                          censor = NULL,
-                          preload = FALSE) {
-  
+                           TR,
+                           run_length,
+                           event_table = data.frame(),
+                           base_path = ".",
+                           censor = NULL,
+                           preload = FALSE) {
   # Process source paths
   if (is.character(source)) {
     source <- ifelse(
@@ -97,13 +96,13 @@ latent_dataset <- function(source,
       file.path(base_path, source)
     )
   }
-  
+
   # Create the backend
   backend <- latent_backend(source = source, preload = preload)
-  
+
   # Open backend to validate
   backend <- backend_open(backend)
-  
+
   # Get dimensions from backend
   dims <- backend$dims
   assertthat::assert_that(sum(run_length) == dims$time,
@@ -112,15 +111,15 @@ latent_dataset <- function(source,
       sum(run_length), dims$time
     )
   )
-  
+
   # Create sampling frame
   frame <- fmrihrf::sampling_frame(blocklens = run_length, TR = TR)
-  
+
   # Handle censoring
   if (is.null(censor)) {
     censor <- rep(0, sum(run_length))
   }
-  
+
   # Create the dataset object
   dataset <- structure(
     list(
@@ -132,7 +131,7 @@ latent_dataset <- function(source,
     ),
     class = c("latent_dataset", "fmri_dataset", "list")
   )
-  
+
   dataset
 }
 
@@ -161,7 +160,7 @@ get_latent_scores.latent_dataset <- function(x, rows = NULL, cols = NULL, ...) {
   if (!backend$is_open) {
     stop("Dataset backend is not open")
   }
-  
+
   # Use backend_get_data which returns latent scores for latent_backend
   backend_get_data(backend, rows = rows, cols = cols)
 }
@@ -188,7 +187,7 @@ get_spatial_loadings.latent_dataset <- function(x, components = NULL, ...) {
   if (!backend$is_open) {
     stop("Dataset backend is not open")
   }
-  
+
   # Use backend-specific function for loadings
   backend_get_loadings(backend, components = components)
 }
@@ -214,7 +213,7 @@ get_component_info.latent_dataset <- function(x, ...) {
   if (!backend$is_open) {
     stop("Dataset backend is not open")
   }
-  
+
   # Get metadata from backend which includes component info
   backend_get_metadata(backend)
 }
@@ -243,7 +242,7 @@ reconstruct_voxels.latent_dataset <- function(x, rows = NULL, voxels = NULL, ...
   if (!backend$is_open) {
     stop("Dataset backend is not open")
   }
-  
+
   # Use backend-specific reconstruction
   backend_reconstruct_voxels(backend, rows = rows, voxels = voxels)
 }
@@ -254,10 +253,10 @@ print.latent_dataset <- function(x, ...) {
   if (!backend$is_open) {
     backend <- backend_open(backend)
   }
-  
+
   dims <- backend$dims
   metadata <- backend_get_metadata(backend)
-  
+
   cat("Latent Dataset\n")
   cat("--------------\n")
   cat("Runs:", dims$n_runs, "\n")
@@ -265,11 +264,11 @@ print.latent_dataset <- function(x, ...) {
   cat("Components:", dims$n_components, "\n")
   cat("Original voxels:", metadata$n_voxels, "\n")
   cat("TR:", x$sampling_frame$TR, "seconds\n")
-  
+
   if (metadata$loadings_sparsity > 0) {
     cat("Loadings sparsity:", sprintf("%.1f%%", metadata$loadings_sparsity * 100), "\n")
   }
-  
+
   invisible(x)
 }
 
@@ -277,8 +276,10 @@ print.latent_dataset <- function(x, ...) {
 
 #' @export
 get_data.latent_dataset <- function(x, ...) {
-  warning("get_data() on latent_dataset returns latent scores, not voxel data. ",
-          "Use get_latent_scores() for clarity or reconstruct_voxels() for voxel data.")
+  warning(
+    "get_data() on latent_dataset returns latent scores, not voxel data. ",
+    "Use get_latent_scores() for clarity or reconstruct_voxels() for voxel data."
+  )
   get_latent_scores(x, ...)
 }
 
@@ -293,7 +294,7 @@ get_mask.latent_dataset <- function(x, ...) {
   if (!backend$is_open) {
     backend <- backend_open(backend)
   }
-  
+
   # For latent datasets, return a component mask (all TRUE)
   rep(TRUE, backend$dims$n_components)
 }

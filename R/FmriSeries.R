@@ -14,30 +14,30 @@
 #' - `dataset_info`: A list describing the source dataset and backend
 #'
 #' @return An object of class \code{fmri_series}
-#' 
-#' @seealso 
+#'
+#' @seealso
 #' \code{\link{as.matrix.fmri_series}} for converting to standard matrix,
 #' \code{\link{as_tibble.fmri_series}} for converting to tibble format
-#' 
+#'
 #' @examples
 #' \donttest{
 #' # Create example fmri_series object
 #' # Create small example data
 #' mat <- matrix(rnorm(100 * 50), nrow = 100, ncol = 50)
 #' delayed_mat <- DelayedArray::DelayedArray(mat)
-#' 
+#'
 #' # Create metadata
 #' vox_info <- data.frame(
 #'   x = rep(1:10, 5),
 #'   y = rep(1:5, each = 10),
 #'   z = 1
 #' )
-#' 
+#'
 #' temp_info <- data.frame(
 #'   time = seq(0, 99, by = 1),
 #'   run = rep(1:4, each = 25)
 #' )
-#' 
+#'
 #' # Create fmri_series object
 #' fs <- new_fmri_series(
 #'   data = delayed_mat,
@@ -47,7 +47,7 @@
 #'   dataset_info = list()
 #' )
 #' }
-#' 
+#'
 #' @name fmri_series
 NULL
 
@@ -67,11 +67,11 @@ new_fmri_series <- function(data, voxel_info, temporal_info, selection_info, dat
   stopifnot(is.data.frame(temporal_info))
   stopifnot(is.list(selection_info))
   stopifnot(is.list(dataset_info))
-  
+
   # Ensure dimensions match
   stopifnot(nrow(voxel_info) == ncol(data))
   stopifnot(nrow(temporal_info) == nrow(data))
-  
+
   structure(
     list(
       data = data,
@@ -92,10 +92,10 @@ new_fmri_series <- function(data, voxel_info, temporal_info, selection_info, dat
 #'
 #' @param x An \code{fmri_series} object
 #' @param ... Additional arguments (unused)
-#' 
+#'
 #' @return Returns \code{x} invisibly. Called for its side effect of
 #'   printing to the console.
-#' 
+#'
 #' @examples
 #' \donttest{
 #' # This method is called automatically when printing
@@ -103,19 +103,23 @@ new_fmri_series <- function(data, voxel_info, temporal_info, selection_info, dat
 #' # fs <- new_fmri_series(...)
 #' # fs  # Automatically calls print method
 #' }
-#' 
+#'
 #' @export
 print.fmri_series <- function(x, ...) {
   n_time <- nrow(x$data)
   n_vox <- ncol(x$data)
-  cat(sprintf("<fmri_series> %s voxels × %s timepoints (lazy)\n",
-              n_vox, n_time))
+  cat(sprintf(
+    "<fmri_series> %s voxels × %s timepoints (lazy)\n",
+    n_vox, n_time
+  ))
   sel <- x$selection_info
   dataset <- x$dataset_info
   sel_desc <- if (!is.null(sel$selector)) "custom" else "NULL"
   backend <- if (!is.null(dataset$backend_type)) dataset$backend_type else "?"
-  cat(sprintf("Selector: %s | Backend: %s | Orientation: time × voxels\n",
-              sel_desc, backend))
+  cat(sprintf(
+    "Selector: %s | Backend: %s | Orientation: time × voxels\n",
+    sel_desc, backend
+  ))
   invisible(x)
 }
 
@@ -130,17 +134,17 @@ print.fmri_series <- function(x, ...) {
 #' @param ... Additional arguments (ignored)
 #'
 #' @return A matrix with timepoints as rows and voxels as columns
-#' 
-#' @seealso 
+#'
+#' @seealso
 #' \code{\link{fmri_series}} for the class definition,
 #' \code{\link{as_tibble.fmri_series}} for tibble conversion
-#' 
+#'
 #' @examples
 #' \donttest{
 #' # Create small example
 #' mat <- matrix(rnorm(20), nrow = 4, ncol = 5)
 #' delayed_mat <- DelayedArray::DelayedArray(mat)
-#' 
+#'
 #' # Create minimal fmri_series object
 #' fs <- new_fmri_series(
 #'   data = delayed_mat,
@@ -149,12 +153,12 @@ print.fmri_series <- function(x, ...) {
 #'   selection_info = list(),
 #'   dataset_info = list()
 #' )
-#' 
+#'
 #' # Convert to matrix
 #' mat_result <- as.matrix(fs)
-#' dim(mat_result)  # 4 x 5
+#' dim(mat_result) # 4 x 5
 #' }
-#' 
+#'
 #' @export
 as.matrix.fmri_series <- function(x, ...) {
   if (inherits(x$data, "DelayedMatrix")) {
@@ -175,19 +179,19 @@ as.matrix.fmri_series <- function(x, ...) {
 #' @param x An \code{fmri_series} object
 #' @param ... Additional arguments (ignored)
 #'
-#' @return A tibble with columns from temporal_info, voxel_info, and a 
+#' @return A tibble with columns from temporal_info, voxel_info, and a
 #'   signal column containing the fMRI signal values
-#' 
-#' @seealso 
+#'
+#' @seealso
 #' \code{\link{fmri_series}} for the class definition,
 #' \code{\link{as.matrix.fmri_series}} for matrix conversion
-#' 
+#'
 #' @examples
 #' \donttest{
 #' # Create small example
 #' mat <- matrix(rnorm(12), nrow = 3, ncol = 4)
 #' delayed_mat <- DelayedArray::DelayedArray(mat)
-#' 
+#'
 #' # Create fmri_series with metadata
 #' fs <- new_fmri_series(
 #'   data = delayed_mat,
@@ -202,13 +206,13 @@ as.matrix.fmri_series <- function(x, ...) {
 #'   selection_info = list(),
 #'   dataset_info = list()
 #' )
-#' 
+#'
 #' # Convert to tibble
 #' tbl_result <- tibble::as_tibble(fs)
 #' # Result has 12 rows (3 timepoints x 4 voxels)
 #' # with columns: time, condition, voxel_id, region, signal
 #' }
-#' 
+#'
 #' @export
 #' @importFrom tibble as_tibble
 as_tibble.fmri_series <- function(x, ...) {
@@ -260,7 +264,7 @@ nrow.fmri_series <- function(x) {
 
 #' Number of columns in fmri_series
 #'
-#' @param x An fmri_series object  
+#' @param x An fmri_series object
 #' @return Number of voxels
 #' @method ncol fmri_series
 #' @export

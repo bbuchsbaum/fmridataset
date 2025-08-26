@@ -37,11 +37,12 @@ fmri_series.fmri_dataset <- function(dataset, selector = NULL, timepoints = NULL
   temporal_info <- build_temporal_info_lazy(dataset, time_ind)
 
   new_fmri_series(
-      data = da,
-      voxel_info = as.data.frame(voxel_info),
-      temporal_info = as.data.frame(temporal_info),
-      selection_info = list(selector = selector, timepoints = timepoints),
-      dataset_info = list(backend_type = class(dataset$backend)[1]))
+    data = da,
+    voxel_info = as.data.frame(voxel_info),
+    temporal_info = as.data.frame(temporal_info),
+    selection_info = list(selector = selector, timepoints = timepoints),
+    dataset_info = list(backend_type = class(dataset$backend)[1])
+  )
 }
 
 #' @export
@@ -64,9 +65,10 @@ fmri_series.fmri_study_dataset <- function(dataset, selector = NULL, timepoints 
   temporal_info <- build_temporal_info_lazy(dataset, time_ind)
 
   new_fmri_series(
-      data = da,
-      voxel_info = as.data.frame(voxel_info),
-      temporal_info = as.data.frame(temporal_info),
-      selection_info = list(selector = selector, timepoints = timepoints),
-      dataset_info = list(backend_type = class(dataset$backend)[1]))
+    data = da,
+    voxel_info = as.data.frame(voxel_info),
+    temporal_info = as.data.frame(temporal_info),
+    selection_info = list(selector = selector, timepoints = timepoints),
+    dataset_info = list(backend_type = class(dataset$backend)[1])
+  )
 }

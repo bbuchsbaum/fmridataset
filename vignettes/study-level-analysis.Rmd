@@ -42,39 +42,42 @@ library(fmridataset)
 
 # Step 1: Create individual subject datasets (simulating realistic scenarios)
 create_subject_data <- function(subject_id, n_runs = 2, n_timepoints_per_run = 100) {
-  set.seed(as.numeric(gsub("sub-", "", subject_id)))  # Reproducible per subject
-  
+  set.seed(as.numeric(gsub("sub-", "", subject_id))) # Reproducible per subject
+
   # Simulate subject-specific characteristics
-  n_voxels <- sample(800:1200, 1)  # Different brain sizes
-  
+  n_voxels <- sample(800:1200, 1) # Different brain sizes
+
   # Create realistic fMRI data with some subject-specific signal
   data_matrices <- list()
   for (run in 1:n_runs) {
-    run_data <- matrix(rnorm(n_timepoints_per_run * n_voxels, 
-                            mean = 0, sd = 1), 
-                      nrow = n_timepoints_per_run, ncol = n_voxels)
-    
+    run_data <- matrix(
+      rnorm(n_timepoints_per_run * n_voxels,
+        mean = 0, sd = 1
+      ),
+      nrow = n_timepoints_per_run, ncol = n_voxels
+    )
+
     # Add subject-specific activation pattern
     if (subject_id %in% c("sub-001", "sub-003", "sub-005")) {
       # "High responders" - stronger activation in first 100 voxels
       activation_timepoints <- sample(1:n_timepoints_per_run, 20)
-      run_data[activation_timepoints, 1:100] <- 
+      run_data[activation_timepoints, 1:100] <-
         run_data[activation_timepoints, 1:100] + 1.5
     }
-    
+
     data_matrices[[run]] <- run_data
   }
-  
+
   # Combine runs into single matrix
   combined_data <- do.call(rbind, data_matrices)
-  
+
   # Create subject dataset
   dataset <- matrix_dataset(
     datamat = combined_data,
     TR = 2.0,
     run_length = rep(n_timepoints_per_run, n_runs)
   )
-  
+
   return(dataset)
 }
 
@@ -257,13 +260,13 @@ The most memory-efficient approach processes one subject at a time:
 analyze_subject_individually <- function(study_dataset) {
   subject_list <- subject_ids(study_dataset)
   subject_results <- list()
-  
+
   for (subj_id in subject_list) {
     cat("Processing subject", subj_id, "\n")
-    
+
     # Extract data for this subject only
     subj_data <- get_data_matrix(study_dataset, subject_id = subj_id)
-    
+
     # Perform subject-specific analysis
     subj_result <- list(
       subject_id = subj_id,
@@ -272,14 +275,14 @@ analyze_subject_individually <- function(study_dataset) {
       mean_signal = mean(subj_data),
       signal_variance = var(as.vector(subj_data))
     )
-    
+
     subject_results[[subj_id]] <- subj_result
-    
+
     # Explicit memory cleanup
     rm(subj_data)
     gc()
   }
-  
+
   return(subject_results)
 }
 
@@ -288,10 +291,12 @@ individual_results <- analyze_subject_individually(study_dataset)
 
 # Summarize results
 for (result in individual_results) {
-  cat("Subject", result$subject_id, ":", 
-      result$n_timepoints, "timepoints,", 
-      result$n_voxels, "voxels,",
-      "mean signal =", round(result$mean_signal, 3), "\n")
+  cat(
+    "Subject", result$subject_id, ":",
+    result$n_timepoints, "timepoints,",
+    result$n_voxels, "voxels,",
+    "mean signal =", round(result$mean_signal, 3), "\n"
+  )
 }
 ```
 
@@ -306,24 +311,26 @@ For analyses that benefit from cross-subject operations:
 analyze_cross_subject_chunks <- function(study_dataset, nchunks = 3) {
   # Create study-level chunks
   study_chunks <- data_chunks(study_dataset, nchunks = nchunks)
-  
+
   chunk_results <- list()
   for (chunk in study_chunks) {
-    cat("Processing chunk", chunk$chunk_num, 
-        "with", ncol(chunk$data), "voxels across subjects\n")
-    
+    cat(
+      "Processing chunk", chunk$chunk_num,
+      "with", ncol(chunk$data), "voxels across subjects\n"
+    )
+
     # Chunk data includes information about which subjects contributed
     chunk_analysis <- list(
       chunk_id = chunk$chunk_num,
       total_voxels = ncol(chunk$data),
       total_timepoints = nrow(chunk$data),
       cross_subject_correlation = mean(cor(chunk$data)),
-      voxel_indices = chunk$voxel_indices  # Which voxels this chunk contains
+      voxel_indices = chunk$voxel_indices # Which voxels this chunk contains
     )
-    
+
     chunk_results[[chunk$chunk_num]] <- chunk_analysis
   }
-  
+
   return(chunk_results)
 }
 
@@ -332,9 +339,11 @@ chunk_results <- analyze_cross_subject_chunks(study_dataset)
 
 # Summarize chunk-based results
 for (result in chunk_results) {
-  cat("Chunk", result$chunk_id, ":",
-      result$total_voxels, "voxels,",
-      "mean correlation =", round(result$cross_subject_correlation, 3), "\n")
+  cat(
+    "Chunk", result$chunk_id, ":",
+    result$total_voxels, "voxels,",
+    "mean correlation =", round(result$cross_subject_correlation, 3), "\n"
+  )
 }
 ```
 
@@ -350,9 +359,9 @@ The `fmri_series` function provides sophisticated access to study data with flex
 # Extract time series from specific voxels and subjects
 series_subset <- fmri_series(
   study_dataset,
-  selector = 1:10,           # First 10 voxels
-  subject_ids = c("sub-001", "sub-003"),  # Specific subjects
-  timepoints = 1:50          # First 50 timepoints
+  selector = 1:10, # First 10 voxels
+  subject_ids = c("sub-001", "sub-003"), # Specific subjects
+  timepoints = 1:50 # First 50 timepoints
 )
 
 cat("Extracted series from", ncol(series_subset), "voxels\n")
@@ -361,7 +370,7 @@ cat("Time series length:", nrow(series_subset), "timepoints\n")
 # Convert to tibble for advanced analysis
 if (requireNamespace("dplyr", quietly = TRUE)) {
   series_tibble <- as_tibble(series_subset)
-  
+
   # Group by subject for subject-specific analysis
   subject_summary <- series_tibble %>%
     dplyr::group_by(subject_id) %>%
@@ -371,7 +380,7 @@ if (requireNamespace("dplyr", quietly = TRUE)) {
       n_observations = dplyr::n(),
       .groups = "drop"
     )
-  
+
   print(subject_summary)
 }
 ```
@@ -393,7 +402,7 @@ heterogeneous_subjects[["sub-A"]] <- matrix_dataset(
   run_length = c(100, 100)
 )
 
-# Subject B: 3 runs, 80 timepoints each  
+# Subject B: 3 runs, 80 timepoints each
 heterogeneous_subjects[["sub-B"]] <- matrix_dataset(
   datamat = matrix(rnorm(24000), nrow = 240, ncol = 100),
   TR = 2.0,
@@ -441,26 +450,28 @@ monitor_study_memory <- function(study_dataset) {
   if (requireNamespace("pryr", quietly = TRUE)) {
     start_memory <- pryr::mem_used()
     cat("Starting memory usage:", format(start_memory, units = "Mb"), "\n")
-    
+
     # Simulate loading one subject
     subj_data <- get_data_matrix(study_dataset, subject_id = subject_ids(study_dataset)[1])
     single_subj_memory <- pryr::mem_used()
     cat("After loading one subject:", format(single_subj_memory, units = "Mb"), "\n")
-    
+
     # Calculate memory per subject
     memory_per_subject <- single_subj_memory - start_memory
     cat("Memory per subject:", format(memory_per_subject, units = "Mb"), "\n")
-    
+
     # Estimate memory for full study
     n_subjects <- length(subject_ids(study_dataset))
     estimated_full_memory <- start_memory + (memory_per_subject * n_subjects)
-    cat("Estimated memory for", n_subjects, "subjects:", 
-        format(estimated_full_memory, units = "Mb"), "\n")
-    
+    cat(
+      "Estimated memory for", n_subjects, "subjects:",
+      format(estimated_full_memory, units = "Mb"), "\n"
+    )
+
     # Cleanup
     rm(subj_data)
     gc()
-    
+
     return(list(
       memory_per_subject = memory_per_subject,
       estimated_full_study = estimated_full_memory
@@ -484,30 +495,30 @@ process_subjects_parallel <- function(study_dataset, analysis_func) {
     # Detect cores
     n_cores <- min(parallel::detectCores() - 1, length(subject_ids(study_dataset)))
     cat("Using", n_cores, "cores for parallel processing\n")
-    
+
     # Create cluster
     cl <- parallel::makeCluster(n_cores)
-    
+
     # Export necessary objects
     parallel::clusterEvalQ(cl, library(fmridataset))
     parallel::clusterExport(cl, c("study_dataset", "analysis_func"))
-    
+
     # Process subjects in parallel
     subject_list <- subject_ids(study_dataset)
     results <- parallel::parLapply(cl, subject_list, function(subj_id) {
       # Extract data for this subject
       subj_data <- get_data_matrix(study_dataset, subject_id = subj_id)
-      
+
       # Apply analysis function
       result <- analysis_func(subj_data)
       result$subject_id <- subj_id
-      
+
       return(result)
     })
-    
+
     # Cleanup
     parallel::stopCluster(cl)
-    
+
     return(results)
   } else {
     cat("parallel package not available, using sequential processing\n")
@@ -542,13 +553,13 @@ Implement comprehensive quality control across the entire study:
 assess_study_quality <- function(study_dataset) {
   subject_list <- subject_ids(study_dataset)
   quality_metrics <- list()
-  
+
   for (subj_id in subject_list) {
     cat("Assessing quality for", subj_id, "\n")
-    
+
     # Get subject data
     subj_data <- get_data_matrix(study_dataset, subject_id = subj_id)
-    
+
     # Calculate quality metrics
     metrics <- list(
       subject_id = subj_id,
@@ -560,13 +571,13 @@ assess_study_quality <- function(study_dataset) {
       outlier_timepoints = sum(abs(scale(rowMeans(subj_data))) > 3),
       temporal_snr = mean(subj_data) / sd(rowMeans(subj_data))
     )
-    
+
     quality_metrics[[subj_id]] <- metrics
-    
+
     # Memory cleanup
     rm(subj_data)
   }
-  
+
   return(quality_metrics)
 }
 
@@ -603,32 +614,32 @@ Verify consistency across subjects in the study:
 validate_study_consistency <- function(study_dataset) {
   subject_list <- subject_ids(study_dataset)
   consistency_report <- list()
-  
+
   # Check temporal structure consistency
   tr_values <- sapply(subject_list, function(subj_id) {
     get_TR(study_dataset, subject_id = subj_id)
   })
-  
+
   consistency_report$tr_consistent <- length(unique(tr_values)) == 1
   consistency_report$tr_range <- range(tr_values)
-  
+
   # Check run structure patterns
   run_counts <- sapply(subject_list, function(subj_id) {
     n_runs(study_dataset, subject_id = subj_id)
   })
-  
-  consistency_report$run_count_consistent <- length(unique(run_counts)) <= 2  # Allow some variation
+
+  consistency_report$run_count_consistent <- length(unique(run_counts)) <= 2 # Allow some variation
   consistency_report$run_count_distribution <- table(run_counts)
-  
+
   # Check data dimensions
   voxel_counts <- sapply(subject_list, function(subj_id) {
     subj_data <- get_data_matrix(study_dataset, subject_id = subj_id)
     ncol(subj_data)
   })
-  
-  consistency_report$voxel_count_consistent <- length(unique(voxel_counts)) <= 3  # Allow preprocessing variation
+
+  consistency_report$voxel_count_consistent <- length(unique(voxel_counts)) <= 3 # Allow preprocessing variation
   consistency_report$voxel_count_range <- range(voxel_counts)
-  
+
   return(consistency_report)
 }
 
@@ -637,9 +648,10 @@ consistency_results <- validate_study_consistency(study_dataset)
 
 cat("Study Consistency Report:\n")
 cat("TR consistent:", consistency_results$tr_consistent, "\n")
-cat("Run counts:", paste(names(consistency_results$run_count_distribution), 
-                        consistency_results$run_count_distribution, 
-                        sep = ":", collapse = ", "), "\n")
+cat("Run counts:", paste(names(consistency_results$run_count_distribution),
+  consistency_results$run_count_distribution,
+  sep = ":", collapse = ", "
+), "\n")
 cat("Voxel count range:", consistency_results$voxel_count_range, "\n")
 
 # Report potential issues
@@ -672,22 +684,22 @@ Effective memory management is crucial for large study analyses:
 # Memory-efficient study analysis patterns
 memory_efficient_patterns <- function() {
   cat("Memory-efficient study analysis patterns:\n\n")
-  
+
   cat("1. Subject-by-subject processing:\n")
   cat("   - Load one subject at a time\n")
   cat("   - Explicit cleanup with rm() and gc()\n")
   cat("   - Monitor memory usage throughout\n\n")
-  
+
   cat("2. Chunked processing:\n")
   cat("   - Use study-level chunking for cross-subject operations\n")
   cat("   - Choose chunk sizes based on available RAM\n")
   cat("   - Consider subject boundaries in chunking strategy\n\n")
-  
+
   cat("3. Lazy evaluation:\n")
   cat("   - Keep study datasets lazy until analysis needed\n")
   cat("   - Use metadata queries before loading data\n")
   cat("   - Avoid unnecessary data conversions\n\n")
-  
+
   cat("4. Parallel processing:\n")
   cat("   - Process subjects in parallel when possible\n")
   cat("   - Monitor total memory usage across cores\n")
@@ -705,22 +717,22 @@ Design your study analysis workflow to handle real-world complexities:
 # Study design best practices
 study_design_guidelines <- function() {
   cat("Study design considerations:\n\n")
-  
+
   cat("1. Heterogeneity planning:\n")
   cat("   - Expect different run structures across subjects\n")
   cat("   - Plan for missing data scenarios\n")
   cat("   - Design analyses robust to preprocessing differences\n\n")
-  
+
   cat("2. Quality control integration:\n")
   cat("   - Implement QC at multiple stages\n")
   cat("   - Use automated outlier detection\n")
   cat("   - Document exclusion criteria clearly\n\n")
-  
+
   cat("3. Reproducibility measures:\n")
   cat("   - Document study dataset creation parameters\n")
   cat("   - Version control analysis scripts\n")
   cat("   - Save intermediate results for validation\n\n")
-  
+
   cat("4. Scalability planning:\n")
   cat("   - Test analysis pipelines on subsets first\n")
   cat("   - Plan for computational resource requirements\n")
@@ -740,57 +752,61 @@ robust_subject_analysis <- function(study_dataset, analysis_func) {
   subject_list <- subject_ids(study_dataset)
   successful_results <- list()
   failed_subjects <- character()
-  
+
   for (subj_id in subject_list) {
     cat("Processing", subj_id, "... ")
-    
-    tryCatch({
-      # Attempt to load and analyze subject data
-      subj_data <- get_data_matrix(study_dataset, subject_id = subj_id)
-      
-      # Basic data validation
-      if (nrow(subj_data) == 0 || ncol(subj_data) == 0) {
-        stop("Empty data matrix")
+
+    tryCatch(
+      {
+        # Attempt to load and analyze subject data
+        subj_data <- get_data_matrix(study_dataset, subject_id = subj_id)
+
+        # Basic data validation
+        if (nrow(subj_data) == 0 || ncol(subj_data) == 0) {
+          stop("Empty data matrix")
+        }
+
+        if (any(is.na(subj_data)) && mean(is.na(subj_data)) > 0.1) {
+          warning(
+            "High proportion of missing values (",
+            round(mean(is.na(subj_data)) * 100, 1), "%)"
+          )
+        }
+
+        # Apply analysis
+        result <- analysis_func(subj_data)
+        result$subject_id <- subj_id
+        result$analysis_successful <- TRUE
+
+        successful_results[[subj_id]] <- result
+        cat("SUCCESS\n")
+
+        # Cleanup
+        rm(subj_data)
+      },
+      error = function(e) {
+        cat("FAILED -", conditionMessage(e), "\n")
+        failed_subjects <- c(failed_subjects, subj_id)
+
+        # Store failure information
+        successful_results[[subj_id]] <- list(
+          subject_id = subj_id,
+          analysis_successful = FALSE,
+          error_message = conditionMessage(e)
+        )
       }
-      
-      if (any(is.na(subj_data)) && mean(is.na(subj_data)) > 0.1) {
-        warning("High proportion of missing values (", 
-                round(mean(is.na(subj_data)) * 100, 1), "%)")
-      }
-      
-      # Apply analysis
-      result <- analysis_func(subj_data)
-      result$subject_id <- subj_id
-      result$analysis_successful <- TRUE
-      
-      successful_results[[subj_id]] <- result
-      cat("SUCCESS\n")
-      
-      # Cleanup
-      rm(subj_data)
-      
-    }, error = function(e) {
-      cat("FAILED -", conditionMessage(e), "\n")
-      failed_subjects <- c(failed_subjects, subj_id)
-      
-      # Store failure information
-      successful_results[[subj_id]] <- list(
-        subject_id = subj_id,
-        analysis_successful = FALSE,
-        error_message = conditionMessage(e)
-      )
-    })
+    )
   }
-  
+
   # Summary report
   cat("\nAnalysis Summary:\n")
   cat("Successful subjects:", length(successful_results) - length(failed_subjects), "\n")
   cat("Failed subjects:", length(failed_subjects), "\n")
-  
+
   if (length(failed_subjects) > 0) {
     cat("Failed subject IDs:", paste(failed_subjects, collapse = ", "), "\n")
   }
-  
+
   return(successful_results)
 }
 
@@ -825,23 +841,23 @@ When working with study-level datasets, certain issues are common and can be sys
 # Diagnose memory issues
 diagnose_memory_issues <- function(study_dataset) {
   cat("Memory diagnostic for study dataset:\n\n")
-  
+
   # Check study size
   n_subjects <- length(subject_ids(study_dataset))
   cat("Number of subjects:", n_subjects, "\n")
-  
+
   # Estimate memory requirements
   first_subject <- subject_ids(study_dataset)[1]
   sample_data <- get_data_matrix(study_dataset, subject_id = first_subject)
   sample_size <- object.size(sample_data)
-  
+
   cat("Sample subject data size:", format(sample_size, units = "Mb"), "\n")
   cat("Estimated full study size:", format(sample_size * n_subjects, units = "Gb"), "\n")
-  
+
   # Memory recommendations
-  available_ram <- 8  # Assume 8GB system
+  available_ram <- 8 # Assume 8GB system
   recommended_chunks <- ceiling((sample_size * n_subjects) / (available_ram * 0.5 * 1e9))
-  
+
   cat("Recommended processing approach:\n")
   if (recommended_chunks <= 1) {
     cat("  - Full study loading feasible\n")
@@ -850,7 +866,7 @@ diagnose_memory_issues <- function(study_dataset) {
   } else {
     cat("  - Chunked processing within subjects required\n")
   }
-  
+
   rm(sample_data)
   gc()
 }
@@ -870,10 +886,10 @@ diagnose_memory_issues <- function(study_dataset) {
 # Handle subject inconsistencies
 handle_subject_inconsistencies <- function(study_dataset) {
   subject_list <- subject_ids(study_dataset)
-  
+
   # Catalog inconsistencies
   inconsistencies <- list()
-  
+
   # Check temporal structure
   temporal_info <- sapply(subject_list, function(subj_id) {
     list(
@@ -882,12 +898,12 @@ handle_subject_inconsistencies <- function(study_dataset) {
       n_timepoints = n_timepoints(study_dataset, subject_id = subj_id)
     )
   }, simplify = FALSE)
-  
+
   # Identify outliers
   tr_values <- sapply(temporal_info, function(x) x$TR)
   run_counts <- sapply(temporal_info, function(x) x$n_runs)
   timepoint_counts <- sapply(temporal_info, function(x) x$n_timepoints)
-  
+
   # Report inconsistencies
   if (length(unique(tr_values)) > 1) {
     cat("TR inconsistency detected:\n")
@@ -895,14 +911,14 @@ handle_subject_inconsistencies <- function(study_dataset) {
       cat("  ", subject_list[i], ": TR =", tr_values[i], "\n")
     }
   }
-  
+
   if (length(unique(run_counts)) > 1) {
     cat("Run count inconsistency detected:\n")
     for (i in seq_along(subject_list)) {
       cat("  ", subject_list[i], ": runs =", run_counts[i], "\n")
     }
   }
-  
+
   # Suggest handling strategies
   cat("\nSuggested handling strategies:\n")
   cat("- Use subject-specific processing for inconsistent parameters\n")

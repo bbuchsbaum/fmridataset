@@ -4,12 +4,12 @@
 test_that("dataset creation performance is acceptable", {
   skip_on_cran()
   skip_if_not_installed("bench")
-  
+
   # Benchmark dataset creation
   n_time <- 1000
   n_vox <- 1000
   mat <- matrix(rnorm(n_time * n_vox), n_time, n_vox)
-  
+
   result <- bench::mark(
     matrix_dataset = {
       matrix_dataset(mat, TR = 2, run_length = n_time)
@@ -17,44 +17,44 @@ test_that("dataset creation performance is acceptable", {
     iterations = 10,
     check = FALSE
   )
-  
+
   # Creation should be fast (under 100ms for 1M elements)
   expect_lt(median(result$median), 0.1)
-  
+
   # Memory allocation should be minimal (just metadata)
   # The matrix is already allocated, so additional memory should be small
-  expect_lt(max(result$mem_alloc), 1e6)  # Less than 1MB additional
+  expect_lt(max(result$mem_alloc), 1e6) # Less than 1MB additional
 })
 
 test_that("data access performance scales linearly", {
   skip_on_cran()
   skip_if_not_installed("bench")
-  
+
   # Test different data sizes
   sizes <- c(100, 1000, 5000)
   times <- numeric(length(sizes))
-  
+
   for (i in seq_along(sizes)) {
     n <- sizes[i]
     mat <- matrix(rnorm(n * 100), n, 100)
     dset <- matrix_dataset(mat, TR = 2, run_length = n)
-    
+
     result <- bench::mark(
       get_data_matrix(dset),
       iterations = 5,
       check = FALSE
     )
-    
+
     times[i] <- median(result$median)
   }
-  
+
   # Check that access time scales approximately linearly
   # Ratio of times should be similar to ratio of sizes
   ratio1 <- times[2] / times[1]
   ratio2 <- times[3] / times[2]
   size_ratio1 <- sizes[2] / sizes[1]
   size_ratio2 <- sizes[3] / sizes[2]
-  
+
   # Allow 100% deviation from perfect linear scaling
   # (increased due to fixed overhead dominating in small datasets)
   # The important thing is that performance doesn't degrade catastrophically
@@ -65,13 +65,13 @@ test_that("data access performance scales linearly", {
 test_that("chunking doesn't load entire dataset into memory", {
   skip_on_cran()
   skip_if_not_installed("bench")
-  
+
   # Large dataset
   n_time <- 5000
   n_vox <- 1000
   mat <- matrix(rnorm(n_time * n_vox), n_time, n_vox)
   dset <- matrix_dataset(mat, TR = 2, run_length = n_time)
-  
+
   # Benchmark chunk iteration
   result <- bench::mark(
     chunk_iteration = {
@@ -88,11 +88,11 @@ test_that("chunking doesn't load entire dataset into memory", {
     check = FALSE,
     memory = TRUE
   )
-  
+
   # Memory usage should be much less than full dataset
   full_size <- object.size(mat)
   chunk_mem <- max(result$mem_alloc)
-  
+
   # Chunk iteration should use less memory than full dataset
   # Note: bench::mark measures peak memory which includes the original matrix
   # so we can't expect dramatic savings in this test setup
@@ -102,19 +102,19 @@ test_that("chunking doesn't load entire dataset into memory", {
 test_that("mask operations are optimized", {
   skip_on_cran()
   skip_if_not_installed("bench")
-  
+
   # Dataset with sparse mask
   n_time <- 1000
   n_vox <- 10000
   mat <- matrix(rnorm(n_time * n_vox), n_time, n_vox)
-  
+
   # Only 10% of voxels in mask
   mask <- rep(FALSE, n_vox)
   mask[sample(n_vox, n_vox * 0.1)] <- TRUE
-  
+
   backend <- matrix_backend(mat, mask = mask)
   dset <- fmri_dataset(backend, TR = 2, run_length = n_time)
-  
+
   # Benchmark masked data extraction
   result <- bench::mark(
     get_masked_data = {
@@ -124,18 +124,18 @@ test_that("mask operations are optimized", {
     iterations = 10,
     check = FALSE
   )
-  
+
   # Should be fast even with large data
-  expect_lt(median(result$median), 0.05)  # Under 50ms
+  expect_lt(median(result$median), 0.05) # Under 50ms
 })
 
 test_that("NIfTI backend caching improves performance", {
   skip_on_cran()
   skip_if_not_installed("neuroim2")
-  
+
   # Skip this test for now since we're using matrix_backend which doesn't cache
   skip("Matrix backend doesn't implement caching - test needs real NIfTI backend")
-  
+
   # TODO: Implement this test with actual NIfTI backend when caching is added
   # The test should:
   # 1. Create a real NIfTI file
@@ -148,12 +148,12 @@ test_that("NIfTI backend caching improves performance", {
 test_that("study backend lazy evaluation saves memory", {
   skip_on_cran()
   skip_if_not_installed("bench")
-  
+
   # This test is somewhat artificial because matrix_dataset keeps data in memory.
   # In real usage with file-based backends, lazy evaluation would show more benefit.
   # For now, we'll skip this test as it doesn't accurately reflect lazy loading benefits.
   skip("Test doesn't accurately measure lazy loading benefits with in-memory datasets")
-  
+
   # TODO: Rewrite this test using file-based backends (NIfTI or H5) where
   # lazy evaluation actually prevents loading data until accessed.
 })
@@ -162,11 +162,11 @@ test_that("DelayedArray conversion is efficient", {
   skip_on_cran()
   skip_if_not_installed("DelayedArray")
   skip_if_not_installed("bench")
-  
+
   # Medium-sized dataset
   mat <- matrix(rnorm(1000 * 500), 1000, 500)
   dset <- matrix_dataset(mat, TR = 2, run_length = 1000)
-  
+
   result <- bench::mark(
     delayed_conversion = {
       delayed <- as_delayed_array(dset)
@@ -175,19 +175,19 @@ test_that("DelayedArray conversion is efficient", {
     check = FALSE,
     memory = TRUE
   )
-  
+
   # Conversion should be fast (just wrapping, not copying)
-  expect_lt(median(result$median), 0.01)  # Under 10ms
-  
+  expect_lt(median(result$median), 0.01) # Under 10ms
+
   # Memory should be minimal (no data duplication)
   # Increased threshold to account for DelayedArray infrastructure overhead
-  expect_lt(max(result$mem_alloc), 5e5)  # Less than 500KB
+  expect_lt(max(result$mem_alloc), 5e5) # Less than 500KB
 })
 
 test_that("print methods perform well with large metadata", {
   skip_on_cran()
   skip_if_not_installed("bench")
-  
+
   # Dataset with large event table
   mat <- matrix(rnorm(1000 * 100), 1000, 100)
   large_events <- data.frame(
@@ -197,10 +197,12 @@ test_that("print methods perform well with large metadata", {
     response_time = runif(1000),
     accuracy = sample(0:1, 1000, replace = TRUE)
   )
-  
-  dset <- matrix_dataset(mat, TR = 2, run_length = 1000,
-                        event_table = large_events)
-  
+
+  dset <- matrix_dataset(mat,
+    TR = 2, run_length = 1000,
+    event_table = large_events
+  )
+
   result <- bench::mark(
     print_basic = {
       capture.output(print(dset, full = FALSE))
@@ -211,18 +213,18 @@ test_that("print methods perform well with large metadata", {
     iterations = 10,
     check = FALSE
   )
-  
+
   # Both should complete quickly
-  expect_lt(median(result$median[1]), 0.01)  # Basic under 10ms
-  expect_lt(median(result$median[2]), 0.05)  # Full under 50ms
+  expect_lt(median(result$median[1]), 0.01) # Basic under 10ms
+  expect_lt(median(result$median[2]), 0.05) # Full under 50ms
 })
 
 test_that("backend validation overhead is minimal", {
   skip_on_cran()
   skip_if_not_installed("bench")
-  
+
   mat <- matrix(rnorm(1000 * 100), 1000, 100)
-  
+
   # Time backend creation with and without validation
   result <- bench::mark(
     with_validation = {
@@ -235,19 +237,19 @@ test_that("backend validation overhead is minimal", {
     iterations = 20,
     check = FALSE
   )
-  
+
   # Validation overhead should be small
   validation_time <- median(result$median[1]) - median(result$median[2])
-  expect_lt(validation_time, 0.001)  # Less than 1ms overhead
+  expect_lt(validation_time, 0.001) # Less than 1ms overhead
 })
 
 test_that("performance doesn't degrade with many small runs", {
   skip_on_cran()
   skip_if_not_installed("bench")
-  
+
   n_time <- 1000
   mat <- matrix(rnorm(n_time * 100), n_time, 100)
-  
+
   # Compare few long runs vs many short runs
   result <- bench::mark(
     few_runs = {
@@ -259,8 +261,8 @@ test_that("performance doesn't degrade with many small runs", {
     iterations = 10,
     check = FALSE
   )
-  
+
   # Performance should be similar
   ratio <- median(result$median[2]) / median(result$median[1])
-  expect_lt(ratio, 2)  # Many runs should be less than 2x slower
+  expect_lt(ratio, 2) # Many runs should be less than 2x slower
 })

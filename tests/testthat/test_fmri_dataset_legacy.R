@@ -38,9 +38,11 @@ test_that("fmri_dataset_legacy works and returns proper data", {
               dims = c(3, 1, 1, 4),
               spacing = c(1, 1, 1, 2),
               origin = c(0, 0, 0),
-              spatial_axes = list(axis_1 = c(1, 0, 0), 
-                                  axis_2 = c(0, 1, 0), 
-                                  axis_3 = c(0, 0, 1))
+              spatial_axes = list(
+                axis_1 = c(1, 0, 0),
+                axis_2 = c(0, 1, 0),
+                axis_3 = c(0, 0, 1)
+              )
             ),
             class = "NIFTIMetaInfo"
           )
@@ -50,7 +52,8 @@ test_that("fmri_dataset_legacy works and returns proper data", {
         },
         NeuroSpace = function(dim, spacing, origin, axes) {
           structure(list(dim = dim, spacing = spacing, origin = origin, axes = axes),
-                    class = "NeuroSpace")
+            class = "NeuroSpace"
+          )
         },
         trans = function(x) diag(4),
         spacing = function(x) c(1, 1, 1, 2),
@@ -69,10 +72,9 @@ test_that("fmri_dataset_legacy works and returns proper data", {
           # Test that we can get data matrix
           mat <- get_data_matrix(dset)
           expect_equal(dim(mat), c(4, 3))
-          expect_equal(mat[1,1], 1)  # First timepoint, first voxel
+          expect_equal(mat[1, 1], 1) # First timepoint, first voxel
         }
       )
     }
   )
 })
-

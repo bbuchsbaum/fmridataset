@@ -4,26 +4,30 @@ library(tibble)
 
 create_matrix_dataset <- function() {
   mat <- matrix(1:40, nrow = 5, ncol = 8)
-  backend <- matrix_backend(mat, mask = rep(TRUE, 8), spatial_dims = c(2,2,2))
+  backend <- matrix_backend(mat, mask = rep(TRUE, 8), spatial_dims = c(2, 2, 2))
   fmri_dataset(backend, TR = 1, run_length = 5)
 }
 
 create_nifti_dataset <- function() {
   skip_if_not_installed("neuroim2")
-  dims <- c(2, 2, 2, 5)  # Match matrix dataset spatial dims
+  dims <- c(2, 2, 2, 5) # Match matrix dataset spatial dims
   data_array <- array(seq_len(prod(dims)), dims)
   mock_vec <- structure(
     data_array,
     class = c("DenseNeuroVec", "NeuroVec", "array"),
-    space = structure(list(dim = dims[1:3], origin = c(0,0,0), spacing = c(1,1,1)),
-                     class = "NeuroSpace")
+    space = structure(list(dim = dims[1:3], origin = c(0, 0, 0), spacing = c(1, 1, 1)),
+      class = "NeuroSpace"
+    )
   )
   mock_mask <- structure(array(TRUE, dims[1:3]),
-                         class = c("LogicalNeuroVol", "NeuroVol", "array"),
-                         dim = dims[1:3])
-  backend <- nifti_backend(source = list(mock_vec),
-                          mask_source = mock_mask,
-                          preload = TRUE)
+    class = c("LogicalNeuroVol", "NeuroVol", "array"),
+    dim = dims[1:3]
+  )
+  backend <- nifti_backend(
+    source = list(mock_vec),
+    mask_source = mock_mask,
+    preload = TRUE
+  )
   fmri_dataset(backend, TR = 1, run_length = 5)
 }
 
@@ -66,8 +70,8 @@ test_that("edge cases for selection are handled", {
   expect_equal(ncol(as.matrix(empty_sel)), 0)
 
   single_tp <- fmri_series(dset, selector = 1, timepoints = 3)
-  expect_equal(dim(single_tp), c(1,1))
-  expect_equal(as.matrix(single_tp), matrix(dset$backend$data_matrix[3,1], nrow=1))
+  expect_equal(dim(single_tp), c(1, 1))
+  expect_equal(as.matrix(single_tp), matrix(dset$backend$data_matrix[3, 1], nrow = 1))
 })
 
 
@@ -81,11 +85,11 @@ test_that("tidyverse workflow on fmri_series output", {
 
 test_that("subject mapping works with uneven run lengths", {
   d1 <- fmri_dataset(
-    matrix_backend(matrix(1:6, nrow = 3, ncol = 2), mask = rep(TRUE,2), spatial_dims = c(2,1,1)),
+    matrix_backend(matrix(1:6, nrow = 3, ncol = 2), mask = rep(TRUE, 2), spatial_dims = c(2, 1, 1)),
     TR = 1, run_length = 3
   )
   d2 <- fmri_dataset(
-    matrix_backend(matrix(7:10, nrow = 2, ncol = 2), mask = rep(TRUE,2), spatial_dims = c(2,1,1)),
+    matrix_backend(matrix(7:10, nrow = 2, ncol = 2), mask = rep(TRUE, 2), spatial_dims = c(2, 1, 1)),
     TR = 1, run_length = 2
   )
   study <- fmri_study_dataset(list(d1, d2), subject_ids = c("s1", "s2"))
@@ -95,7 +99,7 @@ test_that("subject mapping works with uneven run lengths", {
     d1$backend$data_matrix[1:3, 1:2],
     d2$backend$data_matrix[1:2, 1:2]
   )
-  
+
   # Compare values and dimensions separately to avoid attribute mismatch
   expect_equal(as.numeric(as.matrix(fs)), as.numeric(expected))
   expect_equal(dim(as.matrix(fs)), dim(expected))

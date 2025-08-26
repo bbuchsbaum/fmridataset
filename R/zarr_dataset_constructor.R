@@ -24,7 +24,7 @@
 #'
 #' Zarr stores can be:
 #' - Local directories containing .zarr data
-#' - Zip files containing zarr arrays  
+#' - Zip files containing zarr arrays
 #' - Remote URLs (S3, GCS, HTTP) for cloud-hosted data
 #'
 #' @export
@@ -60,15 +60,14 @@
 #' \code{\link{zarr_backend}}, \code{\link{fmri_dataset}}
 #'
 fmri_zarr_dataset <- function(zarr_source,
-                             data_key = "data",
-                             mask_key = "mask", 
-                             TR,
-                             run_length,
-                             event_table = data.frame(),
-                             censor = NULL,
-                             preload = FALSE,
-                             cache_size = 100) {
-  
+                              data_key = "data",
+                              mask_key = "mask",
+                              TR,
+                              run_length,
+                              event_table = data.frame(),
+                              censor = NULL,
+                              preload = FALSE,
+                              cache_size = 100) {
   # Create zarr backend
   backend <- zarr_backend(
     source = zarr_source,
@@ -77,7 +76,7 @@ fmri_zarr_dataset <- function(zarr_source,
     preload = preload,
     cache_size = cache_size
   )
-  
+
   # Use the generic fmri_dataset constructor
   fmri_dataset(
     scans = backend,

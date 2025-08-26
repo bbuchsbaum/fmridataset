@@ -1,9 +1,9 @@
 library(testthat)
 
 create_study_dataset <- function() {
-  b1 <- matrix_backend(matrix(1:20, nrow = 5, ncol = 4), spatial_dims = c(2,2,1))
+  b1 <- matrix_backend(matrix(1:20, nrow = 5, ncol = 4), spatial_dims = c(2, 2, 1))
   d1 <- fmri_dataset(b1, TR = 1, run_length = 5)
-  b2 <- matrix_backend(matrix(21:40, nrow = 5, ncol = 4), spatial_dims = c(2,2,1))
+  b2 <- matrix_backend(matrix(21:40, nrow = 5, ncol = 4), spatial_dims = c(2, 2, 1))
   d2 <- fmri_dataset(b2, TR = 1, run_length = 5)
   fmri_study_dataset(list(d1, d2), subject_ids = c("s1", "s2"))
 }

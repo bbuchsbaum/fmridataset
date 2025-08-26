@@ -49,7 +49,7 @@ json_backend <- function(json_file, metadata_file = NULL) {
   if (!file.exists(json_file)) {
     stop("JSON file not found: ", json_file)
   }
-  
+
   # Initialize backend structure
   backend <- list(
     json_file = json_file,
@@ -58,7 +58,7 @@ json_backend <- function(json_file, metadata_file = NULL) {
     dims_cache = NULL,
     is_open = FALSE
   )
-  
+
   class(backend) <- c("json_backend", "storage_backend")
   backend
 }
@@ -66,26 +66,26 @@ json_backend <- function(json_file, metadata_file = NULL) {
 # Implement the open method
 backend_open.json_backend <- function(backend) {
   if (backend$is_open) {
-    return(backend)  # Already open
+    return(backend) # Already open
   }
-  
+
   # Simulate reading JSON data (in practice, use jsonlite::fromJSON)
   # For demonstration, create synthetic data
   set.seed(123)
   n_time <- 100
   n_voxels <- 500
-  
+
   backend$data_cache <- matrix(
     rnorm(n_time * n_voxels),
     nrow = n_time,
     ncol = n_voxels
   )
-  
+
   backend$dims_cache <- list(
-    spatial = c(n_voxels, 1, 1),  # Flat spatial structure
+    spatial = c(n_voxels, 1, 1), # Flat spatial structure
     time = n_time
   )
-  
+
   backend$is_open <- TRUE
   backend
 }
@@ -111,9 +111,9 @@ backend_get_data.json_backend <- function(backend, rows = NULL, cols = NULL) {
   if (!backend$is_open) {
     stop("Backend must be opened first")
   }
-  
+
   data <- backend$data_cache
-  
+
   # Handle subsetting
   if (!is.null(rows)) {
     data <- data[rows, , drop = FALSE]
@@ -121,7 +121,7 @@ backend_get_data.json_backend <- function(backend, rows = NULL, cols = NULL) {
   if (!is.null(cols)) {
     data <- data[, cols, drop = FALSE]
   }
-  
+
   data
 }
 
@@ -130,14 +130,14 @@ backend_get_mask.json_backend <- function(backend) {
   if (!backend$is_open) {
     stop("Backend must be opened first")
   }
-  
+
   # All voxels are valid in our JSON format
   rep(TRUE, backend$dims_cache$spatial[1])
 }
 
 # Test the backend
 json_file <- tempfile(fileext = ".json")
-writeLines("{}", json_file)  # Create dummy file
+writeLines("{}", json_file) # Create dummy file
 
 backend <- json_backend(json_file)
 backend <- backend_open(backend)
@@ -187,7 +187,7 @@ backend_get_metadata.json_backend <- function(backend) {
   if (!backend$is_open) {
     stop("Backend must be opened first")
   }
-  
+
   list(
     format = "json",
     compression = "none",
@@ -205,17 +205,17 @@ backend_validate.json_backend <- function(backend) {
   if (!backend$is_open) {
     return(FALSE)
   }
-  
+
   # Validate dimensions
   dims <- backend$dims_cache
   expected_size <- dims$time * dims$spatial[1]
   actual_size <- length(backend$data_cache)
-  
+
   if (expected_size != actual_size) {
     warning("Data size mismatch")
     return(FALSE)
   }
-  
+
   TRUE
 }
 
@@ -252,7 +252,7 @@ stateful_backend <- function(source) {
     # Error information
     last_error = NULL
   )
-  
+
   class(backend) <- c("stateful_backend", "storage_backend")
   backend
 }
@@ -260,33 +260,36 @@ stateful_backend <- function(source) {
 # Safe resource acquisition
 backend_open.stateful_backend <- function(backend) {
   if (backend$is_open) {
-    return(backend)  # Idempotent
+    return(backend) # Idempotent
   }
-  
-  tryCatch({
-    # Acquire resources
-    backend$resources$data <- matrix(rnorm(1000), 100, 10)
-    backend$is_open <- TRUE
-    backend$has_error <- FALSE
-  }, error = function(e) {
-    backend$has_error <- TRUE
-    backend$last_error <- conditionMessage(e)
-    stop("Failed to open backend: ", conditionMessage(e))
-  })
-  
+
+  tryCatch(
+    {
+      # Acquire resources
+      backend$resources$data <- matrix(rnorm(1000), 100, 10)
+      backend$is_open <- TRUE
+      backend$has_error <- FALSE
+    },
+    error = function(e) {
+      backend$has_error <- TRUE
+      backend$last_error <- conditionMessage(e)
+      stop("Failed to open backend: ", conditionMessage(e))
+    }
+  )
+
   backend
 }
 
 # Safe resource cleanup
 backend_close.stateful_backend <- function(backend) {
   if (!backend$is_open) {
-    return(invisible(backend))  # Already closed
+    return(invisible(backend)) # Already closed
   }
-  
+
   # Release all resources
   backend$resources <- list()
   backend$is_open <- FALSE
-  
+
   invisible(backend)
 }
 
@@ -335,7 +338,7 @@ lazy_backend <- function(data_source) {
     data_cache = NULL,
     mask_cache = NULL
   )
-  
+
   class(backend) <- c("lazy_backend", "storage_backend")
   backend
 }
@@ -348,7 +351,7 @@ backend_open.lazy_backend <- function(backend) {
 
 backend_get_dims.lazy_backend <- function(backend) {
   if (!backend$is_open) stop("Backend not open")
-  
+
   # Load dimensions only when first requested
   if (is.null(backend$dims_cache)) {
     # In practice, read just headers/metadata
@@ -357,19 +360,19 @@ backend_get_dims.lazy_backend <- function(backend) {
       time = 50
     )
   }
-  
+
   backend$dims_cache
 }
 
 backend_get_data.lazy_backend <- function(backend, rows = NULL, cols = NULL) {
   if (!backend$is_open) stop("Backend not open")
-  
+
   # Load data only when first accessed
   if (is.null(backend$data_cache)) {
     cat("Loading data (lazy)...\n")
     backend$data_cache <- matrix(rnorm(5000), 50, 100)
   }
-  
+
   data <- backend$data_cache
   if (!is.null(rows)) data <- data[rows, , drop = FALSE]
   if (!is.null(cols)) data <- data[, cols, drop = FALSE]
@@ -378,12 +381,12 @@ backend_get_data.lazy_backend <- function(backend, rows = NULL, cols = NULL) {
 
 backend_get_mask.lazy_backend <- function(backend) {
   if (!backend$is_open) stop("Backend not open")
-  
+
   if (is.null(backend$mask_cache)) {
     dims <- backend_get_dims(backend)
     backend$mask_cache <- rep(TRUE, dims$spatial[1])
   }
-  
+
   backend$mask_cache
 }
 
@@ -400,13 +403,13 @@ backend <- lazy_backend("source")
 backend <- backend_open(backend)
 
 cat("Getting dimensions...\n")
-dims <- backend_get_dims(backend)  # No data loading
+dims <- backend_get_dims(backend) # No data loading
 
 cat("\nGetting mask...\n")
-mask <- backend_get_mask(backend)  # Still no data loading
+mask <- backend_get_mask(backend) # Still no data loading
 
 cat("\nGetting data...\n")
-data <- backend_get_data(backend, rows = 1:10)  # NOW data loads
+data <- backend_get_data(backend, rows = 1:10) # NOW data loads
 
 backend_close(backend)
 ```
@@ -420,26 +423,28 @@ Implement validation to ensure data integrity:
 validate_backend_contract <- function(backend_class) {
   required_methods <- c(
     "backend_open",
-    "backend_close", 
+    "backend_close",
     "backend_get_dims",
     "backend_get_data",
     "backend_get_mask"
   )
-  
+
   missing_methods <- character()
-  
+
   for (method in required_methods) {
     full_method <- paste0(method, ".", backend_class)
     if (!exists(full_method)) {
       missing_methods <- c(missing_methods, method)
     }
   }
-  
+
   if (length(missing_methods) > 0) {
-    stop("Backend class '", backend_class, "' missing required methods: ",
-         paste(missing_methods, collapse = ", "))
+    stop(
+      "Backend class '", backend_class, "' missing required methods: ",
+      paste(missing_methods, collapse = ", ")
+    )
   }
-  
+
   cat("✓ Backend class '", backend_class, "' implements all required methods\n")
   TRUE
 }
@@ -476,7 +481,7 @@ cached_backend <- function(source, cache_size_mb = 100) {
       evictions = 0
     )
   )
-  
+
   class(backend) <- c("cached_backend", "storage_backend")
   backend
 }
@@ -488,14 +493,14 @@ cache_get_or_load <- function(backend, key, loader_fn) {
     cat("Cache hit for", key, "\n")
     return(backend$cache[[key]])
   }
-  
+
   backend$stats$misses <- backend$stats$misses + 1
   cat("Cache miss for", key, "- loading...\n")
-  
+
   value <- loader_fn()
   backend$cache[[key]] <- value
   backend$cache$access_times[[key]] <- Sys.time()
-  
+
   value
 }
 
@@ -506,7 +511,7 @@ backend_open.cached_backend <- function(backend) {
 
 backend_get_dims.cached_backend <- function(backend) {
   if (!backend$is_open) stop("Backend not open")
-  
+
   cache_get_or_load(backend, "dims", function() {
     list(spatial = c(100, 1, 1), time = 50)
   })
@@ -514,17 +519,19 @@ backend_get_dims.cached_backend <- function(backend) {
 
 backend_get_data.cached_backend <- function(backend, rows = NULL, cols = NULL) {
   if (!backend$is_open) stop("Backend not open")
-  
+
   # Create cache key based on request
-  cache_key <- paste0("data_", 
-                     paste(range(rows %||% 1:50), collapse = "_"),
-                     "_",
-                     paste(range(cols %||% 1:100), collapse = "_"))
-  
+  cache_key <- paste0(
+    "data_",
+    paste(range(rows %||% 1:50), collapse = "_"),
+    "_",
+    paste(range(cols %||% 1:100), collapse = "_")
+  )
+
   data <- cache_get_or_load(backend, cache_key, function() {
     matrix(rnorm(5000), 50, 100)
   })
-  
+
   if (!is.null(rows)) data <- data[rows, , drop = FALSE]
   if (!is.null(cols)) data <- data[, cols, drop = FALSE]
   data
@@ -532,7 +539,7 @@ backend_get_data.cached_backend <- function(backend, rows = NULL, cols = NULL) {
 
 backend_get_mask.cached_backend <- function(backend) {
   if (!backend$is_open) stop("Backend not open")
-  
+
   cache_get_or_load(backend, "mask", function() {
     rep(TRUE, 100)
   })
@@ -543,10 +550,12 @@ backend_close.cached_backend <- function(backend) {
   cat("\nCache statistics:\n")
   cat("  Hits:", backend$stats$hits, "\n")
   cat("  Misses:", backend$stats$misses, "\n")
-  cat("  Hit rate:", 
-      round(100 * backend$stats$hits / 
-            (backend$stats$hits + backend$stats$misses), 1), "%\n")
-  
+  cat(
+    "  Hit rate:",
+    round(100 * backend$stats$hits /
+      (backend$stats$hits + backend$stats$misses), 1), "%\n"
+  )
+
   backend$cache <- list()
   backend$is_open <- FALSE
   invisible(backend)
@@ -582,7 +591,7 @@ robust_backend <- function(source) {
     is_open = FALSE,
     error_log = list()
   )
-  
+
   class(backend) <- c("robust_backend", "storage_backend")
   backend
 }
@@ -598,49 +607,53 @@ log_error <- function(backend, operation, error) {
 }
 
 backend_open.robust_backend <- function(backend) {
-  tryCatch({
-    if (backend$is_open) {
-      warning("Backend already open")
-      return(backend)
+  tryCatch(
+    {
+      if (backend$is_open) {
+        warning("Backend already open")
+        return(backend)
+      }
+
+      # Simulate potential failures
+      if (runif(1) > 0.8) {
+        stop("Simulated connection failure")
+      }
+
+      backend$is_open <- TRUE
+      cat("Successfully opened backend\n")
+      backend
+    },
+    error = function(e) {
+      backend <- log_error(backend, "open", e)
+      stop("Failed to open backend: ", conditionMessage(e))
     }
-    
-    # Simulate potential failures
-    if (runif(1) > 0.8) {
-      stop("Simulated connection failure")
-    }
-    
-    backend$is_open <- TRUE
-    cat("Successfully opened backend\n")
-    backend
-    
-  }, error = function(e) {
-    backend <- log_error(backend, "open", e)
-    stop("Failed to open backend: ", conditionMessage(e))
-  })
+  )
 }
 
 backend_get_data.robust_backend <- function(backend, rows = NULL, cols = NULL) {
-  tryCatch({
-    if (!backend$is_open) {
-      stop("Backend not open")
+  tryCatch(
+    {
+      if (!backend$is_open) {
+        stop("Backend not open")
+      }
+
+      # Validate indices
+      if (!is.null(rows) && any(rows < 1)) {
+        stop("Invalid row indices")
+      }
+
+      if (!is.null(cols) && any(cols < 1)) {
+        stop("Invalid column indices")
+      }
+
+      # Return data
+      matrix(rnorm(5000), 50, 100)[rows %||% 1:50, cols %||% 1:100, drop = FALSE]
+    },
+    error = function(e) {
+      backend <- log_error(backend, "get_data", e)
+      stop("Data access failed: ", conditionMessage(e))
     }
-    
-    # Validate indices
-    if (!is.null(rows) && any(rows < 1)) {
-      stop("Invalid row indices")
-    }
-    
-    if (!is.null(cols) && any(cols < 1)) {
-      stop("Invalid column indices")
-    }
-    
-    # Return data
-    matrix(rnorm(5000), 50, 100)[rows %||% 1:50, cols %||% 1:100, drop = FALSE]
-    
-  }, error = function(e) {
-    backend <- log_error(backend, "get_data", e)
-    stop("Data access failed: ", conditionMessage(e))
-  })
+  )
 }
 
 # Implement other methods...
@@ -658,8 +671,10 @@ backend_close.robust_backend <- function(backend) {
   if (length(backend$error_log) > 0) {
     cat("\nError log:\n")
     for (error in backend$error_log) {
-      cat("  -", error$operation, "at", format(error$timestamp), 
-          ":", error$message, "\n")
+      cat(
+        "  -", error$operation, "at", format(error$timestamp),
+        ":", error$message, "\n"
+      )
     }
   }
   backend$is_open <- FALSE
@@ -671,14 +686,17 @@ set.seed(123)
 backend <- robust_backend("source")
 
 # May fail randomly
-result <- tryCatch({
-  backend <- backend_open(backend)
-  data <- backend_get_data(backend, rows = 1:10)
-  cat("Data retrieved successfully\n")
-  backend_close(backend)
-}, error = function(e) {
-  cat("Caught error:", conditionMessage(e), "\n")
-})
+result <- tryCatch(
+  {
+    backend <- backend_open(backend)
+    data <- backend_get_data(backend, rows = 1:10)
+    cat("Data retrieved successfully\n")
+    backend_close(backend)
+  },
+  error = function(e) {
+    cat("Caught error:", conditionMessage(e), "\n")
+  }
+)
 ```
 
 # Tips and Best Practices
@@ -698,27 +716,27 @@ Before considering your backend complete:
 ```{r development-checklist}
 backend_checklist <- function() {
   cat("Backend Development Checklist:\n\n")
-  
+
   cat("Required Functionality:\n")
   cat("  ☐ Implements all 5 required methods\n")
   cat("  ☐ Returns correct data orientations\n")
   cat("  ☐ Handles NULL rows/cols in get_data\n")
   cat("  ☐ Returns valid dimension structure\n")
   cat("  ☐ Mask length matches spatial dimensions\n\n")
-  
+
   cat("Robustness:\n")
   cat("  ☐ Validates inputs in constructor\n")
   cat("  ☐ Checks is_open state in all methods\n")
   cat("  ☐ Handles errors gracefully\n")
   cat("  ☐ Cleans up resources in close\n")
   cat("  ☐ Methods are idempotent\n\n")
-  
+
   cat("Performance:\n")
   cat("  ☐ Implements lazy loading\n")
   cat("  ☐ Caches frequently accessed values\n")
   cat("  ☐ Minimizes memory footprint\n")
   cat("  ☐ Supports partial data loading\n\n")
-  
+
   cat("Documentation:\n")
   cat("  ☐ Constructor documented\n")
   cat("  ☐ Error messages are informative\n")
@@ -737,17 +755,17 @@ Comprehensive testing ensures reliability:
 # Test suite for backends
 test_backend <- function(backend_constructor, test_source) {
   cat("Testing backend implementation...\n\n")
-  
+
   # Test construction
   cat("Testing construction...")
   backend <- backend_constructor(test_source)
   cat(" ✓\n")
-  
+
   # Test opening
   cat("Testing open...")
   backend <- backend_open(backend)
   cat(" ✓\n")
-  
+
   # Test dimensions
   cat("Testing dimensions...")
   dims <- backend_get_dims(backend)
@@ -755,33 +773,33 @@ test_backend <- function(backend_constructor, test_source) {
   stopifnot(all(c("spatial", "time") %in% names(dims)))
   stopifnot(length(dims$spatial) == 3)
   cat(" ✓\n")
-  
+
   # Test mask
   cat("Testing mask...")
   mask <- backend_get_mask(backend)
   stopifnot(is.logical(mask))
   stopifnot(length(mask) == prod(dims$spatial))
   cat(" ✓\n")
-  
+
   # Test data access
   cat("Testing data access...")
   data <- backend_get_data(backend)
   stopifnot(is.matrix(data))
   stopifnot(nrow(data) == dims$time)
   cat(" ✓\n")
-  
+
   # Test subsetting
   cat("Testing subsetting...")
   subset_data <- backend_get_data(backend, rows = 1:10, cols = 1:20)
   stopifnot(dim(subset_data)[1] == 10)
   stopifnot(dim(subset_data)[2] == 20)
   cat(" ✓\n")
-  
+
   # Test closing
   cat("Testing close...")
   backend_close(backend)
   cat(" ✓\n")
-  
+
   cat("\n✅ All tests passed!\n")
 }
 

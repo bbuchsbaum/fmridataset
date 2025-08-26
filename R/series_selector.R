@@ -20,14 +20,14 @@ NULL
 #' @examples
 #' # Select first 10 voxels
 #' sel <- index_selector(1:10)
-#' 
+#'
 #' # Select specific voxels
 #' sel <- index_selector(c(1, 5, 10, 20))
 index_selector <- function(indices) {
   assert_that(is.numeric(indices))
   indices <- as.integer(indices)
   assert_that(all(indices > 0))
-  
+
   structure(
     list(indices = indices),
     class = c("index_selector", "series_selector")
@@ -43,9 +43,11 @@ resolve_indices.index_selector <- function(selector, dataset, ...) {
   if (any(invalid)) {
     stop_fmridataset(
       fmridataset_error_config,
-      message = paste0("Index selector contains out-of-bounds indices. ",
-                      "Dataset has ", n_voxels, " voxels, but indices up to ",
-                      max(selector$indices), " were requested."),
+      message = paste0(
+        "Index selector contains out-of-bounds indices. ",
+        "Dataset has ", n_voxels, " voxels, but indices up to ",
+        max(selector$indices), " were requested."
+      ),
       parameter = "indices",
       value = selector$indices[invalid][1:min(5, sum(invalid))]
     )
@@ -63,7 +65,7 @@ resolve_indices.index_selector <- function(selector, dataset, ...) {
 #' @examples
 #' # Select single voxel
 #' sel <- voxel_selector(c(10, 20, 15))
-#' 
+#'
 #' # Select multiple voxels
 #' coords <- cbind(x = c(10, 20), y = c(20, 30), z = c(15, 15))
 #' sel <- voxel_selector(coords)
@@ -75,7 +77,7 @@ voxel_selector <- function(coords) {
   assert_that(is.matrix(coords))
   assert_that(ncol(coords) == 3)
   assert_that(is.numeric(coords))
-  
+
   structure(
     list(coords = coords),
     class = c("voxel_selector", "series_selector")
@@ -87,38 +89,40 @@ voxel_selector <- function(coords) {
 resolve_indices.voxel_selector <- function(selector, dataset, ...) {
   dims <- backend_get_dims(dataset$backend)$spatial
   coords <- selector$coords
-  
+
   # Validate coordinates are within bounds
-  invalid_x <- coords[,1] < 1 | coords[,1] > dims[1]
-  invalid_y <- coords[,2] < 1 | coords[,2] > dims[2]  
-  invalid_z <- coords[,3] < 1 | coords[,3] > dims[3]
-  
+  invalid_x <- coords[, 1] < 1 | coords[, 1] > dims[1]
+  invalid_y <- coords[, 2] < 1 | coords[, 2] > dims[2]
+  invalid_z <- coords[, 3] < 1 | coords[, 3] > dims[3]
+
   if (any(invalid_x | invalid_y | invalid_z)) {
     stop_fmridataset(
       fmridataset_error_config,
-      message = paste0("Voxel selector contains out-of-bounds coordinates. ",
-                      "Volume dimensions are ", dims[1], "x", dims[2], "x", dims[3]),
+      message = paste0(
+        "Voxel selector contains out-of-bounds coordinates. ",
+        "Volume dimensions are ", dims[1], "x", dims[2], "x", dims[3]
+      ),
       parameter = "coords",
       value = head(coords[invalid_x | invalid_y | invalid_z, , drop = FALSE], 5)
     )
   }
-  
+
   # Convert to linear indices
-  ind <- coords[,1] + (coords[,2] - 1) * dims[1] + (coords[,3] - 1) * dims[1] * dims[2]
-  
+  ind <- coords[, 1] + (coords[, 2] - 1) * dims[1] + (coords[, 3] - 1) * dims[1] * dims[2]
+
   # Map to masked indices
   mask_vec <- backend_get_mask(dataset$backend)
   mask_ind <- which(mask_vec)
-  
+
   # Find which linear indices are in the mask
   matched <- match(ind, mask_ind)
   not_in_mask <- is.na(matched)
-  
+
   if (any(not_in_mask)) {
     warning("Some requested voxels are outside the dataset mask and will be ignored")
     matched <- matched[!not_in_mask]
   }
-  
+
   if (length(matched) == 0) {
     stop_fmridataset(
       fmridataset_error_config,
@@ -127,7 +131,7 @@ resolve_indices.voxel_selector <- function(selector, dataset, ...) {
       value = head(coords, 5)
     )
   }
-  
+
   as.integer(matched)
 }
 
@@ -154,7 +158,7 @@ roi_selector <- function(roi) {
       value = class(roi)[1]
     )
   }
-  
+
   structure(
     list(roi = roi),
     class = c("roi_selector", "series_selector")
@@ -166,15 +170,15 @@ roi_selector <- function(roi) {
 resolve_indices.roi_selector <- function(selector, dataset, ...) {
   # Get linear indices where ROI is TRUE
   roi_ind <- which(as.logical(as.vector(selector$roi)))
-  
+
   # Get mask indices
   mask_vec <- backend_get_mask(dataset$backend)
   mask_ind <- which(mask_vec)
-  
+
   # Find intersection
   matched <- match(roi_ind, mask_ind)
   matched <- matched[!is.na(matched)]
-  
+
   if (length(matched) == 0) {
     stop_fmridataset(
       fmridataset_error_config,
@@ -183,7 +187,7 @@ resolve_indices.roi_selector <- function(selector, dataset, ...) {
       value = paste0("ROI has ", sum(as.logical(selector$roi)), " voxels")
     )
   }
-  
+
   as.integer(matched)
 }
 
@@ -204,7 +208,7 @@ sphere_selector <- function(center, radius) {
   assert_that(is.numeric(radius))
   assert_that(length(radius) == 1)
   assert_that(radius > 0)
-  
+
   structure(
     list(center = center, radius = radius),
     class = c("sphere_selector", "series_selector")
@@ -217,28 +221,28 @@ resolve_indices.sphere_selector <- function(selector, dataset, ...) {
   dims <- backend_get_dims(dataset$backend)$spatial
   center <- selector$center
   radius <- selector$radius
-  
+
   # Create coordinate grid
   x <- seq_len(dims[1])
   y <- seq_len(dims[2])
   z <- seq_len(dims[3])
-  
+
   # Find voxels within radius
   coords <- expand.grid(x = x, y = y, z = z)
-  dist <- sqrt((coords$x - center[1])^2 + 
-               (coords$y - center[2])^2 + 
-               (coords$z - center[3])^2)
-  
+  dist <- sqrt((coords$x - center[1])^2 +
+    (coords$y - center[2])^2 +
+    (coords$z - center[3])^2)
+
   sphere_ind <- which(dist <= radius)
-  
+
   # Get mask indices
   mask_vec <- backend_get_mask(dataset$backend)
   mask_ind <- which(mask_vec)
-  
+
   # Find intersection
   matched <- match(sphere_ind, mask_ind)
   matched <- matched[!is.na(matched)]
-  
+
   if (length(matched) == 0) {
     stop_fmridataset(
       fmridataset_error_config,
@@ -247,7 +251,7 @@ resolve_indices.sphere_selector <- function(selector, dataset, ...) {
       value = list(center = center, radius = radius)
     )
   }
-  
+
   as.integer(matched)
 }
 
@@ -291,7 +295,7 @@ mask_selector <- function(mask) {
   if (!is.logical(mask)) {
     mask <- as.logical(mask)
   }
-  
+
   structure(
     list(mask = mask),
     class = c("mask_selector", "series_selector")
@@ -302,20 +306,20 @@ mask_selector <- function(mask) {
 #' @method resolve_indices mask_selector
 resolve_indices.mask_selector <- function(selector, dataset, ...) {
   mask <- selector$mask
-  
+
   if (is.array(mask)) {
     # Convert 3D mask to vector
     mask <- as.vector(mask)
   }
-  
+
   # Get dataset mask
   dataset_mask <- backend_get_mask(dataset$backend)
-  
+
   if (length(mask) == length(dataset_mask)) {
     # Full volume mask - extract indices within dataset mask
     mask_ind <- which(dataset_mask)
     selection_ind <- which(mask)
-    
+
     matched <- match(selection_ind, mask_ind)
     matched <- matched[!is.na(matched)]
   } else if (length(mask) == sum(dataset_mask)) {
@@ -324,14 +328,16 @@ resolve_indices.mask_selector <- function(selector, dataset, ...) {
   } else {
     stop_fmridataset(
       fmridataset_error_config,
-      message = paste0("Mask length (", length(mask), ") does not match ",
-                      "volume size (", length(dataset_mask), ") or ",
-                      "masked size (", sum(dataset_mask), ")"),
+      message = paste0(
+        "Mask length (", length(mask), ") does not match ",
+        "volume size (", length(dataset_mask), ") or ",
+        "masked size (", sum(dataset_mask), ")"
+      ),
       parameter = "mask",
       value = length(mask)
     )
   }
-  
+
   if (length(matched) == 0) {
     stop_fmridataset(
       fmridataset_error_config,
@@ -340,27 +346,27 @@ resolve_indices.mask_selector <- function(selector, dataset, ...) {
       value = paste0("Mask has ", sum(mask), " TRUE values")
     )
   }
-  
+
   as.integer(matched)
 }
 
 #' Print Methods for Series Selectors
-#' 
+#'
 #' Display formatted summaries of series selector objects.
-#' 
+#'
 #' @param x A series selector object
 #' @param ... Additional arguments (currently unused)
-#' 
+#'
 #' @return The object invisibly
-#' 
+#'
 #' @examples
 #' # Print different selector types
 #' sel1 <- index_selector(1:10)
 #' print(sel1)
-#' 
+#'
 #' sel2 <- voxel_selector(c(10, 20, 15))
 #' print(sel2)
-#' 
+#'
 #' @export
 #' @method print series_selector
 print.series_selector <- function(x, ...) {
@@ -387,11 +393,11 @@ print.voxel_selector <- function(x, ...) {
   cat("  coordinates: ", nrow(x$coords), " voxel(s)\n", sep = "")
   if (nrow(x$coords) <= 5) {
     for (i in seq_len(nrow(x$coords))) {
-      cat("    [", x$coords[i,1], ", ", x$coords[i,2], ", ", x$coords[i,3], "]\n", sep = "")
+      cat("    [", x$coords[i, 1], ", ", x$coords[i, 2], ", ", x$coords[i, 3], "]\n", sep = "")
     }
   } else {
     for (i in 1:3) {
-      cat("    [", x$coords[i,1], ", ", x$coords[i,2], ", ", x$coords[i,3], "]\n", sep = "")
+      cat("    [", x$coords[i, 1], ", ", x$coords[i, 2], ", ", x$coords[i, 3], "]\n", sep = "")
     }
     cat("    ... (", nrow(x$coords) - 3, " more)\n", sep = "")
   }

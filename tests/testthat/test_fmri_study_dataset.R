@@ -1,13 +1,17 @@
 context("fmri_study_dataset")
 
 test_that("constructor combines datasets", {
-  b1 <- matrix_backend(matrix(1:20, nrow = 10, ncol = 2), spatial_dims = c(2,1,1))
-  b2 <- matrix_backend(matrix(21:40, nrow = 10, ncol = 2), spatial_dims = c(2,1,1))
+  b1 <- matrix_backend(matrix(1:20, nrow = 10, ncol = 2), spatial_dims = c(2, 1, 1))
+  b2 <- matrix_backend(matrix(21:40, nrow = 10, ncol = 2), spatial_dims = c(2, 1, 1))
 
-  d1 <- fmri_dataset(b1, TR = 2, run_length = 10,
-                     event_table = data.frame(onset = 1, run_id = 1))
-  d2 <- fmri_dataset(b2, TR = 2, run_length = 10,
-                     event_table = data.frame(onset = 2, run_id = 1))
+  d1 <- fmri_dataset(b1,
+    TR = 2, run_length = 10,
+    event_table = data.frame(onset = 1, run_id = 1)
+  )
+  d2 <- fmri_dataset(b2,
+    TR = 2, run_length = 10,
+    event_table = data.frame(onset = 2, run_id = 1)
+  )
 
   study <- fmri_study_dataset(list(d1, d2), subject_ids = c("s1", "s2"))
 
@@ -25,8 +29,8 @@ test_that("with_rowData attaches attribute", {
 })
 
 test_that("as_tibble returns delayed matrix with metadata", {
-  b1 <- matrix_backend(matrix(1:20, nrow = 10, ncol = 2), spatial_dims = c(2,1,1))
-  b2 <- matrix_backend(matrix(21:40, nrow = 10, ncol = 2), spatial_dims = c(2,1,1))
+  b1 <- matrix_backend(matrix(1:20, nrow = 10, ncol = 2), spatial_dims = c(2, 1, 1))
+  b2 <- matrix_backend(matrix(21:40, nrow = 10, ncol = 2), spatial_dims = c(2, 1, 1))
   d1 <- fmri_dataset(b1, TR = 2, run_length = 10)
   d2 <- fmri_dataset(b2, TR = 2, run_length = 10)
   study <- fmri_study_dataset(list(d1, d2), subject_ids = c("s1", "s2"))
@@ -36,11 +40,11 @@ test_that("as_tibble returns delayed matrix with metadata", {
   expect_equal(nrow(md), 20)
   expect_equal(md$subject_id[1], "s1")
   expect_equal(md$subject_id[11], "s2")
-  expect_equal(unique(md$run_id), c(1,2))
+  expect_equal(unique(md$run_id), c(1, 2))
 })
 
 test_that("as_tibble materialises when requested", {
-  b <- matrix_backend(matrix(1:20, nrow = 10, ncol = 2), spatial_dims = c(2,1,1))
+  b <- matrix_backend(matrix(1:20, nrow = 10, ncol = 2), spatial_dims = c(2, 1, 1))
   d <- fmri_dataset(b, TR = 2, run_length = 10)
   study <- fmri_study_dataset(list(d), subject_ids = "subj")
   tbl <- as_tibble(study, materialise = TRUE)
@@ -51,7 +55,7 @@ test_that("as_tibble materialises when requested", {
 
 test_that("as_tibble stores metadata in AltExp for large datasets", {
   mat <- matrix(rnorm(100001 * 2), nrow = 100001, ncol = 2)
-  b <- matrix_backend(mat, spatial_dims = c(2,1,1))
+  b <- matrix_backend(mat, spatial_dims = c(2, 1, 1))
   d <- fmri_dataset(b, TR = 2, run_length = 100001)
   study <- fmri_study_dataset(list(d), subject_ids = "subj")
   dm <- as_tibble(study)

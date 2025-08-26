@@ -11,9 +11,11 @@ NULL
 .dataset_classes <- c("matrix_dataset", "fmri_dataset", "fmri_mem_dataset", "fmri_file_dataset")
 
 # Define methods that delegate to sampling_frame
-.delegated_methods <- c("get_TR", "get_run_lengths", "n_runs", "n_timepoints", 
-                       "blocklens", "blockids", "get_run_duration", 
-                       "get_total_duration", "samples")
+.delegated_methods <- c(
+  "get_TR", "get_run_lengths", "n_runs", "n_timepoints",
+  "blocklens", "blockids", "get_run_duration",
+  "get_total_duration", "samples"
+)
 
 # Note: Dynamic registration removed - methods are explicitly defined below
 

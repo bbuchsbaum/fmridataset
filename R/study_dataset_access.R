@@ -12,7 +12,7 @@ get_data_matrix.fmri_study_dataset <- function(x, subject_id = NULL, ...) {
     } else {
       stop("subject_id must be character or numeric")
     }
-    
+
     # Get data from specific backend(s)
     if (length(idx) == 1) {
       backend_get_data(x$backend$backends[[idx]], ...)
@@ -47,8 +47,10 @@ as_tibble.fmri_study_dataset <- function(x, materialise = FALSE, ...) {
 
   run_lengths <- x$sampling_frame$blocklens
   run_ids <- fmrihrf::blockids(x$sampling_frame)
-  backend_times <- vapply(x$backend$backends,
-                          function(b) backend_get_dims(b)$time, numeric(1))
+  backend_times <- vapply(
+    x$backend$backends,
+    function(b) backend_get_dims(b)$time, numeric(1)
+  )
   subj_ids <- x$subject_ids
 
   run_subject <- character(length(run_lengths))

@@ -123,12 +123,14 @@ validate_backend <- function(backend) {
       "Invalid backend object: must inherit from 'storage_backend'"
     )
   }
-  
+
   # Check that required methods are implemented
   backend_class <- class(backend)[1]
-  required_methods <- c("backend_open", "backend_close", "backend_get_dims", 
-                       "backend_get_mask", "backend_get_data", "backend_get_metadata")
-  
+  required_methods <- c(
+    "backend_open", "backend_close", "backend_get_dims",
+    "backend_get_mask", "backend_get_data", "backend_get_metadata"
+  )
+
   for (method in required_methods) {
     method_name <- paste0(method, ".", backend_class)
     if (!exists(method_name, mode = "function")) {
@@ -138,7 +140,7 @@ validate_backend <- function(backend) {
       )
     }
   }
-  
+
   backend <- backend_open(backend)
   on.exit(backend_close(backend))
 

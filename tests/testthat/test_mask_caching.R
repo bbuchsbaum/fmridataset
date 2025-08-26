@@ -4,7 +4,8 @@ test_that("nifti_backend caches mask only after validation", {
     array(1:2, c(1, 1, 1, 2)),
     class = c("DenseNeuroVec", "NeuroVec", "array"),
     space = structure(list(dim = c(1, 1, 1), origin = c(0, 0, 0), spacing = c(1, 1, 1)),
-                      class = "NeuroSpace")
+      class = "NeuroSpace"
+    )
   )
 
   invalid_mask <- structure(

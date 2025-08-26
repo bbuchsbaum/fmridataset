@@ -50,7 +50,7 @@ matrix_ds <- matrix_dataset(
 )
 
 # Example 2: File backend for NIfTI data (simulated paths)
-file_paths <- c("run1.nii.gz", "run2.nii.gz")  # Would be real paths
+file_paths <- c("run1.nii.gz", "run2.nii.gz") # Would be real paths
 # file_ds <- fmri_file_dataset(
 #   scans = file_paths,
 #   mask = "mask.nii.gz",
@@ -59,7 +59,7 @@ file_paths <- c("run1.nii.gz", "run2.nii.gz")  # Would be real paths
 # )
 
 # Example 3: Study backend for multi-subject data
-subject_datasets <- list(matrix_ds)  # In practice, multiple datasets
+subject_datasets <- list(matrix_ds) # In practice, multiple datasets
 study_ds <- fmri_study_dataset(
   datasets = subject_datasets,
   subject_ids = "sub-001"
@@ -133,7 +133,7 @@ The delegation pattern is central to how fmridataset manages complexity. Rather 
 # Datasets delegate temporal queries to sampling frames
 sf <- matrix_ds$sampling_frame
 direct_tr <- get_TR(sf)
-delegated_tr <- get_TR(matrix_ds)  # Delegates to sampling frame
+delegated_tr <- get_TR(matrix_ds) # Delegates to sampling frame
 
 cat("Direct TR query:", direct_tr, "\n")
 cat("Delegated TR query:", delegated_tr, "\n")
@@ -183,7 +183,7 @@ ds <- matrix_dataset(
 
 # Add events that automatically align with temporal structure
 events <- data.frame(
-  onset = c(10, 30, 90, 110),  # seconds
+  onset = c(10, 30, 90, 110), # seconds
   duration = c(2, 2, 2, 2),
   trial_type = c("A", "B", "A", "B"),
   run = c(1, 1, 2, 2)
@@ -251,25 +251,25 @@ connectivity_dataset <- function(connectivity_matrix, node_labels, TR, ...) {
   if (!is.matrix(connectivity_matrix)) {
     stop("connectivity_matrix must be a matrix")
   }
-  
+
   if (ncol(connectivity_matrix) != length(node_labels)) {
     stop("Number of nodes must match label length")
   }
-  
+
   # Create underlying matrix dataset
   base_dataset <- matrix_dataset(
     datamat = connectivity_matrix,
     TR = TR,
     ...
   )
-  
+
   # Add connectivity-specific metadata
   base_dataset$node_labels <- node_labels
   base_dataset$connectivity_type <- "correlation"
-  
+
   # Set class for method dispatch
   class(base_dataset) <- c("connectivity_dataset", class(base_dataset))
-  
+
   return(base_dataset)
 }
 
@@ -307,14 +307,14 @@ csv_backend <- function(csv_file, ...) {
   if (!file.exists(csv_file)) {
     stop("CSV file not found: ", csv_file)
   }
-  
+
   # Create backend object
   backend <- list(
     csv_file = csv_file,
     data_cache = NULL,
     is_open = FALSE
   )
-  
+
   class(backend) <- c("csv_backend", "storage_backend")
   backend
 }
@@ -349,11 +349,11 @@ backend_get_data.csv_backend <- function(backend, rows = NULL, cols = NULL) {
   if (!backend$is_open) {
     stop("Backend must be opened before accessing data")
   }
-  
+
   data <- backend$data_cache
   if (!is.null(rows)) data <- data[rows, , drop = FALSE]
   if (!is.null(cols)) data <- data[, cols, drop = FALSE]
-  
+
   data
 }
 ```
@@ -371,18 +371,18 @@ variable_tr_sampling_frame <- function(tr_sequence, run_boundaries, ...) {
   if (length(tr_sequence) != sum(run_boundaries)) {
     stop("TR sequence length must match total timepoints")
   }
-  
+
   # Create base sampling frame
   base_sf <- sampling_frame(
     run_lengths = run_boundaries,
-    TR = mean(tr_sequence),  # Use mean TR for compatibility
+    TR = mean(tr_sequence), # Use mean TR for compatibility
     ...
   )
-  
+
   # Add variable TR information
   base_sf$tr_sequence <- tr_sequence
   base_sf$run_boundaries <- cumsum(c(0, run_boundaries))
-  
+
   class(base_sf) <- c("variable_tr_sampling_frame", class(base_sf))
   base_sf
 }
@@ -400,7 +400,7 @@ get_tr_at_timepoint.variable_tr_sampling_frame <- function(sf, timepoint) {
 }
 
 # Example usage
-tr_seq <- rep(c(2.0, 2.5, 1.5), times = c(20, 20, 20))  # Variable TRs
+tr_seq <- rep(c(2.0, 2.5, 1.5), times = c(20, 20, 20)) # Variable TRs
 var_sf <- variable_tr_sampling_frame(
   tr_sequence = tr_seq,
   run_boundaries = c(30, 30)
@@ -425,7 +425,7 @@ The architecture is designed with performance as a primary consideration. Unders
 benchmark_backends <- function(n_timepoints = 100, n_voxels = 1000) {
   # Generate test data
   test_data <- generate_example_fmri_data(n_timepoints, n_voxels)
-  
+
   # Benchmark matrix backend
   start_time <- Sys.time()
   matrix_ds <- matrix_dataset(
@@ -434,29 +434,29 @@ benchmark_backends <- function(n_timepoints = 100, n_voxels = 1000) {
     run_length = n_timepoints
   )
   matrix_create_time <- difftime(Sys.time(), start_time, units = "secs")
-  
+
   start_time <- Sys.time()
   matrix_data <- get_data_matrix(matrix_ds)
   matrix_access_time <- difftime(Sys.time(), start_time, units = "secs")
-  
+
   cat("Performance Comparison:\n")
   cat("====================\n")
   cat(sprintf("Dataset size: %d timepoints × %d voxels\n", n_timepoints, n_voxels))
   cat(sprintf("Memory size: %.1f MB\n\n", object.size(test_data) / 1024^2))
-  
+
   cat("Matrix Backend:\n")
   cat(sprintf("  Creation time: %.3f seconds\n", matrix_create_time))
   cat(sprintf("  Data access time: %.3f seconds\n", matrix_access_time))
   cat("  Memory model: All data in RAM\n")
   cat("  Best for: Small datasets, repeated access\n\n")
-  
+
   # Simulate file backend performance
   cat("File Backend (simulated):\n")
   cat("  Creation time: ~0.001 seconds (lazy)\n")
   cat("  First access time: ~1-5 seconds (disk I/O)\n")
   cat("  Memory model: Load on demand\n")
   cat("  Best for: Large datasets, sequential access\n\n")
-  
+
   # Simulate study backend performance
   cat("Study Backend (simulated):\n")
   cat("  Creation time: ~0.01 seconds (metadata only)\n")
@@ -476,31 +476,31 @@ The performance characteristics guide backend selection based on your specific u
 benchmark_chunking <- function(dataset, chunk_sizes = c(1, 5, 10, 20)) {
   cat("\nChunking Performance Analysis:\n")
   cat("============================\n")
-  
+
   results <- data.frame(
     chunks = chunk_sizes,
     time = numeric(length(chunk_sizes)),
     memory_peak = numeric(length(chunk_sizes))
   )
-  
+
   for (i in seq_along(chunk_sizes)) {
     n_chunks <- chunk_sizes[i]
-    
+
     start_time <- Sys.time()
     chunks <- data_chunks(dataset, nchunks = n_chunks)
-    
+
     # Simulate processing
     for (chunk in chunks) {
       # Simple operation on each chunk
       chunk_mean <- mean(chunk$data)
     }
-    
+
     results$time[i] <- as.numeric(difftime(Sys.time(), start_time, units = "secs"))
     results$memory_peak[i] <- n_timepoints(dataset) * ncol(dataset$datamat) / n_chunks * 8 / 1024^2
   }
-  
+
   print(results)
-  
+
   cat("\nRecommendations:\n")
   cat("- More chunks = Lower memory usage\n")
   cat("- Fewer chunks = Better performance (less overhead)\n")
@@ -529,18 +529,18 @@ analyze_memory_patterns <- function() {
   # Matrix backend: immediate memory allocation
   matrix_data <- matrix(rnorm(10000), nrow = 100, ncol = 100)
   matrix_size <- object.size(matrix_data)
-  
+
   cat("Matrix backend:\n")
   cat("  Data size:", format(matrix_size, units = "Mb"), "\n")
   cat("  Memory allocation: immediate\n")
   cat("  Access pattern: O(1) random access\n\n")
-  
+
   # File backend simulation
   cat("File backend:\n")
   cat("  Data size: 0 bytes (until accessed)\n")
-  cat("  Memory allocation: on-demand\n") 
+  cat("  Memory allocation: on-demand\n")
   cat("  Access pattern: O(n) sequential preferred\n\n")
-  
+
   # Study backend simulation
   cat("Study backend:\n")
   cat("  Data size: per-subject allocation\n")
@@ -562,12 +562,12 @@ The architecture's extensibility comes from its layered design and well-defined 
 demonstrate_interface_consistency <- function() {
   # All datasets implement the same core interface
   core_methods <- c("get_data_matrix", "get_TR", "n_runs", "n_timepoints", "data_chunks")
-  
+
   cat("Core interface methods:\n")
   for (method in core_methods) {
     cat("  -", method, "\n")
   }
-  
+
   cat("\nInterface guarantees:\n")
   cat("  - Same method signatures across all dataset types\n")
   cat("  - Consistent return value formats\n")
@@ -581,7 +581,7 @@ demonstrate_interface_consistency()
 add_custom_methods <- function() {
   cat("\nExtension pattern:\n")
   cat("  1. Inherit from base classes\n")
-  cat("  2. Implement required interface methods\n") 
+  cat("  2. Implement required interface methods\n")
   cat("  3. Add specialized functionality\n")
   cat("  4. Register with appropriate systems\n")
 }
@@ -609,17 +609,17 @@ When designing extensions or choosing between implementation approaches:
 # Decision framework for extensions
 evaluate_extension_approach <- function(requirement) {
   cat("Extension decision framework:\n\n")
-  
+
   cat("1. Data source extension:\n")
   cat("   - New file format? → Custom backend\n")
   cat("   - New data organization? → Custom dataset\n")
   cat("   - New temporal structure? → Custom sampling frame\n\n")
-  
+
   cat("2. Analysis extension:\n")
   cat("   - New processing pattern? → Custom chunking strategy\n")
   cat("   - New metadata needs? → Dataset subclass\n")
   cat("   - New access pattern? → Custom methods\n\n")
-  
+
   cat("3. Performance extension:\n")
   cat("   - Memory optimization? → Backend specialization\n")
   cat("   - I/O optimization? → Custom caching\n")
@@ -636,17 +636,17 @@ When extending the architecture, follow these interface design principles:
 ```{r interface-design}
 demonstrate_interface_principles <- function() {
   cat("Interface design principles:\n\n")
-  
+
   cat("1. Consistency:\n")
   cat("   - Same method names across similar components\n")
   cat("   - Predictable parameter patterns\n")
   cat("   - Uniform error handling\n\n")
-  
+
   cat("2. Composability:\n")
   cat("   - Components work together seamlessly\n")
-  cat("   - Clear separation of concerns\n") 
+  cat("   - Clear separation of concerns\n")
   cat("   - Minimal coupling between layers\n\n")
-  
+
   cat("3. Extensibility:\n")
   cat("   - Well-defined extension points\n")
   cat("   - Backward compatibility guarantees\n")
@@ -679,19 +679,19 @@ Different types of issues typically originate in specific architectural layers:
 # Debugging strategy by architectural layer
 debug_by_layer <- function(error_type) {
   cat("Debugging strategy by layer:\n\n")
-  
+
   cat("Dataset layer debugging:\n")
   cat("  - Check class hierarchy: class(dataset)\n")
   cat("  - Verify method dispatch: methods(class = class(dataset)[1])\n")
   cat("  - Validate temporal structure: dataset$sampling_frame\n\n")
-  
+
   cat("Backend layer debugging:\n")
   cat("  - Check backend status: dataset$backend\n")
   cat("  - Test direct backend calls: backend_get_dims(backend)\n")
   cat("  - Verify resource state: backend state variables\n\n")
-  
+
   cat("Temporal layer debugging:\n")
-  cat("  - Check sampling frame: get_run_lengths(dataset)\n") 
+  cat("  - Check sampling frame: get_run_lengths(dataset)\n")
   cat("  - Verify timing: get_TR(dataset) * n_timepoints(dataset)\n")
   cat("  - Test event alignment: validate event onsets\n")
 }
@@ -706,17 +706,17 @@ Architecture-aware performance debugging:
 ```{r performance-debugging}
 diagnose_performance_issues <- function() {
   cat("Performance diagnosis by component:\n\n")
-  
+
   cat("Slow data access:\n")
   cat("  - Backend type: file vs. matrix vs. study\n")
   cat("  - Chunking strategy: voxel vs. run vs. custom\n")
   cat("  - Memory pressure: check available RAM\n\n")
-  
-  cat("High memory usage:\n") 
+
+  cat("High memory usage:\n")
   cat("  - Lazy loading: ensure file backends stay lazy\n")
   cat("  - Chunk sizing: reduce chunk size for large datasets\n")
   cat("  - Garbage collection: explicit gc() calls\n\n")
-  
+
   cat("Interface inconsistencies:\n")
   cat("  - Method dispatch: verify S3 method registration\n")
   cat("  - Class hierarchy: check inheritance patterns\n")

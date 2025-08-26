@@ -37,24 +37,24 @@ test_that("error constructors handle optional parameters", {
   expect_equal(err1$message, "minimal error")
   expect_null(err1$file)
   expect_null(err1$operation)
-  
+
   # Backend I/O error with all parameters
   err2 <- fmridataset:::fmridataset_error_backend_io(
-    "full error", 
-    file = "data.h5", 
+    "full error",
+    file = "data.h5",
     operation = "write",
     additional_info = "extra context"
   )
   expect_equal(err2$file, "data.h5")
   expect_equal(err2$operation, "write")
   expect_equal(err2$additional_info, "extra context")
-  
+
   # Config error with minimal parameters
   err3 <- fmridataset:::fmridataset_error_config("config issue")
   expect_s3_class(err3, "fmridataset_error_config")
   expect_null(err3$parameter)
   expect_null(err3$value)
-  
+
   # Config error with all parameters
   err4 <- fmridataset:::fmridataset_error_config(
     "invalid config",
@@ -70,17 +70,17 @@ test_that("error constructors handle optional parameters", {
 test_that("error constructors preserve class hierarchy", {
   backend_err <- fmridataset:::fmridataset_error_backend_io("io error")
   config_err <- fmridataset:::fmridataset_error_config("config error")
-  
+
   # Both should inherit from fmridataset_error
   expect_true(inherits(backend_err, "fmridataset_error"))
   expect_true(inherits(config_err, "fmridataset_error"))
-  
+
   # Both should inherit from error and condition
   expect_true(inherits(backend_err, "error"))
   expect_true(inherits(backend_err, "condition"))
   expect_true(inherits(config_err, "error"))
   expect_true(inherits(config_err, "condition"))
-  
+
   # But should be distinguishable
   expect_false(inherits(backend_err, "fmridataset_error_config"))
   expect_false(inherits(config_err, "fmridataset_error_backend_io"))
@@ -97,7 +97,7 @@ test_that("stop_fmridataset handles complex error scenarios", {
     ),
     class = "fmridataset_error_backend_io"
   )
-  
+
   # Test with complex value in config error
   expect_error(
     fmridataset:::stop_fmridataset(
@@ -112,18 +112,18 @@ test_that("stop_fmridataset handles complex error scenarios", {
 
 test_that("error messages are preserved correctly", {
   test_message <- "This is a detailed error message with context"
-  
+
   err1 <- fmridataset:::fmridataset_error_backend_io(test_message, file = "test.h5")
   expect_equal(err1$message, test_message)
-  
+
   err2 <- fmridataset:::fmridataset_error_config(test_message, parameter = "mask")
   expect_equal(err2$message, test_message)
-  
+
   # Test that stop_fmridataset preserves the message
   expect_error(
     fmridataset:::stop_fmridataset(
-      fmridataset:::fmridataset_error_config, 
-      test_message, 
+      fmridataset:::fmridataset_error_config,
+      test_message,
       parameter = "test"
     ),
     test_message,
@@ -140,7 +140,7 @@ test_that("error constructors handle edge case values", {
   )
   expect_null(err1$value)
   expect_equal(err1$parameter, "important_param")
-  
+
   # Test with empty strings
   err2 <- fmridataset:::fmridataset_error_backend_io(
     "empty file error",
@@ -149,14 +149,14 @@ test_that("error constructors handle edge case values", {
   )
   expect_equal(err2$file, "")
   expect_equal(err2$operation, "")
-  
+
   # Test with complex objects
   complex_value <- list(
     matrix = matrix(1:4, 2, 2),
     list = list(a = 1, b = 2),
     function_ref = function(x) x + 1
   )
-  
+
   err3 <- fmridataset:::fmridataset_error_config(
     "complex object error",
     parameter = "complex_param",
@@ -167,34 +167,41 @@ test_that("error constructors handle edge case values", {
 
 test_that("error system integrates with base R error handling", {
   # Test that our errors can be caught by standard error handling
-  result <- tryCatch({
-    fmridataset:::stop_fmridataset(
-      fmridataset:::fmridataset_error_backend_io,
-      "test error",
-      file = "test.nii"
-    )
-  }, error = function(e) {
-    e
-  })
-  
+  result <- tryCatch(
+    {
+      fmridataset:::stop_fmridataset(
+        fmridataset:::fmridataset_error_backend_io,
+        "test error",
+        file = "test.nii"
+      )
+    },
+    error = function(e) {
+      e
+    }
+  )
+
   expect_s3_class(result, "fmridataset_error_backend_io")
   expect_equal(result$message, "test error")
-  
+
   # Test that specific error types can be caught
   backend_caught <- FALSE
   config_caught <- FALSE
-  
-  tryCatch({
-    fmridataset:::stop_fmridataset(
-      fmridataset:::fmridataset_error_backend_io,
-      "backend error"
-    )
-  }, fmridataset_error_backend_io = function(e) {
-    backend_caught <<- TRUE
-  }, fmridataset_error_config = function(e) {
-    config_caught <<- TRUE
-  })
-  
+
+  tryCatch(
+    {
+      fmridataset:::stop_fmridataset(
+        fmridataset:::fmridataset_error_backend_io,
+        "backend error"
+      )
+    },
+    fmridataset_error_backend_io = function(e) {
+      backend_caught <<- TRUE
+    },
+    fmridataset_error_config = function(e) {
+      config_caught <<- TRUE
+    }
+  )
+
   expect_true(backend_caught)
   expect_false(config_caught)
 })

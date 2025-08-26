@@ -2,7 +2,7 @@ library(testthat)
 
 create_test_dataset <- function() {
   mat <- matrix(as.double(1:40), nrow = 5, ncol = 8)
-  backend <- matrix_backend(mat, mask = rep(TRUE, 8), spatial_dims = c(2,2,2))
+  backend <- matrix_backend(mat, mask = rep(TRUE, 8), spatial_dims = c(2, 2, 2))
   fmri_dataset(backend, TR = 1, run_length = 5)
 }
 

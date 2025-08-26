@@ -11,11 +11,12 @@ test_that("fmri_dataset prepends base_path", {
   with_mocked_bindings(
     nifti_backend = function(source, mask_source, preload = FALSE, mode = "normal", ...) {
       structure(list(source = source, mask_source = mask_source),
-                class = c("nifti_backend", "storage_backend"))
+        class = c("nifti_backend", "storage_backend")
+      )
     },
     validate_backend = function(backend) TRUE,
     backend_open = function(backend) backend,
-    backend_get_dims = function(backend) list(spatial = c(1,1,1), time = 10),
+    backend_get_dims = function(backend) list(spatial = c(1, 1, 1), time = 10),
     .package = "fmridataset",
     {
       dset <- fmri_dataset(
@@ -43,11 +44,12 @@ test_that("fmri_dataset leaves absolute paths unchanged", {
   with_mocked_bindings(
     nifti_backend = function(source, mask_source, preload = FALSE, mode = "normal", ...) {
       structure(list(source = source, mask_source = mask_source),
-                class = c("nifti_backend", "storage_backend"))
+        class = c("nifti_backend", "storage_backend")
+      )
     },
     validate_backend = function(backend) TRUE,
     backend_open = function(backend) backend,
-    backend_get_dims = function(backend) list(spatial = c(1,1,1), time = 10),
+    backend_get_dims = function(backend) list(spatial = c(1, 1, 1), time = 10),
     .package = "fmridataset",
     {
       dset <- fmri_dataset(
@@ -67,7 +69,7 @@ test_that("fmri_dataset leaves absolute paths unchanged", {
 
 
 test_that("study_backend rejects unknown strict setting", {
-  b <- matrix_backend(matrix(1:10, nrow = 5, ncol = 2), spatial_dims = c(2,1,1))
+  b <- matrix_backend(matrix(1:10, nrow = 5, ncol = 2), spatial_dims = c(2, 1, 1))
   expect_error(
     study_backend(list(b), strict = "foo"),
     "unknown strict setting"
@@ -76,8 +78,8 @@ test_that("study_backend rejects unknown strict setting", {
 
 
 test_that("fmri_study_dataset requires equal TR across datasets", {
-  b1 <- matrix_backend(matrix(1:10, nrow = 5, ncol = 2), spatial_dims = c(2,1,1))
-  b2 <- matrix_backend(matrix(11:20, nrow = 5, ncol = 2), spatial_dims = c(2,1,1))
+  b1 <- matrix_backend(matrix(1:10, nrow = 5, ncol = 2), spatial_dims = c(2, 1, 1))
+  b2 <- matrix_backend(matrix(11:20, nrow = 5, ncol = 2), spatial_dims = c(2, 1, 1))
   d1 <- fmri_dataset(b1, TR = 2, run_length = 5)
   d2 <- fmri_dataset(b2, TR = 1, run_length = 5)
   expect_error(

@@ -109,20 +109,21 @@ test_that("complete workflow with file-based backend", {
           # Create a proper S4 object mock that has all needed slots
           if (!methods::isClass("MockNIFTIHeader")) {
             setClass("MockNIFTIHeader", slots = c(
-              dims = "integer", 
-              pixdims = "numeric", 
-              spacing = "numeric", 
+              dims = "integer",
+              pixdims = "numeric",
+              spacing = "numeric",
               origin = "numeric",
               spatial_axes = "character"
             ))
             setMethod("dim", "MockNIFTIHeader", function(x) x@dims)
           }
-          new("MockNIFTIHeader", 
-              dims = c(10L, 10L, 10L, 50L),
-              pixdims = c(-1.0, 2.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0),
-              spacing = c(2.0, 2.0, 2.0),
-              origin = c(0.0, 0.0, 0.0),
-              spatial_axes = c("x", "y", "z"))
+          new("MockNIFTIHeader",
+            dims = c(10L, 10L, 10L, 50L),
+            pixdims = c(-1.0, 2.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0),
+            spacing = c(2.0, 2.0, 2.0),
+            origin = c(0.0, 0.0, 0.0),
+            spatial_axes = c("x", "y", "z")
+          )
         },
         read_vol = function(x) {
           # Return mock mask
@@ -148,8 +149,9 @@ test_that("complete workflow with file-based backend", {
         origin = function(x) c(0, 0, 0),
         NeuroSpace = function(dim, spacing, origin, axes = NULL) {
           # Create a simple mock NeuroSpace object
-          structure(list(dim = dim, spacing = spacing, origin = origin), 
-                   class = "NeuroSpace")
+          structure(list(dim = dim, spacing = spacing, origin = origin),
+            class = "NeuroSpace"
+          )
         },
         series = function(vec, indices) {
           # Return time series for selected voxels

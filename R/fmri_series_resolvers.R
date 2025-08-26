@@ -20,7 +20,7 @@ resolve_selector <- function(dataset, selector) {
   if (inherits(selector, "series_selector")) {
     return(resolve_indices(selector, dataset))
   }
-  
+
   # Legacy selector handling for backward compatibility
   if (is.null(selector)) {
     mask_vec <- backend_get_mask(dataset$backend)
@@ -31,18 +31,18 @@ resolve_selector <- function(dataset, selector) {
   if (is.matrix(selector) && ncol(selector) == 3) {
     dims <- backend_get_dims(dataset$backend)$spatial
     # Convert coordinates to linear indices in the full volume
-    full_vol_indices <- selector[,1] + (selector[,2] - 1) * dims[1] + (selector[,3] - 1) * dims[1] * dims[2]
-    
+    full_vol_indices <- selector[, 1] + (selector[, 2] - 1) * dims[1] + (selector[, 3] - 1) * dims[1] * dims[2]
+
     # Get the indices of voxels that are inside the mask
     mask_vec <- backend_get_mask(dataset$backend)
     mask_indices <- which(mask_vec)
-    
+
     # Map from full volume indices to masked data indices
     final_indices <- match(full_vol_indices, mask_indices)
-    
+
     # Remove any coordinates that fall outside the mask
     final_indices <- final_indices[!is.na(final_indices)]
-    
+
     return(as.integer(final_indices))
   }
 
@@ -112,4 +112,3 @@ all_timepoints <- function(dataset) {
   n_time <- backend_get_dims(dataset$backend)$time
   seq_len(n_time)
 }
-

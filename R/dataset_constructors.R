@@ -110,7 +110,7 @@ fmri_mem_dataset <- function(scans, mask, TR,
 #'
 #' @description
 #' `r lifecycle::badge("deprecated")`
-#' 
+#'
 #' This function is deprecated. Please use `latent_dataset()` instead,
 #' which provides a proper interface for latent space data.
 #'
@@ -149,7 +149,7 @@ fmri_latent_dataset <- function(latent_files, mask_source = NULL, TR,
     "latent_dataset()",
     details = "The new interface provides proper handling of latent space data."
   )
-  
+
   # Forward to new function
   latent_dataset(
     source = latent_files,
@@ -206,14 +206,14 @@ fmri_latent_dataset <- function(latent_files, mask_source = NULL, TR,
 #' # Create an fMRI dataset with a backend
 #' backend <- nifti_backend(c("scan1.nii", "scan2.nii"), mask_source = "mask.nii")
 #' dset <- fmri_dataset(backend, TR = 2, run_length = c(150, 150))
-#' 
+#'
 #' # Create a dummy dataset for testing (files don't need to exist)
 #' dset_dummy <- fmri_dataset(
 #'   scans = c("dummy1.nii", "dummy2.nii"),
-#'   mask = "dummy_mask.nii", 
+#'   mask = "dummy_mask.nii",
 #'   TR = 2,
 #'   run_length = c(100, 100),
-#'   dummy_mode = TRUE  # Enable dummy mode for testing
+#'   dummy_mode = TRUE # Enable dummy mode for testing
 #' )
 #' }
 fmri_dataset <- function(scans, mask = NULL, TR,
@@ -242,7 +242,7 @@ fmri_dataset <- function(scans, mask = NULL, TR,
     } else {
       file.path(base_path, mask)
     }
-    
+
     # For scan files, handle each one
     abs_scans <- fs::is_absolute_path(scans)
     scan_files <- character(length(scans))
@@ -263,7 +263,7 @@ fmri_dataset <- function(scans, mask = NULL, TR,
       dummy_mode = dummy_mode
     )
   }
-  
+
   # Store run_length in backend for dummy mode (must be before validation)
   if (inherits(backend, "nifti_backend") && isTRUE(backend$dummy_mode)) {
     backend$run_length <- run_length
@@ -366,8 +366,9 @@ fmri_h5_dataset <- function(h5_files, mask_source, TR,
 
   mask_file_path <- if (is.character(mask_source)) {
     ifelse(fs::is_absolute_path(mask_source),
-           mask_source,
-           file.path(base_path, mask_source))
+      mask_source,
+      file.path(base_path, mask_source)
+    )
   } else {
     mask_source
   }

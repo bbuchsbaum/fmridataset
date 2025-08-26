@@ -2,7 +2,7 @@
 #'
 #' @description
 #' This package enforces consistent mask representation across all components:
-#' 
+#'
 #' @details
 #' ## Backend Level (Internal)
 #' - `backend_get_mask()` always returns a **logical vector**
@@ -16,7 +16,7 @@
 #'   - For volumetric datasets: 3D array or NeuroVol object
 #'   - For matrix datasets: logical vector
 #'   - For latent datasets: logical vector (components, not voxels)
-#' 
+#'
 #' ## Conversion Helpers
 #' - `mask_to_logical()`: Convert any mask representation to logical vector
 #' - `mask_to_volume()`: Convert logical vector to 3D array given dimensions
@@ -56,8 +56,10 @@ mask_to_logical <- function(mask) {
 #' @keywords internal
 mask_to_volume <- function(mask_vec, dims) {
   if (length(mask_vec) != prod(dims)) {
-    stop(sprintf("Mask length (%d) doesn't match spatial dimensions (%s)",
-                 length(mask_vec), paste(dims, collapse = "x")))
+    stop(sprintf(
+      "Mask length (%d) doesn't match spatial dimensions (%s)",
+      length(mask_vec), paste(dims, collapse = "x")
+    ))
   }
   array(as.logical(mask_vec), dims)
 }

@@ -24,22 +24,23 @@
 #' \dontrun{
 #' # Generate golden test data
 #' generate_golden_test_data()
-#' 
+#'
 #' # Generate with custom seed
 #' generate_golden_test_data(seed = 123)
 #' }
 #'
 #' @export
-generate_golden_test_data <- function(output_dir = "tests/testthat/golden", 
-                                     seed = 42) {
+generate_golden_test_data <- function(output_dir = "tests/testthat/golden",
+                                      seed = 42) {
   # Ensure output directory exists
   if (!dir.exists(output_dir)) {
     dir.create(output_dir, recursive = TRUE)
   }
-  
+
   # Source the helper functions
-  helper_file <- system.file("tests", "testthat", "helper-golden.R", 
-                            package = "fmridataset")
+  helper_file <- system.file("tests", "testthat", "helper-golden.R",
+    package = "fmridataset"
+  )
   if (file.exists(helper_file)) {
     source(helper_file)
   } else {
@@ -51,18 +52,21 @@ generate_golden_test_data <- function(output_dir = "tests/testthat/golden",
       stop("Could not find helper-golden.R. Please ensure it exists in tests/testthat/")
     }
   }
-  
+
   # Set seed for reproducibility
   set.seed(seed)
-  
+
   # Generate all golden data
-  tryCatch({
-    generate_all_golden_data()
-    message("Golden test data successfully generated in: ", output_dir)
-    invisible(TRUE)
-  }, error = function(e) {
-    stop("Failed to generate golden test data: ", e$message)
-  })
+  tryCatch(
+    {
+      generate_all_golden_data()
+      message("Golden test data successfully generated in: ", output_dir)
+      invisible(TRUE)
+    },
+    error = function(e) {
+      stop("Failed to generate golden test data: ", e$message)
+    }
+  )
 }
 
 #' Update Golden Test Data
@@ -86,15 +90,15 @@ generate_golden_test_data <- function(output_dir = "tests/testthat/golden",
 #' \dontrun{
 #' # Update golden data (will prompt for confirmation)
 #' update_golden_test_data()
-#' 
+#'
 #' # Update without confirmation (use with caution!)
 #' update_golden_test_data(confirm = FALSE)
 #' }
 #'
 #' @export
 update_golden_test_data <- function(output_dir = "tests/testthat/golden",
-                                   seed = 42,
-                                   confirm = TRUE) {
+                                    seed = 42,
+                                    confirm = TRUE) {
   if (confirm) {
     response <- readline(
       "Are you sure you want to update golden test data? This will overwrite existing reference data. (yes/no): "
@@ -104,14 +108,14 @@ update_golden_test_data <- function(output_dir = "tests/testthat/golden",
       return(invisible(FALSE))
     }
   }
-  
+
   # Back up existing data
   if (dir.exists(output_dir)) {
     backup_dir <- paste0(output_dir, "_backup_", format(Sys.time(), "%Y%m%d_%H%M%S"))
     message("Backing up existing golden data to: ", backup_dir)
     file.copy(output_dir, backup_dir, recursive = TRUE)
   }
-  
+
   # Generate new golden data
   generate_golden_test_data(output_dir = output_dir, seed = seed)
 }
@@ -135,22 +139,22 @@ update_golden_test_data <- function(output_dir = "tests/testthat/golden",
 validate_golden_test_data <- function(output_dir = "tests/testthat/golden") {
   expected_files <- c(
     "reference_data.rds",
-    "matrix_dataset.rds", 
+    "matrix_dataset.rds",
     "fmri_series.rds",
     "sampling_frame.rds",
     "mock_neurvec.rds"
   )
-  
+
   file_paths <- file.path(output_dir, expected_files)
   exists <- file.exists(file_paths)
   names(exists) <- expected_files
-  
+
   if (all(exists)) {
     message("All golden test data files are present.")
   } else {
     missing <- expected_files[!exists]
     warning("Missing golden test data files: ", paste(missing, collapse = ", "))
   }
-  
+
   invisible(exists)
 }

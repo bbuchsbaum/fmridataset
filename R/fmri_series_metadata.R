@@ -23,8 +23,10 @@ build_temporal_info_lazy.fmri_dataset <- function(dataset, time_indices) {
 build_temporal_info_lazy.fmri_study_dataset <- function(dataset, time_indices) {
   run_lengths <- dataset$sampling_frame$blocklens
   run_ids <- fmrihrf::blockids(dataset$sampling_frame)
-  backend_times <- vapply(dataset$backend$backends,
-                          function(b) backend_get_dims(b)$time, numeric(1))
+  backend_times <- vapply(
+    dataset$backend$backends,
+    function(b) backend_get_dims(b)$time, numeric(1)
+  )
   subj_ids <- dataset$subject_ids
 
   run_subject <- character(length(run_lengths))

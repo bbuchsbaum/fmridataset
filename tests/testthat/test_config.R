@@ -38,58 +38,60 @@ test_that("read_fmri_config parses configuration files", {
 
 test_that("read_fmri_config handles path resolution correctly", {
   temp_dir <- tempdir()
-  
+
   # Create event file
   event_file <- file.path(temp_dir, "events.tsv")
   write.table(data.frame(onset = c(1, 2), duration = c(1, 1)),
-    event_file, row.names = FALSE, sep = "\t"
+    event_file,
+    row.names = FALSE, sep = "\t"
   )
-  
+
   # Test with relative event_table path
   cfg_file <- file.path(temp_dir, "config.dcf")
   cat(
     "scans: scan1.nii\n",
     "TR: 2\n",
-    "mask: mask.nii\n", 
+    "mask: mask.nii\n",
     "run_length: 10\n",
     "event_model: model\n",
-    "event_table: events.tsv\n",  # Relative path
+    "event_table: events.tsv\n", # Relative path
     "block_column: run\n",
     "baseline_model: hrf\n",
     file = cfg_file
   )
-  
+
   cfg <- read_fmri_config(cfg_file, base_path = temp_dir)
   expect_equal(cfg$base_path, temp_dir)
   expect_equal(nrow(cfg$design), 2)
-  
+
   # Test with absolute event_table path
   cfg_file2 <- file.path(temp_dir, "config2.dcf")
   cat(
     "scans: scan1.nii\n",
     "TR: 2\n",
     "mask: mask.nii\n",
-    "run_length: 10\n", 
+    "run_length: 10\n",
     "event_model: model\n",
-    paste0("event_table: ", event_file, "\n"),  # Absolute path
+    paste0("event_table: ", event_file, "\n"), # Absolute path
     "block_column: run\n",
     "baseline_model: hrf\n",
     file = cfg_file2
   )
-  
+
   cfg2 <- read_fmri_config(cfg_file2, base_path = temp_dir)
   expect_equal(nrow(cfg2$design), 2)
 })
 
 test_that("read_fmri_config sets default values correctly", {
   temp_dir <- tempdir()
-  
+
   # Create minimal event file
   event_file <- file.path(temp_dir, "events.tsv")
   write.table(data.frame(onset = 1, duration = 1),
-    event_file, row.names = FALSE, sep = "\t"
+    event_file,
+    row.names = FALSE, sep = "\t"
   )
-  
+
   # Test without base_path in config
   cfg_file <- file.path(temp_dir, "config.dcf")
   cat(
@@ -104,10 +106,10 @@ test_that("read_fmri_config sets default values correctly", {
     # No output_dir specified
     file = cfg_file
   )
-  
+
   cfg <- read_fmri_config(cfg_file, base_path = temp_dir)
-  expect_equal(cfg$output_dir, "stat_out")  # Default value
-  
+  expect_equal(cfg$output_dir, "stat_out") # Default value
+
   # Test without base_path parameter - will fail because events.tsv doesn't exist in current dir
   expect_error(
     read_fmri_config(cfg_file),
@@ -117,23 +119,23 @@ test_that("read_fmri_config sets default values correctly", {
 
 test_that("read_fmri_config validates required fields", {
   temp_dir <- tempdir()
-  
+
   # Test missing scans
   cfg_file <- file.path(temp_dir, "bad_config1.dcf")
   cat("TR: 2\n", file = cfg_file)
-  
+
   expect_error(read_fmri_config(cfg_file), "Missing required configuration fields")
-  
-  # Test missing TR  
+
+  # Test missing TR
   cfg_file2 <- file.path(temp_dir, "bad_config2.dcf")
   cat("scans: scan1.nii\n", file = cfg_file2)
-  
+
   expect_error(read_fmri_config(cfg_file2), "Missing required configuration fields")
 })
 
 test_that("read_fmri_config handles missing event table file", {
   temp_dir <- tempdir()
-  
+
   cfg_file <- file.path(temp_dir, "config.R")
   cat(
     "scans: scan1.nii\n",
@@ -141,24 +143,25 @@ test_that("read_fmri_config handles missing event table file", {
     "mask: mask.nii\n",
     "run_length: 10\n",
     "event_model: model\n",
-    "event_table: nonexistent.tsv\n",  # File doesn't exist
+    "event_table: nonexistent.tsv\n", # File doesn't exist
     "block_column: run\n",
     "baseline_model: hrf\n",
     file = cfg_file
   )
-  
+
   expect_error(read_fmri_config(cfg_file, base_path = temp_dir), "Event table file not found")
 })
 
 test_that("read_fmri_config handles optional fields correctly", {
   temp_dir <- tempdir()
-  
+
   # Create event file
   event_file <- file.path(temp_dir, "events.tsv")
   write.table(data.frame(onset = 1, duration = 1),
-    event_file, row.names = FALSE, sep = "\t"
+    event_file,
+    row.names = FALSE, sep = "\t"
   )
-  
+
   # Test with optional fields
   cfg_file <- file.path(temp_dir, "config.dcf")
   cat(
@@ -175,7 +178,7 @@ test_that("read_fmri_config handles optional fields correctly", {
     "nuisance: nuisance.txt\n",
     file = cfg_file
   )
-  
+
   cfg <- read_fmri_config(cfg_file, base_path = temp_dir)
   # Optional fields are preserved from the config file
   expect_equal(cfg$censor_file, "some_file.txt")
@@ -185,14 +188,14 @@ test_that("read_fmri_config handles optional fields correctly", {
 
 test_that("default_config creates proper environment", {
   cfg <- fmridataset:::default_config()
-  
+
   # Check it's an environment
   expect_true(is.list(cfg))
-  
+
   # Check default values
   expect_equal(cfg$cmd_flags, "")
   expect_equal(cfg$jobs, 1)
-  
+
   # Check we can modify it
   cfg$new_value <- "test"
   expect_equal(cfg$new_value, "test")
@@ -200,7 +203,7 @@ test_that("default_config creates proper environment", {
 
 test_that("read_fmri_config preserves tibble format for design", {
   temp_dir <- tempdir()
-  
+
   # Create event file with multiple columns
   event_file <- file.path(temp_dir, "events.tsv")
   events_df <- data.frame(
@@ -210,7 +213,7 @@ test_that("read_fmri_config preserves tibble format for design", {
     response = c(1, 0, 1)
   )
   write.table(events_df, event_file, row.names = FALSE, sep = "\t")
-  
+
   cfg_file <- file.path(temp_dir, "config.dcf")
   cat(
     "scans: scan1.nii\n",
@@ -223,9 +226,9 @@ test_that("read_fmri_config preserves tibble format for design", {
     "baseline_model: hrf\n",
     file = cfg_file
   )
-  
+
   cfg <- read_fmri_config(cfg_file, base_path = temp_dir)
-  
+
   # Check design is a tibble
   expect_s3_class(cfg$design, "tbl_df")
   expect_equal(nrow(cfg$design), 3)

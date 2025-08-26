@@ -90,4 +90,3 @@ samples.sampling_frame <- function(x, ...) {
   # Implement samples method directly since fmrihrf method is not exported
   1:sum(x$blocklens)
 }
-

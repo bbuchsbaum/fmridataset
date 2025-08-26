@@ -32,4 +32,3 @@ test_that("build_temporal_info_lazy.fmri_study_dataset includes subject mapping"
   expect_equal(info$run_id, c(1, 1, 2, 2))
   expect_equal(info$timepoint, 4:7)
 })
-

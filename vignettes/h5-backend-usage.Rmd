@@ -42,53 +42,54 @@ library(fmridataset)
 
 # Step 1: Simulate realistic fMRI data that would benefit from HDF5 storage
 set.seed(42)
-n_timepoints <- 400  # Long scanning session
-n_voxels <- 50000   # High-resolution data
-TR <- 1.5           # Fast acquisition
+n_timepoints <- 400 # Long scanning session
+n_voxels <- 50000 # High-resolution data
+TR <- 1.5 # Fast acquisition
 
 # Create synthetic fMRI data with realistic structure
 create_realistic_fmri <- function(n_timepoints, n_voxels) {
   # Base neural signal
-  base_signal <- matrix(rnorm(n_timepoints * n_voxels, mean = 1000, sd = 50), 
-                       nrow = n_timepoints, ncol = n_voxels)
-  
+  base_signal <- matrix(rnorm(n_timepoints * n_voxels, mean = 1000, sd = 50),
+    nrow = n_timepoints, ncol = n_voxels
+  )
+
   # Add task-related activation in specific regions
-  task_periods <- c(50:70, 150:170, 250:270, 350:370)  # Four task blocks
-  activation_regions <- 1:2000  # First 2000 voxels show activation
-  
+  task_periods <- c(50:70, 150:170, 250:270, 350:370) # Four task blocks
+  activation_regions <- 1:2000 # First 2000 voxels show activation
+
   # Simulate BOLD response with realistic timing
   for (period_start in c(50, 150, 250, 350)) {
     # BOLD response peaks ~6 seconds after stimulus
     peak_time <- period_start + round(6 / TR)
     response_window <- peak_time:(peak_time + round(10 / TR))
-    
+
     if (max(response_window) <= n_timepoints) {
-      base_signal[response_window, activation_regions] <- 
+      base_signal[response_window, activation_regions] <-
         base_signal[response_window, activation_regions] + 25
     }
   }
-  
+
   # Add physiological noise patterns
-  respiratory_freq <- 0.25  # Hz
-  cardiac_freq <- 1.2       # Hz
+  respiratory_freq <- 0.25 # Hz
+  cardiac_freq <- 1.2 # Hz
   time_vector <- (1:n_timepoints) * TR
-  
+
   respiratory_noise <- 15 * sin(2 * pi * respiratory_freq * time_vector)
   cardiac_noise <- 10 * sin(2 * pi * cardiac_freq * time_vector)
-  
+
   # Apply noise globally with some spatial variation
   for (t in 1:n_timepoints) {
     noise_factor <- runif(n_voxels, 0.5, 1.5)
-    base_signal[t, ] <- base_signal[t, ] + 
+    base_signal[t, ] <- base_signal[t, ] +
       noise_factor * (respiratory_noise[t] + cardiac_noise[t])
   }
-  
+
   return(base_signal)
 }
 
 # Generate example datasets with different characteristics
-fmri_data_highres <- create_realistic_fmri(400, 50000)  # High spatial resolution
-fmri_data_longrun <- create_realistic_fmri(800, 25000)  # Long temporal duration
+fmri_data_highres <- create_realistic_fmri(400, 50000) # High spatial resolution
+fmri_data_longrun <- create_realistic_fmri(800, 25000) # Long temporal duration
 
 cat("Created high-resolution dataset:", dim(fmri_data_highres), "\n")
 cat("Created long-duration dataset:", dim(fmri_data_longrun), "\n")
@@ -97,11 +98,11 @@ cat("Created long-duration dataset:", dim(fmri_data_longrun), "\n")
 # Note: This simulates the creation process and benefits
 simulate_h5_creation <- function(data_matrix, filename, compression_level = 6) {
   original_size_mb <- object.size(data_matrix) / 1024^2
-  
+
   # HDF5 compression typically achieves 2-4x reduction for fMRI data
   compression_ratio <- 3.2
   compressed_size_mb <- original_size_mb / compression_ratio
-  
+
   # Simulate file creation metadata
   h5_info <- list(
     filename = filename,
@@ -113,7 +114,7 @@ simulate_h5_creation <- function(data_matrix, filename, compression_level = 6) {
     data_type = "FLOAT32",
     chunk_size = c(min(50, nrow(data_matrix)), min(1000, ncol(data_matrix)))
   )
-  
+
   return(h5_info)
 }
 
@@ -122,12 +123,16 @@ h5_highres_info <- simulate_h5_creation(fmri_data_highres, "scan_highres.h5")
 h5_longrun_info <- simulate_h5_creation(fmri_data_longrun, "scan_longrun.h5")
 
 cat("\nHDF5 Storage Efficiency:\n")
-cat("High-res scan: ", h5_highres_info$original_size_mb, "MB ->", 
-    h5_highres_info$compressed_size_mb, "MB (", 
-    h5_highres_info$compression_ratio, "x compression)\n")
-cat("Long-run scan: ", h5_longrun_info$original_size_mb, "MB ->", 
-    h5_longrun_info$compressed_size_mb, "MB (", 
-    h5_longrun_info$compression_ratio, "x compression)\n")
+cat(
+  "High-res scan: ", h5_highres_info$original_size_mb, "MB ->",
+  h5_highres_info$compressed_size_mb, "MB (",
+  h5_highres_info$compression_ratio, "x compression)\n"
+)
+cat(
+  "Long-run scan: ", h5_longrun_info$original_size_mb, "MB ->",
+  h5_longrun_info$compressed_size_mb, "MB (",
+  h5_longrun_info$compression_ratio, "x compression)\n"
+)
 
 # Step 3: Create fmridataset with H5 backend (simulated interface)
 # In practice: h5_dataset <- fmri_h5_dataset(h5_files, mask, TR, run_length)
@@ -138,19 +143,19 @@ simulate_h5_dataset <- function(data_matrix, h5_info, TR, run_length) {
     TR = TR,
     run_length = run_length
   )
-  
+
   # Add H5-specific metadata
   dataset$h5_info <- h5_info
   dataset$storage_type <- "HDF5"
   dataset$lazy_loading <- TRUE
-  
+
   class(dataset) <- c("h5_dataset_simulation", class(dataset))
   return(dataset)
 }
 
 # Create example H5 datasets
 h5_dataset <- simulate_h5_dataset(
-  fmri_data_highres, 
+  fmri_data_highres,
   h5_highres_info,
   TR = 1.5,
   run_length = c(200, 200)
@@ -158,8 +163,8 @@ h5_dataset <- simulate_h5_dataset(
 
 # Add experimental events
 events <- data.frame(
-  onset = c(75, 225, 375, 525) * 1.5,  # Convert to seconds
-  duration = rep(30, 4),               # 30-second blocks
+  onset = c(75, 225, 375, 525) * 1.5, # Convert to seconds
+  duration = rep(30, 4), # 30-second blocks
   trial_type = rep(c("faces", "objects"), 2),
   run = c(1, 1, 2, 2)
 )
@@ -175,11 +180,11 @@ print(h5_dataset)
 # Expected output:
 # Created high-resolution dataset: 400 50000
 # Created long-duration dataset: 800 25000
-# 
+#
 # HDF5 Storage Efficiency:
 # High-res scan:  763.6 MB -> 238.6 MB ( 3.2 x compression)
 # Long-run scan:  763.6 MB -> 238.6 MB ( 3.2 x compression)
-# 
+#
 # H5 Dataset Summary:
 # fMRI Dataset (h5_dataset_simulation)
 # Data dimensions: 400 timepoints × 50000 voxels
@@ -196,35 +201,39 @@ Now let's demonstrate the performance advantages:
 # Demonstrate lazy loading and partial access patterns
 demonstrate_h5_performance <- function(dataset) {
   cat("HDF5 Performance Characteristics:\n\n")
-  
+
   # 1. Dataset creation (lazy loading)
   cat("1. Dataset Creation:\n")
   cat("   - Metadata loaded immediately\n")
   cat("   - Image data remains on disk\n")
   cat("   - Memory footprint: ~", round(object.size(dataset) / 1024, 1), "KB\n\n")
-  
+
   # 2. Partial data access simulation
   cat("2. Partial Data Access:\n")
-  subset_size <- 0.1  # 10% of data
+  subset_size <- 0.1 # 10% of data
   n_voxels_subset <- round(ncol(dataset$datamat) * subset_size)
-  
-  cat("   - Accessing", n_voxels_subset, "voxels (", 
-      round(subset_size * 100), "% of data)\n")
+
+  cat(
+    "   - Accessing", n_voxels_subset, "voxels (",
+    round(subset_size * 100), "% of data)\n"
+  )
   cat("   - HDF5 reads only requested chunks\n")
-  cat("   - I/O reduction: ~", round(1/subset_size), "x faster than full read\n\n")
-  
+  cat("   - I/O reduction: ~", round(1 / subset_size), "x faster than full read\n\n")
+
   # 3. Compression benefits
   cat("3. Storage Efficiency:\n")
   cat("   - Original size:", dataset$h5_info$original_size_mb, "MB\n")
-  cat("   - Compressed size:", dataset$h5_info$compressed_size_mb, "MB\n") 
-  cat("   - Space saved:", 
-      round((1 - 1/dataset$h5_info$compression_ratio) * 100), "%\n\n")
-  
+  cat("   - Compressed size:", dataset$h5_info$compressed_size_mb, "MB\n")
+  cat(
+    "   - Space saved:",
+    round((1 - 1 / dataset$h5_info$compression_ratio) * 100), "%\n\n"
+  )
+
   # 4. Network transfer benefits
   cat("4. Network Transfer:\n")
-  transfer_time_original <- dataset$h5_info$original_size_mb / 100  # Assume 100 MB/s
+  transfer_time_original <- dataset$h5_info$original_size_mb / 100 # Assume 100 MB/s
   transfer_time_compressed <- dataset$h5_info$compressed_size_mb / 100
-  
+
   cat("   - Original transfer time: ~", round(transfer_time_original, 1), "seconds\n")
   cat("   - Compressed transfer time: ~", round(transfer_time_compressed, 1), "seconds\n")
   cat("   - Time saved:", round(transfer_time_original - transfer_time_compressed, 1), "seconds\n")
@@ -244,27 +253,27 @@ cat("   - Transparent H5 operations behind familiar interface\n")
 ```{r performance-output, echo=FALSE}
 # Expected output:
 # HDF5 Performance Characteristics:
-# 
+#
 # 1. Dataset Creation:
 #    - Metadata loaded immediately
 #    - Image data remains on disk
 #    - Memory footprint: ~ 45.2 KB
-# 
+#
 # 2. Partial Data Access:
 #    - Accessing 5000 voxels ( 10 % of data)
 #    - HDF5 reads only requested chunks
 #    - I/O reduction: ~ 10 x faster than full read
-# 
+#
 # 3. Storage Efficiency:
 #    - Original size: 763.6 MB
 #    - Compressed size: 238.6 MB
 #    - Space saved: 69 %
-# 
+#
 # 4. Network Transfer:
 #    - Original transfer time: ~ 7.6 seconds
 #    - Compressed transfer time: ~ 2.4 seconds
 #    - Time saved: 5.2 seconds
-# 
+#
 # 5. Interface Compatibility:
 #    - Same methods work as other datasets:
 #      * get_TR(): 1.5 seconds
@@ -317,25 +326,25 @@ The most common scenario is converting existing NIfTI data to HDF5 format for im
 # Step 2: Convert NIfTI to HDF5 (example workflow)
 convert_nifti_to_h5 <- function(nifti_files, output_dir, compression = 6) {
   cat("Converting NIfTI files to HDF5 format:\n\n")
-  
+
   h5_files <- character(length(nifti_files))
   conversion_stats <- list()
-  
+
   for (i in seq_along(nifti_files)) {
     nifti_file <- nifti_files[i]
     h5_file <- file.path(output_dir, paste0("scan_", i, ".h5"))
-    
+
     cat("Converting:", basename(nifti_file), "->", basename(h5_file), "\n")
-    
+
     # In practice:
     # nvec <- neuroim2::read_vec(nifti_file)
-    # h5_result <- fmristore::as_h5(nvec, file = h5_file, 
+    # h5_result <- fmristore::as_h5(nvec, file = h5_file,
     #                               data_type = "FLOAT", compression = compression)
-    
+
     # Simulate conversion statistics
-    original_size <- 750  # MB (typical 4D fMRI file)
-    compressed_size <- original_size / (compression / 2)  # Rough compression estimate
-    
+    original_size <- 750 # MB (typical 4D fMRI file)
+    compressed_size <- original_size / (compression / 2) # Rough compression estimate
+
     stats <- list(
       original_file = nifti_file,
       h5_file = h5_file,
@@ -344,14 +353,14 @@ convert_nifti_to_h5 <- function(nifti_files, output_dir, compression = 6) {
       compression_ratio = round(original_size / compressed_size, 1),
       compression_level = compression
     )
-    
+
     conversion_stats[[i]] <- stats
     h5_files[i] <- h5_file
-    
+
     cat("  Size:", original_size, "MB ->", round(compressed_size, 1), "MB\n")
     cat("  Compression:", round(original_size / compressed_size, 1), "x\n\n")
   }
-  
+
   return(list(h5_files = h5_files, stats = conversion_stats))
 }
 
@@ -367,7 +376,7 @@ nifti_files <- c(
 # Simulate conversion results
 cat("Example conversion results:\n")
 cat("Run 1: 750 MB -> 125.0 MB (6.0x compression)\n")
-cat("Run 2: 750 MB -> 125.0 MB (6.0x compression)\n") 
+cat("Run 2: 750 MB -> 125.0 MB (6.0x compression)\n")
 cat("Run 3: 750 MB -> 125.0 MB (6.0x compression)\n")
 cat("Total space saved: 1875 MB (62.5% reduction)\n")
 ```
@@ -382,7 +391,7 @@ Different compression levels offer trade-offs between file size and access speed
 # Analyze compression trade-offs for different scenarios
 analyze_compression_strategies <- function() {
   cat("HDF5 Compression Strategy Guide:\n\n")
-  
+
   # Compression levels and their characteristics
   compression_levels <- data.frame(
     level = c(0, 1, 3, 6, 9),
@@ -392,32 +401,32 @@ analyze_compression_strategies <- function() {
     read_speed = c("Fastest", "Fast", "Medium", "Slower", "Slowest"),
     recommended_for = c(
       "Fast local storage, frequent write access",
-      "Network storage, moderate write frequency", 
+      "Network storage, moderate write frequency",
       "Cloud storage, balanced read/write",
       "Archive storage, infrequent writes",
       "Long-term archive, minimal access"
     )
   )
-  
+
   print(compression_levels)
-  
+
   cat("\nRecommendations by use case:\n\n")
-  
+
   cat("1. Active Analysis (frequent access):\n")
   cat("   - Compression level: 3-6\n")
   cat("   - Balance of size reduction and speed\n")
   cat("   - Good for datasets you'll analyze repeatedly\n\n")
-  
+
   cat("2. Archive Storage (infrequent access):\n")
   cat("   - Compression level: 6-9\n")
   cat("   - Maximize space savings\n")
   cat("   - Accept slower access for long-term storage\n\n")
-  
+
   cat("3. Network/Cloud Storage:\n")
-  cat("   - Compression level: 6+\n") 
+  cat("   - Compression level: 6+\n")
   cat("   - Minimize transfer times\n")
   cat("   - Compression savings outweigh slower access\n\n")
-  
+
   cat("4. High-Performance Computing:\n")
   cat("   - Compression level: 1-3\n")
   cat("   - Prioritize computational speed\n")
@@ -430,24 +439,28 @@ analyze_compression_strategies()
 demonstrate_compression_impact <- function(data_size_gb = 2.5) {
   cat("\nCompression Impact Analysis:\n")
   cat("Dataset size:", data_size_gb, "GB\n\n")
-  
+
   compression_scenarios <- data.frame(
     level = c(0, 3, 6, 9),
     ratio = c(1.0, 2.5, 3.2, 3.8),
     size_gb = round(data_size_gb / c(1.0, 2.5, 3.2, 3.8), 2),
     space_saved_gb = round(data_size_gb - (data_size_gb / c(1.0, 2.5, 3.2, 3.8)), 2),
-    transfer_time_min = round((data_size_gb / c(1.0, 2.5, 3.2, 3.8)) / (100/1024/60), 1) # 100 Mbps network
+    transfer_time_min = round((data_size_gb / c(1.0, 2.5, 3.2, 3.8)) / (100 / 1024 / 60), 1) # 100 Mbps network
   )
-  
+
   print(compression_scenarios)
-  
+
   cat("\nKey insights:\n")
   cat("- Level 6 provides excellent balance for most use cases\n")
-  cat("- Network transfer time reduced by", 
-      round(compression_scenarios$transfer_time_min[1] - compression_scenarios$transfer_time_min[3], 1), 
-      "minutes with level 6\n")
-  cat("- Storage space saved:", 
-      round(compression_scenarios$space_saved_gb[3], 1), "GB with level 6\n")
+  cat(
+    "- Network transfer time reduced by",
+    round(compression_scenarios$transfer_time_min[1] - compression_scenarios$transfer_time_min[3], 1),
+    "minutes with level 6\n"
+  )
+  cat(
+    "- Storage space saved:",
+    round(compression_scenarios$space_saved_gb[3], 1), "GB with level 6\n"
+  )
 }
 
 demonstrate_compression_impact()
@@ -461,7 +474,7 @@ demonstrate_compression_impact()
 # Create H5 datasets using the fmridataset interface
 create_h5_dataset_example <- function() {
   cat("Creating HDF5 datasets with fmridataset:\n\n")
-  
+
   # Method 1: Direct H5 dataset creation
   cat("Method 1: Direct creation from H5 files\n")
   cat("h5_dataset <- fmri_h5_dataset(\n")
@@ -470,7 +483,7 @@ create_h5_dataset_example <- function() {
   cat("  TR = 2.0,\n")
   cat("  run_length = c(180, 180, 180)\n")
   cat(")\n\n")
-  
+
   # Method 2: Custom H5 backend
   cat("Method 2: Custom H5 backend with advanced options\n")
   cat("h5_backend <- h5_backend(\n")
@@ -481,21 +494,21 @@ create_h5_dataset_example <- function() {
   cat("  preload = FALSE,                   # Lazy loading\n")
   cat("  cache_strategy = 'intelligent'     # Cache management\n")
   cat(")\n\n")
-  
+
   cat("h5_dataset <- fmri_dataset(\n")
   cat("  scans = h5_backend,\n")
   cat("  TR = 2.0,\n")
   cat("  run_length = c(200, 200),\n")
   cat("  event_table = experimental_events\n")
   cat(")\n\n")
-  
+
   # Method 3: Mixed backend scenarios
   cat("Method 3: Mixed backends (some H5, some NIfTI)\n")
   cat("mixed_scans <- list(\n")
   cat("  h5_backend(c('processed_run1.h5', 'processed_run2.h5')),\n")
   cat("  'raw_run3.nii.gz'  # Falls back to file backend\n")
   cat(")\n\n")
-  
+
   cat("mixed_dataset <- fmri_dataset(\n")
   cat("  scans = mixed_scans,\n")
   cat("  mask = 'brain_mask.nii',\n")
@@ -509,7 +522,7 @@ create_h5_dataset_example()
 # Demonstrate dataset configuration options
 show_h5_configuration_options <- function() {
   cat("\nH5 Backend Configuration Options:\n\n")
-  
+
   options_table <- data.frame(
     Parameter = c("preload", "cache_strategy", "compression", "chunk_size", "data_type"),
     Default = c("FALSE", "auto", "6", "auto", "FLOAT"),
@@ -528,20 +541,20 @@ show_h5_configuration_options <- function() {
       "Precision requirements vs. storage space"
     )
   )
-  
+
   print(options_table)
-  
+
   cat("\nConfiguration examples:\n\n")
-  
+
   cat("# Small dataset, frequent access\n")
   cat("h5_backend(files, preload = TRUE, cache_strategy = 'aggressive')\n\n")
-  
-  cat("# Large dataset, memory-constrained\n") 
+
+  cat("# Large dataset, memory-constrained\n")
   cat("h5_backend(files, preload = FALSE, cache_strategy = 'minimal')\n\n")
-  
+
   cat("# Archive dataset, maximum compression\n")
   cat("h5_backend(files, compression = 9, data_type = 'INT16')\n\n")
-  
+
   cat("# High-performance analysis\n")
   cat("h5_backend(files, compression = 1, chunk_size = c(50, 1000))\n")
 }
@@ -555,21 +568,21 @@ show_h5_configuration_options()
 # Demonstrate advanced HDF5 features available through fmridataset
 demonstrate_advanced_h5_features <- function() {
   cat("Advanced HDF5 Features in fmridataset:\n\n")
-  
+
   # Feature 1: Partial loading with spatial selection
   cat("1. Spatial Subsetting:\n")
   cat("# Load only specific brain regions\n")
   cat("roi_indices <- c(1:1000, 5000:6000)  # Two ROIs\n")
   cat("roi_data <- get_data_matrix(h5_dataset, voxel_indices = roi_indices)\n")
   cat("# HDF5 reads only requested voxels, not entire volume\n\n")
-  
+
   # Feature 2: Temporal windowing
   cat("2. Temporal Windowing:\n")
-  cat("# Load specific time windows\n") 
+  cat("# Load specific time windows\n")
   cat("time_window <- 50:150  # Timepoints 50-150\n")
   cat("windowed_data <- get_data_matrix(h5_dataset, timepoints = time_window)\n")
   cat("# Efficient for event-related analysis\n\n")
-  
+
   # Feature 3: Run-specific access
   cat("3. Run-Specific Operations:\n")
   cat("# Process individual runs without loading others\n")
@@ -578,21 +591,21 @@ demonstrate_advanced_h5_features <- function() {
   cat("  # Process run independently\n")
   cat("  run_result <- analyze_run(run_data)\n")
   cat("}\n\n")
-  
+
   # Feature 4: Intelligent chunking
   cat("4. Optimized Chunking:\n")
   cat("# HDF5-aware chunking respects file organization\n")
   cat("chunks <- data_chunks(h5_dataset, nchunks = 8, \n")
   cat("                     respect_h5_chunks = TRUE)\n")
   cat("# Minimizes disk seeks and optimizes I/O patterns\n\n")
-  
+
   # Feature 5: Metadata preservation
   cat("5. Rich Metadata Access:\n")
   cat("# Access H5-specific metadata\n")
   cat("h5_metadata <- get_h5_metadata(h5_dataset)\n")
   cat("# Includes acquisition parameters, processing history\n")
   cat("# Spatial transformations, quality metrics\n\n")
-  
+
   # Feature 6: Multi-resolution support
   cat("6. Multi-Resolution Data:\n")
   cat("# Some H5 files contain multiple resolutions\n")
@@ -606,12 +619,12 @@ demonstrate_advanced_h5_features()
 # Show performance comparison with traditional formats
 compare_h5_performance <- function() {
   cat("\nPerformance Comparison: H5 vs. Traditional Formats\n\n")
-  
+
   # Simulated performance metrics based on realistic scenarios
   performance_comparison <- data.frame(
     Operation = c(
       "Full dataset loading",
-      "Single run access", 
+      "Single run access",
       "ROI time series (1000 voxels)",
       "Temporal window (50 timepoints)",
       "Random voxel access",
@@ -622,9 +635,9 @@ compare_h5_performance <- function() {
     H5_compressed_sec = c(31.5, 14.1, 2.8, 9.7, 2.3, 18.1),
     H5_speedup = c("1.4x", "1.6x", "6.5x", "3.6x", "5.5x", "2.1x")
   )
-  
+
   print(performance_comparison)
-  
+
   cat("\nKey performance insights:\n")
   cat("- Partial data access shows dramatic speedups (2-6x)\n")
   cat("- Full dataset operations still benefit from optimized I/O\n")
@@ -647,7 +660,7 @@ Once you're comfortable with basic HDF5 usage, these advanced techniques help yo
 # Organize large studies with H5 storage
 demonstrate_study_organization <- function() {
   cat("Large-Scale Study Organization with HDF5:\n\n")
-  
+
   # Strategy 1: Individual H5 files per subject/session
   cat("Strategy 1: Per-Subject Organization\n")
   cat("study_structure/\n")
@@ -660,16 +673,16 @@ demonstrate_study_organization <- function() {
   cat("└── derivatives/\n")
   cat("    ├── group_mask.h5\n")
   cat("    └── template_space.h5\n\n")
-  
+
   # Strategy 2: Consolidated H5 files
   cat("Strategy 2: Consolidated Organization\n")
-  cat("study_data/\n") 
+  cat("study_data/\n")
   cat("├── resting_state_all_subjects.h5\n")
   cat("├── task_data_all_subjects.h5\n")
   cat("└── metadata/\n")
   cat("    ├── subject_info.csv\n")
   cat("    └── scan_parameters.json\n\n")
-  
+
   # Create example multi-subject dataset
   cat("Creating multi-subject H5 dataset:\n")
   cat("# Build subject file lists\n")
@@ -680,14 +693,14 @@ demonstrate_study_organization <- function() {
   cat("    mask = sprintf('%s/%s_brain_mask.h5', subj, subj)\n")
   cat("  )\n")
   cat("}\n\n")
-  
+
   cat("# Create study dataset\n")
   cat("study_dataset <- fmri_study_dataset_from_h5(\n")
   cat("  subject_files = subject_h5_files,\n")
   cat("  TR = 2.0,\n")
   cat("  run_length = c(180, 180, 180)\n")
   cat(")\n\n")
-  
+
   # Benefits of this organization
   cat("Benefits of H5 study organization:\n")
   cat("- Reduced file count (1 H5 vs. 3+ NIfTI per scan)\n")
@@ -702,10 +715,10 @@ demonstrate_study_organization()
 # Demonstrate parallel processing with H5 datasets
 show_parallel_h5_processing <- function() {
   cat("\nParallel Processing with H5 Datasets:\n\n")
-  
+
   cat("# H5 datasets enable efficient parallel processing\n")
   cat("library(parallel)\n\n")
-  
+
   cat("# Strategy 1: Subject-wise parallelization\n")
   cat("process_subjects_parallel <- function(study_dataset) {\n")
   cat("  subject_ids <- get_subject_ids(study_dataset)\n")
@@ -724,8 +737,8 @@ show_parallel_h5_processing <- function() {
   cat("  stopCluster(cl)\n")
   cat("  return(results)\n")
   cat("}\n\n")
-  
-  cat("# Strategy 2: Chunk-wise parallelization\n") 
+
+  cat("# Strategy 2: Chunk-wise parallelization\n")
   cat("process_chunks_parallel <- function(h5_dataset) {\n")
   cat("  # Create H5-optimized chunks\n")
   cat("  chunks <- data_chunks(h5_dataset, nchunks = 16,\n")
@@ -739,7 +752,7 @@ show_parallel_h5_processing <- function() {
   cat("  \n")
   cat("  return(combine_chunk_results(chunk_results))\n")
   cat("}\n\n")
-  
+
   cat("Key advantages for parallel processing:\n")
   cat("- H5 files handle concurrent access better than NIfTI\n")
   cat("- Reduced file system contention\n")
@@ -758,19 +771,19 @@ show_parallel_h5_processing()
 # Demonstrate H5 advantages for cloud computing
 demonstrate_cloud_h5_advantages <- function() {
   cat("HDF5 for Cloud Computing:\n\n")
-  
+
   # Cloud storage benefits
   cat("1. Cloud Storage Benefits:\n")
   cat("- Reduced object count (important for object storage costs)\n")
   cat("- Faster directory listings\n")
   cat("- Atomic file operations\n")
   cat("- Better compression = lower transfer costs\n\n")
-  
+
   # Example cloud workflow
   cat("2. Cloud Workflow Example:\n")
   cat("# Download compressed H5 files (faster than NIfTI)\n")
   cat("aws s3 sync s3://study-bucket/h5-data/ ./local-h5/\n\n")
-  
+
   cat("# Process with minimal local storage\n")
   cat("cloud_dataset <- fmri_h5_dataset(\n")
   cat("  h5_files = list.files('./local-h5', '*.h5', full.names = TRUE),\n")
@@ -778,20 +791,20 @@ demonstrate_cloud_h5_advantages <- function() {
   cat("  TR = 2.0,\n")
   cat("  preload = FALSE  # Keep memory usage minimal\n")
   cat(")\n\n")
-  
+
   cat("# Process in chunks to manage cloud instance memory\n")
   cat("for (chunk in data_chunks(cloud_dataset, nchunks = 20)) {\n")
   cat("  result <- process_chunk(chunk$data)\n")
   cat("  save_chunk_result(result, chunk$chunk_num)\n")
   cat("}\n\n")
-  
+
   # HPC integration
   cat("3. HPC Integration:\n")
   cat("- H5 works well with parallel file systems (Lustre, GPFS)\n")
   cat("- MPI-IO optimizations available\n")
   cat("- Reduced metadata operations = better scaling\n")
   cat("- Consistent performance across compute nodes\n\n")
-  
+
   # Container deployment
   cat("4. Container Deployment:\n")
   cat("# Dockerfile example\n")
@@ -806,7 +819,7 @@ demonstrate_cloud_h5_advantages()
 # Show performance monitoring for H5 operations
 demonstrate_h5_performance_monitoring <- function() {
   cat("\nH5 Performance Monitoring:\n\n")
-  
+
   cat("# Monitor H5 dataset performance\n")
   cat("monitor_h5_performance <- function(h5_dataset) {\n")
   cat("  # Check H5 file characteristics\n")
@@ -828,7 +841,7 @@ demonstrate_h5_performance_monitoring <- function() {
   cat("  print(mb)\n")
   cat("  return(mb)\n")
   cat("}\n\n")
-  
+
   cat("# Optimize H5 configuration based on usage patterns\n")
   cat("optimize_h5_config <- function(access_pattern) {\n")
   cat("  if (access_pattern == 'sequential_temporal') {\n")
@@ -839,10 +852,10 @@ demonstrate_h5_performance_monitoring <- function() {
   cat("    return(list(preload = TRUE, compression = 3))\n")
   cat("  }\n")
   cat("}\n\n")
-  
+
   cat("Usage patterns and optimal configurations:\n")
   cat("- Sequential temporal analysis: Large time chunks\n")
-  cat("- Spatial analysis (connectivity): Large spatial chunks\n") 
+  cat("- Spatial analysis (connectivity): Large spatial chunks\n")
   cat("- Repeated full access: Preload with moderate compression\n")
   cat("- Exploratory analysis: Aggressive caching, small chunks\n")
 }
@@ -858,7 +871,7 @@ demonstrate_h5_performance_monitoring()
 # Implement H5-specific quality assurance
 demonstrate_h5_quality_assurance <- function() {
   cat("HDF5 Quality Assurance and Validation:\n\n")
-  
+
   cat("# Comprehensive H5 dataset validation\n")
   cat("validate_h5_dataset <- function(h5_dataset) {\n")
   cat("  validation_results <- list()\n")
@@ -890,13 +903,13 @@ demonstrate_h5_quality_assurance <- function() {
   cat("  \n")
   cat("  return(validation_results)\n")
   cat("}\n\n")
-  
+
   # Quality metrics specific to H5
   cat("H5-Specific Quality Metrics:\n")
   quality_metrics <- data.frame(
     Metric = c(
       "File integrity",
-      "Compression efficiency", 
+      "Compression efficiency",
       "Chunk alignment",
       "Metadata consistency",
       "Access pattern optimization",
@@ -905,7 +918,7 @@ demonstrate_h5_quality_assurance <- function() {
     Description = c(
       "HDF5 internal structure validation",
       "Actual vs. expected compression ratios",
-      "Chunk size vs. typical access patterns", 
+      "Chunk size vs. typical access patterns",
       "Spatial/temporal metadata consistency",
       "Cache hit rates and I/O patterns",
       "File size vs. raw data size"
@@ -915,13 +928,13 @@ demonstrate_h5_quality_assurance <- function() {
       "2-4x compression",
       ">80% aligned access",
       "All metadata matches",
-      ">70% cache hit rate", 
+      ">70% cache hit rate",
       "<120% of raw size"
     )
   )
-  
+
   print(quality_metrics)
-  
+
   cat("\nAutomated quality monitoring:\n")
   cat("# Set up automated quality checks\n")
   cat("schedule_h5_quality_checks <- function(dataset_path) {\n")
@@ -938,7 +951,7 @@ demonstrate_h5_quality_assurance()
 # Show data migration and format conversion utilities
 demonstrate_h5_migration_tools <- function() {
   cat("\nH5 Migration and Conversion Tools:\n\n")
-  
+
   cat("# Batch convert NIfTI studies to H5\n")
   cat("batch_convert_study_to_h5 <- function(study_dir, output_dir) {\n")
   cat("  # Find all NIfTI files\n")
@@ -957,7 +970,7 @@ demonstrate_h5_migration_tools <- function() {
   cat("  # Generate conversion report\n")
   cat("  create_conversion_report(results, output_dir)\n")
   cat("}\n\n")
-  
+
   cat("# Validate converted data\n")
   cat("validate_conversion <- function(original_nifti, converted_h5) {\n")
   cat("  # Load both versions\n")
@@ -974,7 +987,7 @@ demonstrate_h5_migration_tools <- function() {
   cat("  # Should be near-perfect for lossless compression\n")
   cat("  return(list(correlation = correlation, max_diff = max_diff))\n")
   cat("}\n\n")
-  
+
   cat("Migration best practices:\n")
   cat("- Test conversion on subset first\n")
   cat("- Validate data integrity after conversion\n")
@@ -1003,22 +1016,22 @@ Here are practical guidelines for working effectively with HDF5 storage in fmrid
 # Guidelines for H5 storage planning
 provide_storage_planning_guidance <- function() {
   cat("HDF5 Storage Planning Guidelines:\n\n")
-  
+
   cat("1. Compression Strategy by Study Phase:\n")
   cat("   - Active analysis: Level 3-6 compression\n")
   cat("   - Archive storage: Level 6-9 compression\n")
   cat("   - Sharing/transfer: Level 6+ (balance size/speed)\n\n")
-  
+
   cat("2. File Organization Patterns:\n")
   cat("   - Small studies (<50 subjects): Per-subject H5 files\n")
   cat("   - Large studies (>100 subjects): Consolidated H5 by task\n")
   cat("   - Longitudinal studies: Session-based organization\n\n")
-  
+
   cat("3. Infrastructure Considerations:\n")
   cat("   - Local SSD: Any compression, optimize for speed\n")
   cat("   - Network storage: Higher compression, larger chunks\n")
   cat("   - Cloud storage: Maximum compression, object count critical\n\n")
-  
+
   cat("4. Access Pattern Optimization:\n")
   cat("   - Frequent ROI analysis: Spatial chunking\n")
   cat("   - Time series analysis: Temporal chunking\n")
@@ -1030,33 +1043,33 @@ provide_storage_planning_guidance()
 # Provide troubleshooting guidelines
 provide_h5_troubleshooting_guide <- function() {
   cat("\nH5 Troubleshooting Guide:\n\n")
-  
+
   cat("Common Issues and Solutions:\n\n")
-  
+
   cat("1. 'Cannot read H5 file' errors:\n")
   cat("   - Check file permissions and path accessibility\n")
   cat("   - Verify H5 file integrity with h5dump or h5ls\n")
   cat("   - Ensure fmristore package is installed\n")
   cat("   - Check for file corruption after network transfer\n\n")
-  
+
   cat("2. Slow H5 access performance:\n")
   cat("   - Check chunk alignment with access patterns\n")
   cat("   - Consider reducing compression level (3-6)\n")
   cat("   - Enable appropriate caching strategy\n")
   cat("   - Verify storage system performance\n\n")
-  
+
   cat("3. Memory issues with H5 datasets:\n")
   cat("   - Ensure preload=FALSE for large datasets\n")
   cat("   - Use smaller chunk sizes in data_chunks()\n")
   cat("   - Process data in run-wise chunks\n")
   cat("   - Monitor memory usage with pryr::mem_used()\n\n")
-  
+
   cat("4. H5 file compatibility issues:\n")
   cat("   - Check H5 file internal structure with h5ls\n")
   cat("   - Verify data_dataset and mask_dataset paths\n")
   cat("   - Ensure proper NeuroVec/fmristore format\n")
   cat("   - Test with h5_backend() directly\n\n")
-  
+
   cat("Diagnostic commands:\n")
   cat("# Check H5 file structure\n")
   cat("system('h5ls -r filename.h5')\n\n")
@@ -1078,7 +1091,7 @@ provide_h5_troubleshooting_guide()
 # Advanced performance optimization for H5 datasets
 demonstrate_h5_performance_optimization <- function() {
   cat("Advanced H5 Performance Optimization:\n\n")
-  
+
   cat("1. Memory Management Strategies:\n")
   cat("optimize_h5_memory <- function(h5_dataset, analysis_type) {\n")
   cat("  if (analysis_type == 'connectivity') {\n")
@@ -1106,7 +1119,7 @@ demonstrate_h5_performance_optimization <- function() {
   cat("  \n")
   cat("  return(configure_h5_backend(h5_dataset, config))\n")
   cat("}\n\n")
-  
+
   cat("2. I/O Pattern Optimization:\n")
   cat("# Optimize chunking for specific workflows\n")
   cat("optimize_chunking_for_workflow <- function(h5_dataset, workflow) {\n")
@@ -1126,7 +1139,7 @@ demonstrate_h5_performance_optimization <- function() {
   cat("  \n")
   cat("  return(chunks)\n")
   cat("}\n\n")
-  
+
   cat("3. Network and Storage Optimization:\n")
   cat("# Configure for different storage systems\n")
   cat("configure_for_storage_system <- function(storage_type) {\n")
@@ -1140,7 +1153,7 @@ demonstrate_h5_performance_optimization <- function() {
   cat("               minimize_requests = TRUE))\n")
   cat("  }\n")
   cat("}\n\n")
-  
+
   cat("4. Monitoring and Profiling:\n")
   cat("# Profile H5 dataset performance\n")
   cat("profile_h5_performance <- function(h5_dataset) {\n")
@@ -1166,7 +1179,7 @@ demonstrate_h5_performance_optimization()
 # Provide configuration templates for common scenarios
 provide_h5_configuration_templates <- function() {
   cat("\nH5 Configuration Templates:\n\n")
-  
+
   cat("# Template 1: High-performance local analysis\n")
   cat("local_analysis_config <- list(\n")
   cat("  compression = 3,           # Light compression for speed\n")
@@ -1175,7 +1188,7 @@ provide_h5_configuration_templates <- function() {
   cat("  chunk_size = c(50, 2000), # Balanced chunks\n")
   cat("  data_type = 'FLOAT'       # Standard precision\n")
   cat(")\n\n")
-  
+
   cat("# Template 2: Memory-constrained analysis\n")
   cat("memory_constrained_config <- list(\n")
   cat("  compression = 6,           # Good compression\n")
@@ -1184,7 +1197,7 @@ provide_h5_configuration_templates <- function() {
   cat("  chunk_size = c(25, 1000), # Smaller chunks\n")
   cat("  process_runwise = TRUE    # Process runs separately\n")
   cat(")\n\n")
-  
+
   cat("# Template 3: Archive/sharing storage\n")
   cat("archive_config <- list(\n")
   cat("  compression = 9,           # Maximum compression\n")
@@ -1193,7 +1206,7 @@ provide_h5_configuration_templates <- function() {
   cat("  chunk_size = c(100, 5000), # Large chunks for efficiency\n")
   cat("  include_metadata = TRUE   # Rich metadata for sharing\n")
   cat(")\n\n")
-  
+
   cat("# Template 4: Cloud/HPC deployment\n")
   cat("cloud_hpc_config <- list(\n")
   cat("  compression = 6,           # Balanced for network transfer\n")
@@ -1223,38 +1236,44 @@ When working with HDF5 datasets, certain issues are common and can be systematic
 # Diagnostic functions for H5 issues
 diagnose_h5_issues <- function(h5_file) {
   cat("Diagnosing H5 file issues for:", h5_file, "\n\n")
-  
+
   # Check basic file properties
   if (!file.exists(h5_file)) {
     cat("ERROR: File does not exist\n")
     return(FALSE)
   }
-  
+
   cat("File size:", round(file.size(h5_file) / 1024^2, 1), "MB\n")
   cat("File permissions:", file.access(h5_file, mode = 4), "(0 = readable)\n")
-  
+
   # Test H5 library access
-  tryCatch({
-    if (requireNamespace("hdf5r", quietly = TRUE)) {
-      h5file <- hdf5r::H5File$new(h5_file, mode = "r")
-      structure <- h5file$ls(recursive = TRUE)
-      h5file$close()
-      cat("H5 structure accessible: YES\n")
-      cat("Internal groups/datasets:", length(structure), "\n")
+  tryCatch(
+    {
+      if (requireNamespace("hdf5r", quietly = TRUE)) {
+        h5file <- hdf5r::H5File$new(h5_file, mode = "r")
+        structure <- h5file$ls(recursive = TRUE)
+        h5file$close()
+        cat("H5 structure accessible: YES\n")
+        cat("Internal groups/datasets:", length(structure), "\n")
+      }
+    },
+    error = function(e) {
+      cat("H5 structure accessible: NO\n")
+      cat("Error:", conditionMessage(e), "\n")
     }
-  }, error = function(e) {
-    cat("H5 structure accessible: NO\n")
-    cat("Error:", conditionMessage(e), "\n")
-  })
-  
+  )
+
   # Test with fmridataset
-  tryCatch({
-    test_dataset <- fmri_h5_dataset(h5_file, TR = 2.0, run_length = 100)
-    cat("fmridataset compatibility: YES\n")
-  }, error = function(e) {
-    cat("fmridataset compatibility: NO\n")
-    cat("Error:", conditionMessage(e), "\n")
-  })
+  tryCatch(
+    {
+      test_dataset <- fmri_h5_dataset(h5_file, TR = 2.0, run_length = 100)
+      cat("fmridataset compatibility: YES\n")
+    },
+    error = function(e) {
+      cat("fmridataset compatibility: NO\n")
+      cat("Error:", conditionMessage(e), "\n")
+    }
+  )
 }
 
 # diagnose_h5_issues("problematic_scan.h5")
@@ -1272,17 +1291,17 @@ diagnose_h5_issues <- function(h5_file) {
 # Performance troubleshooting for H5 datasets
 troubleshoot_h5_performance <- function(h5_dataset) {
   cat("H5 Performance Troubleshooting:\n\n")
-  
+
   # Check dataset configuration
   cat("1. Dataset Configuration:\n")
   cat("   Preload setting:", h5_dataset$backend$preload, "\n")
   cat("   Cache strategy:", h5_dataset$backend$cache_strategy %||% "default", "\n")
-  
+
   # Estimate memory usage
   dims <- dim(get_data_matrix(h5_dataset, run_id = 1))
-  estimated_size <- prod(dims) * 4 / 1024^2  # Assume 4 bytes per float
+  estimated_size <- prod(dims) * 4 / 1024^2 # Assume 4 bytes per float
   cat("   Estimated memory per run:", round(estimated_size, 1), "MB\n\n")
-  
+
   # Test access patterns
   cat("2. Access Pattern Performance:\n")
   if (requireNamespace("microbenchmark", quietly = TRUE)) {
@@ -1296,14 +1315,14 @@ troubleshoot_h5_performance <- function(h5_dataset) {
     )
     print(summary(mb))
   }
-  
+
   # Recommendations
   cat("\n3. Optimization Recommendations:\n")
   if (estimated_size > 500) {
     cat("   - Large dataset detected: Use chunked processing\n")
     cat("   - Consider preload=FALSE and smaller chunk sizes\n")
   }
-  
+
   if (h5_dataset$backend$preload) {
     cat("   - Preloading enabled: Good for repeated access\n")
   } else {

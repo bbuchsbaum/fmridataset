@@ -109,7 +109,9 @@ get_data_matrix.fmri_file_dataset <- function(x, ...) {
     missing = NULL,
     logfile = if (.get_cache_logging()) {
       file.path(tempdir(), "fmridataset_cache.log")
-    } else NULL
+    } else {
+      NULL
+    }
   )
 }
 
@@ -122,10 +124,10 @@ get_data_from_file <- memoise::memoise(function(x, ...) {
 }, cache = .data_cache)
 
 #' Clear fmridataset cache
-#' 
+#'
 #' Clears the internal cache used by fmridataset for memoized file operations.
 #' This can be useful to free memory or force re-reading of files.
-#' 
+#'
 #' @return NULL (invisibly)
 #' @export
 #' @examples
@@ -139,10 +141,10 @@ fmri_clear_cache <- function() {
 }
 
 #' Get cache information and statistics
-#' 
+#'
 #' Returns information about the current state of the fmridataset cache,
 #' including size, number of objects, hit/miss rates, and memory usage.
-#' 
+#'
 #' @return Named list with cache statistics
 #' @export
 #' @examples
@@ -153,17 +155,19 @@ fmri_clear_cache <- function() {
 #' }
 fmri_cache_info <- function() {
   info <- .data_cache$info()
-  
+
   # Get current cache statistics using available methods
   n_objects <- length(.data_cache$keys())
-  
+
   # Convert bytes to human-readable format
   format_bytes <- function(bytes) {
-    if (is.null(bytes) || is.na(bytes)) return("unknown")
-    
+    if (is.null(bytes) || is.na(bytes)) {
+      return("unknown")
+    }
+
     units <- c("B", "KB", "MB", "GB")
     size <- as.numeric(bytes)
-    
+
     for (i in seq_along(units)) {
       if (size < 1024 || i == length(units)) {
         return(sprintf("%.1f %s", size, units[i]))
@@ -171,7 +175,7 @@ fmri_cache_info <- function() {
       size <- size / 1024
     }
   }
-  
+
   # Estimate current size by summing cached objects
   current_size_estimate <- if (n_objects > 0) {
     keys <- .data_cache$keys()
@@ -186,26 +190,28 @@ fmri_cache_info <- function() {
   } else {
     0
   }
-  
+
   list(
     max_size = format_bytes(info$max_size),
     current_size = format_bytes(current_size_estimate),
     n_objects = n_objects,
     eviction_policy = info$evict,
-    cache_hit_rate = NULL,  # cachem doesn't provide hit/miss statistics
+    cache_hit_rate = NULL, # cachem doesn't provide hit/miss statistics
     total_hits = NULL,
     total_misses = NULL,
     utilization_pct = if (!is.null(info$max_size) && info$max_size > 0) {
       round(current_size_estimate / info$max_size * 100, 1)
-    } else NULL
+    } else {
+      NULL
+    }
   )
 }
 
 #' Resize the fmridataset cache
-#' 
+#'
 #' Changes the maximum size of the cache. This will immediately evict objects
 #' if the new size is smaller than the current cache contents.
-#' 
+#'
 #' @param size_mb Numeric cache size in megabytes
 #' @return NULL (invisibly)
 #' @export
@@ -213,7 +219,7 @@ fmri_cache_info <- function() {
 #' \dontrun{
 #' # Resize cache to 1GB
 #' fmri_cache_resize(1024)
-#' 
+#'
 #' # Check new size
 #' fmri_cache_info()
 #' }
@@ -221,10 +227,10 @@ fmri_cache_resize <- function(size_mb) {
   if (!is.numeric(size_mb) || length(size_mb) != 1 || size_mb <= 0) {
     stop("size_mb must be a positive number")
   }
-  
+
   warning("Cache resizing is not supported after package load. Please restart R session with the desired cache size option.")
   warning("Use: options(fmridataset.cache_max_mb = ", size_mb, ") before loading the package")
-  
+
   invisible(NULL)
 }
 

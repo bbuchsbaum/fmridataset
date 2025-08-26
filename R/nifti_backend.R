@@ -94,11 +94,11 @@ nifti_backend <- function(source, mask_source, preload = FALSE,
   backend$mask_vec <- NULL
   backend$dims <- NULL
   backend$metadata <- NULL
-  backend$run_length <- NULL  # Store run_length if provided for dummy mode
-  
+  backend$run_length <- NULL # Store run_length if provided for dummy mode
+
   # Initialize backend-specific cache for metadata and masks
   backend$cache <- cachem::cache_mem(
-    max_size = 64 * 1024^2,  # 64MB for backend metadata/masks
+    max_size = 64 * 1024^2, # 64MB for backend metadata/masks
     evict = "lru"
   )
 
@@ -126,24 +126,24 @@ backend_open.nifti_backend <- function(backend) {
         } else {
           1
         }
-        total_time <- 100L * n_files  # 100 timepoints per file
+        total_time <- 100L * n_files # 100 timepoints per file
       }
-      
+
       # Use standard fMRI dimensions
       backend$dims <- list(
-        spatial = c(64L, 64L, 30L),  # Standard spatial dimensions
+        spatial = c(64L, 64L, 30L), # Standard spatial dimensions
         time = total_time
       )
     }
-    
+
     # Set placeholder mask (all voxels included by default)
     if (is.null(backend$mask_vec)) {
       backend$mask_vec <- rep(TRUE, prod(backend$dims$spatial))
     }
-    
+
     return(backend)
   }
-  
+
   # Normal mode - existing behavior
   if (backend$preload && is.null(backend$data)) {
     # Load mask first
@@ -214,14 +214,14 @@ backend_get_dims.nifti_backend <- function(backend) {
   if (!is.null(backend$dims)) {
     return(backend$dims)
   }
-  
+
   # Handle dummy mode
   if (isTRUE(backend$dummy_mode)) {
     # Use run_length if provided, otherwise calculate from files
     if (!is.null(backend$run_length)) {
       total_time <- sum(backend$run_length)
     } else {
-      # Calculate number of files/timepoints  
+      # Calculate number of files/timepoints
       n_files <- if (is.character(backend$source)) {
         length(backend$source)
       } else if (is.list(backend$source)) {
@@ -229,11 +229,11 @@ backend_get_dims.nifti_backend <- function(backend) {
       } else {
         1
       }
-      total_time <- 100L * n_files  # 100 timepoints per file
+      total_time <- 100L * n_files # 100 timepoints per file
     }
-    
+
     backend$dims <- list(
-      spatial = c(64L, 64L, 30L),  # Standard spatial dimensions
+      spatial = c(64L, 64L, 30L), # Standard spatial dimensions
       time = total_time
     )
     return(backend$dims)
@@ -257,7 +257,7 @@ backend_get_dims.nifti_backend <- function(backend) {
           dim(header_info)
         }
         spatial_dims <- as.integer(header_dims[1:3])
-        
+
         # Sum time dimension across all files
         total_time <- if (length(backend$source) > 1) {
           sum(sapply(backend$source, function(f) {
@@ -310,7 +310,7 @@ backend_get_mask.nifti_backend <- function(backend) {
   if (!is.null(backend$mask_vec)) {
     return(backend$mask_vec)
   }
-  
+
   # Handle dummy mode
   if (isTRUE(backend$dummy_mode)) {
     dims <- backend_get_dims(backend)
@@ -371,22 +371,22 @@ backend_get_data.nifti_backend <- function(backend, rows = NULL, cols = NULL) {
     dims <- backend_get_dims(backend)
     mask_vec <- backend_get_mask(backend)
     n_voxels <- sum(mask_vec)
-    
+
     # Create empty data matrix
     data_matrix <- matrix(0, nrow = dims$time, ncol = n_voxels)
-    
+
     # Apply subsetting if requested
     if (!is.null(rows)) {
       data_matrix <- data_matrix[rows, , drop = FALSE]
     }
-    
+
     if (!is.null(cols)) {
       data_matrix <- data_matrix[, cols, drop = FALSE]
     }
-    
+
     return(data_matrix)
   }
-  
+
   # Get the full data first
   if (!is.null(backend$data)) {
     vec <- backend$data
@@ -447,19 +447,19 @@ backend_get_metadata.nifti_backend <- function(backend) {
   if (!is.null(backend$metadata)) {
     return(backend$metadata)
   }
-  
+
   # Handle dummy mode - return placeholder metadata
   if (isTRUE(backend$dummy_mode)) {
     dims <- backend_get_dims(backend)
-    
+
     # Create placeholder neurospace
     neurospace <- neuroim2::NeuroSpace(
       dim = dims$spatial,
-      spacing = c(3, 3, 3),  # Standard 3mm isotropic voxels
+      spacing = c(3, 3, 3), # Standard 3mm isotropic voxels
       origin = c(0, 0, 0)
       # axes will be set to default by NeuroSpace
     )
-    
+
     backend$metadata <- list(
       affine = neuroim2::trans(neurospace),
       voxel_dims = c(3, 3, 3),
@@ -467,7 +467,7 @@ backend_get_metadata.nifti_backend <- function(backend) {
       origin = c(0, 0, 0),
       dims = c(dims$spatial, dims$time)
     )
-    
+
     return(backend$metadata)
   }
 
@@ -485,7 +485,7 @@ backend_get_metadata.nifti_backend <- function(backend) {
         )
       }
     )
-    
+
     # Extract key metadata from header
     # Note: header_info is a NIFTIMetaInfo object
     # We need to construct a NeuroSpace object to get the transformation matrix
@@ -495,7 +495,7 @@ backend_get_metadata.nifti_backend <- function(backend) {
       origin = if (isS4(header_info)) header_info@origin else header_info$origin,
       axes = if (isS4(header_info)) header_info@spatial_axes else header_info$spatial_axes
     )
-    
+
     metadata <- list(
       affine = neuroim2::trans(neurospace),
       voxel_dims = if (isS4(header_info)) header_info@spacing else header_info$spacing,
@@ -509,12 +509,12 @@ backend_get_metadata.nifti_backend <- function(backend) {
         }
       } else {
         dim(header_info)
-      }  # Include full dimensions
+      } # Include full dimensions
     )
   } else {
     # In-memory objects
     vec <- if (is.list(backend$source)) backend$source[[1]] else backend$source
-    
+
     # Extract key metadata from in-memory object
     metadata <- list(
       affine = neuroim2::trans(vec),
