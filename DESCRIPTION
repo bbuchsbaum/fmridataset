@@ -52,5 +52,6 @@ VignetteBuilder: knitr
 URL: https://github.com/bbuchsbaum/fmridataset, https://bbuchsbaum.github.io/fmridataset/
 BugReports: https://github.com/bbuchsbaum/fmridataset/issues
 Remotes:
+    bbuchsbaum/fmrihrf,
     bbuchsbaum/fmristore,
     bbuchsbaum/bidser
