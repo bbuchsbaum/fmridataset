@@ -185,7 +185,7 @@ cat("Created", length(chunks), "chunks for processing\n")
 # Created 3 chunks for processing
 ```
 
-> **💡 Key Insight**: Once registered, the CSV backend works seamlessly with all existing fmridataset functionality. The same analysis code that works with NIfTI files now works with CSV files without any modifications.
+**Technical Note**: After registration, custom backends integrate with all fmridataset functionality. Analysis code written for one backend works identically with newly registered backends without modification.
 
 # Understanding the Backend Registry System
 
@@ -880,11 +880,26 @@ Composite backends enable sophisticated data integration scenarios.
 
 Here are practical guidelines learned from developing and maintaining production backends that will help you create robust, reliable extensions.
 
-> **⚠️ Performance Tip**: Always implement lazy loading in your backends. Loading data during backend creation can cause memory issues and slow dataset creation, especially for large files.
+## Performance Requirements
 
-> **🛡️ Best Practice**: Implement comprehensive input validation with clear error messages. Users should immediately understand what went wrong and how to fix it, rather than encountering mysterious failures later.
+**Lazy Loading Implementation**: Backends must defer data loading until explicitly requested through `backend_get_data()`. Loading data during backend creation causes unnecessary memory allocation and performance degradation, particularly for large datasets.
 
-> **⚡ Pro Tip**: Use the registry's introspection capabilities to check for backend availability before using specialized features. This makes your code more robust across different environments.
+## Error Handling Standards
+
+**Input Validation**: Implement comprehensive validation at backend creation with descriptive error messages that include:
+- The specific validation that failed
+- The expected format or range
+- Suggestions for correction
+
+## Registry Introspection
+
+**Capability Detection**: Query the registry for backend availability before invoking format-specific features:
+```r
+if (backend_registry$has_backend("csv")) {
+  # CSV-specific operations
+}
+```
+This pattern ensures code portability across environments with different backend configurations.
 
 ## Development Workflow
 

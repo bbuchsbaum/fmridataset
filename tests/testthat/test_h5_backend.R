@@ -208,28 +208,35 @@ test_that("h5_backend constructor validates inputs correctly", {
 test_that("h5_backend works with file paths", {
   skip_if_not_installed("fmristore")
   skip_if_not_installed("neuroim2")
+  skip_if_not_installed("withr")
   skip_if_not_installed("hdf5r")
 
-  # Create temporary H5 files for testing
-  temp_dir <- tempdir()
+  temp_dir <- withr::local_tempdir()
   h5_file1 <- file.path(temp_dir, "test_scan1.h5")
   h5_file2 <- file.path(temp_dir, "test_scan2.h5")
   mask_file <- file.path(temp_dir, "test_mask.h5")
 
-  # Create test H5 files using fmristore helpers (if available)
-  # This is a simplified test - in practice you'd create proper H5 files
-  skip("H5 file creation helpers not available for testing")
+  write_mock <- function(path, timepoints) {
+    arr <- array(rnorm(4 * 4 * 4 * timepoints), c(4, 4, 4, timepoints))
+    space <- neuroim2::NeuroSpace(c(4, 4, 4, timepoints))
+    vec <- neuroim2::NeuroVec(arr, space)
+    fmristore::write_vec(vec, path)
+  }
 
-  # If we had the files, the test would look like:
-  # backend <- h5_backend(
-  #   source = c(h5_file1, h5_file2),
-  #   mask_source = mask_file
-  # )
-  #
-  # expect_s3_class(backend, "h5_backend")
-  # expect_s3_class(backend, "storage_backend")
-  # expect_equal(backend$source, c(h5_file1, h5_file2))
-  # expect_equal(backend$mask_source, mask_file)
+  write_mock(h5_file1, 10)
+  write_mock(h5_file2, 12)
+  write_mock(mask_file, 1)
+
+  backend <- h5_backend(
+    source = c(h5_file1, h5_file2),
+    mask_source = mask_file,
+    preload = FALSE
+  )
+
+  expect_s3_class(backend, "h5_backend")
+  expect_s3_class(backend, "storage_backend")
+  expect_equal(backend$source, c(h5_file1, h5_file2))
+  expect_equal(backend$mask_source, mask_file)
 })
 
 test_that("h5_backend constructor sets parameters correctly", {
@@ -295,30 +302,30 @@ test_that("fmri_h5_dataset constructor works", {
 
   # Mock the h5_backend function to avoid file dependencies
   with_mocked_bindings(
-    h5_backend = function(...) {
-      structure(
-        list(
-          source = list(...)[["source"]],
-          mask_source = list(...)[["mask_source"]],
-          preload = FALSE
-        ),
-        class = c("h5_backend", "storage_backend")
-      )
-    },
-    validate_backend = function(backend) TRUE,
-    backend_open = function(backend) backend,
-    backend_get_dims = function(backend) list(spatial = c(10, 10, 5), time = 100),
+    file.exists = function(...) TRUE,
+    .package = "base",
     {
-      dataset <- fmri_h5_dataset(
-        h5_files = c("scan1.h5", "scan2.h5"),
-        mask_source = "mask.h5",
-        TR = 2,
-        run_length = c(50, 50)
-      )
+      with_mocked_bindings(
+        create_backend = function(type, ...) {
+          structure(list(type = type, ...), class = c("h5_backend", "storage_backend"))
+        },
+        validate_backend = function(backend) TRUE,
+        backend_open = function(backend) backend,
+        backend_get_dims = function(backend) list(spatial = c(10, 10, 5), time = 100),
+        .package = "fmridataset",
+        {
+          dataset <- fmri_h5_dataset(
+            h5_files = c("scan1.h5", "scan2.h5"),
+            mask_source = "mask.h5",
+            TR = 2,
+            run_length = c(50, 50)
+          )
 
-      expect_s3_class(dataset, "fmri_file_dataset")
-      expect_s3_class(dataset, "fmri_dataset")
-      expect_s3_class(dataset$backend, "h5_backend")
+          expect_s3_class(dataset, "fmri_file_dataset")
+          expect_s3_class(dataset, "fmri_dataset")
+          expect_s3_class(dataset$backend, "h5_backend")
+        }
+      )
     }
   )
 })
@@ -329,26 +336,34 @@ test_that("h5_backend handles base_path correctly", {
   # Mock the h5_backend function
   h5_backend_calls <- list()
   with_mocked_bindings(
-    h5_backend = function(...) {
-      h5_backend_calls <<- append(h5_backend_calls, list(list(...)))
-      structure(list(), class = c("h5_backend", "storage_backend"))
-    },
-    validate_backend = function(backend) TRUE,
-    backend_open = function(backend) backend,
-    backend_get_dims = function(backend) list(spatial = c(10, 10, 5), time = 50),
+    file.exists = function(...) TRUE,
+    .package = "base",
     {
-      dataset <- fmri_h5_dataset(
-        h5_files = "scan.h5",
-        mask_source = "mask.h5",
-        TR = 2,
-        run_length = 50,
-        base_path = "/path/to/data"
-      )
+      with_mocked_bindings(
+        create_backend = function(type, ...) {
+          h5_backend_calls <<- append(h5_backend_calls, list(list(type = type, ...)))
+          structure(list(), class = c("h5_backend", "storage_backend"))
+        },
+        validate_backend = function(backend) TRUE,
+        backend_open = function(backend) backend,
+        backend_get_dims = function(backend) list(spatial = c(10, 10, 5), time = 50),
+        .package = "fmridataset",
+        {
+          dataset <- fmri_h5_dataset(
+            h5_files = "scan.h5",
+            mask_source = "mask.h5",
+            TR = 2,
+            run_length = 50,
+            base_path = "/path/to/data"
+          )
 
-      # Check that base_path was properly prepended
-      call_args <- h5_backend_calls[[1]]
-      expect_equal(call_args$source, "/path/to/data/scan.h5")
-      expect_equal(call_args$mask_source, "/path/to/data/mask.h5")
+          # Check that base_path was properly prepended
+          call_args <- h5_backend_calls[[1]]
+          expect_equal(call_args$type, "h5")
+          expect_equal(call_args$source, "/path/to/data/scan.h5")
+          expect_equal(call_args$mask_source, "/path/to/data/mask.h5")
+        }
+      )
     }
   )
 })
@@ -358,25 +373,33 @@ test_that("h5_backend ignores base_path for absolute paths", {
 
   h5_backend_calls <- list()
   with_mocked_bindings(
-    h5_backend = function(...) {
-      h5_backend_calls <<- append(h5_backend_calls, list(list(...)))
-      structure(list(), class = c("h5_backend", "storage_backend"))
-    },
-    validate_backend = function(backend) TRUE,
-    backend_open = function(backend) backend,
-    backend_get_dims = function(backend) list(spatial = c(10, 10, 5), time = 50),
+    file.exists = function(...) TRUE,
+    .package = "base",
     {
-      dataset <- fmri_h5_dataset(
-        h5_files = "/abs/scan.h5",
-        mask_source = "/abs/mask.h5",
-        TR = 2,
-        run_length = 50,
-        base_path = "/ignored"
-      )
+      with_mocked_bindings(
+        create_backend = function(type, ...) {
+          h5_backend_calls <<- append(h5_backend_calls, list(list(type = type, ...)))
+          structure(list(), class = c("h5_backend", "storage_backend"))
+        },
+        validate_backend = function(backend) TRUE,
+        backend_open = function(backend) backend,
+        backend_get_dims = function(backend) list(spatial = c(10,10,5), time = 50),
+        .package = "fmridataset",
+        {
+          dataset <- fmri_h5_dataset(
+            h5_files = "/abs/scan.h5",
+            mask_source = "/abs/mask.h5",
+            TR = 2,
+            run_length = 50,
+            base_path = "/ignored"
+          )
 
-      call_args <- h5_backend_calls[[1]]
-      expect_equal(call_args$source, "/abs/scan.h5")
-      expect_equal(call_args$mask_source, "/abs/mask.h5")
+          call_args <- h5_backend_calls[[1]]
+          expect_equal(call_args$type, "h5")
+          expect_equal(call_args$source, "/abs/scan.h5")
+          expect_equal(call_args$mask_source, "/abs/mask.h5")
+        }
+      )
     }
   )
 })
@@ -478,31 +501,38 @@ test_that("fmri_h5_dataset validates parameters", {
 
   # Mock dependencies to focus on parameter validation
   with_mocked_bindings(
-    h5_backend = function(...) structure(list(), class = c("h5_backend", "storage_backend")),
-    validate_backend = function(backend) TRUE,
-    backend_open = function(backend) backend,
-    backend_get_dims = function(backend) list(spatial = c(10, 10, 5), time = 100),
+    file.exists = function(...) TRUE,
+    .package = "base",
     {
-      # Test that function validates TR
-      expect_error(
-        fmri_h5_dataset(
-          h5_files = "scan.h5",
-          mask_source = "mask.h5",
-          TR = -1, # Invalid TR
-          run_length = 100
-        ),
-        "TR values must be positive"
-      )
+      with_mocked_bindings(
+        h5_backend = function(...) structure(list(), class = c("h5_backend", "storage_backend")),
+        validate_backend = function(backend) TRUE,
+        backend_open = function(backend) backend,
+        backend_get_dims = function(backend) list(spatial = c(10, 10, 5), time = 100),
+        .package = "fmridataset",
+        {
+          # Test that function validates TR
+          expect_error(
+            fmri_h5_dataset(
+              h5_files = "scan.h5",
+              mask_source = "mask.h5",
+              TR = -1, # Invalid TR
+              run_length = 100
+            ),
+            "TR values must be positive"
+          )
 
-      # Test that valid parameters work
-      expect_silent({
-        result <- fmri_h5_dataset(
-          h5_files = c("scan1.h5", "scan2.h5"),
-          mask_source = "mask.h5",
-          TR = 2,
-          run_length = c(50, 50) # Total matches mock time dimension
-        )
-      })
+          # Test that valid parameters work
+          expect_silent({
+            result <- fmri_h5_dataset(
+              h5_files = c("scan1.h5", "scan2.h5"),
+              mask_source = "mask.h5",
+              TR = 2,
+              run_length = c(50, 50) # Total matches mock time dimension
+            )
+          })
+        }
+      )
     }
   )
 })

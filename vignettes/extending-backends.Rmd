@@ -1,5 +1,5 @@
 ---
-title: "Advanced Backend Development: Creating Sophisticated Storage Extensions"
+title: "Advanced Backend Development: Storage Extensions"
 author: "fmridataset Team"
 date: "`r Sys.Date()`"
 output: 
@@ -29,13 +29,13 @@ suppressPackageStartupMessages({
 
 # Motivation: Beyond Basic Backends
 
-Imagine you're working with a cutting-edge neuroimaging facility that generates data in a proprietary format with complex metadata, hierarchical organization, and advanced compression. The data includes not just fMRI time series but also physiological recordings, eye tracking data, and real-time quality metrics. Traditional file-based backends can't capture this rich structure, and you need sophisticated features like streaming access, intelligent caching, and integration with the facility's data management system.
+This scenario requires backends supporting proprietary formats with complex metadata, hierarchical organization, and advanced compression. Data includes fMRI time series, physiological recordings, eye tracking data, and quality metrics. Standard file-based backends cannot handle this structure, requiring streaming access, caching, and integration with data management systems.
 
-This vignette explores advanced backend development techniques that go beyond the basic contract to create production-quality, feature-rich storage extensions. We'll cover sophisticated caching strategies, streaming data access, advanced error handling, performance optimization, and integration patterns that enable backends to handle complex real-world scenarios while maintaining the elegant simplicity of the fmridataset interface.
+This vignette covers advanced backend development techniques extending the basic contract for production storage systems. Topics include caching strategies, streaming data access, error handling, performance optimization, and integration patterns for complex data sources.
 
-# A Real Example: Building a Production-Quality Backend
+# Quick Start: Production Backend Example
 
-Let's create a sophisticated backend that demonstrates advanced techniques by implementing support for a hypothetical neuroimaging format called NeuroStream that includes streaming capabilities, advanced metadata, and intelligent caching:
+This example implements a NeuroStream backend demonstrating advanced techniques including streaming capabilities, metadata handling, and caching:
 
 ```{r advanced-backend}
 library(fmridataset)
@@ -462,7 +462,7 @@ backend_close(ns_backend)
 # Final cache hit rate: 50.0%
 ```
 
-> **💡 Key Insight**: The advanced backend demonstrates sophisticated features like streaming protocols, intelligent caching, error recovery, and performance monitoring while maintaining the same simple interface as basic backends.
+**Implementation Summary**: Advanced backends implement streaming protocols, multi-tier caching, error recovery, and performance monitoring while maintaining interface compatibility with the standard backend contract.
 
 # Understanding Advanced Backend Patterns
 
@@ -1153,11 +1153,36 @@ Real-time capabilities enable backends to support modern adaptive neuroimaging p
 
 Here are advanced guidelines learned from developing production neuroimaging backends that handle enterprise-scale deployments and critical research applications.
 
-> **⚠️ Performance Tip**: Implement comprehensive performance monitoring from the start. Production backends should track metrics like cache hit rates, data transfer speeds, error rates, and resource utilization. This telemetry is essential for optimizing performance and diagnosing issues in production environments.
+## Performance Monitoring Requirements
 
-> **🛡️ Best Practice**: Design for failure from the beginning. Network connections fail, disks fill up, and services become unavailable. Backends should implement circuit breakers, graceful degradation, and comprehensive error recovery rather than treating failures as exceptional cases.
+**Required Metrics for Production Backends**:
+- Cache hit rates and eviction patterns
+- Data transfer throughput (MB/s)
+- Error rates by category
+- Resource utilization (memory, file handles, connections)
+- Latency percentiles (p50, p95, p99)
 
-> **⚡ Pro Tip**: Use profiling and benchmarking throughout development. The performance characteristics that matter most (memory usage, I/O throughput, cache efficiency) often differ significantly between development and production environments.
+Implement metric collection from initial development to establish baseline performance characteristics.
+
+## Failure Handling Architecture
+
+**Required Failure Mitigation Strategies**:
+- **Circuit breakers**: Prevent cascade failures by stopping requests to failing services
+- **Graceful degradation**: Provide partial functionality when components fail
+- **Retry logic**: Exponential backoff with jitter for transient failures
+- **Resource limits**: Prevent resource exhaustion through quotas and timeouts
+- **Error categorization**: Distinguish between recoverable and fatal errors
+
+## Performance Profiling Strategy
+
+**Continuous Profiling Requirements**:
+1. Profile memory allocation patterns using `profmem` or `profvis`
+2. Benchmark I/O operations with representative data sizes
+3. Measure cache efficiency under various access patterns
+4. Test performance degradation under resource constraints
+5. Compare development vs. production performance characteristics
+
+Document performance baselines and regression thresholds in backend specifications.
 
 ## Production Deployment Strategies
 

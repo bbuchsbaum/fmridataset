@@ -34,13 +34,18 @@ if (file.exists("../R/vignette_helpers.R")) {
 }
 ```
 
-# Motivation: Unified fMRI Data Access Made Simple
+# Motivation: Unified fMRI Data Access
 
-Imagine you're starting a new fMRI analysis project. Your data comes from multiple sources: some sessions are stored as individual NIfTI files, others are organized in BIDS format, and you have preprocessed matrices from collaborators using different tools. Each format requires different loading code, different memory management strategies, and different approaches to temporal structure. You spend days writing custom scripts just to get all your data into a consistent format before you can begin the actual analysis.
+fMRI analyses frequently involve heterogeneous data sources: NIfTI files from different scanners, BIDS-organized datasets, preprocessed matrices from various pipelines, and archived HDF5 files. Each format traditionally requires distinct loading procedures, memory management approaches, and temporal organization methods.
 
-The fmridataset package eliminates this complexity by providing a unified interface that works seamlessly across all these data sources. Whether your data comes from raw matrices, NIfTI files, HDF5 archives, or NeuroVec objects, you use the same functions and get the same behavior. The package handles the format-specific details behind the scenes while giving you consistent access to temporal structure, spatial masks, and efficient data loading patterns.
+The fmridataset package provides a unified interface layer that abstracts these format-specific differences. This abstraction enables:
 
-# A Real Example: From Data to Analysis in Minutes
+- **Consistent data access**: Identical functions work across all supported formats
+- **Format-specific optimization**: Each backend implements optimal loading strategies
+- **Temporal structure preservation**: Unified handling of runs, TR, and event timing
+- **Memory efficiency**: Lazy loading and chunking strategies adapt to data characteristics
+
+# Quick Start: Multi-Format Data Access
 
 Let's jump into a concrete example that shows how fmridataset simplifies a typical workflow. We'll create a dataset from a simple matrix, add temporal structure and experimental events, then demonstrate the unified interface for data access:
 
@@ -100,9 +105,9 @@ cat("\nEvent Table:\n")
 print(head(dataset$event_table, 4))
 ```
 
-> **💡 Key Insight**: The same interface works whether your data comes from matrices, NIfTI files, or any other supported format. You write your analysis code once and it works everywhere.
+**Technical Note**: This unified interface operates through backend abstraction. Each data format implements the same contract, enabling format-independent analysis code.
 
-# Understanding the Core Concepts
+# Core Concepts
 
 Now that we've seen the unified interface in action, let's understand the key abstractions that make fmridataset powerful and flexible.
 
@@ -110,25 +115,25 @@ Now that we've seen the unified interface in action, let's understand the key ab
 
 A dataset in fmridataset represents everything you need for fMRI analysis in one unified object. Think of it as a smart container that knows about your data's spatial organization (which voxels contain brain tissue), temporal structure (how timepoints are organized into runs), and experimental design (when events occurred). Unlike working with raw files or matrices, a dataset maintains all this metadata and provides consistent access methods regardless of how the underlying data is stored.
 
-This design means you can write analysis functions that work with any dataset type. Whether you're loading data from NIfTI files for a new analysis or working with preprocessed matrices from a colleague, your analysis code remains the same. The dataset handles the format-specific details and presents everything through the same interface.
+This abstraction enables analysis functions to operate on any dataset type through method dispatch. The dataset implementation handles format-specific I/O operations while maintaining consistent public methods across all backends.
 
 ## Storage Backends: Format Independence
 
 Behind every dataset is a storage backend that handles the actual data input/output operations. When you create a dataset from NIfTI files, fmridataset automatically creates a NIfTI backend that knows how to read those files efficiently. If you create a dataset from a matrix, it uses a matrix backend optimized for in-memory data.
 
-This separation between the user interface (dataset) and storage details (backend) is what enables format independence. You can switch between data sources without changing your analysis code. The backend system also enables powerful features like lazy loading, where file-based data isn't read until you actually need it, and chunked processing for datasets too large to fit in memory.
+This separation between interface and implementation enables format independence through the backend abstraction layer. Backend implementations provide lazy loading for file-based data sources and chunked processing for memory-constrained operations.
 
 ## Temporal Structure: More Than Just Time
 
 fMRI data has rich temporal structure that goes beyond simple time series. Runs may have different lengths, repetition times vary between studies, and experimental events need to be aligned with acquisition timing. The sampling frame abstraction captures all this temporal complexity in a unified model.
 
-A sampling frame knows about run boundaries, so you can easily extract data from specific runs or perform run-wise analyses. It understands timing relationships, so you can convert between time units (seconds) and sample indices (TRs). This temporal awareness enables sophisticated analyses while keeping the interface simple and intuitive.
+Sampling frames maintain run boundary information and time-to-sample index mappings. They provide methods for run-specific data extraction and temporal unit conversion between seconds and TR indices.
 
 ## Data Chunking: Efficiency Without Complexity
 
 Modern fMRI datasets can be enormous, often exceeding available memory. Traditional approaches require you to manually split data into pieces and carefully manage memory usage. fmridataset provides automatic data chunking that handles this complexity transparently.
 
-The chunking system divides your dataset into manageable pieces that can be processed independently. You specify how many chunks you want, and the system automatically determines optimal voxel groupings. Each chunk provides access to its subset of the data along with metadata about which voxels it contains. This enables memory-efficient processing of arbitrarily large datasets without requiring you to understand the underlying data organization.
+The chunking system partitions datasets into memory-manageable segments for independent processing. Chunk generation uses configurable parameters (`nchunks`, `runwise`) to determine voxel groupings, with each chunk containing data subsets and corresponding voxel metadata.
 
 # Deep Dive: Creating and Using Datasets
 
@@ -155,7 +160,7 @@ data <- get_data_matrix(dataset)
 cat("Matrix dataset dimensions:", dim(data), "\n")
 ```
 
-Matrix datasets store all data in memory, making them ideal for moderate-sized datasets where you need frequent, fast access to the full data.
+Matrix datasets store all data in memory, providing optimal access performance for datasets within available RAM limits.
 
 ### File Datasets: Lazy Loading for Large Data
 
@@ -182,7 +187,7 @@ print(dataset) # Shows metadata only
 # data <- get_data_matrix(dataset)  # This would trigger loading
 ```
 
-File datasets are memory-efficient and work with datasets of any size. They read only the voxels within your brain mask, further reducing memory usage.
+File datasets implement lazy loading and apply brain mask filtering to minimize memory requirements.
 
 ### Memory Datasets: Working with NeuroVec Objects
 
@@ -452,13 +457,9 @@ Choose chunk sizes based on available memory and processing requirements. More c
 
 Here are practical guidelines learned from real-world usage that will help you avoid common pitfalls and work more effectively.
 
-> **⚠️ Performance Tip**: For large file-based datasets, avoid calling `get_data_matrix()` without specifying `run_id` unless you need all runs. Loading partial data is much more memory-efficient.
-
-> **🛡️ Best Practice**: Always validate temporal structure by checking that `get_run_lengths()` matches your expected experimental design. Mismatched run lengths are a common source of analysis errors.
-
-> **⚡ Pro Tip**: Use `data_chunks(dataset, runwise = TRUE)` for analyses that need to respect run boundaries, such as detrending or motion correction.
-
 ## Memory Management
+
+**Important**: For file-based datasets exceeding available RAM, use partial loading by specifying `run_id` in `get_data_matrix()`. Loading complete datasets should only occur when all runs are required simultaneously for analysis.
 
 When working with large datasets, memory management becomes crucial:
 
@@ -487,6 +488,18 @@ analyze_large_dataset <- function(dataset) {
 ```
 
 Monitor memory usage and adjust chunk sizes based on your system's capabilities.
+
+## Data Validation
+
+**Required Check**: Validate temporal structure using `get_run_lengths()` to ensure alignment with experimental design. Run length mismatches indicate data organization errors that will propagate through subsequent analyses.
+
+## Chunking Configuration
+
+**Run-Boundary Operations**: Configure `data_chunks(dataset, runwise = TRUE)` for analyses requiring run boundary preservation, including:
+- Temporal detrending
+- Motion parameter regression
+- Run-level normalization
+- Temporal filtering
 
 ## Error Prevention
 

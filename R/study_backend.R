@@ -16,7 +16,7 @@ study_backend <- function(backends, subject_ids = NULL,
     )
   }
 
-  # Coerce fmri_dataset objects to their backends
+  # Coerce fmri_dataset objects to their backends  
   backends <- lapply(backends, function(b) {
     if (!inherits(b, "storage_backend")) {
       if (inherits(b, "matrix_dataset") && !is.null(b$datamat)) {
@@ -34,7 +34,7 @@ study_backend <- function(backends, subject_ids = NULL,
       b
     }
   })
-
+  
   lapply(backends, function(b) {
     if (!inherits(b, "storage_backend")) {
       stop_fmridataset(
@@ -149,18 +149,13 @@ backend_get_mask.study_backend <- function(backend) {
 #' @method backend_get_data study_backend
 #' @export
 backend_get_data.study_backend <- function(backend, rows = NULL, cols = NULL) {
-  # Use the lazy DelayedArray approach
-  da <- as_delayed_array(backend)
-
-  # Subset if needed
-  if (!is.null(rows) || !is.null(cols)) {
-    # Convert NULL to full range
-    if (is.null(rows)) rows <- seq_len(nrow(da))
-    if (is.null(cols)) cols <- seq_len(ncol(da))
-
-    # Extract only what's needed
-    da[rows, cols, drop = FALSE]
-  } else {
-    da
+  if (is.null(rows) && is.null(cols)) {
+    return(as_delayed_array(backend))
   }
+
+  seed <- study_backend_seed(backend$backends, backend$subject_ids)
+  if (is.null(rows)) rows <- seq_len(seed@dims[1])
+  if (is.null(cols)) cols <- seq_len(seed@dims[2])
+
+  DelayedArray::extract_array(seed, list(rows, cols))
 }

@@ -29,6 +29,10 @@ test_that("can construct an fmri_dataset", {
     backend_get_dims.nifti_backend = function(backend) {
       list(spatial = c(10, 1, 1), time = 300) # Match the run_length total
     },
+    backend_get_mask.nifti_backend = function(backend) {
+      rep(TRUE, 10)
+    },
+    validate_backend = function(backend) TRUE,
     .package = "fmridataset",
     {
       dset <- fmri_dataset(

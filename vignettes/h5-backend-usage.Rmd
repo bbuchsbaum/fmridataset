@@ -31,11 +31,11 @@ suppressPackageStartupMessages({
 
 Imagine you're managing a longitudinal neuroimaging study with 200 participants, each scanned at 4 time points with 6 functional runs per session. Your dataset contains nearly 5,000 individual fMRI scans, each requiring 2-4 GB of storage in standard NIfTI format. Traditional file-based approaches quickly become unwieldy: directory structures become complex, file access is slow across networks, and loading data requires reading entire volumes even when you only need specific voxels or time windows.
 
-The fmridataset HDF5 backend transforms this storage nightmare into an elegant, high-performance solution. Built on the industry-standard HDF5 format, it provides efficient compression, lightning-fast partial data access, and rich metadata storage in a single, self-contained file per scan. Whether you're working with massive studies on high-performance clusters or optimizing storage for cloud-based analyses, the HDF5 backend offers the performance and efficiency needed for modern large-scale neuroimaging research.
+The fmridataset HDF5 backend addresses these storage requirements through the HDF5 format's compression capabilities, partial data access methods, and integrated metadata storage. HDF5 files provide measurable performance improvements for large-scale studies through optimized I/O operations and reduced network transfer requirements.
 
-# A Real Example: Building High-Performance Storage
+# Quick Start: HDF5 Storage Implementation
 
-Let's dive into a concrete example that demonstrates the power of HDF5 storage by creating an optimized dataset and showing its superior performance characteristics:
+This example demonstrates HDF5 storage implementation and quantifies performance characteristics:
 
 ```{r h5-example}
 library(fmridataset)
@@ -282,27 +282,27 @@ cat("   - Transparent H5 operations behind familiar interface\n")
 #    - Transparent H5 operations behind familiar interface
 ```
 
-> **💡 Key Insight**: HDF5 storage provides dramatic performance improvements for large datasets while maintaining complete compatibility with the familiar fmridataset interface. You get enterprise-grade storage capabilities without changing your analysis code.
+**Technical Summary**: HDF5 storage provides measurable performance improvements for datasets exceeding 1GB through compression and selective I/O. The backend maintains API compatibility with the standard fmridataset interface, requiring no changes to analysis code.
 
-# Understanding HDF5 Architecture
+# Core Concepts
 
-The HDF5 backend in fmridataset leverages the powerful features of the HDF5 format while integrating seamlessly with the package's unified interface. Understanding this architecture helps you optimize performance and troubleshoot issues.
+The HDF5 backend implements HDF5 format features through the fmridataset unified interface. This architecture enables performance optimization and debugging for large-scale datasets.
 
-## The HDF5 Format: Scientific Data Storage Done Right
+## HDF5 Format Specifications
 
-HDF5 (Hierarchical Data Format version 5) is a mature, cross-platform format designed specifically for scientific computing. Unlike simple binary formats, HDF5 provides a hierarchical structure similar to a file system, where datasets and metadata are organized in groups and can be accessed independently. This structure is perfect for neuroimaging data, which inherently has complex organization including spatial coordinates, temporal structure, and experimental metadata.
+HDF5 (Hierarchical Data Format version 5) is a mature, cross-platform format designed specifically for scientific computing. Unlike simple binary formats, HDF5 provides a hierarchical structure similar to a file system, where datasets and metadata are organized in groups and can be accessed independently. This hierarchical organization supports neuroimaging data requirements including spatial coordinates, temporal structure, and experimental metadata.
 
 The format supports advanced features crucial for large-scale neuroimaging: chunked storage enables efficient partial reads, built-in compression reduces storage requirements, and unlimited metadata storage preserves all acquisition and processing details. HDF5 also provides data integrity checking, cross-platform compatibility, and future-proof format stability backed by decades of development in scientific computing.
 
 ## Integration with fmristore
 
-The fmridataset H5 backend builds on the fmristore package, which provides neuroimaging-specific extensions to HDF5. This integration creates a seamless bridge between the general-purpose HDF5 format and the specialized needs of fMRI data analysis. fmristore handles the complex details of storing spatial transformations, handling different data types, and maintaining compatibility with existing neuroimaging tools.
+The fmridataset H5 backend builds on the fmristore package, which provides neuroimaging-specific extensions to HDF5. This integration provides an interface between the HDF5 format and fMRI data analysis requirements. fmristore implements spatial transformation storage, data type handling, and neuroimaging tool compatibility.
 
-This architectural choice means you get the full power of HDF5 while working with familiar neuroimaging abstractions. Spatial information is preserved exactly as in NIfTI files, temporal structure is captured explicitly, and all the metadata you rely on for analysis remains accessible through standard interfaces.
+This architecture provides HDF5 capabilities through neuroimaging abstractions. Spatial information preservation maintains NIfTI compatibility, temporal structure is stored explicitly, and metadata access follows standard interfaces.
 
 ## Memory Management and Lazy Loading
 
-The H5 backend implements sophisticated lazy loading strategies that fundamentally change how you can work with large datasets. When you create an H5 dataset, only metadata is read from disk. The actual imaging data remains in the HDF5 file until you explicitly request it through methods like `get_data_matrix()` or `data_chunks()`.
+The H5 backend implements lazy loading strategies to manage large datasets efficiently. When you create an H5 dataset, only metadata is read from disk. The actual imaging data remains in the HDF5 file until you explicitly request it through methods like `get_data_matrix()` or `data_chunks()`.
 
 This lazy approach enables working with datasets larger than available memory. You can create datasets representing terabytes of data on systems with modest RAM, then process the data in chunks or access only the portions needed for specific analyses. The system automatically manages data loading and can implement intelligent caching strategies to optimize performance for repeated access patterns.
 
@@ -1004,11 +1004,31 @@ demonstrate_h5_migration_tools()
 
 Here are practical guidelines for working effectively with HDF5 storage in fmridataset, based on real-world experience with large neuroimaging studies.
 
-> **⚠️ Performance Tip**: Choose compression levels based on your access patterns. Use level 6 for balanced performance, level 3 for frequent access, and level 9 for long-term storage. The compression benefits compound for large studies.
+## Compression Configuration
 
-> **🛡️ Best Practice**: Always validate H5 file integrity after creation or transfer. Use `validate_h5_dataset()` to check for corruption, especially after network transfers or storage migrations.
+**Compression Level Selection**:
+- **Level 3**: Frequent data access, active analysis phase
+- **Level 6**: Balanced performance for standard workflows
+- **Level 9**: Maximum compression for archival storage
 
-> **⚡ Pro Tip**: Configure chunk sizes based on your typical access patterns. Temporal analyses benefit from larger time chunks, while spatial analyses work better with larger voxel chunks.
+Compression ratios typically range from 2-4x for fMRI data, depending on preprocessing status and data characteristics.
+
+## Data Integrity Validation
+
+**Required Validation Steps**:
+1. Execute `validate_h5_dataset()` after file creation
+2. Verify checksums after network transfers
+3. Validate structure after storage migrations
+4. Test partial data access before full analysis
+
+## Chunk Size Optimization
+
+**Access Pattern Configuration**:
+- **Temporal analyses**: Configure larger time dimension chunks (e.g., 50-100 timepoints)
+- **Spatial analyses**: Configure larger spatial chunks (e.g., 10000+ voxels)
+- **Mixed access**: Use balanced chunks (e.g., 20 timepoints × 5000 voxels)
+
+Optimal chunk size depends on available memory and typical query patterns.
 
 ## Storage Planning Guidelines
 

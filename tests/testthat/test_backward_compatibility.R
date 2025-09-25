@@ -145,27 +145,36 @@ test_that("fmri_mem_dataset continues to work", {
 })
 
 test_that("latent_dataset continues to work", {
-  skip_if(
-    !requireNamespace("fmristore", quietly = TRUE),
-    "fmristore not available"
+  if (!methods::isClass("MockLatentNeuroVec")) {
+    methods::setClass(
+      "MockLatentNeuroVec",
+      slots = c(basis = "matrix", loadings = "matrix", space = "numeric", offset = "numeric")
+    )
+  }
+
+  basis <- matrix(rnorm(40), nrow = 10, ncol = 4)
+  loadings <- matrix(rnorm(400), nrow = 100, ncol = 4)
+  space <- c(4, 5, 5, 10)
+  mock_lvec <- methods::new(
+    "MockLatentNeuroVec",
+    basis = basis,
+    loadings = loadings,
+    space = space,
+    offset = numeric(0)
   )
 
-  # Create mock latent data
-  basis <- matrix(rnorm(100), nrow = 10, ncol = 10)
-  loadings <- matrix(rnorm(1000), nrow = 100, ncol = 10)
+  with_mocked_bindings(
+    requireNamespace = function(package, quietly = TRUE) TRUE,
+    .package = "base",
+    {
+      dset <- latent_dataset(list(mock_lvec), TR = 2, run_length = 10)
+      expect_s3_class(dset, "latent_dataset")
+      expect_equal(n_runs(dset), 1)
 
-  # Create mock LatentNeuroVec
-  mock_lvec <- structure(
-    list(
-      basis = basis,
-      loadings = loadings,
-      mask = rep(TRUE, 100)
-    ),
-    class = "LatentNeuroVec"
+      scores <- get_latent_scores(dset)
+      expect_equal(dim(scores), c(10, 4))
+    }
   )
-
-  # Skip this test as it requires fmristore and complex mocking
-  skip("Latent dataset requires fmristore package")
 })
 
 test_that("all dataset types work with data_chunks", {

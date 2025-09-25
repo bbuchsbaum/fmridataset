@@ -32,7 +32,7 @@ print.fmri_dataset <- function(x, full = FALSE, ...) {
   # Basic dimensions
   cat("\n** Dimensions:\n")
   cat("  - Timepoints:", sum(x$sampling_frame$blocklens), "\n")
-  cat("  - Runs:", x$nruns, if (x$nruns > 10) " runs" else "", "\n")
+  cat("  - Runs:", x$nruns, if(x$nruns > 10) " runs" else "", "\n")
 
   # Data source info
   print_data_source_info(x, full = full)
@@ -48,15 +48,13 @@ print.fmri_dataset <- function(x, full = FALSE, ...) {
   # Sampling frame info
   cat("\n** Temporal Structure:\n")
   # Handle TR being a vector - use first value
-  tr_value <- if (length(x$sampling_frame$TR) > 1) x$sampling_frame$TR[1] else x$sampling_frame$TR
-  cat("  - TR: ", tr_value, " seconds\n", sep = "")
+  tr_value <- if(length(x$sampling_frame$TR) > 1) x$sampling_frame$TR[1] else x$sampling_frame$TR
+  cat("  - TR: ", tr_value, " seconds\n", sep="")
   # Handle long run lengths
   run_lens <- x$sampling_frame$blocklens
   if (length(run_lens) > 10) {
-    run_str <- paste0(
-      paste(head(run_lens, 5), collapse = ", "),
-      ", ... (", length(run_lens), " runs total)"
-    )
+    run_str <- paste0(paste(head(run_lens, 5), collapse = ", "), 
+                      ", ... (", length(run_lens), " runs total)")
   } else {
     run_str <- paste(run_lens, collapse = ", ")
   }
@@ -100,7 +98,9 @@ summary.fmri_dataset <- function(object, ...) {
 
   # Sampling frame info
   cat("\n** Temporal Structure:\n")
-  cat("  - TR: ", object$sampling_frame$TR, " seconds\n", sep = "")
+  tr_values <- object$sampling_frame$TR
+  tr_value <- if (length(tr_values) > 1) tr_values[1] else tr_values
+  cat("  - TR: ", tr_value, " seconds\n", sep = "")
   cat("  - Run lengths:", paste(object$sampling_frame$blocklens, collapse = ", "), "\n")
 
   # Event table summary
@@ -108,7 +108,7 @@ summary.fmri_dataset <- function(object, ...) {
   if (!is.null(object$event_table) && !is.null(nrow(object$event_table)) && nrow(object$event_table) > 0) {
     cat("  - Total events:", nrow(object$event_table), "\n")
     cat("  - Variables:", paste(names(object$event_table), collapse = ", "), "\n")
-
+    
     # Summary by trial type if available
     if ("trial_type" %in% names(object$event_table)) {
       tt_summary <- table(object$event_table$trial_type)
@@ -136,7 +136,7 @@ summary.fmri_dataset <- function(object, ...) {
 #' @rdname print
 print.chunkiter <- function(x, ...) {
   cat("Chunk Iterator\n")
-  cat("  nchunks: ", x$nchunks, "\n", sep = "")
+  cat("  nchunks: ", x$nchunks, "\n", sep="")
   invisible(x)
 }
 
@@ -150,13 +150,13 @@ print.chunkiter <- function(x, ...) {
 #' @rdname print
 print.data_chunk <- function(x, ...) {
   cat("Data Chunk Object\n")
-
+  
   # Handle both possible field names for chunk id
   chunk_id <- if (!is.null(x$chunkid)) x$chunkid else x$chunk_num
   total_chunks <- if (!is.null(x$nchunks)) x$nchunks else 1
-
-  cat("  chunk ", chunk_id, " of ", total_chunks, "\n", sep = "")
-
+  
+  cat("  chunk ", chunk_id, " of ", total_chunks, "\n", sep="")
+  
   # Handle different possible field names
   if (!is.null(x$voxel_ind)) {
     cat("  Number of voxels:", length(x$voxel_ind), "\n")
@@ -164,7 +164,7 @@ print.data_chunk <- function(x, ...) {
   if (!is.null(x$row_ind)) {
     cat("  Number of rows:", length(x$row_ind), "\n")
   }
-
+  
   if (!is.null(x$data)) {
     if (!is.null(dim(x$data))) {
       cat("  Data dimensions:", paste(dim(x$data), collapse = " x "), "\n")
@@ -172,7 +172,7 @@ print.data_chunk <- function(x, ...) {
       cat("  Data length:", length(x$data), "\n")
     }
   }
-
+  
   invisible(x)
 }
 

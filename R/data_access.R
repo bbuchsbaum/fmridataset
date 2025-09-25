@@ -106,7 +106,7 @@ get_data_matrix.fmri_file_dataset <- function(x, ...) {
   cachem::cache_mem(
     max_size = .get_cache_size(),
     evict = .get_cache_evict(),
-    missing = NULL,
+    missing = cachem::key_missing(),
     logfile = if (.get_cache_logging()) {
       file.path(tempdir(), "fmridataset_cache.log")
     } else {
@@ -260,8 +260,7 @@ get_mask.fmri_mem_dataset <- function(x, ...) {
 
 #' @export
 get_mask.matrix_dataset <- function(x, ...) {
-  # Ensure logical type
-  as.logical(x$mask)
+  x$mask
 }
 
 

@@ -8,6 +8,14 @@
   if (is.null(x)) y else x
 }
 
+#' Internal wrapper for requireNamespace
+#'
+#' Centralises optional dependency checks so tests can mock behaviour.
+#' @keywords internal
+.require_namespace <- function(package, ...) {
+  base::requireNamespace(package, ...)
+}
+
 #' Validate backend object
 #'
 #' Internal function to validate storage backend objects

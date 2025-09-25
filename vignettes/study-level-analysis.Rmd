@@ -31,11 +31,11 @@ suppressPackageStartupMessages({
 
 Imagine you've developed a sophisticated single-subject fMRI analysis pipeline that works beautifully for individual participants. You can load their data, extract time series from regions of interest, perform connectivity analyses, and generate comprehensive reports. Now your PI asks you to scale this to a 50-subject study with data from three different sites, each using slightly different acquisition protocols. Some subjects have missing runs, others have different numbers of sessions, and the file organization varies between sites.
 
-Traditional approaches would require you to write complex loops, manage inconsistent data structures, handle missing data scenarios, and carefully orchestrate memory usage to avoid loading all subjects simultaneously. The fmridataset study-level analysis capabilities eliminate this complexity by providing a unified interface that scales seamlessly from single subjects to large multi-site studies while preserving all the memory efficiency and chunking capabilities you rely on for individual analyses.
+Traditional approaches require complex loops, inconsistent data structure management, missing data handling, and careful memory orchestration to avoid loading all subjects simultaneously. The fmridataset study-level analysis provides a unified interface scaling from single subjects to multi-site studies while maintaining memory efficiency and chunking capabilities.
 
-# A Real Example: Building a Study Dataset
+# Quick Start: Building a Study Dataset
 
-Let's demonstrate how to transition from single-subject to study-level analysis with a concrete example that shows the power of unified scaling:
+This example demonstrates single-subject to study-level analysis transition through unified interface scaling:
 
 ```{r study-example}
 library(fmridataset)
@@ -145,7 +145,7 @@ for (i in 1:min(3, length(subject_list))) {
 # Subject sub-003 available for analysis
 ```
 
-> **💡 Key Insight**: The study dataset provides the same interface as individual datasets while enabling efficient analysis across multiple subjects. This unified scaling means your single-subject analysis code works unchanged at the study level.
+**Technical Design**: Study datasets implement the same interface as single-subject datasets through hierarchical abstraction. This design enables single-subject analysis code to scale to multi-subject studies without modification.
 
 # Understanding Study-Level Architecture
 
@@ -670,11 +670,31 @@ Consistency validation helps identify data preprocessing issues early.
 
 Here are practical guidelines learned from analyzing large neuroimaging studies that will help you work effectively with study-level datasets.
 
-> **⚠️ Performance Tip**: Always process subjects individually or in small groups rather than loading entire studies into memory. Use `get_data_matrix(study_dataset, subject_id = "sub-001")` instead of `get_data_matrix(study_dataset)` for large studies.
+## Memory Management for Large Studies
 
-> **🛡️ Best Practice**: Implement comprehensive quality control before proceeding with group analyses. Outlier subjects can severely impact group-level results, and it's much easier to identify issues during initial data exploration.
+**Subject-Level Processing**: Process subjects individually using `get_data_matrix(study_dataset, subject_id = "sub-001")` rather than loading complete studies. Full study loading is only appropriate when:
+- Total data size < 50% of available RAM
+- Cross-subject operations require simultaneous access
+- Computational efficiency outweighs memory constraints
 
-> **⚡ Pro Tip**: Use the `fmri_series` function for exploratory analyses and hypothesis generation, then switch to chunked processing for computationally intensive analyses across the full study.
+## Quality Control Requirements
+
+**Pre-Analysis Validation**:
+1. Verify temporal alignment across subjects
+2. Check signal-to-noise ratios per subject
+3. Identify motion outliers using framewise displacement
+4. Validate mask coverage across subjects
+5. Document exclusion criteria and thresholds
+
+Implement quality control before group analyses to prevent outlier contamination of group statistics.
+
+## Analysis Strategy Optimization
+
+**Two-Phase Approach**:
+1. **Exploration Phase**: Use `fmri_series()` with subset selection for hypothesis generation and parameter tuning
+2. **Production Phase**: Implement chunked processing with `data_chunks()` for full study analysis
+
+This approach minimizes computational resources during development while ensuring scalability for final analyses.
 
 ## Memory Management Strategies
 

@@ -59,6 +59,23 @@ setMethod("extract_array", "StorageBackendSeed", function(x, index) {
   backend_get_data(x@backend, rows = rows, cols = cols)
 })
 
+# Helper to ensure DelayedArray is available -----------------------------
+
+.ensure_delayed_array <- function() {
+  if (isTRUE(getOption("fmridataset.disable_delayedarray", FALSE))) {
+    stop(
+      "DelayedArray support is disabled in this session.",
+      call. = FALSE
+    )
+  }
+  if (!.require_namespace("DelayedArray", quietly = TRUE)) {
+    stop(
+      "The DelayedArray package is required for as_delayed_array() operations.",
+      call. = FALSE
+    )
+  }
+}
+
 # Specific seeds ---------------------------------------------------------
 
 setClass("NiftiBackendSeed", contains = "StorageBackendSeed")
@@ -70,6 +87,7 @@ setClass("MatrixBackendSeed", contains = "StorageBackendSeed")
 #' @method as_delayed_array nifti_backend
 #' @export
 as_delayed_array.nifti_backend <- function(backend, sparse_ok = FALSE, ...) {
+  .ensure_delayed_array()
   seed <- new("NiftiBackendSeed", backend = backend)
   DelayedArray::DelayedArray(seed)
 }
@@ -78,6 +96,7 @@ as_delayed_array.nifti_backend <- function(backend, sparse_ok = FALSE, ...) {
 #' @method as_delayed_array matrix_backend
 #' @export
 as_delayed_array.matrix_backend <- function(backend, sparse_ok = FALSE, ...) {
+  .ensure_delayed_array()
   seed <- new("MatrixBackendSeed", backend = backend)
   DelayedArray::DelayedArray(seed)
 }
@@ -86,6 +105,7 @@ as_delayed_array.matrix_backend <- function(backend, sparse_ok = FALSE, ...) {
 #' @method as_delayed_array study_backend
 #' @export
 as_delayed_array.study_backend <- function(backend, sparse_ok = FALSE, ...) {
+  .ensure_delayed_array()
   # Use the new S3 study_backend_seed for true lazy evaluation
   seed <- study_backend_seed(
     backends = backend$backends,

@@ -133,7 +133,7 @@ test_that("dataset chunking produces consistent results", {
 
   # Test run-wise chunking
   if (n_runs(dset) > 1) {
-    chunks_run <- data_chunks(dset, chunk_spec = "runwise")
+    chunks_run <- data_chunks(dset, runwise = TRUE)
     run_count <- 0
     for (chunk in chunks_run) {
       run_count <- run_count + 1

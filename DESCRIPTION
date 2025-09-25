@@ -43,6 +43,8 @@ Suggests:
     fmristore,
     foreach,
     mockery,
+    mockr,
+    hdf5r,
     Rarr,
     S4Arrays,
     testthat (>= 3.0.0),

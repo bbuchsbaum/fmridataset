@@ -1,65 +1,69 @@
-test_that("backend chunking doesn't load full dataset into memory", {
-  skip("Memory benchmarking can be unreliable in test environments")
-  skip_if_not_installed("bench")
-  skip_if_not_installed("neuroim2")
+test_that("backend chunking streams subset of voxels", {
+  skip_on_cran()
+  skip_if_not_installed("withr")
 
-  # Create a moderately large test dataset
+  ns <- asNamespace("fmridataset")
+  registered <- character()
+  log_env <- new.env(parent = emptyenv())
+  log_env$entries <- matrix(numeric(0), ncol = 2)
+
+  register_method <- function(name, class, fn) {
+    base::registerS3method(name, class, fn, envir = ns)
+    registered <<- c(registered, paste0(name, ".", class))
+  }
+
+  withr::defer({
+    table <- get(".__S3MethodsTable__.", envir = ns)
+    rm(list = registered, envir = table)
+  })
+
+  passthrough <- function(name) get(paste0(name, ".matrix_backend"), envir = ns)
+  register_method("backend_open", "tracked_matrix_backend", passthrough("backend_open"))
+  register_method("backend_close", "tracked_matrix_backend", passthrough("backend_close"))
+  register_method("backend_get_dims", "tracked_matrix_backend", passthrough("backend_get_dims"))
+  register_method("backend_get_mask", "tracked_matrix_backend", passthrough("backend_get_mask"))
+  register_method("backend_get_metadata", "tracked_matrix_backend", passthrough("backend_get_metadata"))
+
+  orig_get_data <- get("backend_get_data.matrix_backend", envir = ns)
+  register_method("backend_get_data", "tracked_matrix_backend", function(backend, rows = NULL, cols = NULL, ...) {
+    res <- orig_get_data(backend, rows = rows, cols = cols, ...)
+    log_env$entries <- rbind(log_env$entries, c(nrow(res), ncol(res)))
+    res
+  })
+
+  create_tracked_backend <- function(data_matrix, mask, spatial_dims) {
+    backend <- matrix_backend(data_matrix = data_matrix, mask = mask, spatial_dims = spatial_dims)
+    class(backend) <- c("tracked_matrix_backend", class(backend))
+    backend
+  }
+
   n_timepoints <- 300
-  n_voxels <- 10000
-  spatial_dims <- c(100, 100, 1)
-
-  # Create test data
-  test_data <- matrix(rnorm(n_timepoints * n_voxels),
-    nrow = n_timepoints,
-    ncol = n_voxels
-  )
-
-  # Create mask
+  n_voxels <- 1000
+  spatial_dims <- c(10, 10, 10)
+  test_data <- matrix(rnorm(n_timepoints * n_voxels), nrow = n_timepoints, ncol = n_voxels)
   mask <- rep(TRUE, n_voxels)
 
-  # Create backend
-  backend <- matrix_backend(
-    data_matrix = test_data,
-    mask = mask,
-    spatial_dims = spatial_dims
-  )
+  backend <- create_tracked_backend(test_data, mask, spatial_dims)
+  dset <- fmri_dataset(backend, TR = 2, run_length = c(150, 150))
 
-  # Create dataset
-  dset <- fmri_dataset(
-    scans = backend,
-    TR = 2,
-    run_length = c(150, 150)
-  )
+  log_env$entries <- matrix(numeric(0), ncol = 2)
+  chunks <- data_chunks(dset, nchunks = 10)
+  for (i in 1:10) {
+    chunks$nextElem()
+  }
 
-  # Benchmark chunked iteration
-  bench_result <- bench::mark(
-    chunked = {
-      chunks <- data_chunks(dset, nchunks = 10)
-      total <- 0
-      for (i in 1:10) {
-        chunk <- chunks$nextElem()
-        total <- total + sum(chunk$data)
-      }
-      total
-    },
-    iterations = 1,
-    check = FALSE
-  )
+  chunk_logs <- log_env$entries
+  expect_equal(nrow(chunk_logs), 10)
+  expect_true(all(chunk_logs[, 2] <= ceiling(n_voxels / 10)))
 
-  # Memory allocated should be much less than full dataset size
-  full_size <- object.size(test_data)
-  allocated_mem <- bench_result$mem_alloc[[1]]
-
-  # The allocated memory should be closer to chunk size than full dataset
-  # Allowing for some overhead, but should be less than 50% of full size
-  expect_true(
-    allocated_mem < 0.5 * full_size,
-    info = sprintf(
-      "Allocated memory (%s) should be much less than full dataset (%s)",
-      format(allocated_mem, units = "auto"),
-      format(full_size, units = "auto")
-    )
-  )
+  log_env$entries <- matrix(numeric(0), ncol = 2)
+  chunks <- data_chunks(dset, runwise = TRUE)
+  chunks$nextElem()
+  chunks$nextElem()
+  run_logs <- log_env$entries
+  expect_equal(nrow(run_logs), 2)
+  expect_true(all(run_logs[, 1] == 150))
+  expect_true(all(run_logs[, 2] == n_voxels))
 })
 
 test_that("backend chunking produces correct results with matrix backend", {

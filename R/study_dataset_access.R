@@ -43,8 +43,6 @@ get_data_matrix.fmri_study_dataset <- function(x, subject_id = NULL, ...) {
 #' @export
 #' @importFrom tibble as_tibble
 as_tibble.fmri_study_dataset <- function(x, materialise = FALSE, ...) {
-  mat <- backend_get_data(x$backend)
-
   run_lengths <- x$sampling_frame$blocklens
   run_ids <- fmrihrf::blockids(x$sampling_frame)
   backend_times <- vapply(
@@ -78,10 +76,19 @@ as_tibble.fmri_study_dataset <- function(x, materialise = FALSE, ...) {
   )
 
   if (materialise) {
-    tb <- tibble::as_tibble(cbind(rowData, as.matrix(mat)))
+    subject_mats <- lapply(x$backend$backends, function(backend) {
+      subj_mat <- backend_get_data(backend)
+      if (!is.matrix(subj_mat)) {
+        subj_mat <- as.matrix(subj_mat)
+      }
+      subj_mat
+    })
+    combined <- do.call(rbind, subject_mats)
+    tb <- tibble::as_tibble(cbind(rowData, combined))
     return(tb)
   }
 
+  mat <- backend_get_data(x$backend)
   if (nrow(mat) > 100000) {
     attr(mat, "AltExp") <- rowData
   } else {

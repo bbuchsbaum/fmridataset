@@ -39,7 +39,7 @@ matrix_dataset <- function(datamat, TR, run_length, event_table = data.frame()) 
     nruns = length(run_length),
     event_table = event_table,
     sampling_frame = frame,
-    mask = rep(TRUE, ncol(datamat))
+    mask = rep(1, ncol(datamat))
   )
 
   class(ret) <- c("matrix_dataset", "fmri_dataset", "list")
@@ -147,7 +147,8 @@ fmri_latent_dataset <- function(latent_files, mask_source = NULL, TR,
     "0.9.0",
     "fmri_latent_dataset()",
     "latent_dataset()",
-    details = "The new interface provides proper handling of latent space data."
+    details = "The new interface provides proper handling of latent space data.",
+    always = TRUE
   )
 
   # Forward to new function
