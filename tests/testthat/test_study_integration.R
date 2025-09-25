@@ -1,6 +1,6 @@
 test_that("full workflow and dplyr pipeline", {
-  b1 <- matrix_backend(matrix(1:20, nrow = 10, ncol = 2), spatial_dims = c(2,1,1))
-  b2 <- matrix_backend(matrix(21:40, nrow = 10, ncol = 2), spatial_dims = c(2,1,1))
+  b1 <- matrix_backend(matrix(1:20, nrow = 10, ncol = 2), spatial_dims = c(2, 1, 1))
+  b2 <- matrix_backend(matrix(21:40, nrow = 10, ncol = 2), spatial_dims = c(2, 1, 1))
   d1 <- fmri_dataset(b1, TR = 2, run_length = 10)
   d2 <- fmri_dataset(b2, TR = 2, run_length = 10)
   study <- fmri_study_dataset(list(d1, d2), subject_ids = c("s1", "s2"))
@@ -71,7 +71,7 @@ test_that("large dataset of 100+ subjects works", {
   n_subj <- 101
   datasets <- lapply(seq_len(n_subj), function(i) {
     mat <- matrix(i, nrow = 5, ncol = 2)
-    b <- matrix_backend(mat, spatial_dims = c(2,1,1))
+    b <- matrix_backend(mat, spatial_dims = c(2, 1, 1))
     fmri_dataset(b, TR = 1, run_length = 5)
   })
   study <- fmri_study_dataset(datasets, subject_ids = sprintf("sub-%03d", seq_len(n_subj)))

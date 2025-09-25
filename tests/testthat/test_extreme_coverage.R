@@ -3,16 +3,20 @@ library(fmridataset)
 
 # Test print.latent_dataset output
 if (!methods::isClass("MockLatentNeuroVec")) {
-  setClass("MockLatentNeuroVec", slots = c(basis = "matrix", loadings = "matrix", 
-                                           space = "ANY", offset = "numeric"))
-  setMethod("dim", "MockLatentNeuroVec", function(x) c(2,2,2,nrow(x@basis)))
+  setClass("MockLatentNeuroVec", slots = c(
+    basis = "matrix", loadings = "matrix",
+    space = "ANY", offset = "numeric"
+  ))
+  setMethod("dim", "MockLatentNeuroVec", function(x) c(2, 2, 2, nrow(x@basis)))
 }
 create_mock_lvec <- function(n_time = 4, n_vox = 8, k = 2) {
   basis <- matrix(seq_len(n_time * k), nrow = n_time, ncol = k)
   loadings <- matrix(seq_len(n_vox * k), nrow = n_vox, ncol = k)
   space <- c(2, 2, 2, n_time)
-  new("MockLatentNeuroVec", basis = basis, loadings = loadings, 
-      space = space, offset = numeric(0))
+  new("MockLatentNeuroVec",
+    basis = basis, loadings = loadings,
+    space = space, offset = numeric(0)
+  )
 }
 
 test_that("print.latent_dataset summarises object", {
@@ -86,12 +90,12 @@ test_that("print_data_source_info displays correct source info", {
   expect_output(fmridataset:::print_data_source_info(mat_dset), "Matrix:")
 
   skip_if_not_installed("neuroim2")
-  vec <- neuroim2::NeuroVec(array(1:8, c(2,2,2,1)), neuroim2::NeuroSpace(c(2,2,2,1)))
-  mask <- neuroim2::LogicalNeuroVol(array(TRUE, c(2,2,2)), neuroim2::NeuroSpace(c(2,2,2)))
+  vec <- neuroim2::NeuroVec(array(1:8, c(2, 2, 2, 1)), neuroim2::NeuroSpace(c(2, 2, 2, 1)))
+  mask <- neuroim2::LogicalNeuroVol(array(TRUE, c(2, 2, 2)), neuroim2::NeuroSpace(c(2, 2, 2)))
   mem_dset <- fmri_mem_dataset(list(vec), mask, TR = 1)
   expect_output(fmridataset:::print_data_source_info(mem_dset), "pre-loaded NeuroVec")
 
-  backend <- matrix_backend(mat, spatial_dims = c(2,1,1))
+  backend <- matrix_backend(mat, spatial_dims = c(2, 1, 1))
   dset <- fmri_dataset(backend, TR = 1, run_length = 10)
   expect_output(fmridataset:::print_data_source_info(dset), "Backend:")
 })

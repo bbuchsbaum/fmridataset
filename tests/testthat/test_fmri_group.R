@@ -26,9 +26,12 @@ test_that("subjects<- replacement re-validates", {
   expect_identical(subjects(gd), new_subjects)
 
   bad_subjects <- data.frame(sub = "sub-01", stringsAsFactors = FALSE)
-  expect_error({
-    subjects(gd) <- bad_subjects
-  }, "Replacement `subjects`")
+  expect_error(
+    {
+      subjects(gd) <- bad_subjects
+    },
+    "Replacement `subjects`"
+  )
 })
 
 test_that("print.fmri_group emits a compact summary", {

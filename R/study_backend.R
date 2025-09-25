@@ -16,7 +16,7 @@ study_backend <- function(backends, subject_ids = NULL,
     )
   }
 
-  # Coerce fmri_dataset objects to their backends  
+  # Coerce fmri_dataset objects to their backends
   backends <- lapply(backends, function(b) {
     if (!inherits(b, "storage_backend")) {
       if (inherits(b, "matrix_dataset") && !is.null(b$datamat)) {
@@ -34,7 +34,7 @@ study_backend <- function(backends, subject_ids = NULL,
       b
     }
   })
-  
+
   lapply(backends, function(b) {
     if (!inherits(b, "storage_backend")) {
       stop_fmridataset(

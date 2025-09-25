@@ -383,7 +383,7 @@ test_that("h5_backend ignores base_path for absolute paths", {
         },
         validate_backend = function(backend) TRUE,
         backend_open = function(backend) backend,
-        backend_get_dims = function(backend) list(spatial = c(10,10,5), time = 50),
+        backend_get_dims = function(backend) list(spatial = c(10, 10, 5), time = 50),
         .package = "fmridataset",
         {
           dataset <- fmri_h5_dataset(

@@ -32,7 +32,7 @@ stream_subjects <- function(gd, prefetch = 1L, order_by = NULL) {
 #' @return The reduced value after visiting all subjects.
 #' @export
 group_reduce <- function(gd, .map, .reduce, .init, order_by = NULL,
-                          on_error = c("stop", "warn", "skip"), ...) {
+                         on_error = c("stop", "warn", "skip"), ...) {
   stopifnot(inherits(gd, "fmri_group"))
   stopifnot(is.function(.map))
   stopifnot(is.function(.reduce))

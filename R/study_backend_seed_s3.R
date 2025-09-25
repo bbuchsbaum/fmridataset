@@ -38,7 +38,7 @@ study_backend_seed <- function(backends, subject_ids) {
   if (length(backends) != length(subject_ids)) {
     stop("Number of backends must match number of subject IDs")
   }
-  
+
   # Get dimensions from each backend
   dims_list <- lapply(backends, backend_get_dims)
   dims_list <- lapply(dims_list, function(d) {
@@ -49,24 +49,24 @@ study_backend_seed <- function(backends, subject_ids) {
   time_dims <- vapply(dims_list, function(x) x$time, integer(1))
   spatial_dims <- dims_list[[1]]$spatial
   n_voxels <- prod(spatial_dims)
-  
+
   # Validate all backends have same spatial dimensions
   for (i in seq_along(dims_list)) {
     if (!identical(dims_list[[i]]$spatial, spatial_dims)) {
       stop(sprintf("Backend %d has inconsistent spatial dimensions", i))
     }
   }
-  
+
   # Calculate subject boundaries (where each subject's data starts)
   subject_boundaries <- c(0L, cumsum(time_dims))
-  
+
   # Total dimensions
   total_time <- sum(time_dims)
   dims <- c(total_time, n_voxels)
-  
+
   # Create LRU cache
   cache <- create_study_cache()
-  
+
   new(
     "StudyBackendSeed",
     backends = backends,
@@ -108,19 +108,19 @@ setMethod("extract_array", signature(x = "StudyBackendSeed"), function(x, index)
   if (!is.list(index) || length(index) != 2) {
     stop("index must be a list of length 2")
   }
-  
+
   # Get row and column indices
   row_idx <- index[[1]]
   col_idx <- index[[2]]
-  
+
   # Convert NULL to full range
   if (is.null(row_idx)) row_idx <- seq_len(x@dims[1])
   if (is.null(col_idx)) col_idx <- seq_len(x@dims[2])
-  
+
   # Convert logical to integer indices
   if (is.logical(row_idx)) row_idx <- which(row_idx)
   if (is.logical(col_idx)) col_idx <- which(col_idx)
-  
+
   # Validate indices
   if (any(row_idx < 1 | row_idx > x@dims[1])) {
     stop("Row indices out of bounds")
@@ -128,27 +128,27 @@ setMethod("extract_array", signature(x = "StudyBackendSeed"), function(x, index)
   if (any(col_idx < 1 | col_idx > x@dims[2])) {
     stop("Column indices out of bounds")
   }
-  
+
   # Determine which subjects we need
   subjects_needed <- find_subjects_for_rows(row_idx, x@subject_boundaries)
-  
+
   # Pre-allocate result matrix
   result <- matrix(NA_real_, length(row_idx), length(col_idx))
   result_row_idx <- 1L
-  
+
   for (subj_idx in subjects_needed) {
     # Calculate which rows from this subject we need
     subj_start <- x@subject_boundaries[subj_idx] + 1L
     subj_end <- x@subject_boundaries[subj_idx + 1]
     subj_rows <- seq(subj_start, subj_end)
-    
+
     # Find intersection with requested rows
     rows_to_get <- intersect(row_idx, subj_rows)
     if (length(rows_to_get) == 0) next
-    
+
     # Convert to subject-local indices
     local_rows <- rows_to_get - x@subject_boundaries[subj_idx]
-    
+
     # Load from backend
     backend <- x@backends[[subj_idx]]
     subj_data <- backend_get_data(backend, rows = NULL, cols = col_idx)
@@ -156,14 +156,14 @@ setMethod("extract_array", signature(x = "StudyBackendSeed"), function(x, index)
     if (inherits(subj_data, "DelayedArray")) {
       subj_data <- as.matrix(subj_data)
     }
-    
+
     # Extract requested rows and place in result
     n_rows <- length(rows_to_get)
-    result[result_row_idx:(result_row_idx + n_rows - 1), ] <- 
+    result[result_row_idx:(result_row_idx + n_rows - 1), ] <-
       subj_data[local_rows, , drop = FALSE]
     result_row_idx <- result_row_idx + n_rows
   }
-  
+
   result
 })
 
