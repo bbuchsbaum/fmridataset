@@ -36,7 +36,7 @@ ds <- matrix_dataset(mat, TR = 2, run_length = 100)
 
 # Extract as matrix
 data_mat <- get_data_matrix(ds)
-dim(data_mat)  # 100 x 50
+dim(data_mat) # 100 x 50
 }
 
 }

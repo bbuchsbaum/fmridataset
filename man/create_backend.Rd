@@ -23,14 +23,16 @@ This is the main interface for creating backends by name.
 \examples{
 \dontrun{
 # Create a NIfTI backend (assuming it's registered)
-backend <- create_backend("nifti", 
-                         source = "data.nii", 
-                         mask_source = "mask.nii")
+backend <- create_backend("nifti",
+  source = "data.nii",
+  mask_source = "mask.nii"
+)
 
 # Create with validation disabled (faster, but riskier)
-backend <- create_backend("nifti", 
-                         source = "data.nii", 
-                         mask_source = "mask.nii",
-                         validate = FALSE)
+backend <- create_backend("nifti",
+  source = "data.nii",
+  mask_source = "mask.nii",
+  validate = FALSE
+)
 }
 }

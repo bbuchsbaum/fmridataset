@@ -10,19 +10,104 @@
 #' @keywords internal
 NULL
 
-# Define the StudyBackendSeed S4 class ---------------------------------
+.study_backend_seed_env <- new.env(parent = emptyenv())
+.study_backend_seed_env$registered <- FALSE
 
-setClass(
-  "StudyBackendSeed",
-  slots = list(
-    backends = "list",
-    subject_ids = "character",
-    subject_boundaries = "integer",
-    dims = "integer",
-    cache = "environment"
-  ),
-  contains = "Array"
-)
+#' Register Study Backend Seed Methods
+#'
+#' Ensures the DelayedArray-compatible seed and associated S4 methods are
+#' available. Called automatically when study-level backends are coerced to
+#' DelayedArray objects.
+#'
+#' @keywords internal
+register_study_backend_seed_methods <- function() {
+  if (isTRUE(.study_backend_seed_env$registered)) {
+    return(invisible(NULL))
+  }
+
+  if (!.require_namespace("DelayedArray", quietly = TRUE)) {
+    stop(
+      "The DelayedArray package is required for DelayedArray study backends.",
+      call. = FALSE
+    )
+  }
+
+  methods::setClass(
+    "StudyBackendSeed",
+    slots = list(
+      backends = "list",
+      subject_ids = "character",
+      subject_boundaries = "integer",
+      dims = "integer",
+      cache = "environment"
+    ),
+    contains = "Array"
+  )
+
+  extract_array_generic <- getExportedValue("DelayedArray", "extract_array")
+
+  methods::setMethod("dim", "StudyBackendSeed", function(x) {
+    x@dims
+  })
+
+  methods::setMethod("dimnames", "StudyBackendSeed", function(x) {
+    list(NULL, NULL)
+  })
+
+  methods::setMethod(extract_array_generic, methods::signature(x = "StudyBackendSeed"), function(x, index) {
+    if (!is.list(index) || length(index) != 2) {
+      stop("index must be a list of length 2")
+    }
+
+    row_idx <- index[[1]]
+    col_idx <- index[[2]]
+
+    if (is.null(row_idx)) row_idx <- seq_len(x@dims[1])
+    if (is.null(col_idx)) col_idx <- seq_len(x@dims[2])
+
+    if (is.logical(row_idx)) row_idx <- which(row_idx)
+    if (is.logical(col_idx)) col_idx <- which(col_idx)
+
+    if (any(row_idx < 1L | row_idx > x@dims[1])) {
+      stop("Row indices out of bounds")
+    }
+    if (any(col_idx < 1L | col_idx > x@dims[2])) {
+      stop("Column indices out of bounds")
+    }
+
+    if (!length(row_idx) || !length(col_idx)) {
+      return(matrix(numeric(), nrow = length(row_idx), ncol = length(col_idx)))
+    }
+
+    if (!is.integer(row_idx)) {
+      if (is.double(row_idx) && all(row_idx == as.integer(row_idx))) {
+        row_idx <- as.integer(row_idx)
+      } else {
+        stop("Row indices must be integer valued")
+      }
+    }
+
+    if (!is.integer(col_idx)) {
+      if (is.double(col_idx) && all(col_idx == as.integer(col_idx))) {
+        col_idx <- as.integer(col_idx)
+      } else {
+        stop("Column indices must be integer valued")
+      }
+    }
+
+    .collect_study_backend_block(
+      backends = x@backends,
+      rows = row_idx,
+      cols = col_idx,
+      subject_boundaries = x@subject_boundaries,
+      n_time = x@dims[1],
+      n_vox = x@dims[2]
+    )
+  })
+
+  .study_backend_seed_env$registered <- TRUE
+  invisible(NULL)
+}
 
 #' Create a Study Backend Seed
 #'
@@ -31,7 +116,8 @@ setClass(
 #' @return A StudyBackendSeed S4 object
 #' @keywords internal
 study_backend_seed <- function(backends, subject_ids) {
-  # Validate inputs
+  register_study_backend_seed_methods()
+
   if (!is.list(backends)) {
     stop("backends must be a list")
   }
@@ -57,17 +143,13 @@ study_backend_seed <- function(backends, subject_ids) {
     }
   }
 
-  # Calculate subject boundaries (where each subject's data starts)
   subject_boundaries <- c(0L, cumsum(time_dims))
-
-  # Total dimensions
   total_time <- sum(time_dims)
   dims <- c(total_time, n_voxels)
 
-  # Create LRU cache
   cache <- create_study_cache()
 
-  new(
+  methods::new(
     "StudyBackendSeed",
     backends = backends,
     subject_ids = as.character(subject_ids),
@@ -82,91 +164,6 @@ study_backend_seed <- function(backends, subject_ids) {
 create_study_cache <- function() {
   new.env(parent = emptyenv())
 }
-
-
-# S4 methods ------------------------------------------------------------
-
-setMethod("dim", "StudyBackendSeed", function(x) {
-  x@dims
-})
-
-setMethod("dimnames", "StudyBackendSeed", function(x) {
-  list(NULL, NULL)
-})
-
-#' Extract Array from Study Backend Seed
-#'
-#' @description
-#' Core method for DelayedArray compatibility. Extracts the requested subset
-#' of data, loading only the necessary subjects.
-#'
-#' @param x A study_backend_seed object
-#' @param index A list with two elements: row indices and column indices
-#' @return A matrix with the requested data
-setMethod("extract_array", signature(x = "StudyBackendSeed"), function(x, index) {
-  # Validate index
-  if (!is.list(index) || length(index) != 2) {
-    stop("index must be a list of length 2")
-  }
-
-  # Get row and column indices
-  row_idx <- index[[1]]
-  col_idx <- index[[2]]
-
-  # Convert NULL to full range
-  if (is.null(row_idx)) row_idx <- seq_len(x@dims[1])
-  if (is.null(col_idx)) col_idx <- seq_len(x@dims[2])
-
-  # Convert logical to integer indices
-  if (is.logical(row_idx)) row_idx <- which(row_idx)
-  if (is.logical(col_idx)) col_idx <- which(col_idx)
-
-  # Validate indices
-  if (any(row_idx < 1 | row_idx > x@dims[1])) {
-    stop("Row indices out of bounds")
-  }
-  if (any(col_idx < 1 | col_idx > x@dims[2])) {
-    stop("Column indices out of bounds")
-  }
-
-  # Determine which subjects we need
-  subjects_needed <- find_subjects_for_rows(row_idx, x@subject_boundaries)
-
-  # Pre-allocate result matrix
-  result <- matrix(NA_real_, length(row_idx), length(col_idx))
-  result_row_idx <- 1L
-
-  for (subj_idx in subjects_needed) {
-    # Calculate which rows from this subject we need
-    subj_start <- x@subject_boundaries[subj_idx] + 1L
-    subj_end <- x@subject_boundaries[subj_idx + 1]
-    subj_rows <- seq(subj_start, subj_end)
-
-    # Find intersection with requested rows
-    rows_to_get <- intersect(row_idx, subj_rows)
-    if (length(rows_to_get) == 0) next
-
-    # Convert to subject-local indices
-    local_rows <- rows_to_get - x@subject_boundaries[subj_idx]
-
-    # Load from backend
-    backend <- x@backends[[subj_idx]]
-    subj_data <- backend_get_data(backend, rows = NULL, cols = col_idx)
-
-    if (inherits(subj_data, "DelayedArray")) {
-      subj_data <- as.matrix(subj_data)
-    }
-
-    # Extract requested rows and place in result
-    n_rows <- length(rows_to_get)
-    result[result_row_idx:(result_row_idx + n_rows - 1), ] <-
-      subj_data[local_rows, , drop = FALSE]
-    result_row_idx <- result_row_idx + n_rows
-  }
-
-  result
-})
-
 #' Find Which Subjects Contain Given Rows
 #' @keywords internal
 find_subjects_for_rows <- function(rows, boundaries) {
@@ -197,15 +194,20 @@ study_seed_is_sparse <- function(x) {
 #' @return A RegularArrayGrid object
 #' @keywords internal
 study_seed_chunk_grid <- function(x, chunk_dim = NULL) {
+  if (!.require_namespace("DelayedArray", quietly = TRUE)) {
+    stop("The DelayedArray package is required for chunk grid computation.", call. = FALSE)
+  }
+
   if (is.null(chunk_dim)) {
-    # Default: chunk by subject
     chunk_dim <- c(
       min(x@subject_boundaries[2] - x@subject_boundaries[1], x@dims[1]),
       x@dims[2]
     )
   }
 
-  DelayedArray::RegularArrayGrid(
+  regular_grid <- getExportedValue("DelayedArray", "RegularArrayGrid")
+
+  regular_grid(
     refdim = x@dims,
     spacings = chunk_dim
   )

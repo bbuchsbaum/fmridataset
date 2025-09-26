@@ -2,12 +2,12 @@
 % Please edit documentation in R/dataset_constructors.R
 \name{with_rowData}
 \alias{with_rowData}
-\title{Attach rowData metadata to a DelayedMatrix}
+\title{Attach rowData metadata to a lazy matrix}
 \usage{
 with_rowData(x, rowData)
 }
 \arguments{
-\item{x}{A DelayedMatrix}
+\item{x}{A lazy matrix or matrix-like object}
 
 \item{rowData}{A data.frame of row-wise metadata}
 }

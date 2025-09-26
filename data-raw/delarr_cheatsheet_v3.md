@@ -277,7 +277,7 @@ CONDITIONAL:
 ---
 
 ```markdown
-@pkg fmridataset | Unified Container for fMRI Datasets
+@pkg delarr | Lazy Delayed Arrays with Fused Execution
 
 ## Type Aliases:
 DF = df|tbl|data.table
@@ -290,154 +290,150 @@ Gg = s3:ggplot
   type: vec<dbl>
   validates: all(. > 0)
 
-# fmridataset
+# delarr
 
 ## 1. Core
 
-@f fmri_dataset (scans:chr[], mask:chr, TR:dbl, run_length:int[], event_table:DF?=data.frame(), base_path:chr?=".", censor:vec<int>?=NULL, preload:lgl?=FALSE, mode:chr["normal"|"bigvec"|"mmap"|"filebacked"]?="normal", dummy_mode:lgl?=FALSE) | Create fMRI dataset -> s3:fmri_dataset
-  +family:dataset +pipe:in +side:fs[read] +see:fmri_mem_dataset, fmri_h5_dataset
-  - scans : @requires:files-exist @purpose:data-files
-  - mask : @requires:file-exist @purpose:mask-file
-  - TR : @units:seconds @purpose:temporal-resolution
-  - run_length : @purpose:run-lengths
-  - event_table : @purpose:event-metadata
-  - base_path : @purpose:relative-paths
-  - censor : @purpose:exclude-scans
-  - preload : @purpose:load-strategy
-  - mode : @purpose:storage-mode
-  - dummy_mode : @purpose:test-mode
+@f delarr (x:DF|s3:delarr_seed, ...:expr) | Create delayed matrix -> s3:delarr
+  +family:core +pipe:in|out +compute:moderate
+  - x : @requires:matrix|delarr_seed @purpose:input
 
-@f fmri_mem_dataset (scans:lst<s3:NeuroVec>, mask:s3:NeuroVol, TR:dbl, run_length:int[], event_table:DF?=data.frame(), base_path:chr?=".", censor:vec<int>?=NULL) | Create in-memory fMRI dataset -> s3:fmri_mem_dataset
-  +family:dataset +pipe:in +side:fs[read] +see:fmri_dataset, fmri_h5_dataset
-  - scans : @requires:NeuroVec-objects @purpose:data-objects
-  - mask : @requires:NeuroVol-object @purpose:mask-object
-  - TR : @units:seconds @purpose:temporal-resolution
-  - run_length : @purpose:run-lengths
-  - event_table : @purpose:event-metadata
-  - base_path : @purpose:relative-paths
-  - censor : @purpose:exclude-scans
+@f delarr_seed (nrow:int, ncol:int, pull:fn, chunk_hint:lst?, dimnames:lst?, begin:fn?, end:fn?) | Construct seed backend -> s3:delarr_seed
+  +family:core +compute:light
+  - nrow : @requires:non-negative
+  - ncol : @requires:non-negative
+  - pull : @requires:function
 
-@f fmri_h5_dataset (h5_files:chr[], mask_source:chr|s3:NeuroVol, TR:dbl, run_length:int[], event_table:DF?=data.frame(), base_path:chr?=".", censor:vec<int>?=NULL, preload:lgl?=FALSE, mask_dataset:chr?="data/elements", data_dataset:chr?="data") | Create fMRI dataset from H5 files -> s3:fmri_file_dataset
-  +family:dataset +pipe:in +side:fs[read] +see:fmri_dataset, fmri_mem_dataset
-  - h5_files : @requires:files-exist @purpose:data-files
-  - mask_source : @requires:file-exist @purpose:mask-file
-  - TR : @units:seconds @purpose:temporal-resolution
-  - run_length : @purpose:run-lengths
-  - event_table : @purpose:event-metadata
-  - base_path : @purpose:relative-paths
-  - censor : @purpose:exclude-scans
-  - preload : @purpose:load-strategy
-  - mask_dataset : @purpose:mask-path
-  - data_dataset : @purpose:data-path
+@f delarr_backend (nrow:int, ncol:int, pull:fn, chunk_hint:lst?, dimnames:lst?, begin:fn?, end:fn?) | Wrap custom backend -> s3:delarr
+  +family:core +compute:light
+  - nrow : @requires:non-negative
+  - ncol : @requires:non-negative
+  - pull : @requires:function
 
-@f latent_dataset (source:chr[]|lst<s3:LatentNeuroVec>, TR:dbl, run_length:int[], event_table:DF?=data.frame(), base_path:chr?=".", censor:vec<int>?=NULL, preload:lgl?=FALSE) | Create latent space fMRI dataset -> s3:latent_dataset
-  +family:dataset +pipe:in +side:fs[read] +see:fmri_dataset, fmri_mem_dataset
-  - source : @requires:files-exist @purpose:data-files
-  - TR : @units:seconds @purpose:temporal-resolution
-  - run_length : @purpose:run-lengths
-  - event_table : @purpose:event-metadata
-  - base_path : @purpose:relative-paths
-  - censor : @purpose:exclude-scans
-  - preload : @purpose:load-strategy
+@f delarr_mem (x:mat<dbl|lgl>) | Create delayed matrix from memory -> s3:delarr
+  +family:core +compute:light
+  - x : @requires:matrix
 
-@f get_latent_scores (x:s3:latent_dataset, rows:int[]?=NULL, cols:int[]?=NULL, ...:expr) | Extract latent scores -> mat<dbl>
-  +family:data-access +pipe:in +see:get_spatial_loadings, reconstruct_voxels
-  - x : @purpose:dataset
-  - rows : @purpose:subset-rows
-  - cols : @purpose:subset-cols
+@f delarr_hdf5 (path:chr, dataset:chr) | Create delayed matrix from HDF5 -> s3:delarr
+  +family:core +compute:moderate +side:fs[read]
+  - path : @requires:file-exists
+  - dataset : @requires:hdf5-dataset
 
-@f get_spatial_loadings (x:s3:latent_dataset, components:int[]?=NULL, ...:expr) | Extract spatial loadings -> mat<dbl>
-  +family:data-access +pipe:in +see:get_latent_scores, reconstruct_voxels
-  - x : @purpose:dataset
-  - components : @purpose:subset-components
+@f delarr_mmap (...:expr) | Placeholder for mmap backend -> none
+  +family:core +side:console[message]
 
-@f get_component_info (x:s3:latent_dataset, ...:expr) | Get component metadata -> lst
-  +family:data-access +pipe:in +see:get_latent_scores, get_spatial_loadings
-  - x : @purpose:dataset
+@f d_map (x:s3:delarr, f:fn|Fml) | Apply elementwise transformation -> s3:delarr
+  +family:verbs +pipe:in|out +nse:f
+  - x : @requires:delarr
+  - f : @requires:function
 
-@f reconstruct_voxels (x:s3:latent_dataset, rows:int[]?=NULL, voxels:int[]?=NULL, ...:expr) | Reconstruct voxel data -> mat<dbl>
-  +family:data-access +pipe:in +see:get_latent_scores, get_spatial_loadings
-  - x : @purpose:dataset
-  - rows : @purpose:subset-rows
-  - voxels : @purpose:subset-voxels
+@f d_map2 (x:s3:delarr, y:s3:delarr|mat|dbl, f:fn|Fml) | Apply binary elementwise transformation -> s3:delarr
+  +family:verbs +pipe:in|out +nse:f
+  - x : @requires:delarr
+  - y : @requires:delarr|numeric
+  - f : @requires:function
 
-@f fmri_series (dataset:s3:fmri_dataset, selector:any?=NULL, timepoints:int[]?=NULL, output:chr["fmri_series"|"DelayedMatrix"]?="fmri_series", event_window:any?=NULL, ...:expr) | Query fMRI time series -> s3:fmri_series|DelayedMatrix
-  +family:data-access +pipe:in +see:fmri_dataset, fmri_mem_dataset
-  - dataset : @purpose:dataset
-  - selector : @purpose:spatial-selector
-  - timepoints : @purpose:temporal-selector
-  - output : @purpose:return-format
+@f d_reduce (x:s3:delarr, f:fn?=base::sum, dim:chr["rows"|"cols"]?="rows", na.rm:lgl?=FALSE) | Reduce along rows or columns -> s3:delarr
+  +family:verbs +pipe:in|out
+  - x : @requires:delarr
+  - f : @requires:function
+  - dim : @controls:dimension
+  - na.rm : @controls:na-handling
 
-@f fmri_group (subjects:DF, id:chr, dataset_col:chr?="dataset", space:chr?=NULL, mask_strategy:chr["subject_specific"|"intersect"|"union"]?="subject_specific") | Create fMRI group -> s3:fmri_group
-  +family:group +pipe:in +see:fmri_dataset, fmri_mem_dataset
-  - subjects : @purpose:subject-data
-  - id : @purpose:identifier
-  - dataset_col : @purpose:dataset-column
-  - space : @purpose:common-space
-  - mask_strategy : @purpose:mask-strategy
+@f d_center (x:s3:delarr, dim:chr["rows"|"cols"]?="rows", na.rm:lgl?=FALSE) | Center matrix -> s3:delarr
+  +family:verbs +pipe:in|out
+  - x : @requires:delarr
+  - dim : @controls:dimension
+  - na.rm : @controls:na-handling
 
-@f iter_subjects (gd:s3:fmri_group, order_by:chr?=NULL) | Iterate subjects -> lst
-  +family:group +pipe:in +see:fmri_group, fmri_dataset
-  - gd : @purpose:group-dataset
-  - order_by : @purpose:order-iteration
+@f d_scale (x:s3:delarr, dim:chr["rows"|"cols"]?="rows", center:lgl?=TRUE, scale:lgl?=TRUE, na.rm:lgl?=FALSE) | Scale matrix -> s3:delarr
+  +family:verbs +pipe:in|out
+  - x : @requires:delarr
+  - dim : @controls:dimension
+  - center : @controls:center
+  - scale : @controls:scale
+  - na.rm : @controls:na-handling
 
-@f group_map (gd:s3:fmri_group, .f:fml, ..., out:chr["list"|"bind_rows"]?="list", order_by:chr?=NULL, on_error:chr["stop"|"warn"|"skip"]?="stop") | Map function over subjects -> lst|DF
-  +family:group +pipe:in +see:fmri_group, fmri_dataset
-  - gd : @purpose:group-dataset
-  - .f : @purpose:map-function
-  - ... : @purpose:additional-args
-  - out : @purpose:output-format
-  - order_by : @purpose:order-iteration
-  - on_error : @purpose:error-handling
+@f d_zscore (x:s3:delarr, dim:chr["rows"|"cols"]?="rows", na.rm:lgl?=FALSE) | Z-score matrix -> s3:delarr
+  +family:verbs +pipe:in|out
+  - x : @requires:delarr
+  - dim : @controls:dimension
+  - na.rm : @controls:na-handling
 
-@f group_reduce (gd:s3:fmri_group, .map:fml, .reduce:fml, .init:any, order_by:chr?=NULL, on_error:chr["stop"|"warn"|"skip"]?="stop", ...) | Reduce over subjects -> any
-  +family:group +pipe:in +see:fmri_group, fmri_dataset
-  - gd : @purpose:group-dataset
-  - .map : @purpose:map-function
-  - .reduce : @purpose:reduce-function
-  - .init : @purpose:initial-value
-  - order_by : @purpose:order-iteration
-  - on_error : @purpose:error-handling
+@f d_detrend (x:s3:delarr, dim:chr["rows"|"cols"]?="rows", degree:int?=1) | Detrend matrix -> s3:delarr
+  +family:verbs +pipe:in|out
+  - x : @requires:delarr
+  - dim : @controls:dimension
+  - degree : @requires:positive
 
-@f filter_subjects (gd:s3:fmri_group, ...:expr) | Filter subjects -> s3:fmri_group
-  +family:group +pipe:in +see:fmri_group, fmri_dataset
-  - gd : @purpose:group-dataset
-  - ... : @purpose:filter-expressions
+@f d_where (x:s3:delarr, predicate:fn|Fml, fill:dbl?=0) | Apply boolean mask -> s3:delarr
+  +family:verbs +pipe:in|out +nse:predicate
+  - x : @requires:delarr
+  - predicate : @requires:function
+  - fill : @controls:fill-value
 
-@f mutate_subjects (gd:s3:fmri_group, ...:expr) | Mutate subject attributes -> s3:fmri_group
-  +family:group +pipe:in +see:fmri_group, fmri_dataset
-  - gd : @purpose:group-dataset
-  - ... : @purpose:mutate-expressions
+@f collect (x:s3:delarr, into:fn|lst?=NULL, chunk_size:int?=NULL) | Materialise delayed matrix -> mat<dbl>
+  +family:core +pipe:in|out +side:fs[read|write]
+  - x : @requires:delarr
+  - into : @controls:output-target
+  - chunk_size : @controls:chunk-size
 
-@f left_join_subjects (gd:s3:fmri_group, y:DF, by:chr?=NULL, ...) | Left join subject metadata -> s3:fmri_group
-  +family:group +pipe:in +see:fmri_group, fmri_dataset
-  - gd : @purpose:group-dataset
-  - y : @purpose:join-data
-  - by : @purpose:join-keys
+@f block_apply (x:s3:delarr, margin:chr["cols"|"rows"]?="cols", size:int?=16384, fn:fn) | Apply function to blocks -> lst<any>
+  +family:core +pipe:in|out +nse:fn
+  - x : @requires:delarr
+  - margin : @controls:dimension
+  - size : @controls:block-size
+  - fn : @requires:function
 
-@f sample_subjects (gd:s3:fmri_group, n:int, replace:lgl?=FALSE, strata:chr?=NULL) | Sample subjects -> s3:fmri_group
-  +family:group +pipe:in +see:fmri_group, fmri_dataset
-  - gd : @purpose:group-dataset
-  - n : @purpose:sample-size
-  - replace : @purpose:sample-replacement
-  - strata : @purpose:sample-strata
+@s3g rowMeans2 (x:s3:delarr, ..., na.rm:lgl?=FALSE) | Row means -> vec<dbl>
+  +family:stats +pipe:in +wraps:matrixStats::rowMeans2
+  !cov [delarr]
 
-@f stream_subjects (gd:s3:fmri_group, prefetch:int?=1, order_by:chr?=NULL) | Stream subjects -> lst
-  +family:group +pipe:in +see:fmri_group, fmri_dataset
-  - gd : @purpose:group-dataset
-  - prefetch : @purpose:prefetch-size
-  - order_by : @purpose:order-iteration
+@s3g colMeans2 (x:s3:delarr, ..., na.rm:lgl?=FALSE) | Column means -> vec<dbl>
+  +family:stats +pipe:in +wraps:matrixStats::colMeans2
+  !cov [delarr]
+
+@s3m dim.delarr (x:s3:delarr) | Dimensions of delayed matrix -> vec<int>
+  +family:core +pipe:in
+  - x : @requires:delarr
+
+@s3m `[.delarr` (x:s3:delarr, i:int?, j:int?, drop:lgl?=FALSE) | Subset delayed matrix -> s3:delarr
+  +family:core +pipe:in|out
+  - x : @requires:delarr
+  - i : @controls:row-indices
+  - j : @controls:col-indices
+  - drop : @controls:drop-dimensions
+
+@s3m as.matrix.delarr (x:s3:delarr, ...) | Materialise as base matrix -> mat<dbl>
+  +family:core +pipe:in|out
+  - x : @requires:delarr
+
+@s3m print.delarr (x:s3:delarr, ...) | Pretty-print delayed matrix -> invisible<any>
+  +family:core +pipe:in +side:console[print]
+  - x : @requires:delarr
+
+@s3m Ops.delarr (e1:s3:delarr|dbl, e2:s3:delarr|dbl) | Arithmetic/comparison operators -> s3:delarr
+  +family:core +pipe:in|out
+  - e1 : @requires:delarr|numeric
+  - e2 : @requires:delarr|numeric
+
+@f hdf5_writer (path:chr, dataset:chr, ncol:int, chunk:int[2]?=c(128L, 4096L), compression:int?=NULL) | HDF5 writer for streaming -> lst{write:fn, finalize:fn}
+  +family:core +side:fs[write]
+  - path : @requires:file-path
+  - dataset : @requires:hdf5-dataset
+  - ncol : @requires:positive
+  - chunk : @requires:length-2
 
 ## Dependencies
-- Imports: assertthat, cachem, deflist, fmrihrf, fs, lifecycle, memoise, Matrix, methods, neuroim2, purrr, tibble, DelayedArray, S4Vectors, utils
-- Suggests: bench, bidser, crayon, arrow, dplyr, fmristore, foreach, mockery, mockr, Rarr, testthat (>= 3.0.0), knitr, rmarkdown
+- Imports: rlang
+- Suggests: matrixStats, hdf5r, testthat, knitr, rmarkdown
 
 ---
 ## Meta-Footer
 - Micro-DSL Version: v3.4-source
-- Package: fmridataset (Version: 0.8.9)
-- Generated: 2023-10-05T12:00:00Z
+- Package: delarr (Version: 0.0.0.9000)
+- Generated: 2023-10-11T00:00:00Z
 - Features: types[constrained] sigils[specific] metadata[rich] semantics[annotated]
-- Coverage: 50 / 50 exports
+- Coverage: 27 / 27 exports
 - Provenance: exports[NAMESPACE], enums[match.arg/switch], constraints[assertions/checks]
 ```

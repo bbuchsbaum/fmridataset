@@ -2,12 +2,13 @@
 % Please edit documentation in R/study_backend_seed_s3.R
 \name{register_study_backend_seed_methods}
 \alias{register_study_backend_seed_methods}
-\title{Register S3 Methods for DelayedArray Compatibility}
+\title{Register Study Backend Seed Methods}
 \usage{
 register_study_backend_seed_methods()
 }
 \description{
-This function should be called in .onLoad to register the S3 methods
-with DelayedArray's S4 generic functions.
+Ensures the DelayedArray-compatible seed and associated S4 methods are
+available. Called automatically when study-level backends are coerced to
+DelayedArray objects.
 }
 \keyword{internal}

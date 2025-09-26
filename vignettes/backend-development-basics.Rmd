@@ -274,7 +274,7 @@ Returns a logical vector indicating valid voxels. Length must equal the product 
 
 These methods enhance functionality but aren't required:
 
-```{r optional-methods}
+```{r optional-methods, eval = FALSE}
 # Optional: Metadata extraction
 backend_get_metadata.json_backend <- function(backend) {
   if (!backend$is_open) {

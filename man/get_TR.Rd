@@ -46,7 +46,7 @@ This parameter is crucial for temporal analyses and hemodynamic modeling.
 \donttest{
 # Create a sampling frame with TR = 2 seconds
 sf <- fmrihrf::sampling_frame(blocklens = c(100, 120), TR = 2)
-get_TR(sf)  # Returns: 2
+get_TR(sf) # Returns: 2
 }
 
 }

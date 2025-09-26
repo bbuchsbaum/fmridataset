@@ -55,9 +55,6 @@ study_backend <- function(backends, subject_ids = NULL,
     )
   }
 
-  stopifnot(!isTRUE(getOption("DelayedArray.suppressWarnings")))
-  options(fmridataset.block_size_mb = 64)
-
   dims_list <- lapply(backends, backend_get_dims)
   # Ensure consistent numeric type for spatial dimensions
   spatial_dims <- lapply(dims_list, function(x) as.numeric(x$spatial))
@@ -104,12 +101,16 @@ study_backend <- function(backends, subject_ids = NULL,
     )
   }
 
+  subject_boundaries <- c(0L, cumsum(as.integer(time_dims)))
+
   backend <- list(
     backends = backends,
     subject_ids = subject_ids,
     strict = strict,
     `_dims` = list(spatial = ref_spatial, time = sum(time_dims)),
-    `_mask` = combined_mask
+    `_mask` = combined_mask,
+    time_dims = as.integer(time_dims),
+    subject_boundaries = as.integer(subject_boundaries)
   )
   class(backend) <- c("study_backend", "storage_backend")
   backend
@@ -149,13 +150,89 @@ backend_get_mask.study_backend <- function(backend) {
 #' @method backend_get_data study_backend
 #' @export
 backend_get_data.study_backend <- function(backend, rows = NULL, cols = NULL) {
-  if (is.null(rows) && is.null(cols)) {
-    return(as_delayed_array(backend))
+  if (is.null(backend$time_dims) || is.null(backend$subject_boundaries)) {
+    dims_list <- lapply(backend$backends, backend_get_dims)
+    backend$time_dims <- vapply(dims_list, function(d) as.integer(d$time), integer(1))
+    backend$subject_boundaries <- c(0L, cumsum(backend$time_dims))
   }
 
-  seed <- study_backend_seed(backend$backends, backend$subject_ids)
-  if (is.null(rows)) rows <- seq_len(seed@dims[1])
-  if (is.null(cols)) cols <- seq_len(seed@dims[2])
+  n_time <- sum(backend$time_dims)
+  mask <- backend_get_mask(backend)
+  n_vox <- as.integer(sum(mask))
 
-  DelayedArray::extract_array(seed, list(rows, cols))
+  if (is.null(rows) && is.null(cols) && requireNamespace("delarr", quietly = TRUE)) {
+    return(as_delarr(backend))
+  }
+
+  rows <- if (is.null(rows)) seq_len(n_time) else rows
+  cols <- if (is.null(cols)) seq_len(n_vox) else cols
+
+  if (is.logical(rows)) rows <- which(rows)
+  if (is.logical(cols)) cols <- which(cols)
+
+  if (any(rows < 1L | rows > n_time)) {
+    stop("Row indices out of bounds", call. = FALSE)
+  }
+  if (any(cols < 1L | cols > n_vox)) {
+    stop("Column indices out of bounds", call. = FALSE)
+  }
+
+  if (!is.integer(rows)) {
+    if (is.double(rows) && all(rows == as.integer(rows))) {
+      rows <- as.integer(rows)
+    } else {
+      stop("Row indices must be integer valued", call. = FALSE)
+    }
+  }
+
+  if (!is.integer(cols)) {
+    if (is.double(cols) && all(cols == as.integer(cols))) {
+      cols <- as.integer(cols)
+    } else {
+      stop("Column indices must be integer valued", call. = FALSE)
+    }
+  }
+
+  .collect_study_backend_block(
+    backends = backend$backends,
+    rows = rows,
+    cols = cols,
+    subject_boundaries = backend$subject_boundaries,
+    n_time = n_time,
+    n_vox = n_vox
+  )
+}
+
+.collect_study_backend_block <- function(backends, rows, cols,
+                                        subject_boundaries, n_time, n_vox) {
+  n_rows <- length(rows)
+  n_cols <- length(cols)
+
+  if (!n_rows || !n_cols) {
+    return(matrix(numeric(), nrow = n_rows, ncol = n_cols))
+  }
+
+  ord <- order(rows)
+  sorted_rows <- rows[ord]
+  result_sorted <- matrix(NA_real_, nrow = n_rows, ncol = n_cols)
+
+  for (s in seq_along(backends)) {
+    start <- subject_boundaries[s] + 1L
+    end <- subject_boundaries[s + 1L]
+    idx <- which(sorted_rows >= start & sorted_rows <= end)
+    if (!length(idx)) next
+
+    subj_backend <- backends[[s]]
+    local_rows <- sorted_rows[idx] - subject_boundaries[s]
+    subj_data <- backend_get_data(subj_backend, rows = local_rows, cols = cols)
+    if (!is.matrix(subj_data)) {
+      subj_data <- as.matrix(subj_data)
+    }
+
+    result_sorted[idx, ] <- subj_data
+  }
+
+  result <- matrix(NA_real_, nrow = n_rows, ncol = n_cols)
+  result[ord, ] <- result_sorted
+  result
 }

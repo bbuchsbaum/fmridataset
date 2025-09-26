@@ -25,27 +25,15 @@ values.
 \donttest{
 # Create small example
 mat <- matrix(rnorm(12), nrow = 3, ncol = 4)
-delayed_mat <- DelayedArray::DelayedArray(mat)
 
-# Create fmri_series with metadata
-fs <- new_fmri_series(
-  data = delayed_mat,
-  voxel_info = data.frame(
-    voxel_id = 1:4,
-    region = c("A", "A", "B", "B")
-  ),
-  temporal_info = data.frame(
-    time = 1:3,
-    condition = c("rest", "task", "rest")
-  ),
-  selection_info = list(),
-  dataset_info = list()
-)
+backend <- matrix_backend(mat, mask = rep(TRUE, ncol(mat)))
+dataset <- fmri_dataset(backend, TR = 1, run_length = nrow(mat))
+fs <- fmri_series(dataset)
 
 # Convert to tibble
 tbl_result <- tibble::as_tibble(fs)
 # Result has 12 rows (3 timepoints x 4 voxels)
-# with columns: time, condition, voxel_id, region, signal
+# with columns: time, voxel, signal
 }
 
 }

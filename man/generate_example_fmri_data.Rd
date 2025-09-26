@@ -38,4 +38,10 @@ and consistent demonstrations.
 data <- generate_example_fmri_data(200, 1000)
 }
 }
+\keyword{Data}
+\keyword{Examples}
+\keyword{Generate}
+\keyword{Synthetic}
+\keyword{fMRI}
+\keyword{for}
 \keyword{internal}

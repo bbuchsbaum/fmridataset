@@ -16,6 +16,6 @@ Logical, TRUE if backend is registered
 Tests whether a backend type is registered in the system.
 }
 \examples{
-is_backend_registered("nifti")  # TRUE (built-in)
+is_backend_registered("nifti") # TRUE (built-in)
 is_backend_registered("custom") # FALSE (unless registered)
 }

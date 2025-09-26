@@ -7,6 +7,11 @@
   - Returns placeholder data (zeros) and standard dimensions
   - Useful for testing dependent packages without requiring actual data files
   - Enable with `dummy_mode = TRUE` in `fmri_dataset()` constructor
+* Replaced the DelayedArray dependency with the lightweight `delarr` lazy
+  matrix adapter
+  - `fmri_series()` and study helpers now return `delarr` objects by default
+  - Added `as_delarr()` generics for all storage backends and study adapters
+  - Retained optional `as_delayed_array()` paths for explicit DelayedMatrix output
 
 # fmridataset 0.8.9 (Hotfix)
 

@@ -12,7 +12,7 @@ study_backend_seed(backends, subject_ids)
 \item{subject_ids}{Character vector of subject identifiers}
 }
 \value{
-A study_backend_seed S3 object
+A StudyBackendSeed S4 object
 }
 \description{
 Create a Study Backend Seed

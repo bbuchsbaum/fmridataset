@@ -1,3 +1,6 @@
+#' @importFrom stats rnorm var
+NULL
+
 #' Helper Functions for Vignettes
 #'
 #' @description
@@ -5,7 +8,6 @@
 #' and consistent demonstrations.
 #'
 #' @keywords internal
-#' @noRd
 
 #' Generate Synthetic fMRI Data for Examples
 #'

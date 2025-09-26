@@ -7,7 +7,7 @@
 new_fmri_series(data, voxel_info, temporal_info, selection_info, dataset_info)
 }
 \arguments{
-\item{data}{A DelayedMatrix with timepoints as rows and voxels as columns}
+\item{data}{A lazy matrix (e.g., \code{delarr}), \code{DelayedMatrix}, or base matrix}
 
 \item{voxel_info}{A data.frame containing spatial metadata for each voxel}
 

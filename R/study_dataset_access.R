@@ -27,10 +27,11 @@ get_data_matrix.fmri_study_dataset <- function(x, subject_id = NULL, ...) {
   }
 }
 
-#' Convert fmri_study_dataset to a tibble or DelayedMatrix
+#' Convert fmri_study_dataset to a tibble or lazy matrix
 #'
 #' Primary data access method for study-level datasets. By default this
-#' returns a lazy `DelayedMatrix` with row-wise metadata attached. When
+#' returns a lazy matrix (typically a `delarr` object) with row-wise
+#' metadata attached. When
 #' `materialise = TRUE`, the data matrix is materialised and returned as
 #' a tibble with metadata columns prepended.
 #'
@@ -38,7 +39,7 @@ get_data_matrix.fmri_study_dataset <- function(x, subject_id = NULL, ...) {
 #' @param materialise Logical; return a materialised tibble? Default `FALSE`.
 #' @param ... Additional arguments (unused)
 #'
-#' @return Either a `DelayedMatrix` with metadata attributes or a tibble
+#' @return Either a lazy matrix with metadata attributes or a tibble
 #'   when `materialise = TRUE`.
 #' @export
 #' @importFrom tibble as_tibble

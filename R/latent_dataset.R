@@ -105,6 +105,18 @@ latent_dataset <- function(source,
 
   # Get dimensions from backend
   dims <- backend$dims
+
+  backend_run_lengths <- vapply(backend$data, function(obj) {
+    dims <- get_latent_space_dims(obj)
+    if (length(dims) >= 4) as.integer(dims[4]) else 0L
+  }, integer(1))
+
+  if (is.null(run_length) || length(run_length) == 0 || sum(run_length) == 0) {
+    run_length <- backend_run_lengths
+  }
+
+  run_length <- as.integer(run_length)
+
   assertthat::assert_that(sum(run_length) == dims$time,
     msg = sprintf(
       "Sum of run_length (%d) must equal total time points (%d)",

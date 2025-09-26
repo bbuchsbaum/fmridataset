@@ -5,6 +5,7 @@ create_matrix_backend <- function() {
 }
 
 test_that("as_delayed_array works for matrix_backend", {
+  skip_if_not_installed("DelayedArray")
   b <- create_matrix_backend()
   da <- as_delayed_array(b)
   expect_s4_class(da, "DelayedArray")
@@ -33,6 +34,7 @@ create_nifti_backend <- function() {
 }
 
 test_that("as_delayed_array works for nifti_backend", {
+  skip_if_not_installed("DelayedArray")
   b <- create_nifti_backend()
   da <- as_delayed_array(b)
   expect_s4_class(da, "DelayedArray")

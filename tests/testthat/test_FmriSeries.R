@@ -1,14 +1,23 @@
-library(DelayedArray)
-
-# Basic instantiation
+make_delarr <- function(mat) {
+  delarr::delarr_backend(
+    nrow = nrow(mat),
+    ncol = ncol(mat),
+    pull = function(rows = NULL, cols = NULL) {
+      rr <- if (is.null(rows)) seq_len(nrow(mat)) else rows
+      cc <- if (is.null(cols)) seq_len(ncol(mat)) else cols
+      mat[rr, cc, drop = FALSE]
+    }
+  )
+}
 
 test_that("fmri_series can be created and displayed", {
-  mat <- DelayedArray(matrix(1:6, nrow = 3))
+  mat <- matrix(1:6, nrow = 3)
+  lazy_mat <- make_delarr(mat)
   vox_info <- data.frame(id = 1:ncol(mat))
   tmp_info <- data.frame(id = 1:nrow(mat))
 
   fs <- new_fmri_series(
-    data = mat,
+    data = lazy_mat,
     voxel_info = vox_info,
     temporal_info = tmp_info,
     selection_info = list(selector = NULL),
@@ -23,12 +32,12 @@ test_that("fmri_series can be created and displayed", {
 
 test_that("fmri_series as.matrix works", {
   mat <- matrix(1:6, nrow = 3)
-  delayed_mat <- DelayedArray(mat)
-  vox_info <- data.frame(id = 1:ncol(delayed_mat))
-  tmp_info <- data.frame(id = 1:nrow(delayed_mat))
+  lazy_mat <- make_delarr(mat)
+  vox_info <- data.frame(id = 1:ncol(lazy_mat))
+  tmp_info <- data.frame(id = 1:nrow(lazy_mat))
 
   fs <- new_fmri_series(
-    data = delayed_mat,
+    data = lazy_mat,
     voxel_info = vox_info,
     temporal_info = tmp_info,
     selection_info = list(),
@@ -44,12 +53,12 @@ test_that("fmri_series as_tibble works", {
   skip_if_not_installed("tibble")
 
   mat <- matrix(1:6, nrow = 3)
-  delayed_mat <- DelayedArray(mat)
+  lazy_mat <- make_delarr(mat)
   vox_info <- data.frame(voxel_id = 1:2, region = c("A", "B"))
   tmp_info <- data.frame(time = 1:3, condition = c("rest", "task", "rest"))
 
   fs <- new_fmri_series(
-    data = delayed_mat,
+    data = lazy_mat,
     voxel_info = vox_info,
     temporal_info = tmp_info,
     selection_info = list(),
@@ -65,12 +74,13 @@ test_that("fmri_series as_tibble works", {
 })
 
 test_that("is.fmri_series works", {
-  mat <- DelayedArray(matrix(1:6, nrow = 3))
-  vox_info <- data.frame(id = 1:ncol(mat))
-  tmp_info <- data.frame(id = 1:nrow(mat))
+  mat <- matrix(1:6, nrow = 3)
+  lazy_mat <- make_delarr(mat)
+  vox_info <- data.frame(id = seq_len(ncol(mat)))
+  tmp_info <- data.frame(id = seq_len(nrow(mat)))
 
   fs <- new_fmri_series(
-    data = mat,
+    data = lazy_mat,
     voxel_info = vox_info,
     temporal_info = tmp_info,
     selection_info = list(),
@@ -78,6 +88,6 @@ test_that("is.fmri_series works", {
   )
 
   expect_true(is.fmri_series(fs))
-  expect_false(is.fmri_series(mat))
+  expect_false(is.fmri_series(lazy_mat))
   expect_false(is.fmri_series(list()))
 })

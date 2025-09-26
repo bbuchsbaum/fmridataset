@@ -58,7 +58,7 @@ test_that("lazy as_tibble avoids materialising study data", {
 
   log_env$count <- 0L
   lazy_tbl <- as_tibble(study)
-  expect_s4_class(lazy_tbl, "DelayedMatrix")
+  expect_true(inherits(lazy_tbl, "delarr"))
   expect_equal(log_env$count, 0L)
 
   log_env$count <- 0L
@@ -76,6 +76,7 @@ test_that("large dataset of 100+ subjects works", {
   })
   study <- fmri_study_dataset(datasets, subject_ids = sprintf("sub-%03d", seq_len(n_subj)))
   dm <- as_tibble(study)
+  expect_true(inherits(dm, "delarr"))
   expect_equal(dim(dm), c(5 * n_subj, 2))
   md <- attr(dm, "rowData")
   expect_equal(length(unique(md$subject_id)), n_subj)

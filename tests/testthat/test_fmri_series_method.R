@@ -11,6 +11,7 @@ test_that("fmri_series.fmri_dataset returns fmri_series", {
   dset <- create_test_dataset()
   fs <- fmri_series(dset, selector = 3:5, timepoints = 2:4)
   expect_s3_class(fs, "fmri_series")
+  expect_true(inherits(fs$data, "delarr"))
   expect_equal(dim(fs$data), c(3, 3))
   expected <- dset$backend$data_matrix[2:4, 3:5]
   expect_equal(as.matrix(fs), expected)
@@ -19,6 +20,7 @@ test_that("fmri_series.fmri_dataset returns fmri_series", {
 })
 
 test_that("fmri_series can return DelayedMatrix", {
+  skip_if_not_installed("DelayedArray")
   dset <- create_test_dataset()
   dm <- fmri_series(dset, selector = 1:2, timepoints = 1:2, output = "DelayedMatrix")
   expect_s4_class(dm, "DelayedMatrix")

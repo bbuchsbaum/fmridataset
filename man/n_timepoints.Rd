@@ -41,7 +41,7 @@ from objects containing temporal structure information.
 \donttest{
 # Create a sampling frame with 3 runs
 sf <- fmrihrf::sampling_frame(blocklens = c(100, 120, 110), TR = 2)
-n_timepoints(sf)  # Returns: 330 (sum of run lengths)
+n_timepoints(sf) # Returns: 330 (sum of run lengths)
 }
 
 }

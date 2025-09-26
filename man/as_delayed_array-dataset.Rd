@@ -13,6 +13,11 @@
 
 \S4method{as_delayed_array}{fmri_mem_dataset}(backend, sparse_ok = FALSE)
 }
+\arguments{
+\item{backend}{A storage backend object}
+
+\item{sparse_ok}{Logical, allow sparse representation when possible}
+}
 \description{
 Provides DelayedArray interface for dataset objects. These methods
 convert fmri_dataset and matrix_dataset objects to DelayedArrays

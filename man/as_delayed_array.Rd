@@ -35,8 +35,8 @@ are accessed.
 }
 \examples{
 \dontrun{
-  b <- matrix_backend(matrix(rnorm(20), nrow = 5))
-  da <- as_delayed_array(b)
-  dim(da)
+b <- matrix_backend(matrix(rnorm(20), nrow = 5))
+da <- as_delayed_array(b)
+dim(da)
 }
 }

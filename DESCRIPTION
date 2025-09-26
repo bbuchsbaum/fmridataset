@@ -22,6 +22,7 @@ Imports:
     assertthat,
     cachem,
     deflist,
+    delarr,
     fmrihrf,
     fs,
     lifecycle,
@@ -31,7 +32,6 @@ Imports:
     neuroim2,
     purrr,
     tibble,
-    DelayedArray,
     S4Vectors,
     utils
 Suggests:
@@ -45,8 +45,9 @@ Suggests:
     mockery,
     mockr,
     hdf5r,
+    jsonlite,
     Rarr,
-    S4Arrays,
+    yaml,
     testthat (>= 3.0.0),
     knitr,
     rmarkdown

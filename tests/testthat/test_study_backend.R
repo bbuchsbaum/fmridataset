@@ -23,9 +23,9 @@ test_that("study_backend basic operations", {
   expect_equal(mask, rep(TRUE, 2))
 
   da <- backend_get_data(sb)
-  expect_s4_class(da, "DelayedArray")
-  expect_s4_class(da, "DelayedArray")
+  expect_true(inherits(da, "delarr"))
   expect_equal(dim(da), c(20, 2))
+  expect_equal(as.matrix(da), rbind(b1$data_matrix[, b1$mask, drop = FALSE], b2$data_matrix[, b2$mask, drop = FALSE]))
 
   sub <- backend_get_data(sb, rows = 1:5, cols = 1)
   expect_equal(dim(sub), c(5, 1))

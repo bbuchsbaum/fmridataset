@@ -2,12 +2,13 @@
 #'
 #' @description
 #' An S3 class representing lazily accessed fMRI time series data. The
-#' underlying data is stored in a `DelayedMatrix` with rows corresponding
-#' to timepoints and columns corresponding to voxels.
+#' underlying data is stored in a lazy matrix (typically a `delarr`
+#' object) with rows corresponding to timepoints and columns
+#' corresponding to voxels.
 #'
 #' @details
 #' An fmri_series object contains:
-#' - `data`: A DelayedMatrix with timepoints as rows and voxels as columns
+#' - `data`: A lazy matrix with timepoints as rows and voxels as columns
 #' - `voxel_info`: A data.frame containing spatial metadata for each voxel
 #' - `temporal_info`: A data.frame containing metadata for each timepoint
 #' - `selection_info`: A list describing how the data were selected
@@ -22,30 +23,11 @@
 #' @examples
 #' \donttest{
 #' # Create example fmri_series object
-#' # Create small example data
 #' mat <- matrix(rnorm(100 * 50), nrow = 100, ncol = 50)
-#' delayed_mat <- DelayedArray::DelayedArray(mat)
-#'
-#' # Create metadata
-#' vox_info <- data.frame(
-#'   x = rep(1:10, 5),
-#'   y = rep(1:5, each = 10),
-#'   z = 1
-#' )
-#'
-#' temp_info <- data.frame(
-#'   time = seq(0, 99, by = 1),
-#'   run = rep(1:4, each = 25)
-#' )
-#'
-#' # Create fmri_series object
-#' fs <- new_fmri_series(
-#'   data = delayed_mat,
-#'   voxel_info = vox_info,
-#'   temporal_info = temp_info,
-#'   selection_info = list(),
-#'   dataset_info = list()
-#' )
+#' backend <- matrix_backend(mat, mask = rep(TRUE, ncol(mat)))
+#' dataset <- fmri_dataset(backend, TR = 1, run_length = rep(25, 4))
+#' fs <- fmri_series(dataset)
+#' fs
 #' }
 #'
 #' @name fmri_series
@@ -53,7 +35,7 @@ NULL
 
 #' Constructor for fmri_series objects
 #'
-#' @param data A DelayedMatrix with timepoints as rows and voxels as columns
+#' @param data A lazy matrix (e.g., `delarr`), `DelayedMatrix`, or base matrix
 #' @param voxel_info A data.frame containing spatial metadata for each voxel
 #' @param temporal_info A data.frame containing metadata for each timepoint
 #' @param selection_info A list describing how the data were selected
@@ -62,7 +44,11 @@ NULL
 #' @return An object of class \code{fmri_series}
 #' @keywords internal
 new_fmri_series <- function(data, voxel_info, temporal_info, selection_info, dataset_info) {
-  stopifnot(inherits(data, "DelayedMatrix") || is.matrix(data))
+  stopifnot(
+    inherits(data, "delarr") ||
+      inherits(data, "DelayedMatrix") ||
+      is.matrix(data)
+  )
   stopifnot(is.data.frame(voxel_info))
   stopifnot(is.data.frame(temporal_info))
   stopifnot(is.list(selection_info))
@@ -109,7 +95,7 @@ print.fmri_series <- function(x, ...) {
   n_time <- nrow(x$data)
   n_vox <- ncol(x$data)
   cat(sprintf(
-    "<fmri_series> %s voxels × %s timepoints (lazy)\n",
+    "<fmri_series> %s voxels x %s timepoints (lazy)\n",
     n_vox, n_time
   ))
   sel <- x$selection_info
@@ -117,7 +103,7 @@ print.fmri_series <- function(x, ...) {
   sel_desc <- if (!is.null(sel$selector)) "custom" else "NULL"
   backend <- if (!is.null(dataset$backend_type)) dataset$backend_type else "?"
   cat(sprintf(
-    "Selector: %s | Backend: %s | Orientation: time × voxels\n",
+    "Selector: %s | Backend: %s | Orientation: time x voxels\n",
     sel_desc, backend
   ))
   invisible(x)
@@ -126,9 +112,8 @@ print.fmri_series <- function(x, ...) {
 #' Convert fmri_series to Matrix
 #'
 #' @description
-#' This method realizes the underlying DelayedMatrix and
-#' returns an ordinary matrix with timepoints in rows and
-#' voxels in columns.
+#' This method realizes the underlying lazy matrix and returns an
+#' ordinary matrix with timepoints in rows and voxels in columns.
 #'
 #' @param x An \code{fmri_series} object
 #' @param ... Additional arguments (ignored)
@@ -143,16 +128,10 @@ print.fmri_series <- function(x, ...) {
 #' \donttest{
 #' # Create small example
 #' mat <- matrix(rnorm(20), nrow = 4, ncol = 5)
-#' delayed_mat <- DelayedArray::DelayedArray(mat)
 #'
-#' # Create minimal fmri_series object
-#' fs <- new_fmri_series(
-#'   data = delayed_mat,
-#'   voxel_info = data.frame(idx = 1:5),
-#'   temporal_info = data.frame(time = 1:4),
-#'   selection_info = list(),
-#'   dataset_info = list()
-#' )
+#' backend <- matrix_backend(mat, mask = rep(TRUE, ncol(mat)))
+#' dataset <- fmri_dataset(backend, TR = 1, run_length = nrow(mat))
+#' fs <- fmri_series(dataset)
 #'
 #' # Convert to matrix
 #' mat_result <- as.matrix(fs)
@@ -161,11 +140,7 @@ print.fmri_series <- function(x, ...) {
 #'
 #' @export
 as.matrix.fmri_series <- function(x, ...) {
-  if (inherits(x$data, "DelayedMatrix")) {
-    DelayedArray::as.matrix(x$data)
-  } else {
-    as.matrix(x$data)
-  }
+  as.matrix(x$data)
 }
 
 #' Convert fmri_series to Tibble
@@ -190,27 +165,15 @@ as.matrix.fmri_series <- function(x, ...) {
 #' \donttest{
 #' # Create small example
 #' mat <- matrix(rnorm(12), nrow = 3, ncol = 4)
-#' delayed_mat <- DelayedArray::DelayedArray(mat)
 #'
-#' # Create fmri_series with metadata
-#' fs <- new_fmri_series(
-#'   data = delayed_mat,
-#'   voxel_info = data.frame(
-#'     voxel_id = 1:4,
-#'     region = c("A", "A", "B", "B")
-#'   ),
-#'   temporal_info = data.frame(
-#'     time = 1:3,
-#'     condition = c("rest", "task", "rest")
-#'   ),
-#'   selection_info = list(),
-#'   dataset_info = list()
-#' )
+#' backend <- matrix_backend(mat, mask = rep(TRUE, ncol(mat)))
+#' dataset <- fmri_dataset(backend, TR = 1, run_length = nrow(mat))
+#' fs <- fmri_series(dataset)
 #'
 #' # Convert to tibble
 #' tbl_result <- tibble::as_tibble(fs)
 #' # Result has 12 rows (3 timepoints x 4 voxels)
-#' # with columns: time, condition, voxel_id, region, signal
+#' # with columns: time, voxel, signal
 #' }
 #'
 #' @export

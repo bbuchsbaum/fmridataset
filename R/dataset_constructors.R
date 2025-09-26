@@ -438,8 +438,6 @@ fmri_study_dataset <- function(datasets, subject_ids = NULL) {
     )
   }
 
-  DelayedArray::setAutoBlockSize(64 * 1024^2)
-
   backends <- lapply(datasets, function(d) {
     if (inherits(d, "matrix_dataset") && !is.null(d$datamat)) {
       # Convert legacy matrix_dataset to matrix_backend using registry
@@ -481,11 +479,11 @@ fmri_study_dataset <- function(datasets, subject_ids = NULL) {
   ret
 }
 
-#' Attach rowData metadata to a DelayedMatrix
+#' Attach rowData metadata to a lazy matrix
 #'
 #' Helper for reattaching metadata after DelayedMatrixStats operations.
 #'
-#' @param x A DelayedMatrix
+#' @param x A lazy matrix or matrix-like object
 #' @param rowData A data.frame of row-wise metadata
 #' @return `x` with `rowData` attribute set
 #' @export

@@ -35,7 +35,7 @@ ds <- matrix_dataset(mat, TR = 2, run_length = 100)
 
 # Extract the data
 data <- get_data(ds)
-identical(data, mat)  # TRUE
+identical(data, mat) # TRUE
 }
 
 }

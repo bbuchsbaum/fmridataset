@@ -42,8 +42,8 @@ time series analysis or indexing operations.
 # Create a sampling frame
 sf <- fmrihrf::sampling_frame(blocklens = c(100, 120), TR = 2)
 s <- samples(sf)
-length(s)  # 220
-range(s)   # c(1, 220)
+length(s) # 220
+range(s) # c(1, 220)
 }
 
 }

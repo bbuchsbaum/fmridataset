@@ -20,8 +20,7 @@ optional_packages <- list(
   Rarr = "Zarr array support (Bioconductor)",
   rhdf5 = "HDF5 support (Bioconductor)",
   jsonlite = "JSON configuration files",
-  yaml = "YAML configuration files",
-  S4Arrays = "S4 array infrastructure (Bioconductor)"
+  yaml = "YAML configuration files"
 )
 
 # Check which packages are installed
@@ -47,7 +46,7 @@ cat(sprintf("Installed: %d/%d\n", length(installed), length(optional_packages)))
 if (length(missing) > 0) {
   cat("\nTo install missing packages:\n")
 
-  bioc_pkgs <- intersect(missing, c("Rarr", "rhdf5", "S4Arrays"))
+  bioc_pkgs <- intersect(missing, c("Rarr", "rhdf5"))
   if (length(bioc_pkgs) > 0) {
     cat(sprintf(
       "BiocManager::install(c(%s))\n",

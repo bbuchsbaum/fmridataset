@@ -67,7 +67,7 @@ test_that("edge cases for selection are handled", {
 
   empty_sel <- fmri_series(dset, selector = integer(0), timepoints = 1:2)
   expect_equal(dim(empty_sel), c(2, 0))
-  expect_equal(ncol(as.matrix(empty_sel)), 0)
+  expect_length(as.matrix(empty_sel), 0)
 
   single_tp <- fmri_series(dset, selector = 1, timepoints = 3)
   expect_equal(dim(single_tp), c(1, 1))

@@ -46,7 +46,7 @@ for run-wise analyses or modeling run effects.
 \donttest{
 # Create a sampling frame with 2 runs of different lengths
 sf <- fmrihrf::sampling_frame(blocklens = c(3, 4), TR = 2)
-blockids(sf)  # Returns: c(1, 1, 1, 2, 2, 2, 2)
+blockids(sf) # Returns: c(1, 1, 1, 2, 2, 2, 2)
 }
 
 }

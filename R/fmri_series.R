@@ -9,7 +9,8 @@
 #' @param event_window Reserved for future use.
 #' @param ... Additional arguments passed to methods.
 #'
-#' @return Either an `fmri_series` object or a `DelayedMatrix`.
+#' @return An `fmri_series` (with a `delarr` lazy matrix payload) or a
+#'   `DelayedMatrix` when `output = "DelayedMatrix"`.
 #' @export
 fmri_series <- function(dataset, selector = NULL, timepoints = NULL,
                         output = c("fmri_series", "DelayedMatrix"),
@@ -26,18 +27,25 @@ fmri_series.fmri_dataset <- function(dataset, selector = NULL, timepoints = NULL
   voxel_ind <- resolve_selector(dataset, selector)
   time_ind <- resolve_timepoints(dataset, timepoints)
 
-  da <- as_delayed_array(dataset$backend)
-  da <- da[time_ind, voxel_ind, drop = FALSE]
-
-  if (output == "DelayedMatrix") {
+  if (identical(output, "DelayedMatrix")) {
+    da <- as_delayed_array(dataset$backend)
+    da <- da[time_ind, voxel_ind, drop = FALSE]
     return(da)
   }
+
+  lazy <- if (requireNamespace("delarr", quietly = TRUE)) {
+    as_delarr(dataset$backend)
+  } else {
+    as_delayed_array(dataset$backend)
+  }
+
+  lazy <- lazy[time_ind, voxel_ind, drop = FALSE]
 
   voxel_info <- S4Vectors::DataFrame(voxel = voxel_ind)
   temporal_info <- build_temporal_info_lazy(dataset, time_ind)
 
   new_fmri_series(
-    data = da,
+    data = lazy,
     voxel_info = as.data.frame(voxel_info),
     temporal_info = as.data.frame(temporal_info),
     selection_info = list(selector = selector, timepoints = timepoints),
@@ -54,18 +62,25 @@ fmri_series.fmri_study_dataset <- function(dataset, selector = NULL, timepoints 
   voxel_ind <- resolve_selector(dataset, selector)
   time_ind <- resolve_timepoints(dataset, timepoints)
 
-  da <- as_delayed_array(dataset$backend)
-  da <- da[time_ind, voxel_ind, drop = FALSE]
-
-  if (output == "DelayedMatrix") {
+  if (identical(output, "DelayedMatrix")) {
+    da <- as_delayed_array(dataset$backend)
+    da <- da[time_ind, voxel_ind, drop = FALSE]
     return(da)
   }
+
+  lazy <- if (requireNamespace("delarr", quietly = TRUE)) {
+    as_delarr(dataset$backend)
+  } else {
+    as_delayed_array(dataset$backend)
+  }
+
+  lazy <- lazy[time_ind, voxel_ind, drop = FALSE]
 
   voxel_info <- S4Vectors::DataFrame(voxel = voxel_ind)
   temporal_info <- build_temporal_info_lazy(dataset, time_ind)
 
   new_fmri_series(
-    data = da,
+    data = lazy,
     voxel_info = as.data.frame(voxel_info),
     temporal_info = as.data.frame(temporal_info),
     selection_info = list(selector = selector, timepoints = timepoints),

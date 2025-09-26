@@ -41,7 +41,7 @@ across all runs.
 \donttest{
 # Create a sampling frame: 220 timepoints with TR = 2 seconds
 sf <- fmrihrf::sampling_frame(blocklens = c(100, 120), TR = 2)
-get_total_duration(sf)  # Returns: 440 seconds
+get_total_duration(sf) # Returns: 440 seconds
 }
 
 }

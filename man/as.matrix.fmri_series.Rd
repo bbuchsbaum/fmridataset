@@ -15,28 +15,21 @@
 A matrix with timepoints as rows and voxels as columns
 }
 \description{
-This method realizes the underlying DelayedMatrix and
-returns an ordinary matrix with timepoints in rows and
-voxels in columns.
+This method realizes the underlying lazy matrix and returns an
+ordinary matrix with timepoints in rows and voxels in columns.
 }
 \examples{
 \donttest{
 # Create small example
 mat <- matrix(rnorm(20), nrow = 4, ncol = 5)
-delayed_mat <- DelayedArray::DelayedArray(mat)
 
-# Create minimal fmri_series object
-fs <- new_fmri_series(
-  data = delayed_mat,
-  voxel_info = data.frame(idx = 1:5),
-  temporal_info = data.frame(time = 1:4),
-  selection_info = list(),
-  dataset_info = list()
-)
+backend <- matrix_backend(mat, mask = rep(TRUE, ncol(mat)))
+dataset <- fmri_dataset(backend, TR = 1, run_length = nrow(mat))
+fs <- fmri_series(dataset)
 
 # Convert to matrix
 mat_result <- as.matrix(fs)
-dim(mat_result)  # 4 x 5
+dim(mat_result) # 4 x 5
 }
 
 }

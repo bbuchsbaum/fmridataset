@@ -166,7 +166,7 @@ Matrix datasets store all data in memory, providing optimal access performance f
 
 File datasets work with NIfTI files and implement lazy loading, where data remains on disk until explicitly accessed:
 
-```{r file-dataset}
+```{r file-dataset, eval = FALSE}
 # File-based dataset (paths would be real NIfTI files)
 file_paths <- c(
   "/path/to/subject01_run1.nii.gz",
@@ -250,7 +250,7 @@ For file-based datasets, these operations trigger data loading. The package auto
 
 For large datasets, chunking enables processing without loading everything into memory:
 
-```{r chunking}
+```{r chunking, eval = FALSE}
 # Create chunks for processing
 chunks <- data_chunks(dataset, nchunks = 4)
 
@@ -278,7 +278,7 @@ The chunking system automatically divides voxels optimally and provides metadata
 
 Many fMRI analyses need to process runs separately. The chunking system supports this directly:
 
-```{r runwise}
+```{r runwise, eval = FALSE}
 # Create one chunk per run
 run_chunks <- data_chunks(dataset, runwise = TRUE)
 
@@ -356,7 +356,7 @@ Once you're comfortable with basic dataset creation and access, these advanced t
 
 Understanding when data is loaded helps you optimize memory usage for large datasets:
 
-```{r memory-management}
+```{r memory-management, eval = FALSE}
 # File datasets: creation is cheap, access triggers loading
 file_dataset <- fmri_file_dataset(file_paths, mask_path, TR = 2.0)
 cat("Created file dataset (no data loaded yet)\n")

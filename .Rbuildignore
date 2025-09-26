@@ -23,3 +23,6 @@ examples
 ^SECURITY\.md$
 ^CRAN_guidance\.md$
 ^experiments$
+^vignettes/_template\.Rmd$
+^inst/doc/_template\.Rmd$
+^inst/doc/_template\.html$

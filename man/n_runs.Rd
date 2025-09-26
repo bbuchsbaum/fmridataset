@@ -41,7 +41,7 @@ temporal structure information.
 \donttest{
 # Create a sampling frame with 3 runs
 sf <- fmrihrf::sampling_frame(blocklens = c(100, 120, 110), TR = 2)
-n_runs(sf)  # Returns: 3
+n_runs(sf) # Returns: 3
 }
 
 }

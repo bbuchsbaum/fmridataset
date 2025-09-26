@@ -43,6 +43,7 @@ test_that("fmri_dataset print snapshots", {
 })
 
 test_that("FmriSeries show method snapshots", {
+  skip_if_not_installed("DelayedArray")
   testthat::local_edition(3)
 
   ref_data <- generate_reference_data()

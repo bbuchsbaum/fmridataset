@@ -29,19 +29,21 @@ fmri_series(
 \value{
 An object of class \code{fmri_series}
 
-Either an \code{fmri_series} object or a \code{DelayedMatrix}.
+An \code{fmri_series} (with a \code{delarr} lazy matrix payload) or a
+\code{DelayedMatrix} when \code{output = "DelayedMatrix"}.
 }
 \description{
 An S3 class representing lazily accessed fMRI time series data. The
-underlying data is stored in a \code{DelayedMatrix} with rows corresponding
-to timepoints and columns corresponding to voxels.
+underlying data is stored in a lazy matrix (typically a \code{delarr}
+object) with rows corresponding to timepoints and columns
+corresponding to voxels.
 
 Core interface for retrieving voxel time series from fMRI datasets.
 }
 \details{
 An fmri_series object contains:
 \itemize{
-\item \code{data}: A DelayedMatrix with timepoints as rows and voxels as columns
+\item \code{data}: A lazy matrix with timepoints as rows and voxels as columns
 \item \code{voxel_info}: A data.frame containing spatial metadata for each voxel
 \item \code{temporal_info}: A data.frame containing metadata for each timepoint
 \item \code{selection_info}: A list describing how the data were selected
@@ -51,30 +53,11 @@ An fmri_series object contains:
 \examples{
 \donttest{
 # Create example fmri_series object
-# Create small example data
 mat <- matrix(rnorm(100 * 50), nrow = 100, ncol = 50)
-delayed_mat <- DelayedArray::DelayedArray(mat)
-
-# Create metadata
-vox_info <- data.frame(
-  x = rep(1:10, 5),
-  y = rep(1:5, each = 10),
-  z = 1
-)
-
-temp_info <- data.frame(
-  time = seq(0, 99, by = 1),
-  run = rep(1:4, each = 25)
-)
-
-# Create fmri_series object
-fs <- new_fmri_series(
-  data = delayed_mat,
-  voxel_info = vox_info,
-  temporal_info = temp_info,
-  selection_info = list(),
-  dataset_info = list()
-)
+backend <- matrix_backend(mat, mask = rep(TRUE, ncol(mat)))
+dataset <- fmri_dataset(backend, TR = 1, run_length = rep(25, 4))
+fs <- fmri_series(dataset)
+fs
 }
 
 }

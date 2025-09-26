@@ -36,7 +36,7 @@ ds <- matrix_dataset(mat, TR = 2, run_length = 100)
 
 # Extract the mask (matrix_dataset creates all TRUE mask by default)
 extracted_mask <- get_mask(ds)
-sum(extracted_mask)  # 50 (all TRUE values)
+sum(extracted_mask) # 50 (all TRUE values)
 }
 
 }

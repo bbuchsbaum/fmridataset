@@ -76,10 +76,10 @@ dset <- fmri_dataset(backend, TR = 2, run_length = c(150, 150))
 # Create a dummy dataset for testing (files don't need to exist)
 dset_dummy <- fmri_dataset(
   scans = c("dummy1.nii", "dummy2.nii"),
-  mask = "dummy_mask.nii", 
+  mask = "dummy_mask.nii",
   TR = 2,
   run_length = c(100, 100),
-  dummy_mode = TRUE  # Enable dummy mode for testing
+  dummy_mode = TRUE # Enable dummy mode for testing
 )
 }
 }

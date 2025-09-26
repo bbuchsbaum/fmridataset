@@ -8,6 +8,7 @@
 #' @param sparse_ok Logical, allow sparse representation when possible
 #' @param ... Additional arguments passed to methods
 #' @return A DelayedArray object
+#' @importFrom methods setClass setMethod new setOldClass
 #' @examples
 #' \dontrun{
 #' b <- matrix_backend(matrix(rnorm(20), nrow = 5))
@@ -19,8 +20,6 @@ as_delayed_array <- function(backend, sparse_ok = FALSE, ...) {
   UseMethod("as_delayed_array")
 }
 
-# We need to keep S4 seeds for DelayedArray compatibility
-# Register S3 classes with S4 system
 setOldClass("matrix_backend")
 setOldClass("nifti_backend")
 setOldClass("study_backend")
@@ -29,37 +28,8 @@ setOldClass("matrix_dataset")
 setOldClass("fmri_file_dataset")
 setOldClass("fmri_mem_dataset")
 
-# Base seed class ---------------------------------------------------------
-
-#' @importFrom methods setClass setMethod new setOldClass
-#' @importFrom DelayedArray extract_array DelayedArray
-setClass("StorageBackendSeed",
-  slots = list(backend = "ANY"),
-  contains = "Array"
-)
-
-#' Dimensions of StorageBackendSeed
-#'
-#' @param x A StorageBackendSeed object
-#' @return An integer vector of length 2 (timepoints, voxels)
-#' @rdname dim-StorageBackendSeed-method
-#' @aliases dim,StorageBackendSeed-method
-#' @keywords internal
-setMethod("dim", "StorageBackendSeed", function(x) {
-  d <- backend_get_dims(x@backend)
-  # The number of voxels is the number of TRUE values in the mask
-  num_voxels <- sum(backend_get_mask(x@backend))
-  c(d$time, num_voxels)
-})
-
-#' @keywords internal
-setMethod("extract_array", "StorageBackendSeed", function(x, index) {
-  rows <- if (length(index) >= 1) index[[1]] else NULL
-  cols <- if (length(index) >= 2) index[[2]] else NULL
-  backend_get_data(x@backend, rows = rows, cols = cols)
-})
-
-# Helper to ensure DelayedArray is available -----------------------------
+.delayed_array_support_env <- new.env(parent = emptyenv())
+.delayed_array_support_env$registered <- FALSE
 
 .ensure_delayed_array <- function() {
   if (isTRUE(getOption("fmridataset.disable_delayedarray", FALSE))) {
@@ -76,20 +46,50 @@ setMethod("extract_array", "StorageBackendSeed", function(x, index) {
   }
 }
 
-# Specific seeds ---------------------------------------------------------
+register_delayed_array_support <- function() {
+  if (isTRUE(.delayed_array_support_env$registered)) {
+    return(invisible(NULL))
+  }
 
-setClass("NiftiBackendSeed", contains = "StorageBackendSeed")
-setClass("MatrixBackendSeed", contains = "StorageBackendSeed")
+  .ensure_delayed_array()
 
-# S3 Methods for backends ---------------------------------------------------
+  methods::setClass(
+    "StorageBackendSeed",
+    slots = list(backend = "ANY"),
+    contains = "Array"
+  )
+
+  methods::setMethod("dim", "StorageBackendSeed", function(x) {
+    d <- backend_get_dims(x@backend)
+    num_voxels <- sum(backend_get_mask(x@backend))
+    c(d$time, num_voxels)
+  })
+
+  extract_array_generic <- getExportedValue("DelayedArray", "extract_array")
+
+  methods::setMethod(extract_array_generic, "StorageBackendSeed", function(x, index) {
+    rows <- if (length(index) >= 1) index[[1]] else NULL
+    cols <- if (length(index) >= 2) index[[2]] else NULL
+    backend_get_data(x@backend, rows = rows, cols = cols)
+  })
+
+  methods::setClass("NiftiBackendSeed", contains = "StorageBackendSeed")
+  methods::setClass("MatrixBackendSeed", contains = "StorageBackendSeed")
+
+  register_study_backend_seed_methods()
+
+  .delayed_array_support_env$registered <- TRUE
+  invisible(NULL)
+}
 
 #' @rdname as_delayed_array
 #' @method as_delayed_array nifti_backend
 #' @export
 as_delayed_array.nifti_backend <- function(backend, sparse_ok = FALSE, ...) {
   .ensure_delayed_array()
-  seed <- new("NiftiBackendSeed", backend = backend)
-  DelayedArray::DelayedArray(seed)
+  register_delayed_array_support()
+  seed <- methods::new("NiftiBackendSeed", backend = backend)
+  getExportedValue("DelayedArray", "DelayedArray")(seed)
 }
 
 #' @rdname as_delayed_array
@@ -97,8 +97,9 @@ as_delayed_array.nifti_backend <- function(backend, sparse_ok = FALSE, ...) {
 #' @export
 as_delayed_array.matrix_backend <- function(backend, sparse_ok = FALSE, ...) {
   .ensure_delayed_array()
-  seed <- new("MatrixBackendSeed", backend = backend)
-  DelayedArray::DelayedArray(seed)
+  register_delayed_array_support()
+  seed <- methods::new("MatrixBackendSeed", backend = backend)
+  getExportedValue("DelayedArray", "DelayedArray")(seed)
 }
 
 #' @rdname as_delayed_array
@@ -106,13 +107,12 @@ as_delayed_array.matrix_backend <- function(backend, sparse_ok = FALSE, ...) {
 #' @export
 as_delayed_array.study_backend <- function(backend, sparse_ok = FALSE, ...) {
   .ensure_delayed_array()
-  # Use the new S3 study_backend_seed for true lazy evaluation
+  register_delayed_array_support()
   seed <- study_backend_seed(
     backends = backend$backends,
     subject_ids = backend$subject_ids
   )
-
-  DelayedArray::DelayedArray(seed)
+  getExportedValue("DelayedArray", "DelayedArray")(seed)
 }
 
 #' @rdname as_delayed_array

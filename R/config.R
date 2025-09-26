@@ -29,12 +29,12 @@ read_fmri_config <- function(file_name, base_path = NULL) {
     if (!requireNamespace("yaml", quietly = TRUE)) {
       stop("Package 'yaml' is required to read YAML configuration files")
     }
-    config_data <- yaml::read_yaml(file_name)
+    config_data <- getExportedValue("yaml", "read_yaml")(file_name)
   } else if (grepl("\\.json$", file_name, ignore.case = TRUE)) {
     if (!requireNamespace("jsonlite", quietly = TRUE)) {
       stop("Package 'jsonlite' is required to read JSON configuration files")
     }
-    config_data <- jsonlite::fromJSON(file_name, simplifyVector = TRUE)
+    config_data <- getExportedValue("jsonlite", "fromJSON")(file_name, simplifyVector = TRUE)
   } else {
     # For backwards compatibility, try to read as dcf format
     config_data <- read_dcf_config(file_name)
@@ -144,6 +144,6 @@ write_fmri_config <- function(config, file_name) {
   # Remove computed fields
   config_to_write <- config[!names(config) %in% c("design", "class")]
 
-  yaml::write_yaml(config_to_write, file_name)
+  getExportedValue("yaml", "write_yaml")(config_to_write, file_name)
   invisible(config_to_write)
 }
