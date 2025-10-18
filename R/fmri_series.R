@@ -41,7 +41,7 @@ fmri_series.fmri_dataset <- function(dataset, selector = NULL, timepoints = NULL
 
   lazy <- lazy[time_ind, voxel_ind, drop = FALSE]
 
-  voxel_info <- S4Vectors::DataFrame(voxel = voxel_ind)
+  voxel_info <- data.frame(voxel = voxel_ind)
   temporal_info <- build_temporal_info_lazy(dataset, time_ind)
 
   new_fmri_series(
@@ -76,7 +76,7 @@ fmri_series.fmri_study_dataset <- function(dataset, selector = NULL, timepoints 
 
   lazy <- lazy[time_ind, voxel_ind, drop = FALSE]
 
-  voxel_info <- S4Vectors::DataFrame(voxel = voxel_ind)
+  voxel_info <- data.frame(voxel = voxel_ind)
   temporal_info <- build_temporal_info_lazy(dataset, time_ind)
 
   new_fmri_series(

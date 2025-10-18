@@ -32,7 +32,6 @@ Imports:
     neuroim2,
     purrr,
     tibble,
-    S4Vectors,
     utils
 Suggests:
     bench,
