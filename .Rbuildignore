@@ -16,6 +16,7 @@ data-raw
 examples
 ^codemeta\.json$
 ^\.lintr$
+^\.planning$
 ^codecov\.yml$
 ^CONTRIBUTING\.md$
 ^fmristore_repomix\.xml$
