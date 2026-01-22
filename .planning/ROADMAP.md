@@ -13,7 +13,7 @@ Transform fmridataset from feature-complete to CRAN-ready by fixing R CMD check 
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: CRAN Quick Wins** - Fix immediate R CMD check issues
-- [ ] **Phase 2: Tech Debt** - Resolve H5 backend resource leaks
+- [x] **Phase 2: Tech Debt** - Resolve H5 backend resource leaks
 - [ ] **Phase 3: Zarr Decision** - Investigate and decide on Zarr support
 - [ ] **Phase 4: Test Coverage** - Achieve 80%+ coverage across backends
 - [ ] **Phase 5: Final Validation** - Verify CRAN compliance
@@ -49,8 +49,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md - Add on.exit() resource protection to H5 backend functions
-- [ ] 02-02-PLAN.md - Commit storage_backend.R getS3method fix
+- [x] 02-01-PLAN.md - Add on.exit() resource protection to H5 backend functions
+- [x] 02-02-PLAN.md - Commit storage_backend.R getS3method fix
 
 ### Phase 3: Zarr Decision
 **Goal**: Zarr backend viability determined with go/no-go decision
@@ -107,11 +107,11 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. CRAN Quick Wins | 3/3 | Complete | 2026-01-22 |
-| 2. Tech Debt | 0/2 | Planned | - |
+| 2. Tech Debt | 2/2 | Complete | 2026-01-22 |
 | 3. Zarr Decision | 0/TBD | Not started | - |
 | 4. Test Coverage | 0/TBD | Not started | - |
 | 5. Final Validation | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-01-22*
-*Last updated: 2026-01-22 (Phase 2 planned)*
+*Last updated: 2026-01-22 (Phase 2 complete)*

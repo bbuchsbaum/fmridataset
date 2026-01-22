@@ -34,9 +34,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Tech Debt
 
-- [ ] **DEBT-01**: Fix H5 backend resource leak in metadata retrieval (on.exit cleanup)
-- [ ] **DEBT-02**: Fix H5 backend resource leak in data reading (on.exit cleanup)
-- [ ] **DEBT-03**: Commit pending storage_backend.R fix (getS3method change)
+- [x] **DEBT-01**: Fix H5 backend resource leak in metadata retrieval (on.exit cleanup)
+- [x] **DEBT-02**: Fix H5 backend resource leak in data reading (on.exit cleanup)
+- [x] **DEBT-03**: Commit pending storage_backend.R fix (getS3method change)
 
 ## v2 Requirements
 
@@ -74,9 +74,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CRAN-04 | Phase 1 | Complete |
 | CRAN-05 | Phase 1 | Complete |
 | CRAN-06 | Phase 1 | Complete |
-| DEBT-01 | Phase 2 | Pending |
-| DEBT-02 | Phase 2 | Pending |
-| DEBT-03 | Phase 2 | Pending |
+| DEBT-01 | Phase 2 | Complete |
+| DEBT-02 | Phase 2 | Complete |
+| DEBT-03 | Phase 2 | Complete |
 | ZARR-01 | Phase 3 | Pending |
 | ZARR-02 | Phase 3 | Pending |
 | ZARR-03 | Phase 3 | Pending |
