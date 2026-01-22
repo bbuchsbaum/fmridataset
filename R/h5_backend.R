@@ -272,14 +272,14 @@ backend_get_mask.h5_backend <- function(backend) {
         if (endsWith(tolower(backend$mask_source), ".h5")) {
           # Load as H5NeuroVol
           h5_mask <- fmristore::H5NeuroVol(backend$mask_source, dataset_name = backend$mask_dataset)
+          on.exit(close(h5_mask), add = TRUE, after = FALSE)
           mask_array <- as.array(h5_mask)
-          close(h5_mask) # Close the H5 handle
 
           # Get space information from first data file if available
           if (is.character(backend$source) && length(backend$source) > 0) {
             first_h5 <- fmristore::H5NeuroVec(backend$source[1], dataset_name = backend$data_dataset)
+            on.exit(close(first_h5), add = TRUE, after = FALSE)
             space_info <- space(first_h5)
-            close(first_h5)
             neuroim2::NeuroVol(mask_array, space = space_info)
           } else {
             # Create with minimal space info
@@ -360,6 +360,15 @@ backend_get_data.h5_backend <- function(backend, rows = NULL, cols = NULL) {
     }
   }
 
+  # Only register cleanup if we loaded on-demand (not preloaded)
+  if (is.null(backend$h5_objects)) {
+    on.exit({
+      lapply(h5_objects, function(obj) {
+        tryCatch(close(obj), error = function(e) invisible(NULL))
+      })
+    }, add = TRUE, after = FALSE)
+  }
+
   # Get mask information
   mask_vec <- backend_get_mask(backend)
   voxel_indices <- which(mask_vec)
@@ -375,13 +384,6 @@ backend_get_data.h5_backend <- function(backend, rows = NULL, cols = NULL) {
       neuroim2::series(h5_obj, voxel_indices)
     })
     data_matrix <- do.call(rbind, data_matrices)
-  }
-
-  # Close H5 objects if we loaded them on demand
-  if (is.null(backend$h5_objects)) {
-    lapply(h5_objects, function(obj) {
-      tryCatch(close(obj), error = function(e) invisible(NULL))
-    })
   }
 
   # Apply subsetting if requested
