@@ -132,8 +132,8 @@ validate_backend <- function(backend) {
   )
 
   for (method in required_methods) {
-    method_name <- paste0(method, ".", backend_class)
-    if (!exists(method_name, mode = "function")) {
+    method_impl <- utils::getS3method(method, backend_class, optional = TRUE)
+    if (is.null(method_impl)) {
       stop_fmridataset(
         fmridataset_error_config,
         sprintf("Backend class '%s' must implement method '%s'", backend_class, method)
