@@ -105,10 +105,13 @@ backend_open.zarr_backend <- function(backend) {
         )
       }
 
-      # Open the Zarr array using CRAN zarr package
-      backend$zarr_array <- zarr::open_zarr(backend$source)
+      # Open the Zarr store using CRAN zarr package
+      zarr_store <- zarr::open_zarr(backend$source)
 
-      # Get array info from ZarrArray R6 object
+      # Access the root array (single-array stores have data at root)
+      backend$zarr_array <- zarr_store$root
+
+      # Get array info from zarr_array R6 object
       array_dims <- backend$zarr_array$shape
 
       # Validate dimensions (expecting 4D: x, y, z, time)
@@ -163,12 +166,9 @@ backend_close.zarr_backend <- function(backend) {
 #' @method backend_get_dims zarr_backend
 #' @export
 backend_get_dims.zarr_backend <- function(backend) {
+  # Auto-open if not already open (needed for validation)
   if (!backend$is_open) {
-    stop_fmridataset(
-      fmridataset_error_backend_io,
-      "Backend must be opened before accessing dimensions",
-      operation = "get_dims"
-    )
+    backend <- backend_open(backend)
   }
 
   backend$dims
@@ -178,12 +178,9 @@ backend_get_dims.zarr_backend <- function(backend) {
 #' @method backend_get_mask zarr_backend
 #' @export
 backend_get_mask.zarr_backend <- function(backend) {
+  # Auto-open if not already open (needed for validation)
   if (!backend$is_open) {
-    stop_fmridataset(
-      fmridataset_error_backend_io,
-      "Backend must be opened before accessing mask",
-      operation = "get_mask"
-    )
+    backend <- backend_open(backend)
   }
 
   n_voxels <- prod(backend$dims$spatial)

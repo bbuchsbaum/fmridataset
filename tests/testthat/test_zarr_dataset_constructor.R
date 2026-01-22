@@ -5,11 +5,9 @@ test_that("fmri_zarr_dataset creates valid dataset", {
   arr <- array(rnorm(2 * 2 * 2 * 10), dim = c(2, 2, 2, 10))
 
   tmp_dir <- tempfile()
-  dir.create(tmp_dir)
   on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
 
-  z <- zarr::as_zarr(arr)
-  z$save(tmp_dir)
+  z <- zarr::as_zarr(arr, location = tmp_dir)
 
   # Create dataset using constructor
   dataset <- fmri_zarr_dataset(
@@ -41,11 +39,9 @@ test_that("fmri_zarr_dataset works without mask", {
   arr <- array(rnorm(2 * 1 * 1 * 4), dim = c(2, 1, 1, 4))
 
   tmp_dir <- tempfile()
-  dir.create(tmp_dir)
   on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
 
-  z <- zarr::as_zarr(arr)
-  z$save(tmp_dir)
+  z <- zarr::as_zarr(arr, location = tmp_dir)
 
   dataset <- fmri_zarr_dataset(
     tmp_dir,
@@ -66,11 +62,9 @@ test_that("fmri_zarr_dataset validates run_length", {
   arr <- array(rnorm(2 * 2 * 2 * 2), dim = c(2, 2, 2, 2))
 
   tmp_dir <- tempfile()
-  dir.create(tmp_dir)
   on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
 
-  z <- zarr::as_zarr(arr)
-  z$save(tmp_dir)
+  z <- zarr::as_zarr(arr, location = tmp_dir)
 
   # Run length doesn't match time dimension
   expect_error(
@@ -90,11 +84,9 @@ test_that("fmri_zarr_dataset handles preload option", {
   arr <- array(rnorm(2 * 2 * 1 * 5), dim = c(2, 2, 1, 5))
 
   tmp_dir <- tempfile()
-  dir.create(tmp_dir)
   on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
 
-  z <- zarr::as_zarr(arr)
-  z$save(tmp_dir)
+  z <- zarr::as_zarr(arr, location = tmp_dir)
 
   # Create with preload
   expect_message(
@@ -118,11 +110,9 @@ test_that("fmri_zarr_dataset works with event_table and censor", {
   arr <- array(rnorm(2 * 2 * 1 * 6), dim = c(2, 2, 1, 6))
 
   tmp_dir <- tempfile()
-  dir.create(tmp_dir)
   on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
 
-  z <- zarr::as_zarr(arr)
-  z$save(tmp_dir)
+  z <- zarr::as_zarr(arr, location = tmp_dir)
 
   # Create event table
   events <- data.frame(
