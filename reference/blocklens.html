@@ -9,7 +9,7 @@ Extends the sampling_frame generic to work with dataset objects."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">fmridataset</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.8.9</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -20,9 +20,13 @@ Extends the sampling_frame generic to work with dataset objects."></head><body>
       <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/extending-backends.html">Extending fmridataset with Custom Storage Backends</a></li>
-    <li><a class="dropdown-item" href="../articles/fmridataset-intro.html">Introduction to fmridataset</a></li>
-    <li><a class="dropdown-item" href="../articles/h5-backend-usage.html">Using the H5 Backend for Efficient fMRI Data Storage</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/architecture-overview.html">Architecture Deep Dive: Design Principles and Extensibility</a></li>
+    <li><a class="dropdown-item" href="../articles/backend-development-basics.html">Backend Development Basics: Creating Custom Storage Backends</a></li>
+    <li><a class="dropdown-item" href="../articles/backend-registry.html">Backend Registry: Extending Data Format Support</a></li>
+    <li><a class="dropdown-item" href="../articles/extending-backends.html">Advanced Backend Development: Storage Extensions</a></li>
+    <li><a class="dropdown-item" href="../articles/fmridataset-intro.html">Getting Started with fmridataset</a></li>
+    <li><a class="dropdown-item" href="../articles/h5-backend-usage.html">HDF5 Storage: High-Performance Data Management for Large-Scale fMRI Studies</a></li>
+    <li><a class="dropdown-item" href="../articles/study-level-analysis.html">Scaling to Study-Level Analysis: From Single Subjects to Group Studies</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -37,7 +41,7 @@ Extends the sampling_frame generic to work with dataset objects."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Get Block Lengths from Objects</h1>
-      <small class="dont-index">Source: <a href="https://github.com/bbuchsbaum/fmridataset/blob/main/R/all_generic.R" class="external-link"><code>R/all_generic.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/bbuchsbaum/fmridataset/blob/main/R/all_generic.R" class="external-link"><code>R/all_generic.R</code></a>, <a href="https://github.com/bbuchsbaum/fmridataset/blob/main/R/dataset_methods.R" class="external-link"><code>R/dataset_methods.R</code></a>, <a href="https://github.com/bbuchsbaum/fmridataset/blob/main/R/sampling_frame_adapters.R" class="external-link"><code>R/sampling_frame_adapters.R</code></a></small>
       <div class="d-none name"><code>blocklens.Rd</code></div>
     </div>
 
@@ -48,7 +52,25 @@ Extends the sampling_frame generic to work with dataset objects.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">blocklens</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">blocklens</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'matrix_dataset'</span></span>
+<span><span class="fu">blocklens</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'fmri_dataset'</span></span>
+<span><span class="fu">blocklens</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'fmri_mem_dataset'</span></span>
+<span><span class="fu">blocklens</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'fmri_file_dataset'</span></span>
+<span><span class="fu">blocklens</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'fmri_study_dataset'</span></span>
+<span><span class="fu">blocklens</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'sampling_frame'</span></span>
+<span><span class="fu">blocklens</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -56,7 +78,7 @@ Extends the sampling_frame generic to work with dataset objects.</p>
 
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>An object with block structure</p></dd>
+<dd><p>An object with block structure (e.g., sampling_frame, fmri_dataset)</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -65,9 +87,39 @@ Extends the sampling_frame generic to work with dataset objects.</p>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>Integer vector of block/run lengths</p>
+    <p>Integer vector where each element represents the number of
+timepoints in the corresponding run/block</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>In fMRI experiments, data is often collected in multiple runs or blocks.
+This function extracts the length (number of timepoints) of each run.
+The sum of block lengths equals the total number of timepoints.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p><code><a href="n_runs.html">n_runs</a></code> for number of runs,
+<code><a href="n_timepoints.html">n_timepoints</a></code> for total timepoints,
+<code><a href="get_run_lengths.html">get_run_lengths</a></code> for alternative function name</p></div>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
+<span class="r-in"><span><span class="co"># Create a dataset with 3 runs</span></span></span>
+<span class="r-in"><span><span class="va">sf</span> <span class="op">&lt;-</span> <span class="fu">fmrihrf</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/fmrihrf/reference/sampling_frame.html" class="external-link">sampling_frame</a></span><span class="op">(</span>blocklens <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">100</span>, <span class="fl">120</span>, <span class="fl">110</span><span class="op">)</span>, TR <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">blocklens</span><span class="op">(</span><span class="va">sf</span><span class="op">)</span> <span class="co"># c(100, 120, 110)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 100 120 110</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Create dataset with multiple runs</span></span></span>
+<span class="r-in"><span><span class="va">mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">330</span> <span class="op">*</span> <span class="fl">50</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">330</span>, ncol <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">ds</span> <span class="op">&lt;-</span> <span class="fu"><a href="matrix_dataset.html">matrix_dataset</a></span><span class="op">(</span><span class="va">mat</span>, TR <span class="op">=</span> <span class="fl">2</span>, run_length <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">100</span>, <span class="fl">120</span>, <span class="fl">110</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">blocklens</span><span class="op">(</span><span class="va">ds</span><span class="op">)</span> <span class="co"># c(100, 120, 110)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 100 120 110</span>
+<span class="r-in"><span><span class="co"># }</span></span></span>
+<span class="r-in"><span></span></span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 
@@ -77,7 +129,7 @@ Extends the sampling_frame generic to work with dataset objects.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer></div>

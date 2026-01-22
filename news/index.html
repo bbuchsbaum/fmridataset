@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">fmridataset</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.8.9</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -18,9 +18,13 @@
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/extending-backends.html">Extending fmridataset with Custom Storage Backends</a></li>
-    <li><a class="dropdown-item" href="../articles/fmridataset-intro.html">Introduction to fmridataset</a></li>
-    <li><a class="dropdown-item" href="../articles/h5-backend-usage.html">Using the H5 Backend for Efficient fMRI Data Storage</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/architecture-overview.html">Architecture Deep Dive: Design Principles and Extensibility</a></li>
+    <li><a class="dropdown-item" href="../articles/backend-development-basics.html">Backend Development Basics: Creating Custom Storage Backends</a></li>
+    <li><a class="dropdown-item" href="../articles/backend-registry.html">Backend Registry: Extending Data Format Support</a></li>
+    <li><a class="dropdown-item" href="../articles/extending-backends.html">Advanced Backend Development: Storage Extensions</a></li>
+    <li><a class="dropdown-item" href="../articles/fmridataset-intro.html">Getting Started with fmridataset</a></li>
+    <li><a class="dropdown-item" href="../articles/h5-backend-usage.html">HDF5 Storage: High-Performance Data Management for Large-Scale fMRI Studies</a></li>
+    <li><a class="dropdown-item" href="../articles/study-level-analysis.html">Scaling to Study-Level Analysis: From Single Subjects to Group Studies</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -39,16 +43,53 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="fmridataset-development-version">fmridataset (development version)<a class="anchor" aria-label="anchor" href="#fmridataset-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.9.0" id="fmridataset-090-development">fmridataset 0.9.0 (Development)<a class="anchor" aria-label="anchor" href="#fmridataset-090-development"></a></h2>
 <div class="section level3">
-<h3 id="new-features-development-version">New features<a class="anchor" aria-label="anchor" href="#new-features-development-version"></a></h3>
+<h3 id="new-features-0-9-0">New features<a class="anchor" aria-label="anchor" href="#new-features-0-9-0"></a></h3>
+<ul><li>Added <code>dummy_mode</code> parameter to <code><a href="../reference/fmri_dataset.html">fmri_dataset()</a></code> and <code><a href="../reference/nifti_backend.html">nifti_backend()</a></code> (<a href="https://github.com/bbuchsbaum/fmridataset/issues/3" class="external-link">#3</a>)
+<ul><li>Allows creation of datasets with non-existent file paths for testing</li>
+<li>Returns placeholder data (zeros) and standard dimensions</li>
+<li>Useful for testing dependent packages without requiring actual data files</li>
+<li>Enable with <code>dummy_mode = TRUE</code> in <code><a href="../reference/fmri_dataset.html">fmri_dataset()</a></code> constructor</li>
+</ul></li>
+<li>Replaced the DelayedArray dependency with the lightweight <code>delarr</code> lazy matrix adapter
+<ul><li>
+<code><a href="../reference/fmri_series.html">fmri_series()</a></code> and study helpers now return <code>delarr</code> objects by default</li>
+<li>Added <code><a href="../reference/as_delarr.html">as_delarr()</a></code> generics for all storage backends and study adapters</li>
+<li>Retained optional <code><a href="../reference/as_delayed_array.html">as_delayed_array()</a></code> paths for explicit DelayedMatrix output</li>
+</ul></li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.8.9" id="fmridataset-089-hotfix">fmridataset 0.8.9 (Hotfix)<a class="anchor" aria-label="anchor" href="#fmridataset-089-hotfix"></a></h2>
+<div class="section level3">
+<h3 id="critical-fixes-0-8-9">Critical fixes<a class="anchor" aria-label="anchor" href="#critical-fixes-0-8-9"></a></h3>
+<ul><li>Added bounded memory cache to prevent unbounded memory growth (<a href="https://github.com/bbuchsbaum/fmridataset/issues/1" class="external-link">#1</a>)
+<ul><li>Memoization now uses <code>cachem</code> with configurable size limit (default 512MB)</li>
+<li>Added <code><a href="../reference/fmri_clear_cache.html">fmri_clear_cache()</a></code> function to manually clear cache</li>
+<li>Cache size configurable via <code>options(fmridataset.cache_max_mb = 1024)</code>
+</li>
+</ul></li>
+<li>Added memory warnings and mitigation for study_backend (<a href="https://github.com/bbuchsbaum/fmridataset/issues/2" class="external-link">#2</a>)
+<ul><li>Warning when operations will load &gt;1GB into memory</li>
+<li>Automatic chunking for operations that would load &gt;2GB</li>
+<li>Recommends using <code><a href="../reference/data_chunks.html">data_chunks()</a></code> for large datasets</li>
+</ul></li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.0" id="fmridataset-010">fmridataset 0.1.0<a class="anchor" aria-label="anchor" href="#fmridataset-010"></a></h2>
+<div class="section level3">
+<h3 id="new-features-0-1-0">New features<a class="anchor" aria-label="anchor" href="#new-features-0-1-0"></a></h3>
 <ul><li>Added comprehensive CI/CD pipeline with GitHub Actions</li>
 <li>Added test coverage reporting with codecov</li>
 <li>Added code style checking and automatic formatting</li>
 <li>Added issue and PR templates for better project management</li>
+<li>Implemented <code>as_tibble.fmri_study_dataset</code> with metadata optimization</li>
+<li>Added integration and performance tests for <code>fmri_study_dataset</code> workflow</li>
 </ul></div>
 <div class="section level3">
-<h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
+<h3 id="bug-fixes-0-1-0">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-1-0"></a></h3>
 <ul><li>Fixed chunking edge case when <code>nchunks &gt; number of voxels</code>
 </li>
 <li>Updated deprecated <code>with_mock()</code> calls to <code>with_mocked_bindings()</code>
@@ -57,13 +98,14 @@
 <li>Resolved all test failures from package refactoring</li>
 </ul></div>
 <div class="section level3">
-<h3 id="documentation-development-version">Documentation<a class="anchor" aria-label="anchor" href="#documentation-development-version"></a></h3>
+<h3 id="documentation-0-1-0">Documentation<a class="anchor" aria-label="anchor" href="#documentation-0-1-0"></a></h3>
 <ul><li>Added comprehensive README with badges and examples</li>
 <li>Improved package architecture documentation</li>
 <li>Added codecov configuration for coverage reporting</li>
+<li>New vignette “From Single-Subject to Study-Level Analysis” with performance guidelines and architectural diagram</li>
 </ul></div>
 <div class="section level3">
-<h3 id="internal-changes-development-version">Internal changes<a class="anchor" aria-label="anchor" href="#internal-changes-development-version"></a></h3>
+<h3 id="internal-changes-0-1-0">Internal changes<a class="anchor" aria-label="anchor" href="#internal-changes-0-1-0"></a></h3>
 <ul><li>Refactored monolithic codebase into modular architecture</li>
 <li>Improved test organization and coverage</li>
 <li>Enhanced error handling and validation</li>
@@ -79,7 +121,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer></div>
