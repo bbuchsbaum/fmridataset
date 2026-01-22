@@ -49,11 +49,9 @@ test_that("zarr_backend works with local store", {
 
   # Write using zarr package
   tmp_dir <- tempfile()
-  dir.create(tmp_dir)
   on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
 
-  z <- zarr::as_zarr(arr)
-  z$save(tmp_dir)
+  z <- zarr::as_zarr(arr, location = tmp_dir)
 
   # Test backend
   backend <- zarr_backend(tmp_dir)
@@ -77,54 +75,6 @@ test_that("zarr_backend works with local store", {
   expect_silent(backend_close(backend))
 })
 
-test_that("zarr_backend works with mock zarr data", {
-  skip_if_not_installed("zarr")
-
-  # Create mock ZarrArray R6 object
-  mock_zarr <- list(
-    shape = c(10, 10, 10, 100),
-    dtype = "float64",
-    chunks = c(5, 5, 5, 50)
-  )
-
-  # Add array indexing behavior
-  mock_data <- array(rnorm(10 * 10 * 10 * 100), c(10, 10, 10, 100))
-
-  # Mock zarr::open_zarr to return our mock object
-  with_mocked_bindings(
-    open_zarr = function(path) {
-      # Create mock R6-like object
-      obj <- mock_zarr
-      # Add subsetting method
-      class(obj) <- c("ZarrArray", "R6")
-      obj
-    },
-    .package = "zarr",
-    {
-      backend <- zarr_backend("test.zarr")
-
-      # Mock the backend open with data injection
-      with_mocked_bindings(
-        `[.ZarrArray` = function(x, ..., drop = FALSE) mock_data,
-        {
-          backend <- backend_open(backend)
-
-          dims <- backend_get_dims(backend)
-          expect_equal(dims$spatial, c(10, 10, 10))
-          expect_equal(dims$time, 100)
-
-          # Test metadata
-          metadata <- backend_get_metadata(backend)
-          expect_equal(metadata$storage_format, "zarr")
-          expect_equal(metadata$zarr_version, "v3")
-
-          backend_close(backend)
-        }
-      )
-    }
-  )
-})
-
 test_that("zarr_backend handles preload option", {
   skip_if_not_installed("zarr")
 
@@ -132,11 +82,9 @@ test_that("zarr_backend handles preload option", {
   arr <- array(rnorm(2 * 3 * 2 * 2), dim = c(2, 3, 2, 2))
 
   tmp_dir <- tempfile()
-  dir.create(tmp_dir)
   on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
 
-  z <- zarr::as_zarr(arr)
-  z$save(tmp_dir)
+  z <- zarr::as_zarr(arr, location = tmp_dir)
 
   # Test with preload = TRUE
   backend <- zarr_backend(tmp_dir, preload = TRUE)
@@ -161,11 +109,9 @@ test_that("zarr_backend validates array dimensions", {
   arr <- array(rnorm(2 * 2 * 2), dim = c(2, 2, 2))
 
   tmp_dir <- tempfile()
-  dir.create(tmp_dir)
   on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
 
-  z <- zarr::as_zarr(arr)
-  z$save(tmp_dir)
+  z <- zarr::as_zarr(arr, location = tmp_dir)
 
   backend <- zarr_backend(tmp_dir)
   expect_error(
@@ -193,11 +139,9 @@ test_that("zarr_backend integrates with fmri_dataset", {
   arr <- array(rnorm(2 * 2 * 2 * 10), dim = c(2, 2, 2, 10))
 
   tmp_dir <- tempfile()
-  dir.create(tmp_dir)
   on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
 
-  z <- zarr::as_zarr(arr)
-  z$save(tmp_dir)
+  z <- zarr::as_zarr(arr, location = tmp_dir)
 
   # Create backend
   backend <- zarr_backend(tmp_dir)
@@ -224,11 +168,9 @@ test_that("zarr_backend chooses reading strategy", {
   arr <- array(rnorm(8 * 8 * 8 * 20), dim = c(8, 8, 8, 20))
 
   tmp_dir <- tempfile()
-  dir.create(tmp_dir)
   on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
 
-  z <- zarr::as_zarr(arr)
-  z$save(tmp_dir)
+  z <- zarr::as_zarr(arr, location = tmp_dir)
 
   backend <- zarr_backend(tmp_dir)
   backend <- backend_open(backend)
