@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: CRAN Quick Wins** - Fix immediate R CMD check issues
 - [x] **Phase 2: Tech Debt** - Resolve H5 backend resource leaks
-- [ ] **Phase 3: Zarr Decision** - Investigate and decide on Zarr support
+- [x] **Phase 3: Zarr Decision** - Investigate and decide on Zarr support
 - [ ] **Phase 4: Test Coverage** - Achieve 80%+ coverage across backends
 - [ ] **Phase 5: Final Validation** - Verify CRAN compliance
 
@@ -65,8 +65,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md - Investigate Zarr packages (CRAN zarr vs Rarr) with testing and benchmarks
-- [ ] 03-02-PLAN.md - Document decision and implement chosen path
+- [x] 03-01-PLAN.md - Investigate Zarr packages (CRAN zarr vs Rarr) with testing and benchmarks
+- [x] 03-02-PLAN.md - Document decision and implement chosen path (migrate to CRAN zarr)
 
 ### Phase 4: Test Coverage
 **Goal**: Package achieves 80%+ overall test coverage with all critical backends covered
@@ -109,10 +109,10 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 |-------|----------------|--------|-----------|
 | 1. CRAN Quick Wins | 3/3 | Complete | 2026-01-22 |
 | 2. Tech Debt | 2/2 | Complete | 2026-01-22 |
-| 3. Zarr Decision | 0/2 | Planned | - |
+| 3. Zarr Decision | 2/2 | Complete | 2026-01-22 |
 | 4. Test Coverage | 0/TBD | Not started | - |
 | 5. Final Validation | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-01-22*
-*Last updated: 2026-01-22 (Phase 3 planned)*
+*Last updated: 2026-01-22 (Phase 3 complete)*
