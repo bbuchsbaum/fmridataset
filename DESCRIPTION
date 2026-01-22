@@ -50,11 +50,11 @@ Suggests:
     mockery,
     mockr,
     pryr,
-    Rarr,
     rmarkdown,
     testthat (>= 3.0.0),
     withr,
-    yaml
+    yaml,
+    zarr
 VignetteBuilder: knitr
 URL: https://github.com/bbuchsbaum/fmridataset, https://bbuchsbaum.github.io/fmridataset/
 BugReports: https://github.com/bbuchsbaum/fmridataset/issues
