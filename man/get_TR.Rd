@@ -51,6 +51,6 @@ get_TR(sf) # Returns: 2
 
 }
 \seealso{
-\code{\link{sampling_frame}} for creating temporal structures,
+\code{\link[fmrihrf:sampling_frame]{fmrihrf::sampling_frame()}} for creating temporal structures,
 \code{\link{get_total_duration}} for total scan duration
 }

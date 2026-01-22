@@ -270,7 +270,7 @@ as.matrix_dataset <- function(x, ...) {
 #' }
 #'
 #' @seealso
-#' \code{\link{sampling_frame}} for creating temporal structures,
+#' [fmrihrf::sampling_frame()] for creating temporal structures,
 #' \code{\link{get_total_duration}} for total scan duration
 #' @export
 get_TR <- function(x, ...) {
