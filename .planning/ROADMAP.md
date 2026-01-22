@@ -79,10 +79,13 @@ Plans:
   4. as_delayed_array_dataset.R coverage is 80%+
   5. dataset_methods.R coverage is 80%+
   6. Overall package test coverage is 80%+
-**Plans**: TBD
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD during plan-phase
+- [ ] 04-01-PLAN.md - Create test helpers and zarr_backend tests
+- [ ] 04-02-PLAN.md - Create h5_backend tests
+- [ ] 04-03-PLAN.md - Create as_delayed_array and dataset_methods tests
+- [ ] 04-04-PLAN.md - Run coverage analysis and document results
 
 ### Phase 5: Final Validation
 **Goal**: Package passes R CMD check --as-cran with 0 errors, 0 warnings, 0 notes
@@ -110,9 +113,9 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 1. CRAN Quick Wins | 3/3 | Complete | 2026-01-22 |
 | 2. Tech Debt | 2/2 | Complete | 2026-01-22 |
 | 3. Zarr Decision | 2/2 | Complete | 2026-01-22 |
-| 4. Test Coverage | 0/TBD | Not started | - |
+| 4. Test Coverage | 0/4 | Planned | - |
 | 5. Final Validation | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-01-22*
-*Last updated: 2026-01-22 (Phase 3 complete)*
+*Last updated: 2026-01-22 (Phase 4 planned)*
