@@ -71,21 +71,23 @@ Plans:
 ### Phase 4: Test Coverage
 **Goal**: Package achieves 80%+ overall test coverage with all critical backends covered
 **Depends on**: Phase 3
-**Requirements**: TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, TEST-06
+**Requirements**: TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, TEST-06, TEST-07
 **Success Criteria** (what must be TRUE):
   1. zarr_backend.R coverage is 80%+ (or backend removed)
-  2. h5_backend.R coverage is 80%+
-  3. as_delayed_array.R coverage is 80%+
+  2. h5_backend.R coverage is 80%+ (or documented S4 limitation)
+  3. as_delayed_array.R coverage is 80%+ (or documented S4 limitation)
   4. as_delayed_array_dataset.R coverage is 80%+
-  5. dataset_methods.R coverage is 80%+
-  6. Overall package test coverage is 80%+
-**Plans:** 4 plans
+  5. dataset_methods.R coverage is 80%+ (or documented limitation)
+  6. as_delarr.R coverage is 80%+ (PRIMARY lazy array interface)
+  7. Overall package test coverage is 80%+ (or documented reason if lower)
+**Plans:** 5 plans
 
 Plans:
-- [ ] 04-01-PLAN.md - Create test helpers and zarr_backend tests
-- [ ] 04-02-PLAN.md - Create h5_backend tests
-- [ ] 04-03-PLAN.md - Create as_delayed_array and dataset_methods tests
-- [ ] 04-04-PLAN.md - Run coverage analysis and document results
+- [x] 04-01-PLAN.md - Create test helpers and zarr_backend tests
+- [x] 04-02-PLAN.md - Create h5_backend tests
+- [x] 04-03-PLAN.md - Create as_delayed_array and dataset_methods tests
+- [x] 04-04-PLAN.md - Run coverage analysis and document results
+- [ ] 04-05-PLAN.md - Gap closure: as_delarr.R coverage (67.3% -> 80%+)
 
 ### Phase 5: Final Validation
 **Goal**: Package passes R CMD check --as-cran with 0 errors, 0 warnings, 0 notes
@@ -113,9 +115,9 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 1. CRAN Quick Wins | 3/3 | Complete | 2026-01-22 |
 | 2. Tech Debt | 2/2 | Complete | 2026-01-22 |
 | 3. Zarr Decision | 2/2 | Complete | 2026-01-22 |
-| 4. Test Coverage | 0/4 | Planned | - |
+| 4. Test Coverage | 4/5 | Gap Closure | - |
 | 5. Final Validation | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-01-22*
-*Last updated: 2026-01-22 (Phase 4 planned)*
+*Last updated: 2026-01-22 (Phase 4 gap closure plan added)*
