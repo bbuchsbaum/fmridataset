@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-01-22)
 ## Current Position
 
 Phase: 4 of 5 (Test Coverage)
-Plan: 4 of 4 in current phase
+Plan: 5 of 5 in current phase (gap closure complete)
 Status: Phase complete
-Last activity: 2026-01-22 — Completed 04-04-PLAN.md (Coverage Analysis)
+Last activity: 2026-01-22 — Completed 04-05-PLAN.md (as_delarr Gap Closure)
 
-Progress: [████████░░] 75%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11
+- Total plans completed: 12
 - Average duration: 6.2 min
-- Total execution time: 1.14 hours
+- Total execution time: 1.24 hours
 
 **By Phase:**
 
@@ -30,11 +30,11 @@ Progress: [████████░░] 75%
 | 1. CRAN Quick Wins | 3 | 7.5 min | 2.5 min |
 | 2. Tech Debt | 2 | 3 min | 1.5 min |
 | 3. Zarr Decision | 2 | 27 min | 13.5 min |
-| 4. Test Coverage | 4 | 31 min | 7.75 min |
+| 4. Test Coverage | 5 | 37 min | 7.4 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-02 (12min), 04-01 (8min), 04-02 (10min), 04-03 (3min), 04-04 (10min)
-- Trend: Phase 4 complete - coverage analysis and reporting done
+- Last 5 plans: 04-01 (8min), 04-02 (10min), 04-03 (3min), 04-04 (10min), 04-05 (6min)
+- Trend: Phase 4 complete with gap closure - as_delarr.R tests added
 
 *Updated after each plan completion*
 
@@ -45,6 +45,8 @@ Progress: [████████░░] 75%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- **Test error paths via backend_get_data for delarr** - delarr pre-validates indices, so pull_fun error branches unreachable; test underlying function directly (04-05)
+- **Skip nifti_backend tests** - S4 dependency like h5_backend; focus on matrix/study backends (04-05)
 - **Accept 73% overall coverage as pragmatic** - Core functionality well-tested; gap in h5_backend due to S4 mocking limitations (04-04)
 - **Document h5_backend testing gap as technical debt** - Cannot mock S4 objects; would need real H5 fixtures (medium investment) (04-04)
 - **Use mock objects instead of real H5 files for testing** - Tests h5_backend logic without requiring real fmristore files; faster, no write permissions needed (04-02)
@@ -83,11 +85,12 @@ None yet.
 - ⚠️ Zarr v3-only documented - users with v2 stores must convert externally
 
 **From Phase 4 (Complete):**
-- ✅ Overall package coverage: 73% (target: 80%, gap: -7%)
+- ✅ Overall package coverage: 73.3% (target: 80%, gap: -6.7%)
 - ✅ zarr_backend coverage: 94.6% (exceeds 80% target) - 04-01
 - ✅ as_delayed_array_dataset coverage: 100% (perfect) - 04-03
+- ✅ as_delarr.R coverage: 75.5% (up from 67.3%) - 04-05
 - ⚠️ h5_backend coverage: 30.1% (S4 mocking limitation) - 04-04
-- ℹ️ Coverage gap concentrated in optional features (h5_backend)
+- ℹ️ Coverage gap concentrated in S4-dependent backends (h5, nifti)
 - ℹ️ 8 h5_backend tests skipped - require real S4 objects
 - 📄 COVERAGE-REPORT.md documents gaps and recommendations
 
@@ -102,7 +105,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-22 (phase execution)
-Stopped at: Completed 04-04-PLAN.md (Phase 4 complete)
+Stopped at: Completed 04-05-PLAN.md (Phase 4 gap closure complete)
 Resume file: None
 
 ---
