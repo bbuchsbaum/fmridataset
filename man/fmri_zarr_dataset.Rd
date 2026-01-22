@@ -6,22 +6,15 @@
 \usage{
 fmri_zarr_dataset(
   zarr_source,
-  data_key = "data",
-  mask_key = "mask",
   TR,
   run_length,
   event_table = data.frame(),
   censor = NULL,
-  preload = FALSE,
-  cache_size = 100
+  preload = FALSE
 )
 }
 \arguments{
-\item{zarr_source}{Path to Zarr store (directory, zip file, or URL)}
-
-\item{data_key}{Character key for the main data array within the store (default: "data")}
-
-\item{mask_key}{Character key for the mask array (default: "mask"). Set to NULL for no mask.}
+\item{zarr_source}{Path to Zarr store (directory or URL)}
 
 \item{TR}{The repetition time in seconds}
 
@@ -32,8 +25,6 @@ fmri_zarr_dataset(
 \item{censor}{Optional binary vector indicating which scans to remove}
 
 \item{preload}{Whether to load all data into memory (default: FALSE)}
-
-\item{cache_size}{Number of chunks to cache in memory (default: 100)}
 }
 \value{
 An fMRI dataset object of class c("fmri_file_dataset", "volumetric_dataset", "fmri_dataset", "list")
@@ -48,13 +39,16 @@ The Zarr backend expects data organized as a 4D array with dimensions
 (x, y, z, time). The data is accessed lazily by default, loading only
 the requested chunks into memory.
 
-Zarr stores can be:
-\itemize{
-\item Local directories containing .zarr data
-\item Zip files containing zarr arrays
-\item Remote URLs (S3, GCS, HTTP) for cloud-hosted data
+Zarr stores should contain a single 4D array. For mask data, provide
+it separately through the fmri_dataset interface if needed.
 }
+\section{Experimental}{
+
+This function uses the CRAN zarr package which is relatively new (v0.1.1, Dec 2025).
+It supports Zarr v3 format only - Zarr v2 stores cannot be read.
+Please report any issues to help improve the package.
 }
+
 \examples{
 \dontrun{
 # Local Zarr store
@@ -64,11 +58,9 @@ dataset <- fmri_zarr_dataset(
   run_length = c(150, 150, 150)
 )
 
-# Remote S3 store with custom keys
+# Remote store
 dataset <- fmri_zarr_dataset(
-  "s3://bucket/neuroimaging/subject01.zarr",
-  data_key = "bold/data",
-  mask_key = "bold/mask",
+  "https://example.com/subject01.zarr",
   TR = 1.5,
   run_length = 300
 )

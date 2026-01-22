@@ -4,45 +4,33 @@
 \alias{zarr_backend}
 \title{Create a Zarr Backend}
 \usage{
-zarr_backend(
-  source,
-  data_key = "data",
-  mask_key = "mask",
-  preload = FALSE,
-  cache_size = 100
-)
+zarr_backend(source, preload = FALSE)
 }
 \arguments{
-\item{source}{Character path to Zarr store (directory or zip) or URL for remote stores}
-
-\item{data_key}{Character key for the main data array within the store (default: "data")}
-
-\item{mask_key}{Character key for the mask array (default: "mask"). Set to NULL if no mask.}
+\item{source}{Character path to Zarr store (directory or URL for remote stores)}
 
 \item{preload}{Logical, whether to load all data into memory (default: FALSE)}
-
-\item{cache_size}{Integer, number of chunks to cache in memory (default: 100)}
 }
 \value{
 A zarr_backend S3 object
 }
 \description{
-Creates a storage backend for Zarr array data.
+Creates a storage backend for Zarr array data using the CRAN zarr package.
 }
+\section{Experimental}{
+
+This backend uses the CRAN zarr package which is relatively new (v0.1.1, Dec 2025).
+It supports Zarr v3 format only - Zarr v2 stores cannot be read.
+Please report any issues to help improve the package.
+}
+
 \examples{
 \dontrun{
 # Local Zarr store
 backend <- zarr_backend("path/to/data.zarr")
 
-# Remote S3 store
-backend <- zarr_backend("s3://bucket/path/to/data.zarr")
-
-# Custom array keys
-backend <- zarr_backend(
-  "data.zarr",
-  data_key = "fmri/bold",
-  mask_key = "fmri/mask"
-)
+# Remote store
+backend <- zarr_backend("https://example.com/data.zarr")
 }
 }
 \keyword{internal}
