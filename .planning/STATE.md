@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-01-22)
 ## Current Position
 
 Phase: 3 of 5 (Zarr Decision)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-01-22 — Completed 03-01-PLAN.md (Zarr investigation)
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-01-22 — Completed 03-02-PLAN.md (Zarr backend migration)
 
-Progress: [█████░░░░░] 50%
+Progress: [██████░░░░] 60%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: 3.75 min
-- Total execution time: 0.375 hours
+- Total plans completed: 7
+- Average duration: 5.14 min
+- Total execution time: 0.6 hours
 
 **By Phase:**
 
@@ -29,11 +29,11 @@ Progress: [█████░░░░░] 50%
 |-------|-------|-------|----------|
 | 1. CRAN Quick Wins | 3 | 7.5 min | 2.5 min |
 | 2. Tech Debt | 2 | 3 min | 1.5 min |
-| 3. Zarr Decision | 1 | 15 min | 15 min |
+| 3. Zarr Decision | 2 | 27 min | 13.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-03 (2.7min), 02-01 (2min), 02-02 (<1min), 03-01 (15min)
-- Trend: Phase 3 investigation took longer due to package testing and benchmarking
+- Last 5 plans: 02-01 (2min), 02-02 (<1min), 03-01 (15min), 03-02 (12min)
+- Trend: Phase 3 required investigation + implementation, longer than quick fixes
 
 *Updated after each plan completion*
 
@@ -44,6 +44,9 @@ Progress: [█████░░░░░] 50%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- **Auto-open backends for validation** - backend_get_dims/get_mask auto-open if needed; follows nifti pattern (03-02)
+- **Single-array Zarr stores** - Simplified API: no data_key/mask_key parameters; root arrays only (03-02)
+- **Mark Zarr as EXPERIMENTAL** - Package is new (0.1.1), needs field testing (03-02)
 - **migrate-zarr: Use CRAN zarr package** - Pure CRAN dependency, accept Zarr v3-only limitation, mark as experimental (03-01)
 - **Accept no Zarr v2 support** - Users must work with Zarr v3 stores; no legacy compatibility (03-01)
 - Target 80% coverage: Balance thoroughness with pragmatism
@@ -67,15 +70,20 @@ None yet.
 **From Requirements:**
 - Cannot submit to CRAN until delarr, bidser, fmristore are accepted (external dependency)
 
-**From Phase 3 Investigation:**
-- CRAN zarr is very new (0.1.1, Dec 2025) - may discover bugs during implementation
-- Cloud path support unclear - needs testing during implementation
-- Zarr v3-only limitation will affect documentation (must warn users about v2 incompatibility)
+**From Phase 3 Completed:**
+- ✅ CRAN zarr integration complete, marked EXPERIMENTAL
+- ⚠️ Cloud path support (S3/GCS/Azure) untested - needs verification when accessible
+- ⚠️ Zarr v3-only documented - users with v2 stores must convert externally
+
+**For Next Phase:**
+- Need to update README with Zarr backend documentation
+- Consider adding Zarr vignette section if useful
+- Should test cloud storage paths when accessible
 
 ## Session Continuity
 
 Last session: 2026-01-22 (phase execution)
-Stopped at: Completed 03-01-PLAN.md (Zarr investigation complete)
+Stopped at: Completed 03-02-PLAN.md (Zarr backend migration complete)
 Resume file: None
 
 ---
