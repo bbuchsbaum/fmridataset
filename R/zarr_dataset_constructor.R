@@ -5,15 +5,17 @@
 #' array format that supports chunked, compressed storage and is ideal for
 #' large neuroimaging datasets.
 #'
-#' @param zarr_source Path to Zarr store (directory, zip file, or URL)
-#' @param data_key Character key for the main data array within the store (default: "data")
-#' @param mask_key Character key for the mask array (default: "mask"). Set to NULL for no mask.
+#' @section Experimental:
+#' This function uses the CRAN zarr package which is relatively new (v0.1.1, Dec 2025).
+#' It supports Zarr v3 format only - Zarr v2 stores cannot be read.
+#' Please report any issues to help improve the package.
+#'
+#' @param zarr_source Path to Zarr store (directory or URL)
 #' @param TR The repetition time in seconds
 #' @param run_length Vector of integers indicating the number of scans in each run
 #' @param event_table Optional data.frame containing event onsets and experimental variables
 #' @param censor Optional binary vector indicating which scans to remove
 #' @param preload Whether to load all data into memory (default: FALSE)
-#' @param cache_size Number of chunks to cache in memory (default: 100)
 #'
 #' @return An fMRI dataset object of class c("fmri_file_dataset", "volumetric_dataset", "fmri_dataset", "list")
 #'
@@ -22,10 +24,8 @@
 #' (x, y, z, time). The data is accessed lazily by default, loading only
 #' the requested chunks into memory.
 #'
-#' Zarr stores can be:
-#' - Local directories containing .zarr data
-#' - Zip files containing zarr arrays
-#' - Remote URLs (S3, GCS, HTTP) for cloud-hosted data
+#' Zarr stores should contain a single 4D array. For mask data, provide
+#' it separately through the fmri_dataset interface if needed.
 #'
 #' @export
 #'
@@ -38,11 +38,9 @@
 #'   run_length = c(150, 150, 150)
 #' )
 #'
-#' # Remote S3 store with custom keys
+#' # Remote store
 #' dataset <- fmri_zarr_dataset(
-#'   "s3://bucket/neuroimaging/subject01.zarr",
-#'   data_key = "bold/data",
-#'   mask_key = "bold/mask",
+#'   "https://example.com/subject01.zarr",
 #'   TR = 1.5,
 #'   run_length = 300
 #' )
@@ -60,21 +58,15 @@
 #' \code{\link{zarr_backend}}, \code{\link{fmri_dataset}}
 #'
 fmri_zarr_dataset <- function(zarr_source,
-                              data_key = "data",
-                              mask_key = "mask",
                               TR,
                               run_length,
                               event_table = data.frame(),
                               censor = NULL,
-                              preload = FALSE,
-                              cache_size = 100) {
+                              preload = FALSE) {
   # Create zarr backend
   backend <- zarr_backend(
     source = zarr_source,
-    data_key = data_key,
-    mask_key = mask_key,
-    preload = preload,
-    cache_size = cache_size
+    preload = preload
   )
 
   # Use the generic fmri_dataset constructor

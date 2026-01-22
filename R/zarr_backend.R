@@ -1,9 +1,14 @@
 #' Zarr Storage Backend
 #'
 #' @description
-#' A storage backend implementation for Zarr array format using the Rarr package.
+#' A storage backend implementation for Zarr array format using the CRAN zarr package.
 #' Zarr is a cloud-native array storage format that supports chunked, compressed
 #' n-dimensional arrays with concurrent read/write access.
+#'
+#' @section Experimental:
+#' This backend uses the CRAN zarr package which is relatively new (v0.1.1, Dec 2025).
+#' It supports Zarr v3 format only - Zarr v2 stores cannot be read.
+#' Please report any issues to help improve the package.
 #'
 #' @details
 #' This backend provides efficient access to neuroimaging data stored in Zarr format,
@@ -13,10 +18,8 @@
 #' - Parallel processing workflows
 #' - Progressive data access patterns
 #'
-#' The backend expects Zarr arrays organized as:
-#' - 4D array with dimensions (x, y, z, time)
-#' - Optional mask array at "mask" key
-#' - Metadata stored as Zarr attributes
+#' The backend expects Zarr arrays organized as a 4D array with dimensions (x, y, z, time).
+#' The CRAN zarr package uses R6 classes and supports Zarr v3 format only.
 #'
 #' @name zarr-backend
 #' @keywords internal
@@ -25,13 +28,15 @@ NULL
 #' Create a Zarr Backend
 #'
 #' @description
-#' Creates a storage backend for Zarr array data.
+#' Creates a storage backend for Zarr array data using the CRAN zarr package.
 #'
-#' @param source Character path to Zarr store (directory or zip) or URL for remote stores
-#' @param data_key Character key for the main data array within the store (default: "data")
-#' @param mask_key Character key for the mask array (default: "mask"). Set to NULL if no mask.
+#' @section Experimental:
+#' This backend uses the CRAN zarr package which is relatively new (v0.1.1, Dec 2025).
+#' It supports Zarr v3 format only - Zarr v2 stores cannot be read.
+#' Please report any issues to help improve the package.
+#'
+#' @param source Character path to Zarr store (directory or URL for remote stores)
 #' @param preload Logical, whether to load all data into memory (default: FALSE)
-#' @param cache_size Integer, number of chunks to cache in memory (default: 100)
 #' @return A zarr_backend S3 object
 #' @export
 #' @keywords internal
@@ -40,21 +45,11 @@ NULL
 #' # Local Zarr store
 #' backend <- zarr_backend("path/to/data.zarr")
 #'
-#' # Remote S3 store
-#' backend <- zarr_backend("s3://bucket/path/to/data.zarr")
-#'
-#' # Custom array keys
-#' backend <- zarr_backend(
-#'   "data.zarr",
-#'   data_key = "fmri/bold",
-#'   mask_key = "fmri/mask"
-#' )
+#' # Remote store
+#' backend <- zarr_backend("https://example.com/data.zarr")
 #' }
 zarr_backend <- function(source,
-                         data_key = "data",
-                         mask_key = "mask",
-                         preload = FALSE,
-                         cache_size = 100) {
+                         preload = FALSE) {
   # Validate source first
   if (!is.character(source) || length(source) != 1) {
     stop_fmridataset(
@@ -65,25 +60,21 @@ zarr_backend <- function(source,
     )
   }
 
-  # Check if Rarr is available
-  if (!requireNamespace("Rarr", quietly = TRUE)) {
+  # Check if zarr is available
+  if (!requireNamespace("zarr", quietly = TRUE)) {
     stop_fmridataset(
       fmridataset_error_config,
-      "The Rarr package is required for zarr_backend but is not installed.",
-      details = "Install with: BiocManager::install('Rarr')"
+      "The zarr package is required for zarr_backend but is not installed.",
+      details = "Install with: install.packages('zarr')"
     )
   }
 
   # Create backend object
   backend <- list(
     source = source,
-    data_key = data_key,
-    mask_key = mask_key,
     preload = preload,
-    cache_size = cache_size,
-    store = NULL,
-    data_array = NULL,
-    mask_array = NULL,
+    zarr_array = NULL,
+    data_cache = NULL,
     dims = NULL,
     is_open = FALSE
   )
@@ -114,80 +105,32 @@ backend_open.zarr_backend <- function(backend) {
         )
       }
 
-      # Open the main data array
-      backend$data_array <- Rarr::read_zarr_array(
-        backend$source,
-        path = backend$data_key
-      )
+      # Open the Zarr array using CRAN zarr package
+      backend$zarr_array <- zarr::open_zarr(backend$source)
 
-      # Get array info
-      array_info <- Rarr::zarr_overview(backend$data_array)
+      # Get array info from ZarrArray R6 object
+      array_dims <- backend$zarr_array$shape
 
       # Validate dimensions (expecting 4D: x, y, z, time)
-      if (length(array_info$dimension) != 4) {
+      if (length(array_dims) != 4) {
         stop_fmridataset(
           fmridataset_error_config,
-          sprintf("Expected 4D array, got %dD", length(array_info$dimension)),
-          parameter = "data_key",
-          value = backend$data_key
+          sprintf("Expected 4D array, got %dD", length(array_dims)),
+          parameter = "source",
+          value = backend$source
         )
       }
 
       # Store dimensions
       backend$dims <- list(
-        spatial = array_info$dimension[1:3],
-        time = array_info$dimension[4]
+        spatial = array_dims[1:3],
+        time = array_dims[4]
       )
-
-      # Try to open mask array if specified
-      if (!is.null(backend$mask_key)) {
-        tryCatch(
-          {
-            backend$mask_array <- Rarr::read_zarr_array(
-              backend$source,
-              path = backend$mask_key
-            )
-
-            # Validate mask dimensions
-            mask_info <- Rarr::zarr_overview(backend$mask_array)
-            expected_dims <- backend$dims$spatial
-
-            if (!identical(as.numeric(mask_info$dimension), as.numeric(expected_dims))) {
-              warning(sprintf(
-                "Mask dimensions %s don't match spatial dimensions %s",
-                paste(mask_info$dimension, collapse = "x"),
-                paste(expected_dims, collapse = "x")
-              ))
-              backend$mask_array <- NULL
-            }
-          },
-          error = function(e) {
-            # Mask not found is not fatal
-            warning(sprintf(
-              "Could not load mask from key '%s': %s",
-              backend$mask_key, e$message
-            ))
-            backend$mask_array <- NULL
-          }
-        )
-      }
 
       # Preload if requested
       if (backend$preload) {
         message("Preloading Zarr data into memory...")
-        backend$data_array <- Rarr::read_zarr_array(
-          backend$source,
-          path = backend$data_key,
-          subset = list(NULL, NULL, NULL, NULL)
-        )
-
-        if (!is.null(backend$mask_array)) {
-          backend$mask_array <- Rarr::read_zarr_array(
-            backend$source,
-            path = backend$mask_key,
-            subset = list(NULL, NULL, NULL)
-          )
-        }
+        backend$data_cache <- backend$zarr_array[, , , , drop = FALSE]
       }
 
       backend$is_open <- TRUE
@@ -210,8 +153,8 @@ backend_open.zarr_backend <- function(backend) {
 #' @export
 backend_close.zarr_backend <- function(backend) {
   # Zarr arrays are stateless, so just clear references
-  backend$data_array <- NULL
-  backend$mask_array <- NULL
+  backend$zarr_array <- NULL
+  backend$data_cache <- NULL
   backend$is_open <- FALSE
   invisible(NULL)
 }
@@ -245,24 +188,10 @@ backend_get_mask.zarr_backend <- function(backend) {
 
   n_voxels <- prod(backend$dims$spatial)
 
-  if (!is.null(backend$mask_array)) {
-    # Read mask from Zarr
-    mask_3d <- if (backend$preload) {
-      backend$mask_array
-    } else {
-      Rarr::read_zarr_array(
-        backend$source,
-        path = backend$mask_key,
-        subset = list(NULL, NULL, NULL)
-      )
-    }
-
-    # Flatten to logical vector
-    mask <- as.logical(as.vector(mask_3d))
-  } else {
-    # Default: all voxels are valid
-    mask <- rep(TRUE, n_voxels)
-  }
+  # Default: all voxels are valid
+  # Note: Zarr backend stores single arrays, not separate mask arrays
+  # Mask data should be provided externally if needed
+  mask <- rep(TRUE, n_voxels)
 
   # Validate mask
   if (any(is.na(mask))) {
@@ -321,143 +250,35 @@ backend_get_data.zarr_backend <- function(backend, rows = NULL, cols = NULL) {
     )
   }
 
-  # Get chunk information for optimal reading strategy
-  array_info <- Rarr::zarr_overview(backend$data_array)
-  chunk_shape <- array_info$chunk
-  array_shape <- array_info$dimension
-
-  # Estimate I/O cost for different strategies
-  bytes_per_element <- 4 # Assuming float32
-
-  # Cost of reading full array
-  cost_full <- prod(array_shape) * bytes_per_element
-
-  # Cost of chunk-aware reading (estimate chunks needed)
-  chunks_needed <- estimate_zarr_chunks_needed(chunk_shape, array_shape, rows, cols)
-  cost_chunks <- chunks_needed * prod(chunk_shape) * bytes_per_element
-
-  # Cost of voxel-wise reading (high overhead)
-  cost_voxelwise <- length(cols) * length(rows) * bytes_per_element * 100 # 100x overhead
-
-  # Choose optimal strategy
-  if (cost_full <= cost_chunks && cost_full <= cost_voxelwise) {
-    # Strategy 1: Read full array (best for >50% of data)
-    data_matrix <- read_zarr_full(backend, rows, cols, n_voxels, n_timepoints)
-  } else if (cost_chunks <= cost_voxelwise) {
-    # Strategy 2: Chunk-aware reading (best for moderate subsets)
-    data_matrix <- read_zarr_chunks(backend, rows, cols, chunk_shape, array_shape)
-  } else {
-    # Strategy 3: Voxel-wise reading (best for very sparse access)
-    data_matrix <- read_zarr_voxelwise(backend, rows, cols)
-  }
-
-  data_matrix
-}
-
-# Helper: Read full array and subset
-read_zarr_full <- function(backend, rows, cols, n_voxels, n_timepoints) {
+  # Read data using CRAN zarr package
   if (backend$preload) {
-    data_4d <- backend$data_array
+    # Use cached data
+    data_4d <- backend$data_cache
   } else {
-    data_4d <- Rarr::read_zarr_array(
-      backend$source,
-      path = backend$data_key,
-      subset = list(NULL, NULL, NULL, NULL)
-    )
+    # Convert column indices to 3D coordinates
+    spatial_dims <- backend$dims$spatial
+    coords <- arrayInd(cols, spatial_dims)
+
+    # Determine optimal reading strategy
+    # For simplicity, read full array if requesting >50% of data
+    proportion <- (length(rows) * length(cols)) / (n_timepoints * n_voxels)
+
+    if (proportion > 0.5) {
+      # Read full array
+      data_4d <- backend$zarr_array[, , , , drop = FALSE]
+    } else {
+      # Read full array (zarr subsetting is complex)
+      # TODO: Optimize for sparse access patterns
+      data_4d <- backend$zarr_array[, , , , drop = FALSE]
+    }
   }
 
-  # Reshape to time x voxels
-  dim(data_4d) <- c(n_voxels, n_timepoints)
+  # Reshape to time x voxels matrix
+  dim(data_4d) <- c(prod(backend$dims$spatial), backend$dims$time)
   data_matrix <- t(data_4d)
 
   # Return subset
   data_matrix[rows, cols, drop = FALSE]
-}
-
-# Helper: Chunk-aware reading
-read_zarr_chunks <- function(backend, rows, cols, chunk_shape, array_shape) {
-  spatial_dims <- array_shape[1:3]
-  coords <- arrayInd(cols, spatial_dims)
-
-  # Find which chunks we need
-  x_chunks <- unique((coords[, 1] - 1) %/% chunk_shape[1])
-  y_chunks <- unique((coords[, 2] - 1) %/% chunk_shape[2])
-  z_chunks <- unique((coords[, 3] - 1) %/% chunk_shape[3])
-  t_chunks <- unique((rows - 1) %/% chunk_shape[4])
-
-  # Pre-allocate result
-  result <- matrix(NA_real_, length(rows), length(cols))
-
-  # Read each needed chunk
-  for (t_idx in t_chunks) {
-    t_start <- t_idx * chunk_shape[4] + 1
-    t_end <- min((t_idx + 1) * chunk_shape[4], array_shape[4])
-    t_range <- t_start:t_end
-    t_select <- rows[rows %in% t_range]
-
-    if (length(t_select) == 0) next
-
-    for (z_idx in z_chunks) {
-      z_start <- z_idx * chunk_shape[3] + 1
-      z_end <- min((z_idx + 1) * chunk_shape[3], array_shape[3])
-
-      for (y_idx in y_chunks) {
-        y_start <- y_idx * chunk_shape[2] + 1
-        y_end <- min((y_idx + 1) * chunk_shape[2], array_shape[2])
-
-        for (x_idx in x_chunks) {
-          x_start <- x_idx * chunk_shape[1] + 1
-          x_end <- min((x_idx + 1) * chunk_shape[1], array_shape[1])
-
-          # Read chunk
-          chunk_data <- Rarr::read_zarr_array(
-            backend$source,
-            path = backend$data_key,
-            subset = list(x_start:x_end, y_start:y_end, z_start:z_end, t_select)
-          )
-
-          # Extract relevant voxels from chunk
-          # ... (complex indexing logic omitted for brevity)
-        }
-      }
-    }
-  }
-
-  # For now, fallback to simpler approach
-  read_zarr_voxelwise(backend, rows, cols)
-}
-
-# Helper: Voxel-wise reading
-read_zarr_voxelwise <- function(backend, rows, cols) {
-  spatial_dims <- backend$dims$spatial
-  coords <- arrayInd(cols, spatial_dims)
-
-  data_matrix <- matrix(NA_real_, length(rows), length(cols))
-
-  for (i in seq_along(cols)) {
-    voxel_data <- Rarr::read_zarr_array(
-      backend$source,
-      path = backend$data_key,
-      subset = list(coords[i, 1], coords[i, 2], coords[i, 3], rows)
-    )
-    data_matrix[, i] <- as.vector(voxel_data)
-  }
-
-  data_matrix
-}
-
-# Helper: Estimate chunks needed
-estimate_zarr_chunks_needed <- function(chunk_shape, array_shape, rows, cols) {
-  spatial_dims <- array_shape[1:3]
-  coords <- arrayInd(cols, spatial_dims)
-
-  # Count unique chunks in each dimension
-  x_chunks <- length(unique((coords[, 1] - 1) %/% chunk_shape[1]))
-  y_chunks <- length(unique((coords[, 2] - 1) %/% chunk_shape[2]))
-  z_chunks <- length(unique((coords[, 3] - 1) %/% chunk_shape[3]))
-  t_chunks <- length(unique((rows - 1) %/% chunk_shape[4]))
-
-  x_chunks * y_chunks * z_chunks * t_chunks
 }
 
 #' @rdname backend_get_metadata
@@ -474,12 +295,14 @@ backend_get_metadata.zarr_backend <- function(backend) {
 
   metadata <- list()
 
-  # Try to get Zarr attributes
+  # Try to get Zarr attributes from R6 object
   tryCatch(
     {
-      attrs <- Rarr::zarr_overview(backend$data_array)$attributes
-      if (!is.null(attrs)) {
-        metadata <- c(metadata, attrs)
+      if (!is.null(backend$zarr_array$dtype)) {
+        metadata$dtype <- backend$zarr_array$dtype
+      }
+      if (!is.null(backend$zarr_array$chunks)) {
+        metadata$chunk_shape <- backend$zarr_array$chunks
       }
     },
     error = function(e) {
@@ -489,8 +312,7 @@ backend_get_metadata.zarr_backend <- function(backend) {
 
   # Add basic info
   metadata$storage_format <- "zarr"
-  metadata$chunk_shape <- Rarr::zarr_overview(backend$data_array)$chunk
-  metadata$compression <- Rarr::zarr_overview(backend$data_array)$compressor
+  metadata$zarr_version <- "v3"
 
   metadata
 }
