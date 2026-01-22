@@ -62,10 +62,11 @@ Plans:
   3. Go/no-go decision is made: either Zarr moves to Suggests-only or is removed
   4. If keeping Zarr: DESCRIPTION updated with Rarr as Suggests
   5. If removing Zarr: zarr_backend.R removed and tests cleaned up
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD during plan-phase
+- [ ] 03-01-PLAN.md - Investigate Zarr packages (CRAN zarr vs Rarr) with testing and benchmarks
+- [ ] 03-02-PLAN.md - Document decision and implement chosen path
 
 ### Phase 4: Test Coverage
 **Goal**: Package achieves 80%+ overall test coverage with all critical backends covered
@@ -108,10 +109,10 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 |-------|----------------|--------|-----------|
 | 1. CRAN Quick Wins | 3/3 | Complete | 2026-01-22 |
 | 2. Tech Debt | 2/2 | Complete | 2026-01-22 |
-| 3. Zarr Decision | 0/TBD | Not started | - |
+| 3. Zarr Decision | 0/2 | Planned | - |
 | 4. Test Coverage | 0/TBD | Not started | - |
 | 5. Final Validation | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-01-22*
-*Last updated: 2026-01-22 (Phase 2 complete)*
+*Last updated: 2026-01-22 (Phase 3 planned)*
