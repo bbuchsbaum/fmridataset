@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-01-22)
 ## Current Position
 
 Phase: 4 of 5 (Test Coverage)
-Plan: 3 of 4 in current phase
+Plan: 1 of 4 in current phase
 Status: In progress
-Last activity: 2026-01-22 — Completed 04-03-PLAN.md
+Last activity: 2026-01-22 — Completed 04-01-PLAN.md
 
-Progress: [███████░░░] 70%
+Progress: [███████░░░] 64%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
-- Average duration: 4.9 min
-- Total execution time: 0.8 hours
+- Total plans completed: 8
+- Average duration: 5.5 min
+- Total execution time: 0.7 hours
 
 **By Phase:**
 
@@ -30,11 +30,11 @@ Progress: [███████░░░] 70%
 | 1. CRAN Quick Wins | 3 | 7.5 min | 2.5 min |
 | 2. Tech Debt | 2 | 3 min | 1.5 min |
 | 3. Zarr Decision | 2 | 27 min | 13.5 min |
-| 4. Test Coverage | 3 | 11 min | 3.7 min |
+| 4. Test Coverage | 1 | 8 min | 8 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-02 (<1min), 03-01 (15min), 03-02 (12min), 04-01 (3min), 04-02 (3min), 04-03 (5min)
-- Trend: Phase 4 test coverage work progressing efficiently
+- Last 5 plans: 01-03 (2min), 02-01 (2min), 02-02 (<1min), 03-01 (15min), 03-02 (12min), 04-01 (8min)
+- Trend: Phase 4 starting with comprehensive backend tests
 
 *Updated after each plan completion*
 
@@ -45,9 +45,8 @@ Progress: [███████░░░] 70%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- **Single test file for related source files** - as_delayed_array.R and as_delayed_array_dataset.R tested in one file (04-03)
-- **Skip NIfTI backend tests** - Require real files or NeuroVec objects, defer to future work (04-03)
-- **Document bugs rather than fix** - n_runs.fmri_study_dataset bug documented in tests (04-03)
+- **Test backend_close behavior as-is** - backend_close doesn't modify caller's object due to R copy-on-write; test actual behavior (04-01)
+- **Use helper functions for backend tests** - create_test_zarr() provides consistent test data with reproducible seeding (04-01)
 - **Auto-open backends for validation** - backend_get_dims/get_mask auto-open if needed; follows nifti pattern (03-02)
 - **Single-array Zarr stores** - Simplified API: no data_key/mask_key parameters; root arrays only (03-02)
 - **Mark Zarr as EXPERIMENTAL** - Package is new (0.1.1), needs field testing (03-02)
@@ -79,10 +78,9 @@ None yet.
 - ⚠️ Cloud path support (S3/GCS/Azure) untested - needs verification when accessible
 - ⚠️ Zarr v3-only documented - users with v2 stores must convert externally
 
-**From Phase 4 (04-03):**
-- ⚠️ n_runs.fmri_study_dataset bug: returns NULL (should fix in source code)
-- ⚠️ NIfTI backend tests skipped (need real files or NeuroVec objects)
-- ⚠️ study_backend conversion tests minimal (just smoke tests)
+**From Phase 4 (04-01):**
+- ✅ zarr_backend coverage 90.4% (exceeds 80% target)
+- ℹ️ backend_close design note: doesn't modify caller's object due to R semantics
 
 **For Next Phase:**
 - Need to update README with Zarr backend documentation
@@ -93,7 +91,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-22 (phase execution)
-Stopped at: Completed 04-03-PLAN.md
+Stopped at: Completed 04-01-PLAN.md
 Resume file: None
 
 ---
