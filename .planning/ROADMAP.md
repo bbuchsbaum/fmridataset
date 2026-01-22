@@ -12,7 +12,7 @@ Transform fmridataset from feature-complete to CRAN-ready by fixing R CMD check 
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: CRAN Quick Wins** - Fix immediate R CMD check issues
+- [x] **Phase 1: CRAN Quick Wins** - Fix immediate R CMD check issues
 - [ ] **Phase 2: Tech Debt** - Resolve H5 backend resource leaks
 - [ ] **Phase 3: Zarr Decision** - Investigate and decide on Zarr support
 - [ ] **Phase 4: Test Coverage** - Achieve 80%+ coverage across backends
@@ -34,9 +34,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md - Add missing test and vignette dependencies to DESCRIPTION
-- [ ] 01-02-PLAN.md - Fix golden_data architecture and sampling_frame cross-reference
-- [ ] 01-03-PLAN.md - Update .Rbuildignore for non-standard files
+- [x] 01-01-PLAN.md - Add missing test and vignette dependencies to DESCRIPTION
+- [x] 01-02-PLAN.md - Fix golden_data architecture and sampling_frame cross-reference
+- [x] 01-03-PLAN.md - Update .Rbuildignore for non-standard files
 
 ### Phase 2: Tech Debt
 **Goal**: H5 backend has proper resource management and storage_backend fix is committed
@@ -105,7 +105,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. CRAN Quick Wins | 0/3 | Planned | - |
+| 1. CRAN Quick Wins | 3/3 | Complete | 2026-01-22 |
 | 2. Tech Debt | 0/TBD | Not started | - |
 | 3. Zarr Decision | 0/TBD | Not started | - |
 | 4. Test Coverage | 0/TBD | Not started | - |
@@ -113,4 +113,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 ---
 *Roadmap created: 2026-01-22*
-*Last updated: 2026-01-22*
+*Last updated: 2026-01-22 (Phase 1 complete)*
