@@ -4,7 +4,7 @@
 \alias{zarr-backend}
 \title{Zarr Storage Backend}
 \description{
-A storage backend implementation for Zarr array format using the Rarr package.
+A storage backend implementation for Zarr array format using the CRAN zarr package.
 Zarr is a cloud-native array storage format that supports chunked, compressed
 n-dimensional arrays with concurrent read/write access.
 }
@@ -18,11 +18,14 @@ which is particularly well-suited for:
 \item Progressive data access patterns
 }
 
-The backend expects Zarr arrays organized as:
-\itemize{
-\item 4D array with dimensions (x, y, z, time)
-\item Optional mask array at "mask" key
-\item Metadata stored as Zarr attributes
+The backend expects Zarr arrays organized as a 4D array with dimensions (x, y, z, time).
+The CRAN zarr package uses R6 classes and supports Zarr v3 format only.
 }
+\section{Experimental}{
+
+This backend uses the CRAN zarr package which is relatively new (v0.1.1, Dec 2025).
+It supports Zarr v3 format only - Zarr v2 stores cannot be read.
+Please report any issues to help improve the package.
 }
+
 \keyword{internal}
