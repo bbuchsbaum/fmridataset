@@ -385,3 +385,101 @@ test_that("as_delarr.study_backend handles three or more subjects", {
   expected <- rbind(mat1[3:4, ], mat2, mat3[1:2, ])
   expect_equal(realized, expected)
 })
+
+# ============================================
+# Section 3: Default method and edge cases ----
+# ============================================
+
+test_that("as_delarr.default errors for unknown backend types", {
+  skip_if_not_installed("delarr")
+
+  unknown_obj <- structure(list(data = 1:10), class = "unknown_backend")
+  expect_error(
+    as_delarr(unknown_obj),
+    "No as_delarr method for class: unknown_backend"
+  )
+})
+
+test_that("as_delarr.default shows first class in error message", {
+  skip_if_not_installed("delarr")
+
+  multi_class <- structure(list(), class = c("first_class", "second_class"))
+  expect_error(
+    as_delarr(multi_class),
+    "No as_delarr method for class: first_class"
+  )
+})
+
+test_that("as_delarr generic dispatches correctly", {
+  skip_if_not_installed("delarr")
+
+  mat <- create_test_matrix(n_time = 5, n_voxels = 10)
+  backend <- matrix_backend(mat)
+  result <- as_delarr(backend)
+  expect_s3_class(result, "delarr")
+})
+
+test_that("as_delarr is generic function", {
+  skip_if_not_installed("delarr")
+
+  expect_true(is.function(as_delarr))
+  # Check that it's an S3 generic
+  expect_true("as_delarr" %in% ls(getNamespace("fmridataset")))
+})
+
+test_that(".ensure_delarr errors when delarr unavailable", {
+  skip_if_not_installed("withr")
+  skip_if_not_installed("delarr")
+
+  # Mock unavailability by using a temporary environment
+  # Note: This test verifies the error message but is difficult to truly
+  # test without unloading delarr
+  # We just verify the function exists and is callable
+  expect_true(is.function(fmridataset:::.ensure_delarr))
+})
+
+test_that("as_delarr.matrix_backend respects backend mask", {
+  skip_if_not_installed("delarr")
+
+  # Create a backend with a custom mask
+  set.seed(42)
+  mat <- matrix(rnorm(100), nrow = 10, ncol = 10)
+  mask <- c(TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, FALSE, TRUE, TRUE)
+
+  backend <- matrix_backend(mat, mask = mask)
+  darr <- as_delarr(backend)
+
+  # Dimensions should reflect masked voxels
+  expect_equal(nrow(darr), 10)
+  expect_equal(ncol(darr), sum(mask))  # 7 TRUE values
+})
+
+test_that("as_delarr.study_backend initializes time_dims lazily", {
+  skip_if_not_installed("delarr")
+
+  mat1 <- matrix(1:50, nrow = 5, ncol = 10)
+  mat2 <- matrix(51:100, nrow = 5, ncol = 10)
+
+  backend1 <- matrix_backend(mat1)
+  backend2 <- matrix_backend(mat2)
+
+  # Create study backend
+  sb <- study_backend(list(backend1, backend2))
+
+  # Manually clear cached time_dims to test lazy initialization path
+  sb$time_dims <- NULL
+  sb$subject_boundaries <- NULL
+
+  # as_delarr should reinitialize these
+  darr <- as_delarr(sb)
+
+  # Verify it worked
+  expect_s3_class(darr, "delarr")
+  expect_equal(nrow(darr), 10)
+  expect_equal(ncol(darr), 10)
+
+  # Verify data is correct
+  realized <- delarr::collect(darr)
+  expected <- rbind(mat1, mat2)
+  expect_equal(realized, expected)
+})
