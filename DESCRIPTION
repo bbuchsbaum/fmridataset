@@ -15,7 +15,7 @@ License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2.9000
+RoxygenNote: 7.3.3
 Depends: 
     R (>= 4.3.0)
 Imports:
@@ -34,22 +34,30 @@ Imports:
     tibble,
     utils
 Suggests:
+    arrow,
     bench,
     bidser,
     crayon,
-    arrow,
+    DelayedArray,
+    DelayedMatrixStats,
+    devtools,
     dplyr,
     fmristore,
     foreach,
+    hdf5r,
+    iterators,
+    jsonlite,
+    knitr,
+    microbenchmark,
     mockery,
     mockr,
-    hdf5r,
-    jsonlite,
+    pryr,
     Rarr,
-    yaml,
+    rhdf5,
+    rmarkdown,
     testthat (>= 3.0.0),
-    knitr,
-    rmarkdown
+    withr,
+    yaml
 VignetteBuilder: knitr
 URL: https://github.com/bbuchsbaum/fmridataset, https://bbuchsbaum.github.io/fmridataset/
 BugReports: https://github.com/bbuchsbaum/fmridataset/issues
