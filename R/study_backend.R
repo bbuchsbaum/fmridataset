@@ -204,7 +204,7 @@ backend_get_data.study_backend <- function(backend, rows = NULL, cols = NULL) {
 }
 
 .collect_study_backend_block <- function(backends, rows, cols,
-                                        subject_boundaries, n_time, n_vox) {
+                                         subject_boundaries, n_time, n_vox) {
   n_rows <- length(rows)
   n_cols <- length(cols)
 

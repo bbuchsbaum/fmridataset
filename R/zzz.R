@@ -14,7 +14,7 @@
   )
   toset <- !(names(op.fmridataset) %in% names(op))
   if (any(toset)) options(op.fmridataset[toset])
-  
+
   if (.require_namespace("DelayedArray", quietly = TRUE)) {
     register_delayed_array_support()
   }

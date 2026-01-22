@@ -67,7 +67,6 @@ get_data_matrix.fmri_file_dataset <- function(x, ...) {
 }
 
 
-
 #' @import memoise
 #' @importFrom cachem cache_mem
 #' @importFrom utils object.size
@@ -233,7 +232,6 @@ fmri_cache_resize <- function(size_mb) {
 
   invisible(NULL)
 }
-
 
 
 #' @export
