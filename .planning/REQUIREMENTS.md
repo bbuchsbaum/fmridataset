@@ -68,31 +68,31 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CRAN-01 | TBD | Pending |
-| CRAN-02 | TBD | Pending |
-| CRAN-03 | TBD | Pending |
-| CRAN-04 | TBD | Pending |
-| CRAN-05 | TBD | Pending |
-| CRAN-06 | TBD | Pending |
-| CRAN-07 | TBD | Pending |
-| TEST-01 | TBD | Pending |
-| TEST-02 | TBD | Pending |
-| TEST-03 | TBD | Pending |
-| TEST-04 | TBD | Pending |
-| TEST-05 | TBD | Pending |
-| TEST-06 | TBD | Pending |
-| ZARR-01 | TBD | Pending |
-| ZARR-02 | TBD | Pending |
-| ZARR-03 | TBD | Pending |
-| DEBT-01 | TBD | Pending |
-| DEBT-02 | TBD | Pending |
-| DEBT-03 | TBD | Pending |
+| CRAN-01 | Phase 1 | Pending |
+| CRAN-02 | Phase 1 | Pending |
+| CRAN-03 | Phase 1 | Pending |
+| CRAN-04 | Phase 1 | Pending |
+| CRAN-05 | Phase 1 | Pending |
+| CRAN-06 | Phase 1 | Pending |
+| DEBT-01 | Phase 2 | Pending |
+| DEBT-02 | Phase 2 | Pending |
+| DEBT-03 | Phase 2 | Pending |
+| ZARR-01 | Phase 3 | Pending |
+| ZARR-02 | Phase 3 | Pending |
+| ZARR-03 | Phase 3 | Pending |
+| TEST-01 | Phase 4 | Pending |
+| TEST-02 | Phase 4 | Pending |
+| TEST-03 | Phase 4 | Pending |
+| TEST-04 | Phase 4 | Pending |
+| TEST-05 | Phase 4 | Pending |
+| TEST-06 | Phase 4 | Pending |
+| CRAN-07 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 19 total
-- Mapped to phases: 0
-- Unmapped: 19 ⚠️
+- Mapped to phases: 19
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-22*
-*Last updated: 2026-01-22 after initial definition*
+*Last updated: 2026-01-22 after roadmap creation*

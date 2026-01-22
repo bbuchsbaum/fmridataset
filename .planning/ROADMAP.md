@@ -1,0 +1,114 @@
+# Roadmap: fmridataset CRAN-Ready
+
+## Overview
+
+Transform fmridataset from feature-complete to CRAN-ready by fixing R CMD check issues, resolving tech debt in H5 backend, deciding on Zarr viability, and achieving 80%+ test coverage. Five focused phases move from quick compliance wins through infrastructure fixes to comprehensive testing, culminating in final CRAN validation.
+
+## Phases
+
+**Phase Numbering:**
+- Integer phases (1, 2, 3): Planned milestone work
+- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+
+Decimal phases appear between their surrounding integers in numeric order.
+
+- [ ] **Phase 1: CRAN Quick Wins** - Fix immediate R CMD check issues
+- [ ] **Phase 2: Tech Debt** - Resolve H5 backend resource leaks
+- [ ] **Phase 3: Zarr Decision** - Investigate and decide on Zarr support
+- [ ] **Phase 4: Test Coverage** - Achieve 80%+ coverage across backends
+- [ ] **Phase 5: Final Validation** - Verify CRAN compliance
+
+## Phase Details
+
+### Phase 1: CRAN Quick Wins
+**Goal**: R CMD check runs cleanly except for final validation requirements
+**Depends on**: Nothing (first phase)
+**Requirements**: CRAN-01, CRAN-02, CRAN-03, CRAN-04, CRAN-05, CRAN-06
+**Success Criteria** (what must be TRUE):
+  1. All test dependencies (DelayedArray, rhdf5, devtools, iterators, withr) are in Suggests field
+  2. All vignette dependencies (microbenchmark, pryr) are in Suggests field
+  3. `generate_all_golden_data` function is properly defined or removed
+  4. All Rd documentation cross-references resolve correctly
+  5. .planning directory and non-standard files are in .Rbuildignore
+  6. R CMD check produces at most warnings (no errors, no notes except dependencies)
+**Plans**: TBD
+
+Plans:
+- [ ] TBD during plan-phase
+
+### Phase 2: Tech Debt
+**Goal**: H5 backend has proper resource management and storage_backend fix is committed
+**Depends on**: Phase 1
+**Requirements**: DEBT-01, DEBT-02, DEBT-03
+**Success Criteria** (what must be TRUE):
+  1. H5 backend metadata retrieval uses on.exit() protection in all error paths
+  2. H5 backend data reading closes H5 handles even when errors occur
+  3. storage_backend.R getS3method change is committed to repository
+**Plans**: TBD
+
+Plans:
+- [ ] TBD during plan-phase
+
+### Phase 3: Zarr Decision
+**Goal**: Zarr backend viability determined with go/no-go decision
+**Depends on**: Phase 2
+**Requirements**: ZARR-01, ZARR-02, ZARR-03
+**Success Criteria** (what must be TRUE):
+  1. Rarr package stability and CRAN compatibility is documented
+  2. Zarr cloud paths (S3, GCS, Azure) are tested with results documented
+  3. Go/no-go decision is made: either Zarr moves to Suggests-only or is removed
+  4. If keeping Zarr: DESCRIPTION updated with Rarr as Suggests
+  5. If removing Zarr: zarr_backend.R removed and tests cleaned up
+**Plans**: TBD
+
+Plans:
+- [ ] TBD during plan-phase
+
+### Phase 4: Test Coverage
+**Goal**: Package achieves 80%+ overall test coverage with all critical backends covered
+**Depends on**: Phase 3
+**Requirements**: TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, TEST-06
+**Success Criteria** (what must be TRUE):
+  1. zarr_backend.R coverage is 80%+ (or backend removed)
+  2. h5_backend.R coverage is 80%+
+  3. as_delayed_array.R coverage is 80%+
+  4. as_delayed_array_dataset.R coverage is 80%+
+  5. dataset_methods.R coverage is 80%+
+  6. Overall package test coverage is 80%+
+**Plans**: TBD
+
+Plans:
+- [ ] TBD during plan-phase
+
+### Phase 5: Final Validation
+**Goal**: Package passes R CMD check --as-cran with 0 errors, 0 warnings, 0 notes
+**Depends on**: Phase 4
+**Requirements**: CRAN-07
+**Success Criteria** (what must be TRUE):
+  1. R CMD check --as-cran produces 0 errors
+  2. R CMD check --as-cran produces 0 warnings
+  3. R CMD check --as-cran produces 0 notes
+  4. Package installs cleanly on fresh R session
+  5. All examples run without errors
+  6. All vignettes build successfully
+**Plans**: TBD
+
+Plans:
+- [ ] TBD during plan-phase
+
+## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 1. CRAN Quick Wins | 0/TBD | Not started | - |
+| 2. Tech Debt | 0/TBD | Not started | - |
+| 3. Zarr Decision | 0/TBD | Not started | - |
+| 4. Test Coverage | 0/TBD | Not started | - |
+| 5. Final Validation | 0/TBD | Not started | - |
+
+---
+*Roadmap created: 2026-01-22*
+*Last updated: 2026-01-22*
