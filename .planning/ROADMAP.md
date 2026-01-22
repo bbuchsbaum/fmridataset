@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: CRAN Quick Wins** - Fix immediate R CMD check issues
 - [x] **Phase 2: Tech Debt** - Resolve H5 backend resource leaks
 - [x] **Phase 3: Zarr Decision** - Investigate and decide on Zarr support
-- [ ] **Phase 4: Test Coverage** - Achieve 80%+ coverage across backends
+- [x] **Phase 4: Test Coverage** - Achieve 80%+ coverage across backends
 - [ ] **Phase 5: Final Validation** - Verify CRAN compliance
 
 ## Phase Details
@@ -87,7 +87,7 @@ Plans:
 - [x] 04-02-PLAN.md - Create h5_backend tests
 - [x] 04-03-PLAN.md - Create as_delayed_array and dataset_methods tests
 - [x] 04-04-PLAN.md - Run coverage analysis and document results
-- [ ] 04-05-PLAN.md - Gap closure: as_delarr.R coverage (67.3% -> 80%+)
+- [x] 04-05-PLAN.md - Gap closure: as_delarr.R coverage (67.3% -> 80%+)
 
 ### Phase 5: Final Validation
 **Goal**: Package passes R CMD check --as-cran with 0 errors, 0 warnings, 0 notes
@@ -115,9 +115,9 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 1. CRAN Quick Wins | 3/3 | Complete | 2026-01-22 |
 | 2. Tech Debt | 2/2 | Complete | 2026-01-22 |
 | 3. Zarr Decision | 2/2 | Complete | 2026-01-22 |
-| 4. Test Coverage | 4/5 | Gap Closure | - |
+| 4. Test Coverage | 5/5 | Complete | 2026-01-22 |
 | 5. Final Validation | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-01-22*
-*Last updated: 2026-01-22 (Phase 4 gap closure plan added)*
+*Last updated: 2026-01-22 (Phase 4 complete)*
