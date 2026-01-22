@@ -5,7 +5,7 @@
 See: .planning/PROJECT.md (updated 2026-01-22)
 
 **Core value:** Backend-agnostic fMRI data access: one API works across all storage formats, with lazy loading, chunked iteration, and multi-subject support.
-**Current focus:** Phase 4 - Test Coverage
+**Current focus:** Phase 5 - Final Validation (ready to plan)
 
 ## Current Position
 
@@ -88,7 +88,7 @@ None yet.
 - ✅ Overall package coverage: 73.3% (target: 80%, gap: -6.7%)
 - ✅ zarr_backend coverage: 94.6% (exceeds 80% target) - 04-01
 - ✅ as_delayed_array_dataset coverage: 100% (perfect) - 04-03
-- ✅ as_delarr.R coverage: 75.5% (up from 67.3%) - 04-05
+- ✅ as_delarr.R coverage: 81.5% (up from 67.3%) - 04-05 gap closure
 - ⚠️ h5_backend coverage: 30.1% (S4 mocking limitation) - 04-04
 - ℹ️ Coverage gap concentrated in S4-dependent backends (h5, nifti)
 - ℹ️ 8 h5_backend tests skipped - require real S4 objects
