@@ -46,10 +46,11 @@ Plans:
   1. H5 backend metadata retrieval uses on.exit() protection in all error paths
   2. H5 backend data reading closes H5 handles even when errors occur
   3. storage_backend.R getS3method change is committed to repository
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD during plan-phase
+- [ ] 02-01-PLAN.md - Add on.exit() resource protection to H5 backend functions
+- [ ] 02-02-PLAN.md - Commit storage_backend.R getS3method fix
 
 ### Phase 3: Zarr Decision
 **Goal**: Zarr backend viability determined with go/no-go decision
@@ -106,11 +107,11 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. CRAN Quick Wins | 3/3 | Complete | 2026-01-22 |
-| 2. Tech Debt | 0/TBD | Not started | - |
+| 2. Tech Debt | 0/2 | Planned | - |
 | 3. Zarr Decision | 0/TBD | Not started | - |
 | 4. Test Coverage | 0/TBD | Not started | - |
 | 5. Final Validation | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-01-22*
-*Last updated: 2026-01-22 (Phase 1 complete)*
+*Last updated: 2026-01-22 (Phase 2 planned)*
