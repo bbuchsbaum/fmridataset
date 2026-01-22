@@ -214,15 +214,15 @@ backend_get_dims.h5_backend <- function(backend) {
     tryCatch(
       {
         first_h5 <- fmristore::H5NeuroVec(backend$source[1], dataset_name = backend$data_dataset)
+        on.exit(close(first_h5), add = TRUE, after = FALSE)
         d <- dim(first_h5)
-        close(first_h5) # Close immediately after getting dimensions
 
         # Calculate total time dimension across all files
         total_time <- if (length(backend$source) > 1) {
           sum(sapply(backend$source, function(file_path) {
             h5_obj <- fmristore::H5NeuroVec(file_path, dataset_name = backend$data_dataset)
+            on.exit(close(h5_obj), add = TRUE, after = FALSE)
             time_dim <- dim(h5_obj)[4]
-            close(h5_obj)
             time_dim
           }))
         } else {
