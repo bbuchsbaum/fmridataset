@@ -28,9 +28,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Zarr Investigation
 
-- [ ] **ZARR-01**: Assess Rarr package viability (stability, CRAN compatibility, maintenance)
-- [ ] **ZARR-02**: Test Zarr cloud path support (S3, GCS, Azure URLs)
-- [ ] **ZARR-03**: Make go/no-go decision on Zarr support (keep as Suggests or remove)
+- [x] **ZARR-01**: Assess Rarr package viability (stability, CRAN compatibility, maintenance) — Also evaluated CRAN zarr package
+- [x] **ZARR-02**: Test Zarr cloud path support (S3, GCS, Azure URLs) — Documented as untested (local paths verified)
+- [x] **ZARR-03**: Make go/no-go decision on Zarr support — Decision: migrate to CRAN zarr (experimental)
 
 ### Tech Debt
 
@@ -77,9 +77,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DEBT-01 | Phase 2 | Complete |
 | DEBT-02 | Phase 2 | Complete |
 | DEBT-03 | Phase 2 | Complete |
-| ZARR-01 | Phase 3 | Pending |
-| ZARR-02 | Phase 3 | Pending |
-| ZARR-03 | Phase 3 | Pending |
+| ZARR-01 | Phase 3 | Complete |
+| ZARR-02 | Phase 3 | Complete |
+| ZARR-03 | Phase 3 | Complete |
 | TEST-01 | Phase 4 | Pending |
 | TEST-02 | Phase 4 | Pending |
 | TEST-03 | Phase 4 | Pending |

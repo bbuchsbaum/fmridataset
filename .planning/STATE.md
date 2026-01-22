@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-01-22)
 
 **Core value:** Backend-agnostic fMRI data access: one API works across all storage formats, with lazy loading, chunked iteration, and multi-subject support.
-**Current focus:** Phase 3 - Zarr Decision
+**Current focus:** Phase 4 - Test Coverage
 
 ## Current Position
 
-Phase: 3 of 5 (Zarr Decision)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-01-22 — Completed 03-02-PLAN.md (Zarr backend migration)
+Phase: 4 of 5 (Test Coverage)
+Plan: 0 of TBD in current phase
+Status: Ready to plan
+Last activity: 2026-01-22 — Phase 3 complete, verified
 
 Progress: [██████░░░░] 60%
 
@@ -83,7 +83,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-22 (phase execution)
-Stopped at: Completed 03-02-PLAN.md (Zarr backend migration complete)
+Stopped at: Phase 3 complete, ready for Phase 4 planning
 Resume file: None
 
 ---
