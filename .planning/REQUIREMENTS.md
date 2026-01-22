@@ -9,12 +9,12 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### CRAN Compliance
 
-- [ ] **CRAN-01**: Fix unstated test dependencies (add DelayedArray, rhdf5, devtools, iterators, withr to Suggests)
-- [ ] **CRAN-02**: Fix undefined global function `generate_all_golden_data`
-- [ ] **CRAN-03**: Fix Rd cross-reference for `sampling_frame` link (add package anchor)
-- [ ] **CRAN-04**: Add missing vignette dependencies (microbenchmark, pryr) to Suggests
-- [ ] **CRAN-05**: Add `.planning` to .Rbuildignore
-- [ ] **CRAN-06**: Handle non-standard top-level files (move or add to .Rbuildignore)
+- [x] **CRAN-01**: Fix unstated test dependencies (add devtools, iterators, withr to Suggests - Bioconductor deps excluded)
+- [x] **CRAN-02**: Fix undefined global function `generate_all_golden_data`
+- [x] **CRAN-03**: Fix Rd cross-reference for `sampling_frame` link (add package anchor)
+- [x] **CRAN-04**: Add missing vignette dependencies (microbenchmark, pryr) to Suggests
+- [x] **CRAN-05**: Add `.planning` to .Rbuildignore
+- [x] **CRAN-06**: Handle non-standard top-level files (move or add to .Rbuildignore)
 - [ ] **CRAN-07**: Pass `R CMD check --as-cran` with 0 errors, 0 warnings, 0 notes
 
 ### Test Coverage
@@ -68,12 +68,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CRAN-01 | Phase 1 | Pending |
-| CRAN-02 | Phase 1 | Pending |
-| CRAN-03 | Phase 1 | Pending |
-| CRAN-04 | Phase 1 | Pending |
-| CRAN-05 | Phase 1 | Pending |
-| CRAN-06 | Phase 1 | Pending |
+| CRAN-01 | Phase 1 | Complete |
+| CRAN-02 | Phase 1 | Complete |
+| CRAN-03 | Phase 1 | Complete |
+| CRAN-04 | Phase 1 | Complete |
+| CRAN-05 | Phase 1 | Complete |
+| CRAN-06 | Phase 1 | Complete |
 | DEBT-01 | Phase 2 | Pending |
 | DEBT-02 | Phase 2 | Pending |
 | DEBT-03 | Phase 2 | Pending |
