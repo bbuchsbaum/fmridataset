@@ -31,10 +31,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. All Rd documentation cross-references resolve correctly
   5. .planning directory and non-standard files are in .Rbuildignore
   6. R CMD check produces at most warnings (no errors, no notes except dependencies)
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD during plan-phase
+- [ ] 01-01-PLAN.md - Add missing test and vignette dependencies to DESCRIPTION
+- [ ] 01-02-PLAN.md - Fix golden_data architecture and sampling_frame cross-reference
+- [ ] 01-03-PLAN.md - Update .Rbuildignore for non-standard files
 
 ### Phase 2: Tech Debt
 **Goal**: H5 backend has proper resource management and storage_backend fix is committed
@@ -99,11 +101,11 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. CRAN Quick Wins | 0/TBD | Not started | - |
+| 1. CRAN Quick Wins | 0/3 | Planned | - |
 | 2. Tech Debt | 0/TBD | Not started | - |
 | 3. Zarr Decision | 0/TBD | Not started | - |
 | 4. Test Coverage | 0/TBD | Not started | - |
