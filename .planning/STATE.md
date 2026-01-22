@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-01-22)
 ## Current Position
 
 Phase: 4 of 5 (Test Coverage)
-Plan: 1 of 4 in current phase
+Plan: 2 of 4 in current phase
 Status: In progress
-Last activity: 2026-01-22 — Completed 04-01-PLAN.md
+Last activity: 2026-01-22 — Completed 04-02-PLAN.md
 
-Progress: [███████░░░] 64%
+Progress: [███████░░░] 68%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: 5.5 min
-- Total execution time: 0.7 hours
+- Total plans completed: 9
+- Average duration: 5.7 min
+- Total execution time: 0.9 hours
 
 **By Phase:**
 
@@ -30,11 +30,11 @@ Progress: [███████░░░] 64%
 | 1. CRAN Quick Wins | 3 | 7.5 min | 2.5 min |
 | 2. Tech Debt | 2 | 3 min | 1.5 min |
 | 3. Zarr Decision | 2 | 27 min | 13.5 min |
-| 4. Test Coverage | 1 | 8 min | 8 min |
+| 4. Test Coverage | 2 | 18 min | 9 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-03 (2min), 02-01 (2min), 02-02 (<1min), 03-01 (15min), 03-02 (12min), 04-01 (8min)
-- Trend: Phase 4 starting with comprehensive backend tests
+- Last 5 plans: 02-01 (2min), 02-02 (<1min), 03-01 (15min), 03-02 (12min), 04-01 (8min), 04-02 (10min)
+- Trend: Phase 4 progressing with h5_backend test coverage
 
 *Updated after each plan completion*
 
@@ -45,6 +45,8 @@ Progress: [███████░░░] 64%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- **Use mock objects instead of real H5 files for testing** - Tests h5_backend logic without requiring real fmristore files; faster, no write permissions needed (04-02)
+- **Create NeuroVol masks not H5NeuroVol in tests** - h5_backend converts H5NeuroVol to NeuroVol internally; use NeuroVol directly (04-02)
 - **Test backend_close behavior as-is** - backend_close doesn't modify caller's object due to R copy-on-write; test actual behavior (04-01)
 - **Use helper functions for backend tests** - create_test_zarr() provides consistent test data with reproducible seeding (04-01)
 - **Auto-open backends for validation** - backend_get_dims/get_mask auto-open if needed; follows nifti pattern (03-02)
@@ -78,9 +80,11 @@ None yet.
 - ⚠️ Cloud path support (S3/GCS/Azure) untested - needs verification when accessible
 - ⚠️ Zarr v3-only documented - users with v2 stores must convert externally
 
-**From Phase 4 (04-01):**
-- ✅ zarr_backend coverage 90.4% (exceeds 80% target)
-- ℹ️ backend_close design note: doesn't modify caller's object due to R semantics
+**From Phase 4:**
+- ✅ zarr_backend coverage 90.4% (exceeds 80% target) - 04-01
+- ✅ h5_backend comprehensive tests (962 lines) - 04-02
+- ℹ️ backend_close design note: doesn't modify caller's object due to R semantics - 04-01
+- ℹ️ Mock infrastructure patterns established for H5 testing - 04-02
 
 **For Next Phase:**
 - Need to update README with Zarr backend documentation
@@ -91,7 +95,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-22 (phase execution)
-Stopped at: Completed 04-01-PLAN.md
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
 
 ---
