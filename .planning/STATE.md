@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-01-22)
 ## Current Position
 
 Phase: 4 of 5 (Test Coverage)
-Plan: 2 of 4 in current phase
-Status: In progress
-Last activity: 2026-01-22 — Completed 04-02-PLAN.md
+Plan: 4 of 4 in current phase
+Status: Phase complete
+Last activity: 2026-01-22 — Completed 04-04-PLAN.md (Coverage Analysis)
 
-Progress: [███████░░░] 68%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
-- Average duration: 5.7 min
-- Total execution time: 0.9 hours
+- Total plans completed: 11
+- Average duration: 6.2 min
+- Total execution time: 1.14 hours
 
 **By Phase:**
 
@@ -30,11 +30,11 @@ Progress: [███████░░░] 68%
 | 1. CRAN Quick Wins | 3 | 7.5 min | 2.5 min |
 | 2. Tech Debt | 2 | 3 min | 1.5 min |
 | 3. Zarr Decision | 2 | 27 min | 13.5 min |
-| 4. Test Coverage | 2 | 18 min | 9 min |
+| 4. Test Coverage | 4 | 31 min | 7.75 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-01 (2min), 02-02 (<1min), 03-01 (15min), 03-02 (12min), 04-01 (8min), 04-02 (10min)
-- Trend: Phase 4 progressing with h5_backend test coverage
+- Last 5 plans: 03-02 (12min), 04-01 (8min), 04-02 (10min), 04-03 (3min), 04-04 (10min)
+- Trend: Phase 4 complete - coverage analysis and reporting done
 
 *Updated after each plan completion*
 
@@ -45,6 +45,8 @@ Progress: [███████░░░] 68%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- **Accept 73% overall coverage as pragmatic** - Core functionality well-tested; gap in h5_backend due to S4 mocking limitations (04-04)
+- **Document h5_backend testing gap as technical debt** - Cannot mock S4 objects; would need real H5 fixtures (medium investment) (04-04)
 - **Use mock objects instead of real H5 files for testing** - Tests h5_backend logic without requiring real fmristore files; faster, no write permissions needed (04-02)
 - **Create NeuroVol masks not H5NeuroVol in tests** - h5_backend converts H5NeuroVol to NeuroVol internally; use NeuroVol directly (04-02)
 - **Test backend_close behavior as-is** - backend_close doesn't modify caller's object due to R copy-on-write; test actual behavior (04-01)
@@ -80,22 +82,27 @@ None yet.
 - ⚠️ Cloud path support (S3/GCS/Azure) untested - needs verification when accessible
 - ⚠️ Zarr v3-only documented - users with v2 stores must convert externally
 
-**From Phase 4:**
-- ✅ zarr_backend coverage 90.4% (exceeds 80% target) - 04-01
-- ✅ h5_backend comprehensive tests (962 lines) - 04-02
-- ℹ️ backend_close design note: doesn't modify caller's object due to R semantics - 04-01
-- ℹ️ Mock infrastructure patterns established for H5 testing - 04-02
+**From Phase 4 (Complete):**
+- ✅ Overall package coverage: 73% (target: 80%, gap: -7%)
+- ✅ zarr_backend coverage: 94.6% (exceeds 80% target) - 04-01
+- ✅ as_delayed_array_dataset coverage: 100% (perfect) - 04-03
+- ⚠️ h5_backend coverage: 30.1% (S4 mocking limitation) - 04-04
+- ℹ️ Coverage gap concentrated in optional features (h5_backend)
+- ℹ️ 8 h5_backend tests skipped - require real S4 objects
+- 📄 COVERAGE-REPORT.md documents gaps and recommendations
+
+**Technical Debt:**
+- h5_backend testing gap (30.1% coverage) - would need real H5 fixtures (medium investment)
 
 **For Next Phase:**
 - Need to update README with Zarr backend documentation
 - Consider adding Zarr vignette section if useful
 - Should test cloud storage paths when accessible
-- Fix n_runs.fmri_study_dataset implementation
 
 ## Session Continuity
 
 Last session: 2026-01-22 (phase execution)
-Stopped at: Completed 04-02-PLAN.md
+Stopped at: Completed 04-04-PLAN.md (Phase 4 complete)
 Resume file: None
 
 ---
