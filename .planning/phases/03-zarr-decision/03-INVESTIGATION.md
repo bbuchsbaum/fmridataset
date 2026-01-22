@@ -246,3 +246,35 @@ From 03-CONTEXT.md user requirements:
 5. All core operations verified correct
 6. Already integrated and working in zarr_backend.R
 
+---
+
+## Decision
+
+**Date:** 2026-01-22
+**Decision:** migrate-zarr (use CRAN zarr package)
+**Status:** Complete
+
+### Rationale
+
+After reviewing the investigation findings, the user chose to migrate to CRAN zarr despite Rarr's production readiness advantages:
+
+1. **Pure CRAN dependency:** CRAN zarr eliminates Bioconductor dependency, simplifying package installation
+2. **Zarr v2 compatibility not needed:** Package will not support legacy Zarr v2 files - users must work with Zarr v3 stores
+3. **Current Rarr implementation is broken:** The existing zarr_backend.R uses incorrect API calls anyway, so migration cost is minimal
+4. **Experimental approach:** Mark zarr backend as experimental, stress test the CRAN package, report bugs to maintainer to improve the ecosystem
+
+### Trade-offs Accepted
+
+- **No Zarr v2 support:** Users cannot read existing v2 stores (most public datasets)
+- **New package risk:** CRAN zarr version 0.1.1 (Dec 2025) has minimal field testing
+- **Cloud support unclear:** CRAN zarr lacks documentation for S3/GCS access (may work, untested)
+- **API changes required:** R6-based API differs from current Rarr implementation
+
+### Next Steps
+
+Plan 03-02 will:
+1. Implement zarr_backend.R using CRAN zarr package (R6 API)
+2. Add experimental status warnings to documentation
+3. Update tests to use Zarr v3 stores
+4. Verify core functionality (local filesystem first)
+
