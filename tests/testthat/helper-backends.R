@@ -8,6 +8,7 @@
 #' @return Character path to created Zarr store
 create_test_zarr <- function(dims = c(4, 4, 4, 10), path = NULL) {
   skip_if_not_installed("zarr")
+  skip_if_not_installed("blosc")
 
   # Generate reproducible data
   set.seed(42)

@@ -1,5 +1,6 @@
 test_that("fmri_zarr_dataset creates valid dataset", {
   skip_if_not_installed("zarr")
+  skip_if_not_installed("blosc")
 
   # Create test data
   arr <- array(rnorm(2 * 2 * 2 * 10), dim = c(2, 2, 2, 10))
@@ -34,6 +35,7 @@ test_that("fmri_zarr_dataset creates valid dataset", {
 
 test_that("fmri_zarr_dataset works without mask", {
   skip_if_not_installed("zarr")
+  skip_if_not_installed("blosc")
 
   # Create test data
   arr <- array(rnorm(2 * 1 * 1 * 4), dim = c(2, 1, 1, 4))
@@ -57,6 +59,7 @@ test_that("fmri_zarr_dataset works without mask", {
 
 test_that("fmri_zarr_dataset validates run_length", {
   skip_if_not_installed("zarr")
+  skip_if_not_installed("blosc")
 
   # Create test data with only 2 timepoints
   arr <- array(rnorm(2 * 2 * 2 * 2), dim = c(2, 2, 2, 2))
@@ -79,6 +82,7 @@ test_that("fmri_zarr_dataset validates run_length", {
 
 test_that("fmri_zarr_dataset handles preload option", {
   skip_if_not_installed("zarr")
+  skip_if_not_installed("blosc")
 
   # Create test data
   arr <- array(rnorm(2 * 2 * 1 * 5), dim = c(2, 2, 1, 5))
@@ -105,6 +109,7 @@ test_that("fmri_zarr_dataset handles preload option", {
 
 test_that("fmri_zarr_dataset works with event_table and censor", {
   skip_if_not_installed("zarr")
+  skip_if_not_installed("blosc")
 
   # Create test data
   arr <- array(rnorm(2 * 2 * 1 * 6), dim = c(2, 2, 1, 6))

@@ -43,6 +43,7 @@ test_that("zarr_backend handles missing files gracefully", {
 
 test_that("zarr_backend works with local store", {
   skip_if_not_installed("zarr")
+  skip_if_not_installed("blosc")
 
   # Create test data
   arr <- array(rnorm(8 * 8 * 4 * 10), dim = c(8, 8, 4, 10))
@@ -77,6 +78,7 @@ test_that("zarr_backend works with local store", {
 
 test_that("zarr_backend handles preload option", {
   skip_if_not_installed("zarr")
+  skip_if_not_installed("blosc")
 
   # Create test data
   arr <- array(rnorm(2 * 3 * 2 * 2), dim = c(2, 3, 2, 2))
@@ -104,6 +106,7 @@ test_that("zarr_backend handles preload option", {
 
 test_that("zarr_backend validates array dimensions", {
   skip_if_not_installed("zarr")
+  skip_if_not_installed("blosc")
 
   # Create 3D array (wrong dimensions)
   arr <- array(rnorm(2 * 2 * 2), dim = c(2, 2, 2))
@@ -134,6 +137,7 @@ test_that("zarr_backend handles remote URLs", {
 
 test_that("zarr_backend integrates with fmri_dataset", {
   skip_if_not_installed("zarr")
+  skip_if_not_installed("blosc")
 
   # Create test data
   arr <- array(rnorm(2 * 2 * 2 * 10), dim = c(2, 2, 2, 10))
@@ -163,6 +167,7 @@ test_that("zarr_backend integrates with fmri_dataset", {
 
 test_that("zarr_backend chooses reading strategy", {
   skip_if_not_installed("zarr")
+  skip_if_not_installed("blosc")
 
   # Create larger array
   arr <- array(rnorm(8 * 8 * 8 * 20), dim = c(8, 8, 8, 20))
