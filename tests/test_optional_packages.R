@@ -122,30 +122,18 @@ if ("bidser" %in% installed) {
   cat("Skipping BIDS integration test (bidser not installed)\n")
 }
 
-# Run full test suite and check for skips
-cat("\n\nRunning full test suite:\n")
+# Summary of optional package availability
+cat("\n\nOptional Package Summary:\n")
 cat(strrep("-", 60), "\n")
 
 if (length(installed) == length(optional_packages)) {
-  cat("All optional packages installed - running comprehensive tests\n")
-
-  # Run tests and analyze results
-  test_results <- testthat::test_dir("tests/testthat", reporter = "minimal")
-
-  # Count skipped tests
-  n_skip <- sum(vapply(test_results, function(x) {
-    sum(vapply(x$results, function(r) inherits(r, "skip"), logical(1)))
-  }, integer(1)))
-
-  if (n_skip > 0) {
-    cat(sprintf("\nWARNING: %d tests were skipped even with all packages installed\n", n_skip))
-    cat("This might indicate tests that need updating\n")
-  } else {
-    cat("\nSUCCESS: All tests ran without skips\n")
-  }
+  cat("SUCCESS: All optional packages are installed\n")
+  cat("Full test suite (testthat.R) will have comprehensive coverage\n")
 } else {
-  cat("Some optional packages missing - tests may skip functionality\n")
-  cat("Install missing packages and re-run for comprehensive testing\n")
+  cat(sprintf("PARTIAL: %d/%d optional packages installed\n",
+              length(installed), length(optional_packages)))
+  cat("Some tests in the full suite may be skipped\n")
+  cat("Install missing packages for comprehensive testing\n")
 }
 
 cat(strrep("-", 60), "\n")
