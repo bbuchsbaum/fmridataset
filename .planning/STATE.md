@@ -2,19 +2,19 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-01-22)
+See: .planning/PROJECT.md (updated 2026-01-23)
 
 **Core value:** Backend-agnostic fMRI data access: one API works across all storage formats, with lazy loading, chunked iteration, and multi-subject support.
-**Current focus:** v0.9.0 shipped — awaiting next milestone
+**Current focus:** v0.9.1 Documentation Quality
 
 ## Current Position
 
-Phase: Milestone complete
-Plan: N/A
-Status: Ready for next milestone
-Last activity: 2026-01-22 — v0.9.0 milestone archived
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-01-23 — Milestone v0.9.1 started
 
-Progress: [Milestone Complete]
+Progress: ░░░░░░░░░░ 0%
 
 ## Shipped Milestones
 
@@ -47,11 +47,11 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-22 (milestone completion)
-Stopped at: v0.9.0 milestone archived
+Last session: 2026-01-23 (milestone start)
+Stopped at: Defining requirements
 Resume file: None
-Status: Ready for next milestone
+Status: Defining requirements for v0.9.1
 
 ---
 *State initialized: 2026-01-22*
-*Last updated: 2026-01-22 — v0.9.0 milestone complete*
+*Last updated: 2026-01-23 — v0.9.1 milestone started*

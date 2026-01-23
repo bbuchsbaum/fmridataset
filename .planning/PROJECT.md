@@ -46,7 +46,12 @@ Existing capabilities:
 
 ### Active
 
-(None - milestone complete, awaiting next milestone definition)
+**v0.9.1 Documentation Quality:**
+- [ ] Vignettes have executable examples (fix eval=FALSE where appropriate)
+- [ ] Vignette content matches current API
+- [ ] Vignettes have clear, user-centric explanations
+- [ ] pkgdown site rebuilt with updated content
+- [ ] Roxygen2 docs are current and complete
 
 ### Out of Scope
 
@@ -88,5 +93,15 @@ Existing capabilities:
 | Alphabetize DESCRIPTION | Maintainability with 24+ deps | ✓ Consistent ordering |
 | on.exit() for H5 cleanup | Prevent resource leaks | ✓ 6 locations fixed |
 
+## Current Milestone: v0.9.1 Documentation Quality
+
+**Goal:** Ensure vignettes are well-written with executable examples, accurate API usage, clear explanations, and rebuild pkgdown site.
+
+**Target features:**
+- Vignette quality audit and fixes across all 7 vignettes
+- Switch from eval=FALSE to executable examples where feasible
+- Ensure content accuracy against current codebase
+- Rebuild pkgdown site with polished documentation
+
 ---
-*Last updated: 2026-01-22 after v0.9.0 milestone*
+*Last updated: 2026-01-23 after v0.9.1 milestone start*
