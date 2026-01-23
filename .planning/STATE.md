@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-01-22)
 ## Current Position
 
 Phase: 5 of 5 (Final Validation)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-01-23 — Completed 05-01-PLAN.md (DESCRIPTION CRAN Compliance)
+Last activity: 2026-01-23 — Completed 05-02-PLAN.md (Test Dependency Guards)
 
-Progress: [████████░░] 83%
+Progress: [████████░░] 87%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
-- Average duration: 5.8 min
-- Total execution time: 1.25 hours
+- Total plans completed: 14
+- Average duration: 5.4 min
+- Total execution time: 1.27 hours
 
 **By Phase:**
 
@@ -31,11 +31,11 @@ Progress: [████████░░] 83%
 | 2. Tech Debt | 2 | 3 min | 1.5 min |
 | 3. Zarr Decision | 2 | 27 min | 13.5 min |
 | 4. Test Coverage | 5 | 37 min | 7.4 min |
-| 5. Final Validation | 1 | 1 min | 1.0 min |
+| 5. Final Validation | 2 | 3 min | 1.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-02 (10min), 04-03 (3min), 04-04 (10min), 04-05 (6min), 05-01 (1min)
-- Trend: Phase 5 started - DESCRIPTION CRAN compliance fixed
+- Last 5 plans: 04-03 (3min), 04-04 (10min), 04-05 (6min), 05-01 (1min), 05-02 (2min)
+- Trend: Phase 5 in progress - test dependencies fixed
 
 *Updated after each plan completion*
 
@@ -46,6 +46,8 @@ Progress: [████████░░] 83%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- **Add blosc skip for all zarr::as_zarr() calls** - zarr compression requires blosc codec; tests must skip when unavailable (05-02)
+- **Eliminate rhdf5 (Bioconductor) in favor of hdf5r (CRAN)** - Package policy is CRAN-only where possible; hdf5r is production HDF5 library (05-02)
 - **Add blosc, DelayedArray, DelayedMatrixStats to Suggests for test support** - blosc required by zarr compression, DelayedArray/DelayedMatrixStats used in tests (05-01)
 - **Remove Remotes field for CRAN compliance** - Remotes not recognized by CRAN; GitHub deps need alternative strategy (05-01)
 - **Test error paths via backend_get_data for delarr** - delarr pre-validates indices, so pull_fun error branches unreachable; test underlying function directly (04-05)
@@ -102,8 +104,10 @@ None yet.
 
 **From Phase 5 (In Progress):**
 - ✅ DESCRIPTION CRAN-compatible (Remotes removed, test deps added) - 05-01
+- ✅ Test dependencies properly guarded (blosc, hdf5r skips added) - 05-02
+- ✅ No rhdf5/Bioconductor references remain in tests - 05-02
 - ⚠️ GitHub-only dependencies still in Imports/Suggests (delarr, bidser, fmristore)
-- ℹ️ Need CRAN check validation next
+- ℹ️ Need R CMD check --as-cran validation next
 
 **For Completion:**
 - Run R CMD check --as-cran to validate all fixes
@@ -114,7 +118,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-23 (phase execution)
-Stopped at: Completed 05-01-PLAN.md (DESCRIPTION CRAN compliance)
+Stopped at: Completed 05-02-PLAN.md (test dependency guards)
 Resume file: None
 
 ---
