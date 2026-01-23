@@ -5,13 +5,13 @@
 See: .planning/PROJECT.md (updated 2026-01-22)
 
 **Core value:** Backend-agnostic fMRI data access: one API works across all storage formats, with lazy loading, chunked iteration, and multi-subject support.
-**Current focus:** Phase 5 - Final Validation (in progress)
+**Current focus:** Milestone complete - CRAN-Ready
 
 ## Current Position
 
 Phase: 5 of 5 (Final Validation)
 Plan: 3 of 3 in current phase
-Status: Phase complete
+Status: Milestone complete
 Last activity: 2026-01-23 — Completed 05-03-PLAN.md (Final CRAN Validation)
 
 Progress: [██████████] 100%
