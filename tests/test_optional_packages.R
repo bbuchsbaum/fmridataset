@@ -17,8 +17,8 @@ optional_packages <- list(
   foreach = "Parallel processing",
 
   # From requireNamespace calls
-  Rarr = "Zarr array support (Bioconductor)",
-  rhdf5 = "HDF5 support (Bioconductor)",
+  zarr = "Zarr array support (CRAN)",
+  hdf5r = "HDF5 support (CRAN)",
   jsonlite = "JSON configuration files",
   yaml = "YAML configuration files"
 )
@@ -46,14 +46,6 @@ cat(sprintf("Installed: %d/%d\n", length(installed), length(optional_packages)))
 if (length(missing) > 0) {
   cat("\nTo install missing packages:\n")
 
-  bioc_pkgs <- intersect(missing, c("Rarr", "rhdf5"))
-  if (length(bioc_pkgs) > 0) {
-    cat(sprintf(
-      "BiocManager::install(c(%s))\n",
-      paste0('"', bioc_pkgs, '"', collapse = ", ")
-    ))
-  }
-
   github_pkgs <- intersect(missing, c("fmristore", "bidser"))
   if (length(github_pkgs) > 0) {
     if ("fmristore" %in% github_pkgs) {
@@ -64,7 +56,7 @@ if (length(missing) > 0) {
     }
   }
 
-  cran_pkgs <- setdiff(missing, c(bioc_pkgs, github_pkgs))
+  cran_pkgs <- setdiff(missing, github_pkgs)
   if (length(cran_pkgs) > 0) {
     cat(sprintf(
       "install.packages(c(%s))\n",
@@ -78,7 +70,7 @@ cat("\n\nTesting optional functionality:\n")
 cat(strrep("-", 60), "\n")
 
 # Test Zarr backend
-if ("Rarr" %in% installed) {
+if ("zarr" %in% installed) {
   cat("Testing Zarr backend... ")
   tryCatch(
     {
@@ -91,11 +83,11 @@ if ("Rarr" %in% installed) {
     }
   )
 } else {
-  cat("Skipping Zarr backend test (Rarr not installed)\n")
+  cat("Skipping Zarr backend test (zarr not installed)\n")
 }
 
 # Test HDF5 functionality
-if (all(c("rhdf5", "fmristore") %in% installed)) {
+if (all(c("hdf5r", "fmristore") %in% installed)) {
   cat("Testing HDF5 backend... ")
   tryCatch(
     {
@@ -110,7 +102,7 @@ if (all(c("rhdf5", "fmristore") %in% installed)) {
     }
   )
 } else {
-  cat("Skipping HDF5 backend test (rhdf5/fmristore not installed)\n")
+  cat("Skipping HDF5 backend test (hdf5r/fmristore not installed)\n")
 }
 
 # Test BIDS functionality

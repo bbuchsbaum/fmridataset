@@ -35,10 +35,9 @@ test_that("data is consistent across backend conversions", {
 })
 
 test_that("round-trip accuracy is maintained across backends", {
-  has_rhdf5 <- requireNamespace("rhdf5", quietly = TRUE)
   has_hdf5r <- requireNamespace("hdf5r", quietly = TRUE)
-  if (!has_rhdf5 && !has_hdf5r) {
-    skip("Requires rhdf5 or hdf5r")
+  if (!has_hdf5r) {
+    skip("Requires hdf5r")
   }
 
   # Original data
@@ -48,26 +47,17 @@ test_that("round-trip accuracy is maintained across backends", {
   temp_h5 <- tempfile(fileext = ".h5")
   on.exit(unlink(temp_h5))
 
-  # Mock H5 backend behavior
+  # Mock H5 backend behavior using hdf5r
   h5_write <- function(data, file) {
-    if (has_rhdf5) {
-      rhdf5::h5createFile(file)
-      rhdf5::h5write(data, file, "data")
-    } else if (has_hdf5r) {
-      file_handle <- hdf5r::H5File$new(file, mode = "w")
-      on.exit(file_handle$close_all(), add = TRUE)
-      file_handle$create_dataset("data", robj = data)
-    }
+    file_handle <- hdf5r::H5File$new(file, mode = "w")
+    on.exit(file_handle$close_all(), add = TRUE)
+    file_handle$create_dataset("data", robj = data)
   }
 
   h5_read <- function(file) {
-    if (has_rhdf5) {
-      rhdf5::h5read(file, "data")
-    } else if (has_hdf5r) {
-      file_handle <- hdf5r::H5File$new(file, mode = "r")
-      on.exit(file_handle$close_all(), add = TRUE)
-      file_handle[["data"]]$read()
-    }
+    file_handle <- hdf5r::H5File$new(file, mode = "r")
+    on.exit(file_handle$close_all(), add = TRUE)
+    file_handle[["data"]]$read()
   }
 
   # Write and read back

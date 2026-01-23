@@ -232,7 +232,7 @@ test_that("functions handle NULL mask correctly", {
   expect_true(all(backend$mask)) # Should create default
 
   # H5 backend constructor
-  if (requireNamespace("rhdf5", quietly = TRUE)) {
+  if (requireNamespace("hdf5r", quietly = TRUE)) {
     # Would test h5_backend with NULL mask_source
   }
 })
