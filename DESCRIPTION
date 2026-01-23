@@ -37,7 +37,10 @@ Suggests:
     arrow,
     bench,
     bidser,
+    blosc,
     crayon,
+    DelayedArray,
+    DelayedMatrixStats,
     devtools,
     dplyr,
     fmristore,
@@ -58,8 +61,3 @@ Suggests:
 VignetteBuilder: knitr
 URL: https://github.com/bbuchsbaum/fmridataset, https://bbuchsbaum.github.io/fmridataset/
 BugReports: https://github.com/bbuchsbaum/fmridataset/issues
-Remotes:
-    bbuchsbaum/delarr,
-    bbuchsbaum/fmrihrf,
-    bbuchsbaum/fmristore,
-    bbuchsbaum/bidser
