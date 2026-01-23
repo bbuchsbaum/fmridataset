@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-22)
 
 **Core value:** Backend-agnostic fMRI data access: one API works across all storage formats, with lazy loading, chunked iteration, and multi-subject support.
-**Current focus:** Phase 5 - Final Validation (ready to plan)
+**Current focus:** Phase 5 - Final Validation (in progress)
 
 ## Current Position
 
-Phase: 4 of 5 (Test Coverage)
-Plan: 5 of 5 in current phase (gap closure complete)
-Status: Phase complete
-Last activity: 2026-01-22 — Completed 04-05-PLAN.md (as_delarr Gap Closure)
+Phase: 5 of 5 (Final Validation)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-01-23 — Completed 05-01-PLAN.md (DESCRIPTION CRAN Compliance)
 
-Progress: [████████░░] 80%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
-- Average duration: 6.2 min
-- Total execution time: 1.24 hours
+- Total plans completed: 13
+- Average duration: 5.8 min
+- Total execution time: 1.25 hours
 
 **By Phase:**
 
@@ -31,10 +31,11 @@ Progress: [████████░░] 80%
 | 2. Tech Debt | 2 | 3 min | 1.5 min |
 | 3. Zarr Decision | 2 | 27 min | 13.5 min |
 | 4. Test Coverage | 5 | 37 min | 7.4 min |
+| 5. Final Validation | 1 | 1 min | 1.0 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-01 (8min), 04-02 (10min), 04-03 (3min), 04-04 (10min), 04-05 (6min)
-- Trend: Phase 4 complete with gap closure - as_delarr.R tests added
+- Last 5 plans: 04-02 (10min), 04-03 (3min), 04-04 (10min), 04-05 (6min), 05-01 (1min)
+- Trend: Phase 5 started - DESCRIPTION CRAN compliance fixed
 
 *Updated after each plan completion*
 
@@ -45,6 +46,8 @@ Progress: [████████░░] 80%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- **Add blosc, DelayedArray, DelayedMatrixStats to Suggests for test support** - blosc required by zarr compression, DelayedArray/DelayedMatrixStats used in tests (05-01)
+- **Remove Remotes field for CRAN compliance** - Remotes not recognized by CRAN; GitHub deps need alternative strategy (05-01)
 - **Test error paths via backend_get_data for delarr** - delarr pre-validates indices, so pull_fun error branches unreachable; test underlying function directly (04-05)
 - **Skip nifti_backend tests** - S4 dependency like h5_backend; focus on matrix/study backends (04-05)
 - **Accept 73% overall coverage as pragmatic** - Core functionality well-tested; gap in h5_backend due to S4 mocking limitations (04-04)
@@ -97,17 +100,23 @@ None yet.
 **Technical Debt:**
 - h5_backend testing gap (30.1% coverage) - would need real H5 fixtures (medium investment)
 
-**For Next Phase:**
-- Need to update README with Zarr backend documentation
+**From Phase 5 (In Progress):**
+- ✅ DESCRIPTION CRAN-compatible (Remotes removed, test deps added) - 05-01
+- ⚠️ GitHub-only dependencies still in Imports/Suggests (delarr, bidser, fmristore)
+- ℹ️ Need CRAN check validation next
+
+**For Completion:**
+- Run R CMD check --as-cran to validate all fixes
+- Address any remaining check warnings/notes
+- Update README with Zarr backend documentation
 - Consider adding Zarr vignette section if useful
-- Should test cloud storage paths when accessible
 
 ## Session Continuity
 
-Last session: 2026-01-22 (phase execution)
-Stopped at: Completed 04-05-PLAN.md (Phase 4 gap closure complete)
+Last session: 2026-01-23 (phase execution)
+Stopped at: Completed 05-01-PLAN.md (DESCRIPTION CRAN compliance)
 Resume file: None
 
 ---
 *State initialized: 2026-01-22*
-*Last updated: 2026-01-22*
+*Last updated: 2026-01-23*
