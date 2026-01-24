@@ -43,6 +43,13 @@
 
 **Depends on:** None
 
+**Plans:** 4 plans
+Plans:
+- [ ] 06-01-PLAN.md — Fix fmridataset-intro.Rmd executable examples
+- [ ] 06-02-PLAN.md — Fix architecture-overview.Rmd executable examples
+- [ ] 06-03-PLAN.md — Fix h5-backend-usage.Rmd executable examples
+- [ ] 06-04-PLAN.md — Fix study-level-analysis.Rmd executable examples
+
 ---
 
 ### Phase 7: Developer Vignettes
@@ -148,7 +155,7 @@
 
 | Phase | Status | Plans | Completed |
 |-------|--------|-------|-----------|
-| 6 - User Vignettes | Pending | 0/? | - |
+| 6 - User Vignettes | Planned | 4 | - |
 | 7 - Developer Vignettes | Pending | 0/? | - |
 | 8 - Documentation Infrastructure | Pending | 0/? | - |
 
