@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-23)
 ## Current Position
 
 Phase: 6 - User Vignettes
-Plan: 03 of 04 (H5 Backend Usage)
+Plan: 02 of 04 (Architecture Overview)
 Status: In progress
-Last activity: 2026-01-24 — Completed 06-03-PLAN.md
+Last activity: 2026-01-24 — Completed 06-02-PLAN.md
 
-Progress: [=========>-----------------------------] 1/3 phases
+Progress: [=========>-----------------------------] 2/12 plans complete (Phase 6)
 
 ## Milestone Overview
 
@@ -49,6 +49,8 @@ Key decisions from v0.9.0 milestone are documented in:
 
 | Date | Decision | Rationale | Phase |
 |------|----------|-----------|-------|
+| 2026-01-24 | Enable global eval=TRUE for architecture-overview.Rmd | Users learn better from working code than mock examples | 06-02 |
+| 2026-01-24 | Use iterator nextElem() explicitly in chunking examples | Demonstrates actual chunk iterator API clearly | 06-02 |
 | 2026-01-24 | Enable global eval=TRUE with selective eval=FALSE for H5 vignette | Simulated examples execute without fmristore dependency | 06-03 |
 | 2026-01-24 | Remove mock output blocks from vignettes | Real execution produces actual output, builds trust | 06-03 |
 
@@ -67,11 +69,11 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-24 (H5 backend vignette completed)
-Stopped at: Completed 06-03-PLAN.md
+Last session: 2026-01-24 (Architecture Overview vignette completed)
+Stopped at: Completed 06-02-PLAN.md
 Resume file: None
-Status: Continue with remaining Phase 6 plans
+Status: Continue with remaining Phase 6 plans (06-03, 06-04)
 
 ---
 *State initialized: 2026-01-22*
-*Last updated: 2026-01-24 — Completed 06-03: H5 Backend executable examples*
+*Last updated: 2026-01-24 — Completed 06-02: Architecture Overview executable examples*
