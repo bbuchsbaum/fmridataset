@@ -42,7 +42,7 @@ Creating a custom backend means your specialized data format immediately gains a
 
 ## Required Methods
 
-All storage backends must implement these six core methods:
+All storage backends must implement these core methods:
 
 ### `backend_open(backend)`
 **Purpose**: Initialize backend and acquire necessary resources.
@@ -112,11 +112,20 @@ backend_get_dims.my_backend <- function(backend) {
 - `TRUE` indicates valid voxel, `FALSE` indicates invalid/missing voxel
 - Must be consistent with data returned by `backend_get_data()`
 
-### `backend_validate(backend)` (Optional)
-**Purpose**: Validate backend state and data integrity.
+### `backend_get_metadata(backend)`
+**Purpose**: Return metadata associated with the data.
 **Requirements**:
-- Return logical scalar: `TRUE` if valid, `FALSE` if invalid
-- Should check internal consistency, data availability, and format compliance
+- Must return a list (can be empty)
+- May include affine matrix, voxel dimensions, intent codes, etc.
+- Format-specific metadata is allowed
+
+**Implementation Requirements**:
+```r
+backend_get_metadata.my_backend <- function(backend) {
+  if (!backend$is_open) stop("Backend must be opened first")
+  list() # Return empty list if no metadata available
+}
+```
 
 ## Performance Requirements
 
@@ -228,6 +237,19 @@ backend_get_mask.json_backend <- function(backend) {
   rep(TRUE, backend$dims_cache$spatial[1])
 }
 
+# Implement metadata extraction
+backend_get_metadata.json_backend <- function(backend) {
+  if (!backend$is_open) {
+    stop("Backend must be opened first")
+  }
+
+  # Return basic metadata (can be extended with actual JSON metadata)
+  list(
+    format = "json",
+    source_file = backend$json_file
+  )
+}
+
 # Test the backend
 json_file <- tempfile(fileext = ".json")
 writeLines("{}", json_file) # Create dummy file
@@ -245,7 +267,7 @@ cat("Retrieved data shape:", dim(sample_data), "\n")
 backend_close(backend)
 ```
 
-**Interface Specification**: Backends require implementation of six core methods to integrate with the fmridataset ecosystem. This minimal interface enables full compatibility with all package features.
+**Interface Specification**: The json_backend example above demonstrates all six required methods. This complete implementation integrates seamlessly with the fmridataset ecosystem and enables full compatibility with all package features.
 
 # Understanding the Backend Contract
 
@@ -253,12 +275,12 @@ The backend contract defines the minimal interface that all backends must implem
 
 ## Required Methods
 
-Every backend must implement these five S3 methods:
+Every backend must implement these six S3 methods:
 
 ### 1. backend_open()
 Opens the backend and acquires resources (file handles, connections, memory). This method should be idempotent - calling it multiple times on an open backend should be safe.
 
-### 2. backend_close()  
+### 2. backend_close()
 Releases all resources and cleans up. After closing, the backend should not hold any external resources.
 
 ### 3. backend_get_dims()
@@ -270,29 +292,15 @@ Returns data in timepoints × voxels orientation. Must support optional row and 
 ### 5. backend_get_mask()
 Returns a logical vector indicating valid voxels. Length must equal the product of spatial dimensions.
 
+### 6. backend_get_metadata()
+Returns a list containing metadata (can be empty). May include affine matrix, voxel dimensions, and format-specific information.
+
 ## Optional Methods
 
-These methods enhance functionality but aren't required:
+Backend validation can enhance robustness but is not required:
 
 ```{r optional-methods, eval = FALSE}
-# Optional: Metadata extraction
-backend_get_metadata.json_backend <- function(backend) {
-  if (!backend$is_open) {
-    stop("Backend must be opened first")
-  }
-
-  list(
-    format = "json",
-    compression = "none",
-    creation_date = Sys.Date(),
-    custom_metrics = list(
-      quality_score = 0.95,
-      motion_level = "low"
-    )
-  )
-}
-
-# Optional: Validation
+# Optional: Custom validation beyond standard checks
 backend_validate.json_backend <- function(backend) {
   # Check data integrity
   if (!backend$is_open) {
@@ -309,15 +317,16 @@ backend_validate.json_backend <- function(backend) {
     return(FALSE)
   }
 
+  # Additional custom checks for JSON format
+  # - Verify JSON schema compliance
+  # - Check metadata completeness
+  # - Validate custom quality metrics
+
   TRUE
 }
 
-# Test optional methods
+# Test validation
 backend <- backend_open(json_backend(json_file))
-metadata <- backend_get_metadata(backend)
-cat("Format:", metadata$format, "\n")
-cat("Quality score:", metadata$custom_metrics$quality_score, "\n")
-
 is_valid <- backend_validate(backend)
 cat("Backend valid:", is_valid, "\n")
 backend_close(backend)
@@ -405,6 +414,11 @@ backend_get_mask.stateful_backend <- function(backend) {
   rep(TRUE, 10)
 }
 
+backend_get_metadata.stateful_backend <- function(backend) {
+  if (!backend$is_open) stop("Backend not open")
+  list(source = backend$source)
+}
+
 # Test state management
 backend <- stateful_backend("dummy_source")
 cat("Initial state - is_open:", backend$is_open, "\n")
@@ -483,6 +497,11 @@ backend_get_mask.lazy_backend <- function(backend) {
   backend$mask_cache
 }
 
+backend_get_metadata.lazy_backend <- function(backend) {
+  if (!backend$is_open) stop("Backend not open")
+  list(source = backend$data_source)
+}
+
 backend_close.lazy_backend <- function(backend) {
   backend$dims_cache <- NULL
   backend$data_cache <- NULL
@@ -519,7 +538,8 @@ validate_backend_contract <- function(backend_class) {
     "backend_close",
     "backend_get_dims",
     "backend_get_data",
-    "backend_get_mask"
+    "backend_get_mask",
+    "backend_get_metadata"
   )
 
   missing_methods <- character()
@@ -636,6 +656,11 @@ backend_get_mask.cached_backend <- function(backend) {
   cache_get_or_load(backend, "mask", function() {
     rep(TRUE, 100)
   })
+}
+
+backend_get_metadata.cached_backend <- function(backend) {
+  if (!backend$is_open) stop("Backend not open")
+  list(source = backend$source)
 }
 
 backend_close.cached_backend <- function(backend) {
@@ -760,6 +785,11 @@ backend_get_mask.robust_backend <- function(backend) {
   rep(TRUE, 100)
 }
 
+backend_get_metadata.robust_backend <- function(backend) {
+  if (!backend$is_open) stop("Backend not open")
+  list(source = backend$source)
+}
+
 backend_close.robust_backend <- function(backend) {
   if (length(backend$error_log) > 0) {
     cat("\nError log:\n")
@@ -831,11 +861,12 @@ backend_checklist <- function() {
   cat("Backend Development Checklist:\n\n")
 
   cat("Required Functionality:\n")
-  cat("  ☐ Implements all 5 required methods\n")
+  cat("  ☐ Implements all 6 required methods\n")
   cat("  ☐ Returns correct data orientations\n")
   cat("  ☐ Handles NULL rows/cols in get_data\n")
   cat("  ☐ Returns valid dimension structure\n")
-  cat("  ☐ Mask length matches spatial dimensions\n\n")
+  cat("  ☐ Mask length matches spatial dimensions\n")
+  cat("  ☐ Metadata returns a list\n\n")
 
   cat("Robustness:\n")
   cat("  ☐ Validates inputs in constructor\n")
