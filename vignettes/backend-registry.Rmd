@@ -17,7 +17,7 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  eval = FALSE,
+  eval = TRUE,
   warning = FALSE,
   message = FALSE
 )
@@ -41,15 +41,15 @@ Let's dive into a concrete example that shows how to create a custom backend and
 library(fmridataset)
 
 # Step 1: Create a custom CSV backend
-csv_backend <- function(csv_file, mask_file = NULL, ...) {
-  # Validate inputs
-  if (!file.exists(csv_file)) {
-    stop("CSV file does not exist: ", csv_file)
-  }
+demo_csv_backend <- function(csv_file, mask_file = NULL, ...) {
+  # For vignette demonstration, we simulate file reading
+  # In practice: validate file exists and read it
+  # if (!file.exists(csv_file)) {
+  #   stop("CSV file does not exist: ", csv_file)
+  # }
 
-  # Read and validate data (simulate for vignette)
+  # Simulate data loading for demonstration
   # In practice: data_matrix <- read.csv(csv_file, header = FALSE)
-  # For demo, create synthetic data
   set.seed(123)
   data_matrix <- matrix(rnorm(1000), nrow = 100, ncol = 10)
 
@@ -58,7 +58,7 @@ csv_backend <- function(csv_file, mask_file = NULL, ...) {
     # Default mask: all columns are valid
     mask <- rep(TRUE, ncol(data_matrix))
   } else {
-    # mask <- as.logical(read.csv(mask_file, header = FALSE)[[1]])
+    # In practice: mask <- as.logical(read.csv(mask_file, header = FALSE)[[1]])
     mask <- rep(TRUE, ncol(data_matrix)) # Simplified for demo
   }
 
@@ -72,34 +72,34 @@ csv_backend <- function(csv_file, mask_file = NULL, ...) {
     is_open = FALSE
   )
 
-  class(backend) <- c("csv_backend", "storage_backend")
+  class(backend) <- c("demo_csv_backend", "storage_backend")
   backend
 }
 
 # Step 2: Implement required S3 methods
-backend_open.csv_backend <- function(backend) {
+backend_open.demo_csv_backend <- function(backend) {
   # CSV backend stores data in memory, so opening just marks state
   backend$is_open <- TRUE
   backend
 }
 
-backend_close.csv_backend <- function(backend) {
+backend_close.demo_csv_backend <- function(backend) {
   backend$is_open <- FALSE
   invisible(NULL)
 }
 
-backend_get_dims.csv_backend <- function(backend) {
+backend_get_dims.demo_csv_backend <- function(backend) {
   list(
     spatial = backend$spatial_dims,
     time = nrow(backend$data_matrix)
   )
 }
 
-backend_get_mask.csv_backend <- function(backend) {
+backend_get_mask.demo_csv_backend <- function(backend) {
   backend$mask
 }
 
-backend_get_data.csv_backend <- function(backend, rows = NULL, cols = NULL) {
+backend_get_data.demo_csv_backend <- function(backend, rows = NULL, cols = NULL) {
   # Apply mask first
   data <- backend$data_matrix[, backend$mask, drop = FALSE]
 
@@ -116,7 +116,7 @@ backend_get_data.csv_backend <- function(backend, rows = NULL, cols = NULL) {
   data
 }
 
-backend_get_metadata.csv_backend <- function(backend) {
+backend_get_metadata.demo_csv_backend <- function(backend) {
   list(
     format = "CSV",
     source_file = backend$csv_file,
@@ -127,8 +127,8 @@ backend_get_metadata.csv_backend <- function(backend) {
 
 # Step 3: Register the backend
 register_backend(
-  name = "csv",
-  factory = csv_backend,
+  name = "demo_csv",
+  factory = demo_csv_backend,
   description = "CSV file backend for simple text-based fMRI data"
 )
 
@@ -139,8 +139,8 @@ Now let's see the backend in action:
 
 ```{r backend-usage}
 # Step 4: Use the registered backend
-# Create a backend instance (would use real file path)
-csv_backend_instance <- create_backend("csv", csv_file = "example_data.csv")
+# Create a backend instance (simulated file path for demo)
+csv_backend_instance <- create_backend("demo_csv", csv_file = "example_data.csv")
 
 # Open the backend
 csv_backend_instance <- backend_open(csv_backend_instance)
@@ -225,25 +225,17 @@ A robust backend implementation goes beyond the basic contract to handle edge ca
 
 ```{r robust-backend}
 # Advanced backend with comprehensive features
-advanced_csv_backend <- function(csv_file, mask_file = NULL,
-                                 delimiter = ",", has_header = FALSE, ...) {
+demo_advanced_csv_backend <- function(csv_file, mask_file = NULL,
+                                      delimiter = ",", has_header = FALSE, ...) {
   # Input validation
   if (!is.character(csv_file) || length(csv_file) != 1) {
     stop("csv_file must be a single character string")
   }
 
-  if (!file.exists(csv_file)) {
-    stop("CSV file does not exist: ", csv_file)
-  }
-
-  # Check file size for memory planning
-  file_info <- file.info(csv_file)
-  if (file_info$size > 1e9) { # 1GB
-    warning(
-      "Large CSV file detected (",
-      round(file_info$size / 1e6, 1), "MB). Consider chunked loading."
-    )
-  }
+  # For demo, simulate file info (in practice, check file.exists() and file.info())
+  # Simulated file info
+  file_size <- 1000  # Small file for demo
+  file_modified <- Sys.time()
 
   # Validate delimiter
   if (!delimiter %in% c(",", ";", "\t", "|")) {
@@ -256,8 +248,8 @@ advanced_csv_backend <- function(csv_file, mask_file = NULL,
     mask_file = mask_file,
     delimiter = delimiter,
     has_header = has_header,
-    file_size = file_info$size,
-    file_modified = file_info$mtime,
+    file_size = file_size,
+    file_modified = file_modified,
     data_cache = NULL,
     mask_cache = NULL,
     spatial_dims = NULL,
@@ -265,24 +257,20 @@ advanced_csv_backend <- function(csv_file, mask_file = NULL,
     read_count = 0
   )
 
-  class(backend) <- c("advanced_csv_backend", "storage_backend")
+  class(backend) <- c("demo_advanced_csv_backend", "storage_backend")
   backend
 }
 
 # Enhanced backend methods with error handling
-backend_open.advanced_csv_backend <- function(backend) {
+backend_open.demo_advanced_csv_backend <- function(backend) {
   if (backend$is_open) {
     return(backend) # Already open
   }
 
   tryCatch(
     {
-      # Read data with proper error handling
-      # data <- read.csv(backend$csv_file,
-      #                  header = backend$has_header,
-      #                  sep = backend$delimiter)
-
       # Simulate data loading for vignette
+      # In practice: data <- read.csv(backend$csv_file, header = backend$has_header, sep = backend$delimiter)
       set.seed(123)
       data <- matrix(rnorm(2000), nrow = 200, ncol = 10)
 
@@ -302,16 +290,8 @@ backend_open.advanced_csv_backend <- function(backend) {
         warning("CSV contains ", sum(is.na(data)), " missing values")
       }
 
-      # Handle mask
-      if (!is.null(backend$mask_file)) {
-        if (!file.exists(backend$mask_file)) {
-          stop("Mask file not found: ", backend$mask_file)
-        }
-        # mask <- read.csv(backend$mask_file, header = FALSE)[[1]]
-        mask <- rep(TRUE, ncol(data)) # Simplified for demo
-      } else {
-        mask <- rep(TRUE, ncol(data))
-      }
+      # Handle mask (simplified for demo)
+      mask <- rep(TRUE, ncol(data))
 
       # Validate mask
       if (length(mask) != ncol(data)) {
@@ -341,7 +321,7 @@ backend_open.advanced_csv_backend <- function(backend) {
   )
 }
 
-backend_close.advanced_csv_backend <- function(backend) {
+backend_close.demo_advanced_csv_backend <- function(backend) {
   # Clear cached data to free memory
   backend$data_cache <- NULL
   backend$mask_cache <- NULL
@@ -351,7 +331,7 @@ backend_close.advanced_csv_backend <- function(backend) {
   invisible(NULL)
 }
 
-backend_get_dims.advanced_csv_backend <- function(backend) {
+backend_get_dims.demo_advanced_csv_backend <- function(backend) {
   if (!backend$is_open) {
     stop("Backend must be opened before querying dimensions")
   }
@@ -362,7 +342,7 @@ backend_get_dims.advanced_csv_backend <- function(backend) {
   )
 }
 
-backend_get_mask.advanced_csv_backend <- function(backend) {
+backend_get_mask.demo_advanced_csv_backend <- function(backend) {
   if (!backend$is_open) {
     stop("Backend must be opened before accessing mask")
   }
@@ -370,7 +350,7 @@ backend_get_mask.advanced_csv_backend <- function(backend) {
   backend$mask_cache
 }
 
-backend_get_data.advanced_csv_backend <- function(backend, rows = NULL, cols = NULL) {
+backend_get_data.demo_advanced_csv_backend <- function(backend, rows = NULL, cols = NULL) {
   if (!backend$is_open) {
     stop("Backend must be opened before accessing data")
   }
@@ -404,7 +384,7 @@ backend_get_data.advanced_csv_backend <- function(backend, rows = NULL, cols = N
   return(data)
 }
 
-backend_get_metadata.advanced_csv_backend <- function(backend) {
+backend_get_metadata.demo_advanced_csv_backend <- function(backend) {
   list(
     format = "Advanced CSV",
     source_file = backend$csv_file,
@@ -420,8 +400,8 @@ backend_get_metadata.advanced_csv_backend <- function(backend) {
 
 # Register the enhanced backend
 register_backend(
-  name = "advanced_csv",
-  factory = advanced_csv_backend,
+  name = "demo_advanced_csv",
+  factory = demo_advanced_csv_backend,
   description = "Enhanced CSV backend with comprehensive error handling and validation"
 )
 
@@ -548,7 +528,7 @@ test_backend_contract <- function(backend_name, test_params) {
 
 # Test our advanced CSV backend
 test_params <- list(csv_file = "example_data.csv")
-# test_result <- test_backend_contract("advanced_csv", test_params)
+test_result <- test_backend_contract("demo_advanced_csv", test_params)
 ```
 
 Systematic testing ensures your backends work correctly across different scenarios.
@@ -557,7 +537,7 @@ Systematic testing ensures your backends work correctly across different scenari
 
 Backend performance can significantly impact analysis speed, especially for large datasets:
 
-```{r performance-optimization}
+```{r performance-optimization, eval=FALSE}
 # Performance-optimized backend strategies
 demonstrate_performance_patterns <- function() {
   cat("Backend performance optimization patterns:\n\n")
@@ -680,7 +660,7 @@ Proper package integration ensures your backends work reliably across different 
 
 Sophisticated backends can provide custom validation beyond the basic contract:
 
-```{r custom-validation}
+```{r custom-validation, eval=FALSE}
 # Advanced validation for specialized backends
 create_validation_system <- function(backend_name) {
   # Custom validator function
@@ -801,7 +781,7 @@ Custom validation helps ensure data quality and catch format-specific issues.
 
 Advanced scenarios may require composing multiple backends or creating backend chains:
 
-```{r backend-composition}
+```{r backend-composition, eval=FALSE}
 # Example: Composite backend that combines multiple sources
 create_composite_backend <- function(backend_list, combination_strategy = "concatenate") {
   composite_backend <- function(...) {
@@ -895,7 +875,7 @@ Here are practical guidelines learned from developing and maintaining production
 
 **Capability Detection**: Query the registry for backend availability before invoking format-specific features:
 ```r
-if (backend_registry$has_backend("csv")) {
+if (is_backend_registered("csv")) {
   # CSV-specific operations
 }
 ```
@@ -1069,7 +1049,7 @@ When developing or using custom backends, certain issues are common and can be s
 **Memory leaks during backend operations**
 : Ensure your `backend_close` method properly cleans up cached data and releases resources. Implement explicit memory management in long-running operations.
 
-```{r troubleshooting-development}
+```{r troubleshooting-development, eval=FALSE}
 # Diagnostic tools for backend development
 diagnose_backend_issues <- function(backend_name) {
   cat("Diagnosing backend issues for:", backend_name, "\n\n")
@@ -1139,7 +1119,7 @@ troubleshoot_backend_errors <- function(error_message) {
 
 Backend performance problems often stem from inefficient I/O or memory management:
 
-```{r performance-troubleshooting}
+```{r performance-troubleshooting, eval=FALSE}
 # Performance diagnostic tools
 profile_backend_performance <- function(backend_name, test_file) {
   cat("Profiling backend performance:", backend_name, "\n")
