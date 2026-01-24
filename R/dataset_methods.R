@@ -277,7 +277,7 @@ samples.fmri_file_dataset <- function(x, ...) {
 #' @method n_runs fmri_study_dataset
 #' @export
 n_runs.fmri_study_dataset <- function(x, ...) {
-  x$n_runs
+  n_runs(x$sampling_frame, ...)
 }
 
 #' @rdname n_timepoints

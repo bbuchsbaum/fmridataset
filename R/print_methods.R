@@ -32,7 +32,9 @@ print.fmri_dataset <- function(x, full = FALSE, ...) {
   # Basic dimensions
   cat("\n** Dimensions:\n")
   cat("  - Timepoints:", sum(x$sampling_frame$blocklens), "\n")
-  cat("  - Runs:", x$nruns, if (x$nruns > 10) " runs" else "", "\n")
+  # Use n_runs() method to support all dataset types
+  nruns_val <- if (!is.null(x$nruns)) x$nruns else n_runs(x)
+  cat("  - Runs:", nruns_val, if (nruns_val > 10) " runs" else "", "\n")
 
   # Data source info
   print_data_source_info(x, full = full)

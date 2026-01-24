@@ -430,8 +430,9 @@ fmri_study_dataset <- function(datasets, subject_ids = NULL) {
     )
   }
 
-  trs <- vapply(datasets, function(d) get_TR(d$sampling_frame), numeric(1))
-  if (!all(vapply(trs[-1], function(tr) isTRUE(all.equal(tr, trs[1])), logical(1)))) {
+  trs <- vapply(datasets, function(d) get_TR(d), numeric(1))
+  # Use unname() to avoid name mismatches in all.equal comparison
+  if (!all(vapply(unname(trs[-1]), function(tr) isTRUE(all.equal(tr, unname(trs[1]))), logical(1)))) {
     stop_fmridataset(
       fmridataset_error_config,
       "All datasets must have equal TR"
