@@ -77,6 +77,12 @@ Plans:
 
 **Depends on:** None (can run parallel with Phase 6)
 
+**Plans:** 3 plans
+Plans:
+- [ ] 07-01-PLAN.md — Fix backend-development-basics.Rmd executable examples
+- [ ] 07-02-PLAN.md — Fix backend-registry.Rmd executable examples
+- [ ] 07-03-PLAN.md — Fix extending-backends.Rmd executable examples
+
 ---
 
 ### Phase 8: Documentation Infrastructure
@@ -158,7 +164,7 @@ Plans:
 | Phase | Status | Plans | Completed |
 |-------|--------|-------|-----------|
 | 6 - User Vignettes | ✓ Complete | 4/4 | 2026-01-24 |
-| 7 - Developer Vignettes | Pending | 0/? | - |
+| 7 - Developer Vignettes | Planned | 0/3 | - |
 | 8 - Documentation Infrastructure | Pending | 0/? | - |
 
 ---
