@@ -17,7 +17,7 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  eval = FALSE,
+  eval = TRUE,
   warning = FALSE,
   message = FALSE
 )
@@ -39,13 +39,16 @@ This example demonstrates single-subject to study-level analysis transition thro
 
 ```{r study-example}
 library(fmridataset)
+set.seed(123)
 
 # Step 1: Create individual subject datasets (simulating realistic scenarios)
-create_subject_data <- function(subject_id, n_runs = 2, n_timepoints_per_run = 100) {
-  set.seed(as.numeric(gsub("sub-", "", subject_id))) # Reproducible per subject
+create_subject_data <- function(subject_id, n_runs = 2, n_timepoints_per_run = 100, TR = 2.0, n_voxels = 1000) {
+  # Set seed based on subject ID for reproducibility
+  subject_num <- as.numeric(gsub("sub-", "", subject_id))
+  set.seed(subject_num)
 
-  # Simulate subject-specific characteristics
-  n_voxels <- sample(800:1200, 1) # Different brain sizes
+  # Use consistent voxel count for study-level analysis
+  # (in real data, all subjects would be registered to same space)
 
   # Create realistic fMRI data with some subject-specific signal
   data_matrices <- list()
@@ -71,10 +74,10 @@ create_subject_data <- function(subject_id, n_runs = 2, n_timepoints_per_run = 1
   # Combine runs into single matrix
   combined_data <- do.call(rbind, data_matrices)
 
-  # Create subject dataset
+  # Create subject dataset with consistent TR
   dataset <- matrix_dataset(
     datamat = combined_data,
-    TR = 2.0,
+    TR = TR,
     run_length = rep(n_timepoints_per_run, n_runs)
   )
 
@@ -180,6 +183,7 @@ With the architectural foundations clear, let's explore the full range of capabi
 The most straightforward approach is combining existing dataset objects:
 
 ```{r study-creation-objects}
+set.seed(456)
 # Create individual datasets with realistic variation
 subject_data <- list()
 
@@ -197,9 +201,9 @@ subject_data[["sub-002"]] <- matrix_dataset(
   run_length = c(70, 70, 70)
 )
 
-# Subject 3: Different voxel count (different preprocessing)
+# Subject 3: Same voxel count (in real studies, data would be registered to common space)
 subject_data[["sub-003"]] <- matrix_dataset(
-  datamat = matrix(rnorm(24000), nrow = 200, ncol = 120),
+  datamat = matrix(rnorm(20000), nrow = 200, ncol = 100),
   TR = 2.0,
   run_length = c(100, 100)
 )
@@ -220,7 +224,7 @@ This approach provides maximum flexibility for handling heterogeneous study desi
 
 For studies organized with consistent file structures:
 
-```{r study-creation-files}
+```{r study-creation-files, eval = FALSE}
 # Simulate BIDS-like file organization
 study_root <- "/path/to/study"
 subject_files <- list()
@@ -313,23 +317,34 @@ analyze_cross_subject_chunks <- function(study_dataset, nchunks = 3) {
   study_chunks <- data_chunks(study_dataset, nchunks = nchunks)
 
   chunk_results <- list()
-  for (chunk in study_chunks) {
-    cat(
-      "Processing chunk", chunk$chunk_num,
-      "with", ncol(chunk$data), "voxels across subjects\n"
-    )
+  # Use iterators::nextElem to iterate through chunks
+  tryCatch(
+    {
+      while (TRUE) {
+        chunk <- iterators::nextElem(study_chunks)
+        cat(
+          "Processing chunk", chunk$chunk_num,
+          "with", ncol(chunk$data), "voxels across subjects\n"
+        )
 
-    # Chunk data includes information about which subjects contributed
-    chunk_analysis <- list(
-      chunk_id = chunk$chunk_num,
-      total_voxels = ncol(chunk$data),
-      total_timepoints = nrow(chunk$data),
-      cross_subject_correlation = mean(cor(chunk$data)),
-      voxel_indices = chunk$voxel_indices # Which voxels this chunk contains
-    )
+        # Chunk data includes information about which subjects contributed
+        chunk_analysis <- list(
+          chunk_id = chunk$chunk_num,
+          total_voxels = ncol(chunk$data),
+          total_timepoints = nrow(chunk$data),
+          cross_subject_correlation = mean(cor(chunk$data)),
+          voxel_indices = chunk$voxel_ind # Which voxels this chunk contains
+        )
 
-    chunk_results[[chunk$chunk_num]] <- chunk_analysis
-  }
+        chunk_results[[chunk$chunk_num]] <- chunk_analysis
+      }
+    },
+    error = function(e) {
+      if (!grepl("StopIteration", conditionMessage(e))) {
+        stop(e)
+      }
+    }
+  )
 
   return(chunk_results)
 }
@@ -392,6 +407,7 @@ The `fmri_series` approach provides maximum flexibility for exploratory analyses
 Study datasets can accommodate subjects with different run structures and temporal organizations:
 
 ```{r heterogeneous-studies}
+set.seed(789)
 # Create subjects with different temporal structures
 heterogeneous_subjects <- list()
 
@@ -488,7 +504,7 @@ This monitoring helps you choose appropriate chunking strategies.
 
 Study datasets enable sophisticated parallel processing approaches:
 
-```{r parallel-processing}
+```{r parallel-processing, eval = FALSE}
 # Parallel subject processing
 process_subjects_parallel <- function(study_dataset, analysis_func) {
   if (requireNamespace("parallel", quietly = TRUE)) {
