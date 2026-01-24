@@ -57,41 +57,41 @@ Requirements for documentation quality milestone.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VIG-01 | TBD | Pending |
-| VIG-02 | TBD | Pending |
-| VIG-03 | TBD | Pending |
-| VIG-04 | TBD | Pending |
-| VIG-05 | TBD | Pending |
-| VIG-06 | TBD | Pending |
-| VIG-07 | TBD | Pending |
-| VIG-08 | TBD | Pending |
-| VIG-09 | TBD | Pending |
-| VIG-10 | TBD | Pending |
-| VIG-11 | TBD | Pending |
-| VIG-12 | TBD | Pending |
-| VIG-13 | TBD | Pending |
-| VIG-14 | TBD | Pending |
-| VIG-15 | TBD | Pending |
-| VIG-16 | TBD | Pending |
-| VIG-17 | TBD | Pending |
-| VIG-18 | TBD | Pending |
-| VIG-19 | TBD | Pending |
-| VIG-20 | TBD | Pending |
-| VIG-21 | TBD | Pending |
-| PKG-01 | TBD | Pending |
-| PKG-02 | TBD | Pending |
-| PKG-03 | TBD | Pending |
-| PKG-04 | TBD | Pending |
-| PKG-05 | TBD | Pending |
-| ROX-01 | TBD | Pending |
-| ROX-02 | TBD | Pending |
-| ROX-03 | TBD | Pending |
+| VIG-01 | Phase 6 | Pending |
+| VIG-02 | Phase 6 | Pending |
+| VIG-03 | Phase 6 | Pending |
+| VIG-04 | Phase 6 | Pending |
+| VIG-05 | Phase 6 | Pending |
+| VIG-06 | Phase 6 | Pending |
+| VIG-07 | Phase 7 | Pending |
+| VIG-08 | Phase 7 | Pending |
+| VIG-09 | Phase 7 | Pending |
+| VIG-10 | Phase 7 | Pending |
+| VIG-11 | Phase 7 | Pending |
+| VIG-12 | Phase 7 | Pending |
+| VIG-13 | Phase 7 | Pending |
+| VIG-14 | Phase 7 | Pending |
+| VIG-15 | Phase 7 | Pending |
+| VIG-16 | Phase 6 | Pending |
+| VIG-17 | Phase 6 | Pending |
+| VIG-18 | Phase 6 | Pending |
+| VIG-19 | Phase 6 | Pending |
+| VIG-20 | Phase 6 | Pending |
+| VIG-21 | Phase 6 | Pending |
+| PKG-01 | Phase 8 | Pending |
+| PKG-02 | Phase 8 | Pending |
+| PKG-03 | Phase 8 | Pending |
+| PKG-04 | Phase 8 | Pending |
+| PKG-05 | Phase 8 | Pending |
+| ROX-01 | Phase 8 | Pending |
+| ROX-02 | Phase 8 | Pending |
+| ROX-03 | Phase 8 | Pending |
 
 **Coverage:**
 - v0.9.1 requirements: 29 total
-- Mapped to phases: 0
-- Unmapped: 29 (pending roadmap)
+- Mapped to phases: 29
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-23*
-*Last updated: 2026-01-23 after initial definition*
+*Last updated: 2026-01-23 after roadmap creation*

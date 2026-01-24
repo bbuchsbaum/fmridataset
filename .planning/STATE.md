@@ -9,12 +9,25 @@ See: .planning/PROJECT.md (updated 2026-01-23)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-01-23 — Milestone v0.9.1 started
+Phase: 6 - User Vignettes
+Plan: Not started
+Status: Ready for planning
+Last activity: 2026-01-23 — Roadmap created
 
-Progress: ░░░░░░░░░░ 0%
+Progress: [=========>-----------------------------] 0/3 phases
+
+## Milestone Overview
+
+**Milestone:** v0.9.1 Documentation Quality
+**Goal:** Vignettes with executable examples, accurate API, clear explanations; polished pkgdown site.
+**Phases:** 3 (6, 7, 8)
+**Requirements:** 29 total
+
+| Phase | Name | Requirements | Status |
+|-------|------|--------------|--------|
+| 6 | User Vignettes | 12 | Pending |
+| 7 | Developer Vignettes | 9 | Pending |
+| 8 | Documentation Infrastructure | 8 | Pending |
 
 ## Shipped Milestones
 
@@ -47,11 +60,11 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-23 (milestone start)
-Stopped at: Defining requirements
+Last session: 2026-01-23 (roadmap created)
+Stopped at: Ready for Phase 6 planning
 Resume file: None
-Status: Defining requirements for v0.9.1
+Status: Run `/gsd:plan-phase 6` to begin User Vignettes phase
 
 ---
 *State initialized: 2026-01-22*
-*Last updated: 2026-01-23 — v0.9.1 milestone started*
+*Last updated: 2026-01-23 — v0.9.1 roadmap created*
