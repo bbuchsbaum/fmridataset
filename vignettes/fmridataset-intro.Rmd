@@ -674,23 +674,23 @@ memory_profile <- function(dataset) {
 
 Use chunking for datasets that exceed available memory, and consider processing runs separately.
 
-# Integration with Other Vignettes
+# See Also
 
-This introduction connects to several other topics in the fmridataset ecosystem:
+This getting started guide is the first step in learning fmridataset. Continue with:
 
-**Next Steps**: 
-- [Architecture Overview](architecture-overview.html) - Understand the design principles and extensibility model
-- [Study-Level Analysis](study-level-analysis.html) - Scale from single subjects to multi-subject studies
-- [H5 Backend Usage](h5-backend-usage.html) - Use HDF5 for efficient storage of large datasets
+**Core Documentation** (recommended reading order):
+- [Architecture Overview](architecture-overview.html) - Design principles and extensibility model behind the unified interface
+- [H5 Backend Usage](h5-backend-usage.html) - Efficient HDF5 storage for large datasets
+- [Study-Level Analysis](study-level-analysis.html) - Multi-subject studies and group analyses
 
 **Advanced Topics**:
-- [Backend Registry](backend-registry.html) - Create custom backends for new data formats  
-- [Extending Backends](extending-backends.html) - Deep dive into backend development
+- Backend Registry - Create custom backends for new data formats
+- Extending Backends - Deep dive into backend development
 
 **Related Packages**: fmridataset integrates seamlessly with the broader neuroimaging ecosystem:
-- **neuroim2**: Use NeuroVec objects directly with memory datasets
-- **fmrireg**: Leverage temporal structure for regression modeling
-- **DelayedArray**: Advanced array operations with lazy evaluation
+- **neuroim2**: Spatial data structures and NeuroVec objects
+- **fmrireg**: Regression modeling with fMRI data
+- **DelayedArray**: Lazy array operations for memory efficiency
 
 # Session Information
 
