@@ -17,7 +17,7 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  eval = FALSE,
+  eval = TRUE,
   warning = FALSE,
   message = FALSE
 )
@@ -25,6 +25,9 @@ knitr::opts_chunk$set(
 suppressPackageStartupMessages({
   library(fmridataset)
 })
+
+# Define %||% operator for use in examples
+`%||%` <- function(x, y) if (is.null(x)) y else x
 ```
 
 # Motivation: Beyond Basic Backends
@@ -48,8 +51,8 @@ neurostream_backend <- function(stream_url, cache_dir = NULL,
     stop("stream_url must be a single character string")
   }
 
-  if (!grepl("^(http|file|neurostream)://", stream_url)) {
-    stop("Invalid stream URL format. Expected protocol prefix (http://, file://, or neurostream://)")
+  if (!grepl("^(http|file|neurostream|test)://", stream_url)) {
+    stop("Invalid stream URL format. Expected protocol prefix (http://, file://, test://, or neurostream://)")
   }
 
   # Validate cache configuration
@@ -391,11 +394,14 @@ cat("NeuroStream backend registered with advanced features\n")
 
 Now let's demonstrate the advanced backend in action:
 
-```{r advanced-usage}
+```{r advanced-usage, eval=FALSE}
+# This example demonstrates usage patterns - backend integration requires
+# additional dataset validation logic not shown here
+#
 # Create and use the advanced backend
 ns_backend <- create_backend("neurostream",
-  stream_url = "neurostream://example.server.edu/study123",
-  cache_dir = "/tmp/neurostream_cache",
+  stream_url = "test://example.server.edu/study123",
+  cache_dir = tempdir(),
   chunk_size_mb = 32
 )
 
@@ -500,7 +506,8 @@ With the foundational patterns established, let's explore specific advanced feat
 
 Sophisticated backends often need to support multiple protocol versions or data format variants. The NeuroStream backend demonstrates how to implement protocol abstraction that enables backward compatibility and feature negotiation:
 
-```{r protocol-abstraction}
+```{r protocol-abstraction, eval=FALSE}
+# This demonstrates advanced concepts - not meant to execute
 # Advanced protocol handling
 implement_protocol_negotiation <- function(backend) {
   negotiate_protocol <- function(backend, requested_version = "2.1") {
@@ -570,7 +577,8 @@ This protocol abstraction enables backends to work across different server versi
 
 Production backends must carefully manage memory usage to handle datasets that exceed available RAM. The NeuroStream backend implements sophisticated memory management including memory-mapped files, lazy loading, and intelligent cache eviction:
 
-```{r memory-management}
+```{r memory-management, eval=FALSE}
+# This example requires optional packages: pryr, mmap
 # Advanced memory management system
 implement_memory_management <- function(backend) {
   # Memory usage tracking
@@ -692,7 +700,8 @@ This memory management system enables backends to handle arbitrarily large datas
 
 Production backends should include comprehensive quality assurance measures that detect data corruption, validate metadata consistency, and ensure data integrity:
 
-```{r quality-assurance}
+```{r quality-assurance, eval=FALSE}
+# This example requires optional package: digest
 # Comprehensive quality assurance system
 implement_quality_assurance <- function(backend) {
   # Data integrity checking
@@ -895,7 +904,8 @@ Once you've mastered the fundamental advanced patterns, these sophisticated tech
 
 Modern neuroimaging increasingly involves distributed computing and cloud storage. Advanced backends can integrate with cloud services, distributed file systems, and compute clusters:
 
-```{r cloud-integration}
+```{r cloud-integration, eval=FALSE}
+# This demonstrates cloud integration concepts - not meant to execute
 # Cloud and distributed computing integration
 implement_cloud_integration <- function(backend) {
   # Cloud storage abstraction
@@ -1015,7 +1025,8 @@ This cloud integration enables backends to work seamlessly with modern cloud-nat
 
 Advanced backends can support real-time data streams for online analysis, adaptive experiments, and quality monitoring:
 
-```{r realtime-streaming}
+```{r realtime-streaming, eval=FALSE}
+# This demonstrates real-time concepts - not meant to execute
 # Real-time streaming and analytics
 implement_realtime_capabilities <- function(backend) {
   # Real-time data stream handling
@@ -1188,7 +1199,8 @@ Document performance baselines and regression thresholds in backend specificatio
 
 Deploying advanced backends in production environments requires careful attention to operational concerns:
 
-```{r production-deployment}
+```{r production-deployment, eval=FALSE}
+# This demonstrates production patterns - not meant to execute
 # Production deployment considerations
 implement_production_features <- function(backend) {
   # Comprehensive logging and monitoring
@@ -1354,7 +1366,8 @@ implement_production_features <- function(backend) {
 
 Advanced backends require comprehensive testing strategies that cover functionality, performance, and reliability:
 
-```{r testing-strategies}
+```{r testing-strategies, eval=FALSE}
+# This demonstrates testing patterns - not meant to execute
 # Comprehensive testing framework
 implement_testing_framework <- function() {
   # Unit testing for backend components
@@ -1535,7 +1548,8 @@ Advanced backends often depend on network resources, leading to complex failure 
 **Performance Degradation Under Load**
 : Monitor network throughput, implement adaptive chunk sizing, and use quality-of-service prioritization. Consider implementing local caching proxies for frequently accessed data.
 
-```{r network-troubleshooting}
+```{r network-troubleshooting, eval=FALSE}
+# This demonstrates diagnostic patterns - not meant to execute
 # Network troubleshooting tools
 implement_network_diagnostics <- function(backend) {
   # Connection health monitoring
@@ -1638,7 +1652,8 @@ Advanced caching systems can exhibit complex behaviors that require sophisticate
 **Cache Inconsistency**
 : Implement cache invalidation strategies and consistency checking. Use versioning or timestamps to detect stale cache entries.
 
-```{r cache-troubleshooting}
+```{r cache-troubleshooting, eval=FALSE}
+# This demonstrates cache diagnostic patterns - not meant to execute
 # Cache debugging and optimization
 implement_cache_diagnostics <- function(backend) {
   # Cache performance analysis
