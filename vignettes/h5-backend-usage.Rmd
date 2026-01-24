@@ -17,7 +17,7 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  eval = FALSE,
+  eval = TRUE,
   warning = FALSE,
   message = FALSE
 )
@@ -316,7 +316,7 @@ With the architectural foundation clear, let's explore how to create HDF5 datase
 
 The most common scenario is converting existing NIfTI data to HDF5 format for improved performance:
 
-```{r nifti-to-h5}
+```{r nifti-to-h5, eval=FALSE}
 # Step 1: Install required packages
 # install.packages("devtools")
 # devtools::install_github("bbuchsbaum/fmristore")
@@ -1252,7 +1252,7 @@ When working with HDF5 datasets, certain issues are common and can be systematic
 **"H5 file appears corrupted"**
 : This often occurs after network transfers. Use `h5dump -n filename.h5` to check file structure integrity, and consider re-transferring with checksums.
 
-```{r h5-diagnostics}
+```{r h5-diagnostics, eval=FALSE}
 # Diagnostic functions for H5 issues
 diagnose_h5_issues <- function(h5_file) {
   cat("Diagnosing H5 file issues for:", h5_file, "\n\n")
@@ -1307,7 +1307,7 @@ diagnose_h5_issues <- function(h5_file) {
 **High memory usage with H5 datasets**
 : Ensure `preload=FALSE` for large datasets, use smaller chunk sizes, and process data run-wise rather than loading entire datasets.
 
-```{r h5-performance-troubleshooting}
+```{r h5-performance-troubleshooting, eval=FALSE}
 # Performance troubleshooting for H5 datasets
 troubleshoot_h5_performance <- function(h5_dataset) {
   cat("H5 Performance Troubleshooting:\n\n")
