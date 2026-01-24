@@ -176,25 +176,6 @@ cat("\nH5 Dataset Summary:\n")
 print(h5_dataset)
 ```
 
-```{r h5-output, echo=FALSE}
-# Expected output:
-# Created high-resolution dataset: 400 50000
-# Created long-duration dataset: 800 25000
-#
-# HDF5 Storage Efficiency:
-# High-res scan:  763.6 MB -> 238.6 MB ( 3.2 x compression)
-# Long-run scan:  763.6 MB -> 238.6 MB ( 3.2 x compression)
-#
-# H5 Dataset Summary:
-# fMRI Dataset (h5_dataset_simulation)
-# Data dimensions: 400 timepoints × 50000 voxels
-# Temporal structure: 2 runs (200, 200 timepoints)
-# TR: 1.5 seconds
-# Total duration: 600 seconds
-# Storage: HDF5 compressed (3.2x reduction)
-# Events: 4 events across 2 runs
-```
-
 Now let's demonstrate the performance advantages:
 
 ```{r h5-performance}
@@ -248,38 +229,6 @@ cat("     * get_TR():", get_TR(h5_dataset), "seconds\n")
 cat("     * n_runs():", n_runs(h5_dataset), "runs\n")
 cat("     * n_timepoints():", n_timepoints(h5_dataset), "timepoints\n")
 cat("   - Transparent H5 operations behind familiar interface\n")
-```
-
-```{r performance-output, echo=FALSE}
-# Expected output:
-# HDF5 Performance Characteristics:
-#
-# 1. Dataset Creation:
-#    - Metadata loaded immediately
-#    - Image data remains on disk
-#    - Memory footprint: ~ 45.2 KB
-#
-# 2. Partial Data Access:
-#    - Accessing 5000 voxels ( 10 % of data)
-#    - HDF5 reads only requested chunks
-#    - I/O reduction: ~ 10 x faster than full read
-#
-# 3. Storage Efficiency:
-#    - Original size: 763.6 MB
-#    - Compressed size: 238.6 MB
-#    - Space saved: 69 %
-#
-# 4. Network Transfer:
-#    - Original transfer time: ~ 7.6 seconds
-#    - Compressed transfer time: ~ 2.4 seconds
-#    - Time saved: 5.2 seconds
-#
-# 5. Interface Compatibility:
-#    - Same methods work as other datasets:
-#      * get_TR(): 1.5 seconds
-#      * n_runs(): 2 runs
-#      * n_timepoints(): 400 timepoints
-#    - Transparent H5 operations behind familiar interface
 ```
 
 **Technical Summary**: HDF5 storage provides measurable performance improvements for datasets exceeding 1GB through compression and selective I/O. The backend maintains API compatibility with the standard fmridataset interface, requiring no changes to analysis code.
