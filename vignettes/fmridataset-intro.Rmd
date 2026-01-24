@@ -250,21 +250,20 @@ For file-based datasets, these operations trigger data loading. The package auto
 
 For large datasets, chunking enables processing without loading everything into memory:
 
-```{r chunking, eval = FALSE}
+```{r chunking}
 # Create chunks for processing
 chunks <- data_chunks(dataset, nchunks = 4)
 
-# Process each chunk independently
-results <- list()
-for (chunk in chunks) {
+# Process each chunk independently using foreach
+`%do%` <- foreach::`%do%`
+results <- foreach::foreach(chunk = chunks) %do% {
   cat(
     "Processing chunk", chunk$chunk_num,
     "with", ncol(chunk$data), "voxels\n"
   )
 
   # Your analysis here - each chunk$data is a standard matrix
-  chunk_result <- colMeans(chunk$data) # Example: compute mean time series
-  results[[chunk$chunk_num]] <- chunk_result
+  colMeans(chunk$data) # Example: compute mean time series
 }
 
 # Combine results
@@ -278,21 +277,23 @@ The chunking system automatically divides voxels optimally and provides metadata
 
 Many fMRI analyses need to process runs separately. The chunking system supports this directly:
 
-```{r runwise, eval = FALSE}
+```{r runwise}
 # Create one chunk per run
 run_chunks <- data_chunks(dataset, runwise = TRUE)
 
-# Process runs independently
-run_results <- list()
-for (chunk in run_chunks) {
+# Process runs independently using foreach
+`%do%` <- foreach::`%do%`
+run_results <- foreach::foreach(chunk = run_chunks) %do% {
   cat(
     "Processing run", chunk$chunk_num,
     "with", nrow(chunk$data), "timepoints\n"
   )
 
   # Run-specific analysis
-  run_results[[chunk$chunk_num]] <- analyze_run(chunk$data)
+  analyze_run(chunk$data)
 }
+
+cat("Processed", length(run_results), "runs\n")
 ```
 
 Run-wise chunking ensures each chunk contains data from exactly one run, making it perfect for analyses that require run boundaries.
@@ -318,10 +319,10 @@ cat("Total duration:", get_total_duration(sf), "seconds\n")
 run_durations <- get_run_duration(sf)
 cat("Run durations:", run_durations, "seconds\n")
 
-# Access sample indices for each run
-run_samples <- samples(sf)
-cat("Run 1 samples:", head(run_samples[[1]]), "...\n")
-cat("Run 2 samples:", head(run_samples[[2]]), "...\n")
+# Get sample time points (in seconds)
+sample_times <- samples(sf)
+cat("First 6 sample times:", head(sample_times), "seconds\n")
+cat("Last 6 sample times:", tail(sample_times), "seconds\n")
 ```
 
 The sampling frame provides all the temporal metadata needed for sophisticated time series analyses.
@@ -339,10 +340,11 @@ TR <- get_TR(dataset$sampling_frame)
 sample_indices <- round(event_onsets / TR) + 1
 cat("Event onsets at samples:", sample_indices, "\n")
 
-# Use sampling frame for run-aware conversions
+# Use sampling frame to identify run boundaries
+block_ids <- blockids(dataset$sampling_frame)
 for (run_idx in 1:n_runs(dataset$sampling_frame)) {
-  run_start <- samples(dataset$sampling_frame)[[run_idx]][1]
-  cat("Run", run_idx, "starts at global sample", run_start, "\n")
+  run_samples <- which(block_ids == run_idx)
+  cat("Run", run_idx, "contains samples", min(run_samples), "to", max(run_samples), "\n")
 }
 ```
 
@@ -467,20 +469,21 @@ When working with large datasets, memory management becomes crucial:
 # Good: Process in chunks
 analyze_large_dataset <- function(dataset) {
   chunks <- data_chunks(dataset, nchunks = 10)
-  results <- list()
 
-  for (chunk in chunks) {
+  `%do%` <- foreach::`%do%`
+  results <- foreach::foreach(chunk = chunks, .combine = rbind) %do% {
     # Process chunk
-    result <- your_analysis(chunk$data)
-    results[[chunk$chunk_num]] <- result
+    result <- colMeans(chunk$data)
 
     # Optionally force garbage collection
     if (chunk$chunk_num %% 5 == 0) {
       gc()
     }
+
+    result
   }
 
-  return(do.call(rbind, results))
+  return(results)
 }
 
 # Bad: Loading everything at once for large datasets
