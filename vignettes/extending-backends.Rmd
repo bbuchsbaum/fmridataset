@@ -444,7 +444,7 @@ cat(
 backend_close(ns_backend)
 ```
 
-```{r advanced-output, echo=FALSE}
+```{r advanced-output, echo=FALSE, eval=FALSE}
 # Expected output:
 # NeuroStream backend registered with advanced features
 # Opening NeuroStream connection: ns_20231207_143022_1234
