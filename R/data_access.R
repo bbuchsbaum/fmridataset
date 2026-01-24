@@ -261,6 +261,11 @@ get_mask.matrix_dataset <- function(x, ...) {
   x$mask
 }
 
+#' @export
+get_mask.fmri_study_dataset <- function(x, ...) {
+  backend_get_mask(x$backend)
+}
+
 
 #' @export
 blocklens.matrix_dataset <- function(x, ...) {

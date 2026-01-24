@@ -382,3 +382,54 @@ one_chunk <- function(x) {
   voxel_ind <- which(mask > 0)
   list(voxel_ind)
 }
+
+#' Create Data Chunks for fmri_study_dataset Objects
+#'
+#' This function creates data chunks for multi-subject study datasets.
+#'
+#' @param x An object of class 'fmri_study_dataset'
+#' @param nchunks The number of chunks to split the data into. Default is 1.
+#' @param runwise If TRUE, creates run-wise chunks instead of arbitrary chunks
+#' @param ... Additional arguments passed to methods
+#' @return A list of data chunks, each containing data, indices and chunk number
+#' @export
+data_chunks.fmri_study_dataset <- function(x, nchunks = 1, runwise = FALSE, ...) {
+  # For study datasets, use the backend directly
+  mask_vec <- backend_get_mask(x$backend)
+  voxel_ind <- which(mask_vec)
+  n_voxels <- sum(mask_vec)
+  dims <- backend_get_dims(x$backend)
+
+  get_run_chunk <- function(chunk_num) {
+    # Get row indices for this run across all subjects
+    row_ind <- which(blockids(x$sampling_frame) == chunk_num)
+    # Stream only the needed rows from backend
+    mat <- backend_get_data(x$backend, rows = row_ind, cols = NULL)
+    data_chunk(mat, voxel_ind = voxel_ind, row_ind = row_ind, chunk_num = chunk_num)
+  }
+
+  get_seq_chunk <- function(chunk_num) {
+    # Get column indices for this chunk
+    col_ind <- maskSeq[[chunk_num]]
+    # Map voxel indices to valid column indices
+    valid_cols <- match(col_ind, voxel_ind)
+    valid_cols <- valid_cols[!is.na(valid_cols)]
+    # Stream only the needed columns from backend
+    mat <- backend_get_data(x$backend, rows = NULL, cols = valid_cols)
+    data_chunk(mat, voxel_ind = col_ind, row_ind = 1:dims$time, chunk_num = chunk_num)
+  }
+
+  maskSeq <- NULL
+
+  # Create iterator based on strategy
+  if (runwise) {
+    chunk_iter(x, n_runs(x), get_run_chunk)
+  } else if (nchunks == 1) {
+    maskSeq <- list(voxel_ind)
+    chunk_iter(x, 1, get_seq_chunk)
+  } else {
+    # Create arbitrary voxel chunks
+    maskSeq <- arbitrary_chunks(x, nchunks)
+    chunk_iter(x, length(maskSeq), get_seq_chunk)
+  }
+}
