@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-23)
 ## Current Position
 
 Phase: 6 - User Vignettes
-Plan: 02 of 04 (Architecture Overview)
-Status: In progress
-Last activity: 2026-01-24 — Completed 06-02-PLAN.md
+Plan: 01 of 04 (Getting Started)
+Status: Completed
+Last activity: 2026-01-23 — Completed 06-01-PLAN.md
 
-Progress: [=========>-----------------------------] 2/12 plans complete (Phase 6)
+Progress: [==>------------------------------------] 1/12 plans complete (Phase 6)
 
 ## Milestone Overview
 
@@ -49,10 +49,9 @@ Key decisions from v0.9.0 milestone are documented in:
 
 | Date | Decision | Rationale | Phase |
 |------|----------|-----------|-------|
-| 2026-01-24 | Enable global eval=TRUE for architecture-overview.Rmd | Users learn better from working code than mock examples | 06-02 |
-| 2026-01-24 | Use iterator nextElem() explicitly in chunking examples | Demonstrates actual chunk iterator API clearly | 06-02 |
-| 2026-01-24 | Enable global eval=TRUE with selective eval=FALSE for H5 vignette | Simulated examples execute without fmristore dependency | 06-03 |
-| 2026-01-24 | Remove mock output blocks from vignettes | Real execution produces actual output, builds trust | 06-03 |
+| 2026-01-23 | Use foreach loops instead of for loops for chunk iterators | R iterators don't work with for loops (return environment not values) | 06-01 |
+| 2026-01-23 | Use blockids() instead of samples() for run boundaries | samples() returns time points in seconds, not run-specific indices | 06-01 |
+| 2026-01-23 | Reorganize See Also section with sequential reading order | Guide users through clear learning path: intro → architecture → h5 → study | 06-01 |
 
 ### Pending Todos
 
@@ -69,11 +68,11 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-24 (Architecture Overview vignette completed)
-Stopped at: Completed 06-02-PLAN.md
+Last session: 2026-01-23 (Getting Started vignette completed)
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None
-Status: Continue with remaining Phase 6 plans (06-03, 06-04)
+Status: Ready for 06-02 (Architecture Overview)
 
 ---
 *State initialized: 2026-01-22*
-*Last updated: 2026-01-24 — Completed 06-02: Architecture Overview executable examples*
+*Last updated: 2026-01-23 — Completed 06-01: Getting Started vignette with executable examples*
