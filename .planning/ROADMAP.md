@@ -45,10 +45,12 @@
 
 **Plans:** 4 plans
 Plans:
-- [ ] 06-01-PLAN.md — Fix fmridataset-intro.Rmd executable examples
-- [ ] 06-02-PLAN.md — Fix architecture-overview.Rmd executable examples
-- [ ] 06-03-PLAN.md — Fix h5-backend-usage.Rmd executable examples
-- [ ] 06-04-PLAN.md — Fix study-level-analysis.Rmd executable examples
+- [x] 06-01-PLAN.md — Fix fmridataset-intro.Rmd executable examples
+- [x] 06-02-PLAN.md — Fix architecture-overview.Rmd executable examples
+- [x] 06-03-PLAN.md — Fix h5-backend-usage.Rmd executable examples
+- [x] 06-04-PLAN.md — Fix study-level-analysis.Rmd executable examples
+
+**Status:** ✓ Complete (2026-01-24)
 
 ---
 
@@ -155,7 +157,7 @@ Plans:
 
 | Phase | Status | Plans | Completed |
 |-------|--------|-------|-----------|
-| 6 - User Vignettes | Planned | 4 | - |
+| 6 - User Vignettes | ✓ Complete | 4/4 | 2026-01-24 |
 | 7 - Developer Vignettes | Pending | 0/? | - |
 | 8 - Documentation Infrastructure | Pending | 0/? | - |
 
