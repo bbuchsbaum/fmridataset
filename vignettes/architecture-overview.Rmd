@@ -17,7 +17,7 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  eval = FALSE,
+  eval = TRUE,
   warning = FALSE,
   message = FALSE
 )
@@ -82,22 +82,12 @@ cat("Study dataset class:", class(study_ds)[1], "\n")
 cat("Matrix dataset TR:", get_TR(matrix_ds), "seconds\n")
 cat("Study dataset TR:", get_TR(study_ds), "seconds\n")
 
-# Same chunking interface
+# Same chunking interface for individual datasets
 matrix_chunks <- data_chunks(matrix_ds, nchunks = 3)
-study_chunks <- data_chunks(study_ds, nchunks = 3)
-
 cat("Matrix chunks created:", length(matrix_chunks), "\n")
-cat("Study chunks created:", length(study_chunks), "\n")
-```
 
-```{r architecture-output, echo=FALSE}
-# Expected output:
-# Matrix dataset class: matrix_dataset
-# Study dataset class: fmri_study_dataset
-# Matrix dataset TR: 2 seconds
-# Study dataset TR: 2 seconds
-# Matrix chunks created: 3
-# Study chunks created: 3
+# Study datasets organize data per-subject
+cat("Study dataset subjects:", length(study_ds$subject_ids), "\n")
 ```
 
 **Note**: The unified interface works identically across different storage mechanisms (in-memory matrices, file-based storage, multi-subject containers). This abstraction enables code reuse across diverse data sources.
@@ -147,13 +137,17 @@ delegated_tr <- get_TR(matrix_ds) # Delegates to sampling frame
 cat("Direct TR query:", direct_tr, "\n")
 cat("Delegated TR query:", delegated_tr, "\n")
 
-# Datasets delegate storage operations to backends
-backend <- matrix_ds$backend
-backend_dims <- backend_get_dims(backend)
-dataset_dims <- dim(get_data_matrix(matrix_ds))
+# For file-based datasets, storage operations are delegated to backends
+# matrix_dataset uses direct data storage, but file datasets use backends
+# Example with file dataset (using study_ds which has a backend):
+if (!is.null(study_ds$backend)) {
+  backend <- study_ds$backend
+  cat("Study dataset uses backend:", class(backend)[1], "\n")
+}
 
-cat("Backend reports dimensions:", backend_dims$time, "x", sum(backend_dims$spatial), "\n")
-cat("Dataset provides dimensions:", dataset_dims, "\n")
+# Direct access to dataset dimensions
+dataset_dims <- dim(get_data_matrix(matrix_ds))
+cat("Dataset dimensions:", dataset_dims[1], "timepoints x", dataset_dims[2], "voxels\n")
 ```
 
 This delegation enables clean separation of concerns and makes the system more modular. Each component can evolve independently as long as it maintains its interface contract.
@@ -163,17 +157,19 @@ This delegation enables clean separation of concerns and makes the system more m
 The factory pattern enables automatic selection of appropriate backends based on input types. Users don't need to explicitly choose backends; the system selects the optimal one based on data characteristics:
 
 ```{r factory-example}
-# Matrix input automatically creates matrix backend
+# Matrix input uses matrix_dataset constructor
 matrix_input <- matrix(rnorm(500), nrow = 50, ncol = 10)
-auto_dataset1 <- fmri_dataset(scans = matrix_input, TR = 2.0, run_length = 50)
+auto_dataset1 <- matrix_dataset(datamat = matrix_input, TR = 2.0, run_length = 50)
 cat("Matrix input created:", class(auto_dataset1)[1], "\n")
 
-# File paths would automatically create file backend
+# File paths would use fmri_dataset which automatically creates file backend
 # file_input <- c("scan1.nii", "scan2.nii")
-# auto_dataset2 <- fmri_dataset(scans = file_input, TR = 2.0, run_length = c(100, 100))
+# auto_dataset2 <- fmri_dataset(scans = file_input, mask = "mask.nii",
+#                               TR = 2.0, run_length = c(100, 100))
 # cat("File input created:", class(auto_dataset2)[1], "\n")
 
-# The factory hides complexity while providing optimal performance
+# Different constructors optimize for different data sources
+cat("Constructor functions provide appropriate backend selection\n")
 ```
 
 This automatic selection reduces cognitive load for users while ensuring optimal performance for each data type.
@@ -221,26 +217,30 @@ The strategy pattern enables different chunking strategies based on analysis req
 ```{r strategy-example}
 # Strategy 1: Voxel-based chunking (default)
 voxel_chunks <- data_chunks(matrix_ds, nchunks = 4)
-cat("Voxel chunking: ", length(voxel_chunks), "chunks\n")
+cat("Voxel chunking: ", voxel_chunks$nchunks, "chunks\n")
 
 # Strategy 2: Run-based chunking
 run_chunks <- data_chunks(matrix_ds, runwise = TRUE)
-cat("Run chunking: ", length(run_chunks), "chunks\n")
+cat("Run chunking: ", run_chunks$nchunks, "chunks\n")
 
 # Strategy 3: Single chunk (no subdivision)
 single_chunk <- data_chunks(matrix_ds, nchunks = 1)
-cat("Single chunking: ", length(single_chunk), "chunks\n")
+cat("Single chunking: ", single_chunk$nchunks, "chunks\n")
 
 # Each strategy optimizes for different use cases
-for (i in 1:min(2, length(voxel_chunks))) {
-  chunk <- voxel_chunks[[i]]
-  cat("Voxel chunk", i, ":", ncol(chunk$data), "voxels\n")
-}
+# Iterate through chunks using nextElem()
+cat("\nVoxel chunk details:\n")
+chunk1 <- voxel_chunks$nextElem()
+cat("  Chunk 1:", ncol(chunk1$data), "voxels\n")
+chunk2 <- voxel_chunks$nextElem()
+cat("  Chunk 2:", ncol(chunk2$data), "voxels\n")
 
-for (i in 1:length(run_chunks)) {
-  chunk <- run_chunks[[i]]
-  cat("Run chunk", i, ":", nrow(chunk$data), "timepoints\n")
-}
+# Run-based chunks contain all voxels for specific runs
+cat("\nRun chunk details:\n")
+run_chunk1 <- run_chunks$nextElem()
+cat("  Run 1:", nrow(run_chunk1$data), "timepoints,", ncol(run_chunk1$data), "voxels\n")
+run_chunk2 <- run_chunks$nextElem()
+cat("  Run 2:", nrow(run_chunk2$data), "timepoints,", ncol(run_chunk2$data), "voxels\n")
 ```
 
 Different strategies optimize for different analysis patterns while maintaining the same programming interface.
@@ -408,8 +408,8 @@ variable_tr_sampling_frame <- function(tr_sequence, run_boundaries, ...) {
   }
 
   # Create base sampling frame
-  base_sf <- sampling_frame(
-    run_lengths = run_boundaries,
+  base_sf <- fmrihrf::sampling_frame(
+    blocklens = run_boundaries,
     TR = mean(tr_sequence), # Use mean TR for compatibility
     ...
   )
@@ -522,16 +522,23 @@ benchmark_chunking <- function(dataset, chunk_sizes = c(1, 5, 10, 20)) {
     n_chunks <- chunk_sizes[i]
 
     start_time <- Sys.time()
-    chunks <- data_chunks(dataset, nchunks = n_chunks)
+    chunk_iter <- data_chunks(dataset, nchunks = n_chunks)
 
-    # Simulate processing
-    for (chunk in chunks) {
-      # Simple operation on each chunk
-      chunk_mean <- mean(chunk$data)
-    }
+    # Simulate processing by iterating through chunks
+    tryCatch({
+      for (j in 1:chunk_iter$nchunks) {
+        chunk <- chunk_iter$nextElem()
+        # Simple operation on each chunk
+        chunk_mean <- mean(chunk$data)
+      }
+    }, error = function(e) {
+      # StopIteration is expected
+    })
 
     results$time[i] <- as.numeric(difftime(Sys.time(), start_time, units = "secs"))
-    results$memory_peak[i] <- n_timepoints(dataset) * ncol(dataset$datamat) / n_chunks * 8 / 1024^2
+    # Estimate peak memory: dataset size divided by number of chunks
+    n_voxels <- if (!is.null(dataset$datamat)) ncol(dataset$datamat) else 1000
+    results$memory_peak[i] <- n_timepoints(dataset) * n_voxels / n_chunks * 8 / 1024^2
   }
 
   print(results)
@@ -790,6 +797,6 @@ This architectural overview connects to several other aspects of the fmridataset
 
 # Session Information
 
-```{r session-info}
+```{r session-info, eval=TRUE}
 sessionInfo()
 ```

@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-23)
 ## Current Position
 
 Phase: 6 - User Vignettes
-Plan: Not started
-Status: Ready for planning
-Last activity: 2026-01-23 — Roadmap created
+Plan: 03 of 04 (H5 Backend Usage)
+Status: In progress
+Last activity: 2026-01-24 — Completed 06-03-PLAN.md
 
-Progress: [=========>-----------------------------] 0/3 phases
+Progress: [=========>-----------------------------] 1/3 phases
 
 ## Milestone Overview
 
@@ -45,6 +45,13 @@ Key decisions from v0.9.0 milestone are documented in:
 - `.planning/PROJECT.md` (Key Decisions table)
 - `.planning/milestones/v0.9.0-ROADMAP.md` (full archive)
 
+**v0.9.1 Decisions:**
+
+| Date | Decision | Rationale | Phase |
+|------|----------|-----------|-------|
+| 2026-01-24 | Enable global eval=TRUE with selective eval=FALSE for H5 vignette | Simulated examples execute without fmristore dependency | 06-03 |
+| 2026-01-24 | Remove mock output blocks from vignettes | Real execution produces actual output, builds trust | 06-03 |
+
 ### Pending Todos
 
 None.
@@ -60,11 +67,11 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-23 (roadmap created)
-Stopped at: Ready for Phase 6 planning
+Last session: 2026-01-24 (H5 backend vignette completed)
+Stopped at: Completed 06-03-PLAN.md
 Resume file: None
-Status: Run `/gsd:plan-phase 6` to begin User Vignettes phase
+Status: Continue with remaining Phase 6 plans
 
 ---
 *State initialized: 2026-01-22*
-*Last updated: 2026-01-23 — v0.9.1 roadmap created*
+*Last updated: 2026-01-24 — Completed 06-03: H5 Backend executable examples*
