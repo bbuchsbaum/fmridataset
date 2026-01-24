@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-23)
 ## Current Position
 
 Phase: 6 - User Vignettes
-Plan: 01 of 04 (Getting Started)
+Plan: 04 of 04 (Study-Level Analysis)
 Status: Completed
-Last activity: 2026-01-23 — Completed 06-01-PLAN.md
+Last activity: 2026-01-23 — Completed 06-04-PLAN.md
 
-Progress: [==>------------------------------------] 1/12 plans complete (Phase 6)
+Progress: [=========>------------------------------] 4/12 plans complete (Phase 6)
 
 ## Milestone Overview
 
@@ -52,6 +52,9 @@ Key decisions from v0.9.0 milestone are documented in:
 | 2026-01-23 | Use foreach loops instead of for loops for chunk iterators | R iterators don't work with for loops (return environment not values) | 06-01 |
 | 2026-01-23 | Use blockids() instead of samples() for run boundaries | samples() returns time points in seconds, not run-specific indices | 06-01 |
 | 2026-01-23 | Reorganize See Also section with sequential reading order | Guide users through clear learning path: intro → architecture → h5 → study | 06-01 |
+| 2026-01-23 | Use consistent voxel counts across subjects in vignette examples | Real studies have common registration space, inconsistent dims cause backend validation failure | 06-04 |
+| 2026-01-23 | Fix TR comparison with unname() in study dataset creation | Named vectors cause all.equal() to return string mismatch instead of TRUE | 06-04 |
+| 2026-01-23 | Use nextElem() iterator pattern for chunk processing | For loops don't work with iterator objects, need explicit iteration protocol | 06-04 |
 
 ### Pending Todos
 
@@ -68,11 +71,11 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-23 (Getting Started vignette completed)
-Stopped at: Completed 06-01-PLAN.md
+Last session: 2026-01-23 (Study-Level Analysis vignette completed)
+Stopped at: Completed 06-04-PLAN.md
 Resume file: None
-Status: Ready for 06-02 (Architecture Overview)
+Status: 4 of 4 user vignettes complete
 
 ---
 *State initialized: 2026-01-22*
-*Last updated: 2026-01-23 — Completed 06-01: Getting Started vignette with executable examples*
+*Last updated: 2026-01-23 — Completed 06-04: Study-Level Analysis vignette with executable multi-subject examples*
