@@ -39,7 +39,7 @@ matrix_dataset <- function(datamat, TR, run_length, event_table = data.frame()) 
     nruns = length(run_length),
     event_table = event_table,
     sampling_frame = frame,
-    mask = rep(1, ncol(datamat))
+    mask = rep(TRUE, ncol(datamat))
   )
 
   class(ret) <- c("matrix_dataset", "fmri_dataset", "list")
@@ -79,7 +79,7 @@ fmri_mem_dataset <- function(scans, mask, TR,
                              censor = NULL) {
   assert_that(all(map_lgl(scans, function(x) inherits(x, "NeuroVec"))))
   assert_that(inherits(mask, "NeuroVol"))
-  assert_that(all(dim(mask) == dim(scans[[1]][1:3])))
+  assert_that(all(dim(mask) == dim(scans[[1]])[1:3]))
 
   ntotscans <- sum(sapply(scans, function(x) dim(x)[4]))
   # run_length <- map_dbl(scans, ~ dim(.)[4])
@@ -148,7 +148,6 @@ fmri_latent_dataset <- function(latent_files, mask_source = NULL, TR,
     "fmri_latent_dataset()",
     "latent_dataset()",
     details = "The new interface provides proper handling of latent space data.",
-    always = TRUE
   )
 
   # Forward to new function
@@ -270,11 +269,9 @@ fmri_dataset <- function(scans, mask = NULL, TR,
     backend$run_length <- run_length
   }
 
-  # Validate backend
-  validate_backend(backend)
-
-  # Open backend to initialize resources
+  # Open backend to initialize resources, then validate contract
   backend <- backend_open(backend)
+  validate_backend(backend)
 
   if (is.null(censor)) {
     censor <- rep(0, sum(run_length))
@@ -432,7 +429,7 @@ fmri_study_dataset <- function(datasets, subject_ids = NULL) {
 
   trs <- vapply(datasets, function(d) get_TR(d), numeric(1))
   # Use unname() to avoid name mismatches in all.equal comparison
-  if (!all(vapply(unname(trs[-1]), function(tr) isTRUE(all.equal(tr, unname(trs[1]))), logical(1)))) {
+  if (length(unique(round(trs, 10))) > 1) {
     stop_fmridataset(
       fmridataset_error_config,
       "All datasets must have equal TR"
@@ -459,7 +456,16 @@ fmri_study_dataset <- function(datasets, subject_ids = NULL) {
     if (nrow(et) > 0) {
       et$subject_id <- sid
       if (!"run_id" %in% names(et)) {
-        et$run_id <- rep(seq_len(d$nruns), length.out = nrow(et))
+        if (d$nruns == 1) {
+          et$run_id <- rep(1L, nrow(et))
+        } else {
+          warning(
+            "event_table for subject '", sid, "' has no 'run_id' column ",
+            "and dataset has ", d$nruns, " runs. ",
+            "Please add a 'run_id' column to avoid ambiguity."
+          )
+          et$run_id <- rep(seq_len(d$nruns), length.out = nrow(et))
+        }
       }
     }
     et

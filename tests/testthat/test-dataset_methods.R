@@ -204,13 +204,8 @@ test_that("fmri_study_dataset n_runs implementation", {
     subject_ids = c("S01", "S02")
   )
 
-  # Note: n_runs.fmri_study_dataset tries to access x$n_runs field
-  # which doesn't exist in the constructor, so it returns NULL
-  # This is a bug in the implementation but we test actual behavior
-  expect_null(n_runs(study_dset))
-
-  # The correct way to get runs is through sampling_frame
-  expect_equal(n_runs(study_dset$sampling_frame), 4)
+  # n_runs.fmri_study_dataset delegates to sampling_frame
+  expect_equal(n_runs(study_dset), 4)
 })
 
 test_that("fmri_study_dataset subject_ids method works", {
@@ -282,16 +277,19 @@ test_that("all dataset classes have consistent delegation", {
     "get_total_duration", "samples"
   )
 
+  # Methods are defined on fmri_dataset and inherited by all subclasses
   for (method_name in methods_to_test) {
-    # Check that methods exist for each dataset type
     expect_true(
-      any(grepl(method_name, methods(class = "matrix_dataset"))),
-      info = paste(method_name, "should exist for matrix_dataset")
+      any(grepl(method_name, methods(class = "fmri_dataset"))),
+      info = paste(method_name, "should exist for fmri_dataset")
     )
-    expect_true(
-      any(grepl(method_name, methods(class = "fmri_file_dataset"))),
-      info = paste(method_name, "should exist for fmri_file_dataset")
-    )
+  }
+
+  # Verify methods actually work on each subclass via inheritance
+  for (method_name in methods_to_test) {
+    fn <- match.fun(method_name)
+    expect_no_error(fn(mat_dset))
+    expect_no_error(fn(file_dset))
   }
 })
 

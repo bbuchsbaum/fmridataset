@@ -3,25 +3,13 @@
 %   R/sampling_frame_adapters.R
 \name{blockids}
 \alias{blockids}
-\alias{blockids.matrix_dataset}
 \alias{blockids.fmri_dataset}
-\alias{blockids.fmri_mem_dataset}
-\alias{blockids.fmri_file_dataset}
-\alias{blockids.fmri_study_dataset}
 \alias{blockids.sampling_frame}
 \title{Get Block IDs from Sampling Frame}
 \usage{
 blockids(x, ...)
 
-\method{blockids}{matrix_dataset}(x, ...)
-
 \method{blockids}{fmri_dataset}(x, ...)
-
-\method{blockids}{fmri_mem_dataset}(x, ...)
-
-\method{blockids}{fmri_file_dataset}(x, ...)
-
-\method{blockids}{fmri_study_dataset}(x, ...)
 
 \method{blockids}{sampling_frame}(x, ...)
 }

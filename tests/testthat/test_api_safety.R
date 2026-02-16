@@ -49,11 +49,11 @@ test_that("matrix_dataset validates run_length properly", {
 })
 
 test_that("get_mask returns consistent types across backends", {
-  # Matrix dataset - returns numeric vector
+  # Matrix dataset - returns logical vector
   mat <- matrix(rnorm(100 * 50), 100, 50)
   mat_dset <- matrix_dataset(mat, TR = 2, run_length = 100)
   mask1 <- get_mask(mat_dset)
-  expect_type(mask1, "double")
+  expect_type(mask1, "logical")
   expect_equal(length(mask1), 50)
 
   # Matrix backend - returns logical vector
@@ -162,9 +162,9 @@ test_that("TR parameter is required", {
 test_that("mask defaults are consistent and documented", {
   mat <- matrix(rnorm(100 * 50), 100, 50)
 
-  # Matrix dataset creates default mask of 1s
+  # Matrix dataset creates default mask of TRUEs
   dset1 <- matrix_dataset(mat, TR = 2, run_length = 100)
-  expect_equal(unique(dset1$mask), 1)
+  expect_equal(unique(dset1$mask), TRUE)
   expect_equal(length(dset1$mask), 50)
 
   # Matrix backend creates default mask of TRUEs

@@ -100,8 +100,8 @@ test_that("latent_backend works with mock LatentNeuroVec objects", {
   expect_equal(metadata$n_voxels, 1000)
   expect_equal(metadata$n_runs, 2)
 
-  # Close backend
-  backend <- backend_close(backend)
+  # Close backend (environment semantics: mutation visible in place)
+  backend_close(backend)
   expect_false(backend$is_open)
 })
 

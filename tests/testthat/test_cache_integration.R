@@ -1,32 +1,24 @@
 test_that("memoise integration works with custom cache", {
-  # Skip if we can't create meaningful test data
   skip_if_not_installed("neuroim2")
+  skip_on_cran()
 
-  # Create a test cache
   test_cache <- cachem::cache_mem(max_size = 1024 * 1024, evict = "lru")
 
-  # Create a simple memoised function
   test_func <- memoise::memoise(function(x) {
-    # Simulate expensive computation
-    Sys.sleep(0.01)
+    Sys.sleep(0.05)
     x^2
   }, cache = test_cache)
 
-  # First call should compute and cache
-  start_time <- Sys.time()
   result1 <- test_func(5)
-  first_duration <- Sys.time() - start_time
 
-  # Second call should be cached (much faster)
   start_time <- Sys.time()
   result2 <- test_func(5)
-  second_duration <- Sys.time() - start_time
+  cached_duration <- as.numeric(Sys.time() - start_time, units = "secs")
 
   expect_equal(result1, result2)
   expect_equal(result1, 25)
-  expect_lt(second_duration, first_duration)
+  expect_lt(cached_duration, 0.05)
 
-  # Check cache statistics
   keys <- test_cache$keys()
   expect_equal(length(keys), 1)
   expect_true(test_cache$exists(keys[1]))

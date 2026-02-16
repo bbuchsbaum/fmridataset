@@ -215,13 +215,11 @@ test_that("zarr_backend lifecycle works correctly", {
   backend2 <- backend_open(backend)
   expect_equal(backend2$is_open, backend$is_open)
 
-  # Close backend (note: due to R's copy-on-write semantics,
-  # backend_close doesn't actually modify the backend object in the caller's scope)
+  # Close backend (environment semantics: mutations are visible in place)
   expect_silent(backend_close(backend))
 
-  # Backend state remains unchanged in caller's scope
-  # This is consistent with other backend implementations which also don't modify state
-  expect_true(backend$is_open)
+  # Backend state is updated in place via environment reference semantics
+  expect_false(backend$is_open)
 })
 
 test_that("zarr_backend get_data validates inputs", {

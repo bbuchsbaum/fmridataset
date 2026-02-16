@@ -53,6 +53,9 @@ register_delayed_array_support <- function() {
 
   .ensure_delayed_array()
 
+  # nocov start
+  # S4 class definitions can only be registered once per session;
+  # re-registration errors with "locked definition".
   methods::setClass(
     "StorageBackendSeed",
     slots = list(backend = "ANY"),
@@ -77,6 +80,7 @@ register_delayed_array_support <- function() {
   methods::setClass("MatrixBackendSeed", contains = "StorageBackendSeed")
 
   register_study_backend_seed_methods()
+  # nocov end
 
   .delayed_array_support_env$registered <- TRUE
   invisible(NULL)

@@ -91,7 +91,7 @@ test_that("matrix_dataset continues to work without backend", {
   expect_equal(retrieved_data, test_data)
 
   mask <- get_mask(dset)
-  expect_equal(mask, rep(1, 10))
+  expect_equal(mask, rep(TRUE, 10))
 })
 
 test_that("fmri_mem_dataset continues to work", {

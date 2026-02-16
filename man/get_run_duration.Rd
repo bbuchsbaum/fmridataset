@@ -3,25 +3,13 @@
 %   R/sampling_frame_adapters.R
 \name{get_run_duration}
 \alias{get_run_duration}
-\alias{get_run_duration.matrix_dataset}
 \alias{get_run_duration.fmri_dataset}
-\alias{get_run_duration.fmri_mem_dataset}
-\alias{get_run_duration.fmri_file_dataset}
-\alias{get_run_duration.fmri_study_dataset}
 \alias{get_run_duration.sampling_frame}
 \title{Get Run Duration from Sampling Frame}
 \usage{
 get_run_duration(x, ...)
 
-\method{get_run_duration}{matrix_dataset}(x, ...)
-
 \method{get_run_duration}{fmri_dataset}(x, ...)
-
-\method{get_run_duration}{fmri_mem_dataset}(x, ...)
-
-\method{get_run_duration}{fmri_file_dataset}(x, ...)
-
-\method{get_run_duration}{fmri_study_dataset}(x, ...)
 
 \method{get_run_duration}{sampling_frame}(x, ...)
 }

@@ -3,25 +3,13 @@
 %   R/sampling_frame_adapters.R
 \name{get_TR}
 \alias{get_TR}
-\alias{get_TR.matrix_dataset}
 \alias{get_TR.fmri_dataset}
-\alias{get_TR.fmri_mem_dataset}
-\alias{get_TR.fmri_file_dataset}
-\alias{get_TR.fmri_study_dataset}
 \alias{get_TR.sampling_frame}
 \title{Get TR (Repetition Time) from Sampling Frame}
 \usage{
 get_TR(x, ...)
 
-\method{get_TR}{matrix_dataset}(x, ...)
-
 \method{get_TR}{fmri_dataset}(x, ...)
-
-\method{get_TR}{fmri_mem_dataset}(x, ...)
-
-\method{get_TR}{fmri_file_dataset}(x, ...)
-
-\method{get_TR}{fmri_study_dataset}(x, ...)
 
 \method{get_TR}{sampling_frame}(x, ...)
 }

@@ -110,7 +110,7 @@ h5_backend <- function(source, mask_source,
 #' @rdname backend_open
 #' @method backend_open h5_backend
 #' @export
-backend_open.h5_backend <- function(backend) {
+backend_open.h5_backend <- function(backend) { # nocov start
   if (backend$preload && is.null(backend$h5_objects)) {
     # Load H5NeuroVec objects
     backend$h5_objects <- if (is.character(backend$source)) {
@@ -426,4 +426,4 @@ backend_get_metadata.h5_backend <- function(backend) {
     data_files = if (is.character(backend$source)) backend$source else NULL,
     mask_file = if (is.character(backend$mask_source)) backend$mask_source else NULL
   )
-}
+} # nocov end

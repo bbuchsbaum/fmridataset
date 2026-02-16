@@ -102,12 +102,9 @@ chunk_iter <- function(x, nchunks, get_chunk) {
 #' }
 data_chunks.fmri_mem_dataset <- function(x, nchunks = 1, runwise = FALSE, ...) {
   mask <- get_mask(x)
-  # print("data chunks")
-  # print(nchunks)
   get_run_chunk <- function(chunk_num) {
     bvec <- x$scans[[chunk_num]]
     voxel_ind <- which(mask > 0)
-    # print(voxel_ind)
     row_ind <- which(blockids(x$sampling_frame) == chunk_num)
     ret <- data_chunk(neuroim2::series(bvec, voxel_ind),
       voxel_ind = voxel_ind,
@@ -119,12 +116,10 @@ data_chunks.fmri_mem_dataset <- function(x, nchunks = 1, runwise = FALSE, ...) {
   get_seq_chunk <- function(chunk_num) {
     bvecs <- x$scans
     voxel_ind <- maskSeq[[chunk_num]]
-    # print(voxel_ind)
-
     m <- do.call(rbind, lapply(bvecs, function(bv) neuroim2::series(bv, voxel_ind)))
-    ret <- data_chunk(do.call(rbind, lapply(bvecs, function(bv) neuroim2::series(bv, voxel_ind))),
+    ret <- data_chunk(m,
       voxel_ind = voxel_ind,
-      row_ind = 1:nrow(m),
+      row_ind = seq_len(nrow(m)),
       chunk_num = chunk_num
     )
   }
@@ -133,11 +128,8 @@ data_chunks.fmri_mem_dataset <- function(x, nchunks = 1, runwise = FALSE, ...) {
   if (runwise) {
     chunk_iter(x, length(x$scans), get_run_chunk)
   } else if (nchunks == 1) {
-    maskSeq <- one_chunk()
+    maskSeq <- one_chunk(x)
     chunk_iter(x, 1, get_seq_chunk)
-    # } #else if (nchunks == dim(mask)[3]) {
-    # maskSeq <<- slicewise_chunks(x)
-    # chunk_iter(x, length(maskSeq), get_seq_chunk)
   } else {
     maskSeq <- arbitrary_chunks(x, nchunks)
     chunk_iter(x, length(maskSeq), get_seq_chunk)
@@ -191,7 +183,7 @@ data_chunks.fmri_file_dataset <- function(x, nchunks = 1, runwise = FALSE, ...) 
     get_run_chunk <- function(chunk_num) {
       bvec <- neuroim2::read_vec(file.path(x$scans[chunk_num]), mask = mask)
       ret <- data_chunk(bvec@data,
-        voxel_ind = which(x$mask > 0),
+        voxel_ind = which(mask > 0),
         row_ind = which(blockids(x$sampling_frame) == chunk_num),
         chunk_num = chunk_num
       )
@@ -203,7 +195,7 @@ data_chunks.fmri_file_dataset <- function(x, nchunks = 1, runwise = FALSE, ...) 
       m <- neuroim2::series(v, vind)
       ret <- data_chunk(m,
         voxel_ind = vind,
-        row_ind = 1:nrow(x$event_table),
+        row_ind = seq_len(n_timepoints(x)),
         chunk_num = chunk_num
       )
     }
@@ -244,7 +236,6 @@ data_chunks.matrix_dataset <- function(x, nchunks = 1, runwise = FALSE, ...) {
   get_run_chunk <- function(chunk_num) {
     ind <- which(blockids(x$sampling_frame) == chunk_num)
     mat <- x$datamat[ind, , drop = FALSE]
-    # browser()
     data_chunk(mat, voxel_ind = 1:ncol(mat), row_ind = ind, chunk_num = chunk_num)
   }
 
@@ -332,10 +323,7 @@ collect_chunks <- function(chunk_iter) {
 #' @noRd
 #' @importFrom deflist deflist
 arbitrary_chunks <- function(x, nchunks) {
-  # print("arbitrary chunks")
-  # browser()
   mask <- get_mask(x)
-  # print(mask)
   indices <- as.integer(which(mask != 0))
 
   # If more chunks requested than voxels, cap to number of voxels
@@ -345,17 +333,13 @@ arbitrary_chunks <- function(x, nchunks) {
   }
 
   chsize <- round(length(indices) / nchunks)
-  # print(indices)
 
   assert_that(chsize > 0)
   chunkids <- sort(rep(1:nchunks, each = chsize, length.out = length(indices)))
-  # print(chunkids)
 
   mfun <- function(i) indices[chunkids == i]
-  # print(mfun)
 
   ret <- deflist::deflist(mfun, len = nchunks)
-  # print(ret[[1]])
   return(ret)
 }
 

@@ -44,19 +44,22 @@ NULL
 #' @return An object of class \code{fmri_series}
 #' @keywords internal
 new_fmri_series <- function(data, voxel_info, temporal_info, selection_info, dataset_info) {
-  stopifnot(
-    inherits(data, "delarr") ||
-      inherits(data, "DelayedMatrix") ||
-      is.matrix(data)
+  assert_that(
+    inherits(data, "delarr") || inherits(data, "DelayedMatrix") || is.matrix(data),
+    msg = "data must be a delarr, DelayedMatrix, or matrix"
   )
-  stopifnot(is.data.frame(voxel_info))
-  stopifnot(is.data.frame(temporal_info))
-  stopifnot(is.list(selection_info))
-  stopifnot(is.list(dataset_info))
+  assert_that(is.data.frame(voxel_info), msg = "voxel_info must be a data.frame")
+  assert_that(is.data.frame(temporal_info), msg = "temporal_info must be a data.frame")
+  assert_that(is.list(selection_info), msg = "selection_info must be a list")
+  assert_that(is.list(dataset_info), msg = "dataset_info must be a list")
 
   # Ensure dimensions match
-  stopifnot(nrow(voxel_info) == ncol(data))
-  stopifnot(nrow(temporal_info) == nrow(data))
+  assert_that(nrow(voxel_info) == ncol(data),
+    msg = sprintf("voxel_info rows (%d) must equal data columns (%d)", nrow(voxel_info), ncol(data))
+  )
+  assert_that(nrow(temporal_info) == nrow(data),
+    msg = sprintf("temporal_info rows (%d) must equal data rows (%d)", nrow(temporal_info), nrow(data))
+  )
 
   structure(
     list(

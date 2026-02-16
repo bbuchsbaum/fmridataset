@@ -91,14 +91,13 @@ latent_backend <- function(source, preload = FALSE) {
     )
   }
 
-  # Create backend object
-  backend <- list(
-    source = source,
-    preload = preload,
-    data = NULL,
-    dims = NULL,
-    is_open = FALSE
-  )
+  # Create backend object using environment for reference semantics
+  backend <- new.env(parent = emptyenv())
+  backend$source <- source
+  backend$preload <- preload
+  backend$data <- NULL
+  backend$dims <- NULL
+  backend$is_open <- FALSE
 
   class(backend) <- c("latent_backend", "storage_backend")
   backend
@@ -191,13 +190,23 @@ backend_open.latent_backend <- function(backend) {
     get_latent_space_dims(obj)[4]
   }))
 
+  # Try to extract voxel indices for proper mask construction
+  voxel_indices <- tryCatch(
+    {
+      idx <- neuroim2::indices(first_obj)
+      if (is.numeric(idx) && length(idx) == n_voxels) idx else NULL
+    },
+    error = function(e) NULL
+  )
+
   backend$data <- data
   backend$dims <- list(
     spatial = spatial_dims, # Original spatial dimensions
     time = total_time, # Total timepoints
     n_components = n_components, # Number of latent components
     n_voxels = n_voxels, # Number of voxels
-    n_runs = length(data)
+    n_runs = length(data),
+    voxel_indices = voxel_indices # Indices into full volume (may be NULL)
   )
   backend$is_open <- TRUE
 
@@ -210,7 +219,7 @@ backend_open.latent_backend <- function(backend) {
 backend_close.latent_backend <- function(backend) {
   backend$data <- NULL
   backend$is_open <- FALSE
-  invisible(backend)
+  invisible(NULL)
 }
 
 #' @rdname backend_get_dims
@@ -247,10 +256,17 @@ backend_get_mask.latent_backend <- function(backend) {
     )
   }
 
-  # For latent backend, return a mask for voxels
-  # All voxels with non-zero loadings are considered valid
-  # This maintains consistency with the backend contract
-  rep(TRUE, backend$dims$n_voxels)
+  # Return a full-volume mask consistent with the backend contract:
+  # length(mask) == prod(spatial_dims)
+  # Voxels with loadings are TRUE, all others FALSE.
+  full_mask <- rep(FALSE, prod(backend$dims$spatial))
+  if (!is.null(backend$dims$voxel_indices)) {
+    full_mask[backend$dims$voxel_indices] <- TRUE
+  } else {
+    # Fallback: mark all voxels as valid (for mock/test objects)
+    full_mask[] <- TRUE
+  }
+  full_mask
 }
 
 #' @rdname backend_get_data

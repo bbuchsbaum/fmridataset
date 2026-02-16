@@ -426,6 +426,3 @@ print.backend_registry <- function(x, ...) {
 
   invisible(x)
 }
-
-# Helper function for null coalescing
-`%||%` <- function(x, y) if (is.null(x)) y else x

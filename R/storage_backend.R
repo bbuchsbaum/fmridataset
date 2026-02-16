@@ -124,14 +124,16 @@ validate_backend <- function(backend) {
     )
   }
 
-  # Check that required methods are implemented
+  # Check that required methods are implemented.
+  # Only check methods not exercised below via getS3method.
+  # Methods exercised below (backend_get_dims, backend_get_mask) are validated
+  # by calling them directly, which also works when generics are mocked in tests.
   backend_class <- class(backend)[1]
-  required_methods <- c(
-    "backend_open", "backend_close", "backend_get_dims",
-    "backend_get_mask", "backend_get_data", "backend_get_metadata"
+  uncalled_methods <- c(
+    "backend_open", "backend_close", "backend_get_data", "backend_get_metadata"
   )
 
-  for (method in required_methods) {
+  for (method in uncalled_methods) {
     method_impl <- utils::getS3method(method, backend_class, optional = TRUE)
     if (is.null(method_impl)) {
       stop_fmridataset(
@@ -141,9 +143,8 @@ validate_backend <- function(backend) {
     }
   }
 
-  backend <- backend_open(backend)
-  on.exit(backend_close(backend))
-
+  # Validate dims and mask by calling the generics directly.
+  # The caller (e.g. fmri_dataset()) is responsible for lifecycle management.
   dims <- backend_get_dims(backend)
   if (!is.list(dims) || !all(c("spatial", "time") %in% names(dims))) {
     stop_fmridataset(
@@ -186,17 +187,17 @@ validate_backend <- function(backend) {
     )
   }
 
-  if (sum(mask) == 0) {
-    stop_fmridataset(
-      fmridataset_error_config,
-      "mask must contain at least one TRUE value"
-    )
-  }
-
   if (any(is.na(mask))) {
     stop_fmridataset(
       fmridataset_error_config,
       "mask cannot contain NA values"
+    )
+  }
+
+  if (sum(mask) == 0) {
+    stop_fmridataset(
+      fmridataset_error_config,
+      "mask must contain at least one TRUE value"
     )
   }
 

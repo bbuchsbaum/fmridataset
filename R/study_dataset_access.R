@@ -1,4 +1,9 @@
 #' @export
+get_data.fmri_study_dataset <- function(x, ...) {
+  backend_get_data(x$backend, ...)
+}
+
+#' @export
 get_data_matrix.fmri_study_dataset <- function(x, subject_id = NULL, ...) {
   if (!is.null(subject_id)) {
     # Return data for specific subject(s)

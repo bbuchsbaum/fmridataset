@@ -8,7 +8,7 @@ output:
     toc_depth: 3
     number_sections: true
 vignette: >
-  %\VignetteIndexEntry{Advanced Backend Development: Creating Sophisticated Storage Extensions}
+  %\VignetteIndexEntry{Advanced Backend Development: Storage Extensions}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

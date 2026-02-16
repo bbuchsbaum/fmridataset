@@ -73,7 +73,7 @@ test_that("backend validation checks mask requirements", {
     {
       expect_error(
         validate_backend(mock_backend),
-        "missing value where TRUE/FALSE needed"
+        "mask cannot contain NA values"
       )
     }
   )

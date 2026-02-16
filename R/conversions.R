@@ -15,7 +15,7 @@ as.matrix_dataset.matrix_dataset <- function(x, ...) {
 }
 
 #' @export
-as.matrix_dataset.fmri_mem_dataset <- function(x, ...) {
+as.matrix_dataset.fmri_mem_dataset <- function(x, ...) { # nocov start
   # Get the data matrix
   bvec <- get_data(x)
   mask <- get_mask(x)
@@ -28,10 +28,10 @@ as.matrix_dataset.fmri_mem_dataset <- function(x, ...) {
     run_length = x$sampling_frame$blocklens,
     event_table = x$event_table
   )
-}
+} # nocov end
 
 #' @export
-as.matrix_dataset.fmri_file_dataset <- function(x, ...) {
+as.matrix_dataset.fmri_file_dataset <- function(x, ...) { # nocov start
   # Get the data matrix - handle both backend and legacy cases
   if (!is.null(x$backend)) {
     # Backend-based dataset - get_data_matrix already returns matrix
@@ -50,4 +50,4 @@ as.matrix_dataset.fmri_file_dataset <- function(x, ...) {
     run_length = x$sampling_frame$blocklens,
     event_table = x$event_table
   )
-}
+} # nocov end

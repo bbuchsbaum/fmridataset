@@ -1,3 +1,4 @@
+# nocov start
 .onLoad <- function(libname, pkgname) {
   # Register built-in backends
   register_builtin_backends()
@@ -21,3 +22,4 @@
 
   invisible()
 }
+# nocov end

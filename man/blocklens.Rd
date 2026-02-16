@@ -3,25 +3,13 @@
 %   R/sampling_frame_adapters.R
 \name{blocklens}
 \alias{blocklens}
-\alias{blocklens.matrix_dataset}
 \alias{blocklens.fmri_dataset}
-\alias{blocklens.fmri_mem_dataset}
-\alias{blocklens.fmri_file_dataset}
-\alias{blocklens.fmri_study_dataset}
 \alias{blocklens.sampling_frame}
 \title{Get Block Lengths from Objects}
 \usage{
 blocklens(x, ...)
 
-\method{blocklens}{matrix_dataset}(x, ...)
-
 \method{blocklens}{fmri_dataset}(x, ...)
-
-\method{blocklens}{fmri_mem_dataset}(x, ...)
-
-\method{blocklens}{fmri_file_dataset}(x, ...)
-
-\method{blocklens}{fmri_study_dataset}(x, ...)
 
 \method{blocklens}{sampling_frame}(x, ...)
 }

@@ -153,6 +153,3 @@ backend_get_data.matrix_backend <- function(backend, rows = NULL, cols = NULL) {
 backend_get_metadata.matrix_backend <- function(backend) {
   backend$metadata
 }
-
-# Helper function
-`%||%` <- function(x, y) if (is.null(x)) y else x

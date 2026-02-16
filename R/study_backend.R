@@ -203,6 +203,21 @@ backend_get_data.study_backend <- function(backend, rows = NULL, cols = NULL) {
   )
 }
 
+#' @rdname backend_get_metadata
+#' @method backend_get_metadata study_backend
+#' @export
+backend_get_metadata.study_backend <- function(backend) {
+  # Collect metadata from first subject backend as representative
+  first_meta <- tryCatch(
+    backend_get_metadata(backend$backends[[1]]),
+    error = function(e) list()
+  )
+  first_meta$storage_format <- "study"
+  first_meta$n_subjects <- length(backend$backends)
+  first_meta$subject_ids <- backend$subject_ids
+  first_meta
+}
+
 .collect_study_backend_block <- function(backends, rows, cols,
                                          subject_boundaries, n_time, n_vox) {
   n_rows <- length(rows)

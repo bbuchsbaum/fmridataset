@@ -32,6 +32,10 @@ register_study_backend_seed_methods <- function() {
     )
   }
 
+  # nocov start
+  # S4 class definitions can only be registered once per session;
+
+  # re-registration errors with "locked definition".
   methods::setClass(
     "StudyBackendSeed",
     slots = list(
@@ -104,6 +108,7 @@ register_study_backend_seed_methods <- function() {
       n_vox = x@dims[2]
     )
   })
+  # nocov end
 
   .study_backend_seed_env$registered <- TRUE
   invisible(NULL)

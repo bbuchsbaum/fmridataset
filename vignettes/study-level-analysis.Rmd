@@ -384,11 +384,11 @@ cat("Time series length:", nrow(series_subset), "timepoints\n")
 
 # Convert to tibble for advanced analysis
 if (requireNamespace("dplyr", quietly = TRUE)) {
-  series_tibble <- as_tibble(series_subset)
+  series_tibble <- tibble::as_tibble(series_subset)
 
   # Group by subject for subject-specific analysis
-  subject_summary <- series_tibble %>%
-    dplyr::group_by(subject_id) %>%
+  subject_summary <- series_tibble |>
+    dplyr::group_by(subject_id) |>
     dplyr::summarise(
       mean_signal = mean(signal, na.rm = TRUE),
       signal_sd = sd(signal, na.rm = TRUE),

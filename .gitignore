@@ -5,3 +5,4 @@
 docs
 ..Rcheck/
 repomix-output.xml
+.covr_result.rds

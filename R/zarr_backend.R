@@ -69,15 +69,14 @@ zarr_backend <- function(source,
     )
   }
 
-  # Create backend object
-  backend <- list(
-    source = source,
-    preload = preload,
-    zarr_array = NULL,
-    data_cache = NULL,
-    dims = NULL,
-    is_open = FALSE
-  )
+  # Create backend object using environment for reference semantics
+  backend <- new.env(parent = emptyenv())
+  backend$source <- source
+  backend$preload <- preload
+  backend$zarr_array <- NULL
+  backend$data_cache <- NULL
+  backend$dims <- NULL
+  backend$is_open <- FALSE
 
   class(backend) <- c("zarr_backend", "storage_backend")
   backend

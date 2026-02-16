@@ -3,25 +3,13 @@
 %   R/sampling_frame_adapters.R
 \name{n_timepoints}
 \alias{n_timepoints}
-\alias{n_timepoints.matrix_dataset}
 \alias{n_timepoints.fmri_dataset}
-\alias{n_timepoints.fmri_mem_dataset}
-\alias{n_timepoints.fmri_file_dataset}
-\alias{n_timepoints.fmri_study_dataset}
 \alias{n_timepoints.sampling_frame}
 \title{Get Number of Timepoints from Sampling Frame}
 \usage{
 n_timepoints(x, ...)
 
-\method{n_timepoints}{matrix_dataset}(x, ...)
-
 \method{n_timepoints}{fmri_dataset}(x, ...)
-
-\method{n_timepoints}{fmri_mem_dataset}(x, ...)
-
-\method{n_timepoints}{fmri_file_dataset}(x, ...)
-
-\method{n_timepoints}{fmri_study_dataset}(x, ...)
 
 \method{n_timepoints}{sampling_frame}(x, ...)
 }
