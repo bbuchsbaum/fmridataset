@@ -165,6 +165,21 @@ class LatentBackend(StorageBackend):
         n_components = self._loadings.shape[1] if self._loadings is not None else 0
         if self._dims is None:
             raise BackendIOError("Backend not opened", operation="get_metadata")
+        basis = self._basis_parts[0] if self._basis_parts else np.empty((0, 0), dtype=float)
+        loadings = self._loadings if self._loadings is not None else np.empty((0, 0), dtype=float)
+
+        loadings_norm = np.sqrt(np.sum(loadings**2, axis=0)) if loadings.size else np.array([])
+        if hasattr(loadings, "nnz") and not isinstance(loadings, np.ndarray):
+            try:
+                nnz = float(loadings.nnz)
+                loadings_sparsity = 1 - (nnz / loadings.size)
+            except Exception:
+                loadings_sparsity = 0.0
+        else:
+            loadings_sparsity = 0.0
+
+        basis_variance = np.var(basis, axis=0, ddof=1) if basis.size else np.array([])
+
         return {
             "format": "latent_h5",
             "storage_format": "latent",
@@ -172,4 +187,7 @@ class LatentBackend(StorageBackend):
             "n_voxels": self._dims.spatial[0],
             "n_runs": len(self._run_lengths),
             "has_offset": self._offset is not None,
+            "basis_variance": basis_variance,
+            "loadings_norm": loadings_norm,
+            "loadings_sparsity": loadings_sparsity,
         }

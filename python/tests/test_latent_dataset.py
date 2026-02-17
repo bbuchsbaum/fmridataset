@@ -187,11 +187,39 @@ class TestLatentDatasetMethods:
         assert info["n_components"] == loadings.shape[1]
         assert info["format"] == "latent_h5"
 
+    def test_get_component_info_metadata_fields(self, latent_h5_file):
+        path, basis, loadings, _, _ = latent_h5_file
+        ds = latent_dataset(source=path, TR=2.0, run_length=20)
+        info = ds.get_component_info()
+
+        np.testing.assert_allclose(
+            info["basis_variance"],
+            np.var(basis, axis=0, ddof=1),
+        )
+        np.testing.assert_allclose(
+            info["loadings_norm"],
+            np.sqrt(np.sum(loadings**2, axis=0)),
+        )
+        assert info["loadings_sparsity"] == 0
+        assert info["n_voxels"] == loadings.shape[0]
+        assert info["n_runs"] == 1
+
     def test_get_data(self, latent_h5_file):
         path, _, _, _, expected = latent_h5_file
         ds = latent_dataset(source=path, TR=2.0, run_length=20)
         data = ds.get_data()
         np.testing.assert_array_almost_equal(data, expected)
+
+    def test_reconstruct_voxels(self, latent_h5_file):
+        path, _, _, _, expected = latent_h5_file
+        ds = latent_dataset(source=path, TR=2.0, run_length=20)
+        recon = ds.reconstruct_voxels()
+        np.testing.assert_array_almost_equal(recon, expected)
+
+        row_idx = np.array([0, 3, 5], dtype=np.intp)
+        vox_idx = np.array([0, 2], dtype=np.intp)
+        recon_sub = ds.reconstruct_voxels(rows=row_idx, voxels=vox_idx)
+        np.testing.assert_array_almost_equal(recon_sub, expected[row_idx][:, vox_idx])
 
 
 class TestLatentDatasetRepr:

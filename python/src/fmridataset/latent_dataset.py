@@ -78,6 +78,14 @@ class LatentDataset(FmriDataset):
         """Return metadata about latent components."""
         return self._backend.get_metadata()
 
+    def reconstruct_voxels(
+        self,
+        rows: NDArray[np.intp] | None = None,
+        voxels: NDArray[np.intp] | None = None,
+    ) -> NDArray[np.floating[Any]]:
+        """Alias for latent to voxel-space reconstruction."""
+        return self.get_data(rows=rows, cols=voxels)
+
 
 def latent_dataset(
     source: str | list[str],

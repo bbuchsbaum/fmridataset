@@ -161,4 +161,10 @@ class TestLatentBackendMetadata:
         assert meta["format"] == "latent_h5"
         assert meta["n_components"] == 5
         assert meta["has_offset"] is True
+        assert "basis_variance" in meta
+        assert "loadings_norm" in meta
+        assert "loadings_sparsity" in meta
+        np.testing.assert_allclose(meta["basis_variance"], np.var(latent_h5[1], axis=0, ddof=1))
+        np.testing.assert_allclose(meta["loadings_norm"], np.sqrt(np.sum(latent_h5[2] ** 2, axis=0)))
+        assert meta["loadings_sparsity"] == 0.0
         backend.close()
