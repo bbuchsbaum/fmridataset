@@ -9,6 +9,7 @@ from fmridataset import (
     FmriDataset,
     MatrixBackend,
     MatrixDataset,
+    fmri_zarr_dataset,
     SamplingFrame,
     fmri_dataset,
     matrix_dataset,
@@ -59,7 +60,7 @@ class TestMatrixDatasetConstructor:
     def test_default_event_table_has_event_index(self) -> None:
         mat = np.zeros((20, 4))
         ds = matrix_dataset(mat, TR=2.0, run_length=20)
-        assert list(ds.event_table.columns) == ["event_index"]
+        assert len(ds.event_table.columns) == 0
         assert len(ds.event_table) == 0
 
     def test_empty_event_table_is_normalized(self) -> None:
@@ -70,7 +71,7 @@ class TestMatrixDatasetConstructor:
             run_length=20,
             event_table=pd.DataFrame(),
         )
-        assert list(ds.event_table.columns) == ["event_index"]
+        assert len(ds.event_table.columns) == 0
         assert len(ds.event_table) == 0
 
     def test_multi_dimensional_datamat_rejected(self) -> None:
@@ -86,6 +87,19 @@ class TestMatrixDatasetConstructor:
         mat = np.random.default_rng(1).standard_normal((10, 5))
         ds = matrix_dataset(mat, TR=1.0, run_length=10)
         np.testing.assert_array_equal(ds.datamat, mat)
+
+
+class TestZarrDatasetConstructor:
+    def test_fmri_zarr_dataset_alias(self, zarr_store):
+        zarr_dataset = fmri_zarr_dataset(
+            zarr_source=str(zarr_store),
+            TR=2.0,
+            run_length=10,
+            preload=False,
+        )
+
+        assert isinstance(zarr_dataset, FmriDataset)
+        assert zarr_dataset.n_timepoints == 10
 
 
 class TestFmriDatasetFromBackend:

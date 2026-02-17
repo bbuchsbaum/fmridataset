@@ -15,6 +15,18 @@ from fmridataset import (
 
 
 @pytest.fixture()
+def zarr_store(tmp_path, rng):
+    """Create a small 4D zarr array on disk."""
+    zarr = pytest.importorskip("zarr")
+    nx, ny, nz, nt = 3, 3, 3, 10
+    data_4d = rng.standard_normal((nx, ny, nz, nt)).astype(np.float64)
+    store_path = str(tmp_path / "test.zarr")
+    zarr_array = zarr.open(store_path, mode="w", shape=(nx, ny, nz, nt), dtype=np.float64)
+    zarr_array[:] = data_4d
+    return store_path
+
+
+@pytest.fixture()
 def rng() -> np.random.Generator:
     return np.random.default_rng(42)
 

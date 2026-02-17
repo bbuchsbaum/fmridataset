@@ -69,6 +69,11 @@ class TestLatentDatasetConstructor:
         with pytest.raises(ValueError, match="run_length values must be integers"):
             latent_dataset(source=path, TR=2.0, run_length=[2.5, 2.5])
 
+    def test_run_length_sum_must_match_time(self, latent_h5_file):
+        path, _, _, _, _ = latent_h5_file
+        with pytest.raises(ValueError, match="sum"):
+            latent_dataset(source=path, TR=2.0, run_length=[5, 10])
+
     def test_relative_source_resolves_base_path(self, tmp_path, rng) -> None:
         path = tmp_path / "relative.lv.h5"
 
@@ -148,14 +153,29 @@ class TestLatentDatasetConstructor:
         assert len(ds.event_table.columns) == 0
         assert len(ds.event_table) == 0
 
+    def test_censor_propagates_to_dataset(self, latent_h5_file):
+        path, _, _, _, _ = latent_h5_file
+        censor = np.array([1, 0, 1, 0] + [0] * 16, dtype=np.intp)
+        ds = latent_dataset(
+            source=path,
+            TR=2.0,
+            run_length=20,
+            censor=censor,
+        )
+        np.testing.assert_array_equal(ds.censor, censor)
+
+    def test_run_length_provided_default_censor_zero_vector(self, latent_h5_file):
+        path, _, _, _, _ = latent_h5_file
+        ds = latent_dataset(source=path, TR=2.0, run_length=20)
+        np.testing.assert_array_equal(ds.censor, np.zeros(20, dtype=np.intp))
+
 
 class TestLatentDatasetMethods:
     def test_get_latent_scores(self, latent_h5_file):
-        path, basis, loadings, _, expected = latent_h5_file
+        path, basis, loadings, _, _ = latent_h5_file
         ds = latent_dataset(source=path, TR=2.0, run_length=20)
-        # get_latent_scores returns the reconstructed data (via get_data)
         scores = ds.get_latent_scores()
-        np.testing.assert_array_almost_equal(scores, expected)
+        np.testing.assert_array_almost_equal(scores, basis)
 
     def test_get_spatial_loadings(self, latent_h5_file):
         path, _, loadings, _, _ = latent_h5_file
@@ -205,10 +225,16 @@ class TestLatentDatasetMethods:
         assert info["n_runs"] == 1
 
     def test_get_data(self, latent_h5_file):
-        path, _, _, _, expected = latent_h5_file
+        path, basis, _, _, _ = latent_h5_file
         ds = latent_dataset(source=path, TR=2.0, run_length=20)
         data = ds.get_data()
-        np.testing.assert_array_almost_equal(data, expected)
+        np.testing.assert_array_almost_equal(data, basis)
+
+    def test_get_data_warns(self, latent_h5_file):
+        path, _, _, _, _ = latent_h5_file
+        ds = latent_dataset(source=path, TR=2.0, run_length=20)
+        with pytest.warns(UserWarning, match="latent scores"):
+            _ = ds.get_data()
 
     def test_reconstruct_voxels(self, latent_h5_file):
         path, _, _, _, expected = latent_h5_file
