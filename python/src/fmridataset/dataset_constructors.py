@@ -26,6 +26,9 @@ def _coerce_run_length(run_length: int | Sequence[int]) -> list[int]:
 
     normalized: list[int] = []
     for value in values:
+        if isinstance(value, (str, bytes)):
+            raise ValueError("run_length values must be numeric")
+
         try:
             value_float = float(value)
         except (TypeError, ValueError) as exc:

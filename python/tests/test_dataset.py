@@ -39,6 +39,11 @@ class TestMatrixDatasetConstructor:
         with pytest.raises(ValueError, match="run_length values must be integers"):
             matrix_dataset(mat, TR=2.0, run_length=[2.5, 2.5])
 
+    def test_run_length_string_rejected(self) -> None:
+        mat = np.zeros((2, 4))
+        with pytest.raises(ValueError, match="run_length values must be numeric"):
+            matrix_dataset(mat, TR=2.0, run_length="2")
+
     def test_vector_input_becomes_column_matrix(self) -> None:
         vec = np.arange(6, dtype=float)
         ds = matrix_dataset(vec, TR=1.0, run_length=6)
@@ -104,6 +109,19 @@ class TestFmriDatasetFromBackend:
         backend = MatrixBackend(data_matrix=mat)
         with pytest.raises(ValueError, match="run_length values must be integers"):
             fmri_dataset(backend, TR=1.0, run_length=[2.5, 2.5])
+
+    def test_run_length_string_rejected(self) -> None:
+        mat = np.zeros((2, 10))
+        backend = MatrixBackend(data_matrix=mat)
+        with pytest.raises(ValueError, match="run_length values must be numeric"):
+            fmri_dataset(backend, TR=1.0, run_length="2")
+
+    def test_default_event_table_remains_empty(self) -> None:
+        mat = np.zeros((20, 10))
+        backend = MatrixBackend(data_matrix=mat)
+        ds = fmri_dataset(backend, TR=1.0, run_length=20)
+        assert len(ds.event_table.columns) == 0
+        assert len(ds.event_table) == 0
 
 
 class TestDataAccess:
