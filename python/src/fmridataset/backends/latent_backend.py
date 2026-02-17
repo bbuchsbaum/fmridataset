@@ -163,8 +163,13 @@ class LatentBackend(StorageBackend):
 
     def get_metadata(self) -> dict[str, Any]:
         n_components = self._loadings.shape[1] if self._loadings is not None else 0
+        if self._dims is None:
+            raise BackendIOError("Backend not opened", operation="get_metadata")
         return {
             "format": "latent_h5",
+            "storage_format": "latent",
             "n_components": n_components,
+            "n_voxels": self._dims.spatial[0],
+            "n_runs": len(self._run_lengths),
             "has_offset": self._offset is not None,
         }

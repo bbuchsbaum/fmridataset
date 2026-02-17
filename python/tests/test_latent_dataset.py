@@ -178,6 +178,15 @@ class TestLatentDatasetMethods:
         assert mask.shape == (loadings.shape[1],)
         assert mask.all()
 
+    def test_get_component_info(self, latent_h5_file):
+        path, _, loadings, _, _ = latent_h5_file
+        ds = latent_dataset(source=path, TR=2.0, run_length=20)
+        info = ds.get_component_info()
+        assert isinstance(info, dict)
+        assert info["storage_format"] == "latent"
+        assert info["n_components"] == loadings.shape[1]
+        assert info["format"] == "latent_h5"
+
     def test_get_data(self, latent_h5_file):
         path, _, _, _, expected = latent_h5_file
         ds = latent_dataset(source=path, TR=2.0, run_length=20)

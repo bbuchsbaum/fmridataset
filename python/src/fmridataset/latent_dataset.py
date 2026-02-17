@@ -74,6 +74,10 @@ class LatentDataset(FmriDataset):
         n_components = int(meta.get("n_components", 0))
         return np.ones(n_components, dtype=np.bool_)
 
+    def get_component_info(self) -> dict[str, Any]:
+        """Return metadata about latent components."""
+        return self._backend.get_metadata()
+
 
 def latent_dataset(
     source: str | list[str],
