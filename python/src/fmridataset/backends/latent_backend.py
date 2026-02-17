@@ -50,6 +50,7 @@ class LatentBackend(StorageBackend):
         self._dims: BackendDims | None = None
         self._data: NDArray[np.floating[Any]] | None = None
         self._is_open = False
+        self._run_lengths: list[int] = []
 
     def open(self) -> None:
         try:
@@ -61,6 +62,7 @@ class LatentBackend(StorageBackend):
             ) from exc
 
         self._basis_parts = []
+        self._run_lengths = []
         total_time = 0
         n_voxels: int | None = None
 
@@ -80,6 +82,7 @@ class LatentBackend(StorageBackend):
                     )
                 basis = np.asarray(f["basis"], dtype=np.float64)
                 self._basis_parts.append(basis)
+                self._run_lengths.append(int(basis.shape[0]))
                 total_time += basis.shape[0]
 
                 if self._loadings is None and "loadings" in f:
@@ -130,6 +133,12 @@ class LatentBackend(StorageBackend):
         if self._dims is None:
             raise BackendIOError("Backend not opened", operation="get_dims")
         return self._dims
+
+    @property
+    def run_lengths(self) -> list[int]:
+        if not self._is_open:
+            raise BackendIOError("Backend not opened", operation="run_lengths")
+        return self._run_lengths.copy()
 
     def get_mask(self) -> NDArray[np.bool_]:
         if self._mask_vec is None:

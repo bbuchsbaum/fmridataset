@@ -50,6 +50,20 @@ class TestLatentDatasetConstructor:
         ds = latent_dataset(source=path, TR=2.0, run_length=20, event_table=events)
         assert len(ds.event_table) == 2
 
+    def test_duplicate_event_table_columns_error(self, latent_h5_file):
+        path, _, _, _, _ = latent_h5_file
+        bad_events = pd.DataFrame(
+            [[0.0, 1.0], [2.0, 3.0]],
+            columns=["onset", "onset"],
+        )
+        with pytest.raises(ValueError, match="columns must be unique"):
+            latent_dataset(
+                source=path,
+                TR=2.0,
+                run_length=20,
+                event_table=bad_events,
+            )
+
     def test_run_length_non_integer_rejected(self, latent_h5_file):
         path, _, _, _, _ = latent_h5_file
         with pytest.raises(ValueError, match="run_length values must be integers"):
@@ -75,6 +89,59 @@ class TestLatentDatasetConstructor:
         )
         assert ds.n_timepoints == 20
 
+    def test_run_length_inferred_from_backend_when_missing(self, tmp_path, rng) -> None:
+        path = tmp_path / "inferred.lv.h5"
+
+        basis = rng.standard_normal((12, 3)).astype(np.float64)
+        loadings = rng.standard_normal((25, 3)).astype(np.float64)
+        offset = rng.standard_normal(25).astype(np.float64)
+
+        with h5py.File(str(path), "w") as f:
+            f.create_dataset("basis", data=basis)
+            f.create_dataset("loadings", data=loadings)
+            f.create_dataset("offset", data=offset)
+
+        ds = latent_dataset(source=str(path), TR=2.0)
+        assert ds.n_timepoints == 12
+        assert list(ds.blocklens) == [12]
+
+    def test_run_length_inferred_from_run_length_alias_zero(self, tmp_path, rng) -> None:
+        run_lengths = [7, 13]
+        loadings = rng.standard_normal((18, 4)).astype(np.float64)
+
+        paths = []
+        for i, n_time in enumerate(run_lengths):
+            path = tmp_path / f"run{i}.lv.h5"
+            basis = rng.standard_normal((n_time, 4)).astype(np.float64)
+            with h5py.File(str(path), "w") as f:
+                f.create_dataset("basis", data=basis)
+                f.create_dataset("loadings", data=loadings)
+            paths.append(str(path))
+
+        ds = latent_dataset(
+            source=paths,
+            TR=2.0,
+            run_length=0,
+        )
+        assert list(ds.blocklens) == run_lengths
+        assert ds.n_runs == 2
+        assert ds.n_timepoints == sum(run_lengths)
+
+    def test_run_length_inferred_from_empty_vector(self, tmp_path, rng) -> None:
+        path = tmp_path / "inferred-empty.lv.h5"
+        basis = rng.standard_normal((11, 3)).astype(np.float64)
+        loadings = rng.standard_normal((15, 3)).astype(np.float64)
+        offset = rng.standard_normal(15).astype(np.float64)
+
+        with h5py.File(str(path), "w") as f:
+            f.create_dataset("basis", data=basis)
+            f.create_dataset("loadings", data=loadings)
+            f.create_dataset("offset", data=offset)
+
+        ds = latent_dataset(source=str(path), TR=2.0, run_length=[])
+        assert ds.n_timepoints == 11
+        assert list(ds.blocklens) == [11]
+
     def test_default_event_table_remains_empty(self, latent_h5_file):
         path, _, _, _, _ = latent_h5_file
         ds = latent_dataset(source=path, TR=2.0, run_length=20)
@@ -95,6 +162,21 @@ class TestLatentDatasetMethods:
         ds = latent_dataset(source=path, TR=2.0, run_length=20)
         result = ds.get_spatial_loadings()
         np.testing.assert_array_almost_equal(result, loadings)
+
+    def test_get_spatial_loadings_components(self, latent_h5_file):
+        path, _, loadings, _, _ = latent_h5_file
+        ds = latent_dataset(source=path, TR=2.0, run_length=20)
+        comps = np.array([0, 2], dtype=np.intp)
+        result = ds.get_spatial_loadings(components=comps)
+        np.testing.assert_array_almost_equal(result, loadings[:, comps])
+
+    def test_get_mask_is_component_mask(self, latent_h5_file):
+        path, _, loadings, _, _ = latent_h5_file
+        ds = latent_dataset(source=path, TR=2.0, run_length=20)
+        mask = ds.get_mask()
+        assert mask.dtype == np.bool_
+        assert mask.shape == (loadings.shape[1],)
+        assert mask.all()
 
     def test_get_data(self, latent_h5_file):
         path, _, _, _, expected = latent_h5_file

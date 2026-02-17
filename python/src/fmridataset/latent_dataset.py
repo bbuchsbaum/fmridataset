@@ -6,7 +6,8 @@ Port of ``R/latent_dataset.R``.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -15,7 +16,7 @@ from numpy.typing import NDArray
 from .backends.latent_backend import LatentBackend
 from .dataset import FmriDataset
 from .sampling_frame import SamplingFrame
-from .dataset_constructors import _coerce_run_length
+from .dataset_constructors import _coerce_run_length, _ensure_event_table_unique
 
 
 class LatentDataset(FmriDataset):
@@ -38,12 +39,25 @@ class LatentDataset(FmriDataset):
         """Return the latent scores (time x components)."""
         return self._latent_backend.get_data(rows=rows, cols=cols)
 
-    def get_spatial_loadings(self) -> NDArray[np.floating[Any]]:
-        """Return the spatial loadings matrix (voxels x components)."""
+    def get_spatial_loadings(
+        self,
+        components: NDArray[np.intp] | Sequence[int] | None = None,
+    ) -> NDArray[np.floating[Any]]:
+        """Return spatial loadings (voxels x components).
+
+        Parameters
+        ----------
+        components:
+            Optional component indices to subset columns.
+        """
         lb = self._latent_backend
         if lb._loadings is None:
             raise RuntimeError("Backend not opened")
-        return lb._loadings.copy()
+        loadings = lb._loadings.copy()
+        if components is None:
+            return loadings
+        comps = np.asarray(components, dtype=np.intp)
+        return loadings[:, comps]
 
     def __repr__(self) -> str:
         meta = self._backend.get_metadata()
@@ -54,11 +68,17 @@ class LatentDataset(FmriDataset):
             f"runs={self.n_runs} TR={self.TR}>"
         )
 
+    def get_mask(self) -> NDArray[np.bool_]:
+        """Return mask for latent components."""
+        meta = self._backend.get_metadata()
+        n_components = int(meta.get("n_components", 0))
+        return np.ones(n_components, dtype=np.bool_)
+
 
 def latent_dataset(
     source: str | list[str],
     TR: float,  # noqa: N803
-    run_length: int | Sequence[int],
+    run_length: int | Sequence[int] | None = None,
     base_path: str = ".",
     event_table: pd.DataFrame | None = None,
     preload: bool = False,
@@ -80,8 +100,6 @@ def latent_dataset(
     preload : bool
         Eagerly materialise the reconstruction.
     """
-    run_length = _coerce_run_length(run_length)
-
     if isinstance(source, (str, Path)):
         source_paths = [Path(base_path) / Path(source)]
     else:
@@ -96,10 +114,27 @@ def latent_dataset(
     backend = LatentBackend(source=source_paths, preload=preload)
     backend.open()
 
+    if run_length is None:
+        run_length = backend.run_lengths
+    else:
+        if isinstance(run_length, (int, np.integer)):
+            if int(run_length) == 0:
+                run_length = backend.run_lengths
+            else:
+                run_length = [int(run_length)]
+        else:
+            run_length_seq = list(run_length)
+            if len(run_length_seq) == 0 or sum(run_length_seq) == 0:
+                run_length = backend.run_lengths
+            else:
+                run_length = run_length_seq
+
+    run_length = _coerce_run_length(run_length)
+
     frame = SamplingFrame.create(blocklens=run_length, TR=TR)
 
     return LatentDataset(
         backend=backend,
         sampling_frame=frame,
-        event_table=event_table,
+        event_table=_ensure_event_table_unique(event_table),
     )
