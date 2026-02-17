@@ -133,6 +133,14 @@ test_that("zarr_backend handles remote URLs", {
   # Test HTTPS URL
   backend <- zarr_backend("https://example.com/data.zarr")
   expect_equal(backend$source, "https://example.com/data.zarr")
+
+  # file:// URL should be treated as a passthrough URI
+  tmp_dir <- tempfile()
+  on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
+  create_test_zarr(path = tmp_dir, dims = c(2, 2, 2, 5))
+  backend <- zarr_backend(paste0("file://", tmp_dir))
+  expect_silent(backend <- backend_open(backend))
+  expect_equal(backend$dims$time, 5)
 })
 
 test_that("zarr_backend integrates with fmri_dataset", {

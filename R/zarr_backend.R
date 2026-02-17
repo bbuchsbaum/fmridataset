@@ -94,7 +94,12 @@ backend_open.zarr_backend <- function(backend) {
   tryCatch(
     {
       # For local paths, ensure they exist
-      if (!grepl("^(https?://|s3://|gs://)", backend$source) &&
+      is_remote_source <- grepl(
+        "^(https?://|s3://|gs://|file://)",
+        backend$source,
+        ignore.case = TRUE
+      )
+      if (!is_remote_source &&
         !file.exists(backend$source)) {
         stop_fmridataset(
           fmridataset_error_backend_io,
