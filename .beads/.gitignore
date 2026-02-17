@@ -17,3 +17,4 @@ daemon.pid
 .local_version
 sync-state.json
 beads.left.*
+.br_history/
