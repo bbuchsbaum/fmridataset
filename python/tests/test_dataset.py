@@ -34,6 +34,11 @@ class TestMatrixDatasetConstructor:
         with pytest.raises(ValueError, match="sum"):
             matrix_dataset(mat, TR=2.0, run_length=[50, 60])
 
+    def test_run_length_non_integer_rejected(self) -> None:
+        mat = np.zeros((5, 4))
+        with pytest.raises(ValueError, match="run_length values must be integers"):
+            matrix_dataset(mat, TR=2.0, run_length=[2.5, 2.5])
+
     def test_vector_input_becomes_column_matrix(self) -> None:
         vec = np.arange(6, dtype=float)
         ds = matrix_dataset(vec, TR=1.0, run_length=6)
@@ -45,6 +50,34 @@ class TestMatrixDatasetConstructor:
         et = pd.DataFrame({"onset": [10, 20], "condition": ["A", "B"]})
         ds = matrix_dataset(mat, TR=2.0, run_length=100, event_table=et)
         assert len(ds.event_table) == 2
+
+    def test_default_event_table_has_event_index(self) -> None:
+        mat = np.zeros((20, 4))
+        ds = matrix_dataset(mat, TR=2.0, run_length=20)
+        assert list(ds.event_table.columns) == ["event_index"]
+        assert len(ds.event_table) == 0
+
+    def test_empty_event_table_is_normalized(self) -> None:
+        mat = np.zeros((20, 4))
+        ds = matrix_dataset(
+            mat,
+            TR=2.0,
+            run_length=20,
+            event_table=pd.DataFrame(),
+        )
+        assert list(ds.event_table.columns) == ["event_index"]
+        assert len(ds.event_table) == 0
+
+    def test_multi_dimensional_datamat_flattens_like_r_as_matrix(self) -> None:
+        mat = np.arange(24, dtype=np.float64).reshape(2, 3, 4)
+        ds = matrix_dataset(
+            mat,
+            TR=2.0,
+            run_length=24,
+        )
+        expected = mat.reshape(-1, 1, order="F")
+        assert ds.datamat.shape == (24, 1)
+        np.testing.assert_array_equal(ds.datamat, expected)
 
     def test_datamat_property(self) -> None:
         mat = np.random.default_rng(1).standard_normal((10, 5))
@@ -65,6 +98,12 @@ class TestFmriDatasetFromBackend:
         backend = MatrixBackend(data_matrix=mat)
         with pytest.raises(ConfigError, match="n_timepoints"):
             fmri_dataset(backend, TR=1.0, run_length=[15, 10])
+
+    def test_run_length_non_integer_rejected(self) -> None:
+        mat = np.zeros((5, 10))
+        backend = MatrixBackend(data_matrix=mat)
+        with pytest.raises(ValueError, match="run_length values must be integers"):
+            fmri_dataset(backend, TR=1.0, run_length=[2.5, 2.5])
 
 
 class TestDataAccess:

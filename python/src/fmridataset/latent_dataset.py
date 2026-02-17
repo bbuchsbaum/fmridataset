@@ -14,6 +14,7 @@ from numpy.typing import NDArray
 from .backends.latent_backend import LatentBackend
 from .dataset import FmriDataset
 from .sampling_frame import SamplingFrame
+from .dataset_constructors import _coerce_run_length
 
 
 class LatentDataset(FmriDataset):
@@ -75,10 +76,7 @@ def latent_dataset(
     preload : bool
         Eagerly materialise the reconstruction.
     """
-    if isinstance(run_length, (int, np.integer)):
-        run_length = [int(run_length)]
-    else:
-        run_length = [int(r) for r in run_length]
+    run_length = _coerce_run_length(run_length)
 
     backend = LatentBackend(source=source, preload=preload)
     backend.open()

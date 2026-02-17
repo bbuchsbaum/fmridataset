@@ -17,6 +17,32 @@ from .dataset import FmriDataset, MatrixDataset
 from .sampling_frame import SamplingFrame
 
 
+def _coerce_run_length(run_length: int | Sequence[int]) -> list[int]:
+    """Normalize and validate run lengths to positive integer values."""
+
+    values = [run_length] if isinstance(run_length, (int, np.integer)) else list(run_length)
+    if len(values) == 0:
+        raise ValueError("run_length must be a non-empty sequence of positive integers")
+
+    normalized: list[int] = []
+    for value in values:
+        try:
+            value_float = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("run_length values must be numeric") from exc
+
+        if not value_float.is_integer():
+            raise ValueError("run_length values must be integers")
+
+        value_int = int(value_float)
+        if value_int <= 0:
+            raise ValueError("all run_length values must be positive")
+
+        normalized.append(value_int)
+
+    return normalized
+
+
 def matrix_dataset(
     datamat: NDArray[np.floating[Any]],
     TR: float,  # noqa: N803
@@ -40,16 +66,16 @@ def matrix_dataset(
     -------
     MatrixDataset
     """
+    if event_table is None or (len(event_table) == 0 and event_table.shape == (0, 0)):
+        event_table = pd.DataFrame({"event_index": np.array([], dtype=np.int64)})
+
     datamat = np.asarray(datamat, dtype=np.float64)
     if datamat.ndim == 1:
         datamat = datamat.reshape(-1, 1)
     elif datamat.ndim != 2:
-        datamat = np.atleast_2d(datamat)
+        datamat = datamat.reshape(-1, 1, order="F")
 
-    if isinstance(run_length, (int, np.integer)):
-        run_length = [int(run_length)]
-    else:
-        run_length = [int(r) for r in run_length]
+    run_length = _coerce_run_length(run_length)
 
     if sum(run_length) != datamat.shape[0]:
         raise ValueError(
@@ -95,10 +121,7 @@ def fmri_dataset(
     -------
     FmriDataset
     """
-    if isinstance(run_length, (int, np.integer)):
-        run_length = [int(run_length)]
-    else:
-        run_length = [int(r) for r in run_length]
+    run_length = _coerce_run_length(run_length)
 
     frame = SamplingFrame.create(blocklens=run_length, TR=TR)
 
