@@ -5,6 +5,7 @@ Port of ``fmri_study_dataset()`` from ``R/dataset_constructors.R``.
 
 from __future__ import annotations
 
+import warnings
 from typing import Any, Sequence
 
 import numpy as np
@@ -105,6 +106,20 @@ def study_dataset(
         et = ds.event_table.copy()
         if len(et) > 0:
             et["subject_id"] = sid
+
+            if "run_id" not in et.columns:
+                if ds.n_runs == 1:
+                    et["run_id"] = np.full(len(et), 1, dtype=int)
+                else:
+                    warnings.warn(
+                        f"event_table for subject '{sid}' has no 'run_id' column and "
+                        f"dataset has {ds.n_runs} runs. Please add a 'run_id' column to "
+                        "avoid ambiguity.",
+                        UserWarning,
+                        stacklevel=2,
+                    )
+                    et["run_id"] = np.resize(np.arange(1, ds.n_runs + 1), len(et))
+
         all_events.append(et)
 
     combined_events = pd.concat(all_events, ignore_index=True) if all_events else pd.DataFrame()

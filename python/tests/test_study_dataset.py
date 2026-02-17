@@ -90,6 +90,18 @@ class TestStudyDatasetData:
         assert "subject_id" in et.columns
         assert set(et["subject_id"].unique()) == {"S01", "S02"}
 
+    def test_combined_events_run_id_added_for_missing_run_id(self, two_datasets):
+        ds1, ds2, _, _ = two_datasets
+        with pytest.warns(UserWarning, match="run_id"):
+            sds = study_dataset([ds1, ds2], subject_ids=["S01", "S02"])
+
+        et = sds.event_table
+        assert "run_id" in et.columns
+        first_two = et.loc[et["subject_id"] == "S01", "run_id"].tolist()
+        assert first_two == [1, 2]
+        second = et.loc[et["subject_id"] == "S02", "run_id"].tolist()
+        assert second == [1, 1]
+
     def test_combined_blocklens(self, two_datasets):
         ds1, ds2, _, _ = two_datasets
         sds = study_dataset([ds1, ds2])
