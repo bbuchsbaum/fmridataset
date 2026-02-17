@@ -73,16 +73,14 @@ class TestMatrixDatasetConstructor:
         assert list(ds.event_table.columns) == ["event_index"]
         assert len(ds.event_table) == 0
 
-    def test_multi_dimensional_datamat_flattens_like_r_as_matrix(self) -> None:
+    def test_multi_dimensional_datamat_rejected(self) -> None:
         mat = np.arange(24, dtype=np.float64).reshape(2, 3, 4)
-        ds = matrix_dataset(
-            mat,
-            TR=2.0,
-            run_length=24,
-        )
-        expected = mat.reshape(-1, 1, order="F")
-        assert ds.datamat.shape == (24, 1)
-        np.testing.assert_array_equal(ds.datamat, expected)
+        with pytest.raises(ValueError, match="datamat must be a 2-D matrix"):
+            matrix_dataset(
+                mat,
+                TR=2.0,
+                run_length=24,
+            )
 
     def test_datamat_property(self) -> None:
         mat = np.random.default_rng(1).standard_normal((10, 5))

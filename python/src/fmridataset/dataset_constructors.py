@@ -76,7 +76,7 @@ def matrix_dataset(
     if datamat.ndim == 1:
         datamat = datamat.reshape(-1, 1)
     elif datamat.ndim != 2:
-        datamat = datamat.reshape(-1, 1, order="F")
+        raise ValueError("datamat must be a 2-D matrix or 1-D vector")
 
     run_length = _coerce_run_length(run_length)
 
