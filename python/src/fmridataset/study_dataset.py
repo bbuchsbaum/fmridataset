@@ -44,6 +44,36 @@ class StudyDataset(FmriDataset):
     def subject_ids(self) -> list[Any]:
         return self._subject_ids
 
+    def get_subject_data(
+        self,
+        subject_id: Any,
+        rows: NDArray[np.intp] | None = None,
+        cols: NDArray[np.intp] | None = None,
+    ) -> NDArray[np.floating[Any]]:
+        """Return data for specific subject(s).
+
+        Parameters
+        ----------
+        subject_id : scalar or list
+            One or more subject IDs to retrieve.
+        rows, cols : ndarray or None
+            Row/column slicing applied after subject filtering.
+        """
+        sb: StudyBackend = self._backend  # type: ignore[assignment]
+
+        ids = [subject_id] if not isinstance(subject_id, (list, tuple)) else list(subject_id)
+
+        indices: list[int] = []
+        for sid in ids:
+            try:
+                idx = self._subject_ids.index(sid)
+            except ValueError:
+                raise ConfigError(f"Subject ID not found: {sid}")
+            indices.append(idx)
+
+        parts = [sb._backends[i].get_data(rows=rows, cols=cols) for i in indices]
+        return np.concatenate(parts, axis=0) if len(parts) > 1 else parts[0]
+
     def __repr__(self) -> str:
         return (
             f"<StudyDataset "
