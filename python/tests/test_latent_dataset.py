@@ -55,6 +55,26 @@ class TestLatentDatasetConstructor:
         with pytest.raises(ValueError, match="run_length values must be integers"):
             latent_dataset(source=path, TR=2.0, run_length=[2.5, 2.5])
 
+    def test_relative_source_resolves_base_path(self, tmp_path, rng) -> None:
+        path = tmp_path / "relative.lv.h5"
+
+        basis = rng.standard_normal((20, 4)).astype(np.float64)
+        loadings = rng.standard_normal((60, 4)).astype(np.float64)
+        offset = rng.standard_normal(60).astype(np.float64)
+
+        with h5py.File(str(path), "w") as f:
+            f.create_dataset("basis", data=basis)
+            f.create_dataset("loadings", data=loadings)
+            f.create_dataset("offset", data=offset)
+
+        ds = latent_dataset(
+            source="relative.lv.h5",
+            TR=2.0,
+            run_length=20,
+            base_path=str(tmp_path),
+        )
+        assert ds.n_timepoints == 20
+
     def test_default_event_table_remains_empty(self, latent_h5_file):
         path, _, _, _, _ = latent_h5_file
         ds = latent_dataset(source=path, TR=2.0, run_length=20)

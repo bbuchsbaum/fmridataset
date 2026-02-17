@@ -5,6 +5,7 @@ Port of ``R/latent_dataset.R``.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Sequence
 
 import numpy as np
@@ -58,6 +59,7 @@ def latent_dataset(
     source: str | list[str],
     TR: float,  # noqa: N803
     run_length: int | Sequence[int],
+    base_path: str = ".",
     event_table: pd.DataFrame | None = None,
     preload: bool = False,
 ) -> LatentDataset:
@@ -71,6 +73,8 @@ def latent_dataset(
         Repetition time in seconds.
     run_length : int or sequence of int
         Number of time-points per run.
+    base_path : str
+        Base directory for relative source files.
     event_table : DataFrame or None
         Optional event information.
     preload : bool
@@ -78,7 +82,18 @@ def latent_dataset(
     """
     run_length = _coerce_run_length(run_length)
 
-    backend = LatentBackend(source=source, preload=preload)
+    if isinstance(source, (str, Path)):
+        source_paths = [Path(base_path) / Path(source)]
+    else:
+        source_paths = []
+        for src in source:
+            src_path = Path(src)
+            if src_path.is_absolute():
+                source_paths.append(src_path)
+            else:
+                source_paths.append(Path(base_path) / src_path)
+
+    backend = LatentBackend(source=source_paths, preload=preload)
     backend.open()
 
     frame = SamplingFrame.create(blocklens=run_length, TR=TR)
