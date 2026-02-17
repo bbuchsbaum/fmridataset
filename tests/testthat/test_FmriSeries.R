@@ -11,6 +11,8 @@ make_delarr <- function(mat) {
 }
 
 test_that("fmri_series can be created and displayed", {
+  expect_true(exists("new_fmri_series"))
+
   mat <- matrix(1:6, nrow = 3)
   lazy_mat <- make_delarr(mat)
   vox_info <- data.frame(id = 1:ncol(mat))
