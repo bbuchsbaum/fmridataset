@@ -33,6 +33,13 @@ n_runs.fmri_dataset <- function(x, ...) {
   n_runs(x$sampling_frame, ...)
 }
 
+#' @rdname n_runs
+#' @method n_runs fmri_study_dataset
+#' @export
+n_runs.fmri_study_dataset <- function(x, ...) {
+  n_runs(x$sampling_frame, ...)
+}
+
 #' @rdname n_timepoints
 #' @method n_timepoints fmri_dataset
 #' @export

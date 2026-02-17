@@ -487,6 +487,7 @@ fmri_study_dataset <- function(datasets, subject_ids = NULL) {
     backend = sb,
     event_table = combined_events,
     sampling_frame = frame,
+    nruns = length(run_lengths),
     subject_ids = subject_ids
   )
 
