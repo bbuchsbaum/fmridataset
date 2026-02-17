@@ -1,4 +1,14 @@
+suppressPackageStartupMessages({
+  library(fmridataset)
+})
+
+test_that("test_as_delarr package exports are available", {
+  expect_true(exists("matrix_backend", envir = asNamespace("fmridataset"), inherits = FALSE))
+  expect_true(exists("as_delarr", envir = asNamespace("fmridataset"), inherits = FALSE))
+})
+
 test_that("as_delarr wraps matrix_backend", {
+
   mat <- matrix(1:12, nrow = 3, ncol = 4)
   backend <- matrix_backend(mat, mask = rep(TRUE, 4), spatial_dims = c(2, 2, 1))
 

@@ -7,6 +7,12 @@
 #   - as_delarr.study_backend (tested)
 #   - as_delarr.default (tested)
 #   - as_delarr.nifti_backend (skipped - requires neuroim2 S4 objects)
+library(fmridataset)
+
+test_that("test-as_delarr package exports are available", {
+  expect_true(exists("matrix_backend", envir = asNamespace("fmridataset"), inherits = FALSE))
+  expect_true(exists("as_delarr", envir = asNamespace("fmridataset"), inherits = FALSE))
+})
 
 # ============================================
 # Section 1: matrix_backend conversion ----

@@ -1,5 +1,6 @@
 # test-as_delayed_array.R
 # Tests for both as_delayed_array.R (backends) and as_delayed_array_dataset.R (datasets)
+library(fmridataset)
 
 # ============================================
 # Section 1: Backend conversion tests (as_delayed_array.R)
@@ -125,13 +126,13 @@ test_that("register_delayed_array_support is idempotent", {
   skip_if_not_installed("DelayedArray")
 
   # Call once
-  register_delayed_array_support()
+  fmridataset:::register_delayed_array_support()
 
   # Check registered flag
   expect_true(fmridataset:::.delayed_array_support_env$registered)
 
   # Call again - should be silent
-  expect_silent(register_delayed_array_support())
+  expect_silent(fmridataset:::register_delayed_array_support())
 
   # Flag should still be TRUE
   expect_true(fmridataset:::.delayed_array_support_env$registered)
@@ -239,7 +240,7 @@ test_that("as_delayed_array S4 methods are registered", {
   skip_if_not_installed("methods")
 
   # Force registration
-  register_delayed_array_support()
+  fmridataset:::register_delayed_array_support()
 
   # Check that S4 methods exist for dataset classes
   expect_true(methods::hasMethod("as_delayed_array", "matrix_dataset"))
