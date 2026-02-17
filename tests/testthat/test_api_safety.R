@@ -18,6 +18,20 @@ test_that("matrix_dataset handles type coercion with appropriate messages", {
   expect_equal(ncol(dset$datamat), 2)
 })
 
+test_that("api critical symbols are exported from package namespace", {
+  exports <- getNamespaceExports("fmridataset")
+
+  expect_true("%||%" %in% exports)
+  expect_true("new_fmri_series" %in% exports)
+
+  expect_true("backend_open.h5_backend" %in% exports)
+  expect_true("backend_close.h5_backend" %in% exports)
+  expect_true("backend_get_dims.h5_backend" %in% exports)
+  expect_true("backend_get_mask.h5_backend" %in% exports)
+  expect_true("backend_get_data.h5_backend" %in% exports)
+  expect_true("backend_get_metadata.h5_backend" %in% exports)
+})
+
 test_that("matrix_dataset provides non-empty event_table schema by default", {
   mat <- matrix(rnorm(100), nrow = 100, ncol = 1)
   dset <- matrix_dataset(mat, TR = 2, run_length = 100)

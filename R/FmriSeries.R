@@ -43,6 +43,7 @@ NULL
 #'
 #' @return An object of class \code{fmri_series}
 #' @keywords internal
+#' @export
 new_fmri_series <- function(data, voxel_info, temporal_info, selection_info, dataset_info) {
   assert_that(
     inherits(data, "delarr") || inherits(data, "DelayedMatrix") || is.matrix(data),
