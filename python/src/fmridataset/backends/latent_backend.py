@@ -129,6 +129,10 @@ class LatentBackend(StorageBackend):
         self._data = None
         self._is_open = False
 
+    def _require_open(self, operation: str) -> None:
+        if not self._is_open:
+            raise BackendIOError("Backend not opened", operation=operation)
+
     def get_dims(self) -> BackendDims:
         if self._dims is None:
             raise BackendIOError("Backend not opened", operation="get_dims")
@@ -145,11 +149,61 @@ class LatentBackend(StorageBackend):
             raise BackendIOError("Backend not opened", operation="get_mask")
         return self._mask_vec.copy()
 
+    @staticmethod
+    def _validate_indices(
+        indices: NDArray[np.intp] | float | int | None,
+        upper: int,
+        name: str,
+    ) -> NDArray[np.intp] | None:
+        if indices is None:
+            return None
+
+        arr = np.asarray(indices)
+        arr = np.atleast_1d(arr)
+
+        if not np.issubdtype(arr.dtype, np.integer):
+            if np.issubdtype(arr.dtype, np.floating):
+                if not np.all(arr.astype(np.int64) == arr):
+                    raise ValueError(
+                        f"{name} indices must be integers, received non-integer values"
+                    )
+            else:
+                raise ValueError(f"{name} indices must be integers")
+
+        result: NDArray[np.intp] = arr.astype(np.intp, copy=False)
+
+        if np.any(result < 0) or np.any(result >= upper):
+            raise ValueError(
+                f"{name} indices must be within [0, {upper - 1}]"
+            )
+
+        return result
+
     def get_data(
         self,
         rows: NDArray[np.intp] | None = None,
         cols: NDArray[np.intp] | None = None,
     ) -> NDArray[np.floating[Any]]:
+        self._require_open("get_data")
+        dims = self.get_dims()
+
+        basis = np.concatenate(self._basis_parts, axis=0)
+        rows = self._validate_indices(rows, dims.time, "rows")
+        cols = self._validate_indices(cols, basis.shape[1], "cols")
+        data: NDArray[np.floating[Any]] = basis
+        if rows is not None:
+            data = data[rows, :]
+        if cols is not None:
+            data = data[:, cols]
+        return data
+
+    def reconstruct_voxels(
+        self,
+        rows: NDArray[np.intp] | None = None,
+        voxels: NDArray[np.intp] | None = None,
+    ) -> NDArray[np.floating[Any]]:
+        """Materialise and return voxel-space reconstruction."""
+        self._require_open("reconstruct")
         if self._data is None:
             self._reconstruct()
         assert self._data is not None
@@ -157,8 +211,8 @@ class LatentBackend(StorageBackend):
         data = self._data
         if rows is not None:
             data = data[rows, :]
-        if cols is not None:
-            data = data[:, cols]
+        if voxels is not None:
+            data = data[:, voxels]
         return data
 
     def get_metadata(self) -> dict[str, Any]:

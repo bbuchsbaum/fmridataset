@@ -11,6 +11,8 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
+from pathlib import Path
+
 from .backend_registry import BackendRegistry
 from .backends.matrix_backend import MatrixBackend
 from .dataset import FmriDataset, MatrixDataset
@@ -69,8 +71,8 @@ def matrix_dataset(
     -------
     MatrixDataset
     """
-    if event_table is None or (len(event_table) == 0 and event_table.shape == (0, 0)):
-        event_table = pd.DataFrame({"event_index": np.array([], dtype=np.int64)})
+    if event_table is not None:
+        event_table = _ensure_event_table_unique(event_table)
 
     datamat = np.asarray(datamat, dtype=np.float64)
     if datamat.ndim == 1:
@@ -149,4 +151,70 @@ def fmri_dataset(
         sampling_frame=frame,
         event_table=_ensure_event_table_unique(event_table),
         censor=censor,
+    )
+
+
+def zarr_dataset(
+    zarr_source: str | Path,
+    TR: float,  # noqa: N803
+    run_length: int | Sequence[int],
+    event_table: pd.DataFrame | None = None,
+    censor: NDArray[np.intp] | None = None,
+    preload: bool = False,
+) -> FmriDataset:
+    """Create an FmriDataset from a Zarr array store.
+
+    Parameters
+    ----------
+    zarr_source : str or Path
+        Path to Zarr store (directory or URL).
+    TR : float
+        Repetition time in seconds.
+    run_length : int or sequence of int
+        Number of time-points per run.
+    event_table : DataFrame or None
+        Optional event information.
+    censor : ndarray or None
+        Binary censor vector.
+    preload : bool
+        If True, eagerly load all data into memory.
+
+    Returns
+    -------
+    FmriDataset
+    """
+    from .backends.zarr_backend import ZarrBackend
+
+    backend = ZarrBackend(source=str(zarr_source), preload=preload)
+    backend.open()
+
+    return fmri_dataset(
+        backend=backend,
+        TR=TR,
+        run_length=run_length,
+        event_table=event_table,
+        censor=censor,
+    )
+
+
+def fmri_zarr_dataset(
+    zarr_source: str | Path,
+    TR: float,  # noqa: N803
+    run_length: int | Sequence[int],
+    event_table: pd.DataFrame | None = None,
+    censor: NDArray[np.intp] | None = None,
+    preload: bool = False,
+) -> FmriDataset:
+    """Create an FmriDataset from a Zarr array store.
+
+    Alias of :func:`zarr_dataset` to preserve R API parity.
+    """
+
+    return zarr_dataset(
+        zarr_source=zarr_source,
+        TR=TR,
+        run_length=run_length,
+        event_table=event_table,
+        censor=censor,
+        preload=preload,
     )
