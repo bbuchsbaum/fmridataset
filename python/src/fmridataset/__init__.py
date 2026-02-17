@@ -26,7 +26,16 @@ from .fmri_series import FmriSeries
 from .latent_dataset import LatentDataset, latent_dataset
 from .mask_utils import mask_to_logical, mask_to_volume
 from .sampling_frame import SamplingFrame
-from .selectors import AllSelector, IndexSelector, ROISelector, SeriesSelector
+from .fmri_group import FmriGroup, fmri_group
+from .selectors import (
+    AllSelector,
+    IndexSelector,
+    MaskSelector,
+    ROISelector,
+    SeriesSelector,
+    SphereSelector,
+    VoxelSelector,
+)
 from .study_dataset import StudyDataset, study_dataset
 
 # Auto-register built-in backends on import
@@ -69,11 +78,17 @@ __all__ = [
     "mask_to_volume",
     # series
     "FmriSeries",
+    # group
+    "FmriGroup",
+    "fmri_group",
     # selectors
     "SeriesSelector",
     "IndexSelector",
     "AllSelector",
     "ROISelector",
+    "VoxelSelector",
+    "SphereSelector",
+    "MaskSelector",
     # chunks
     "DataChunk",
     "ChunkIterator",
