@@ -87,3 +87,19 @@ test_that("fmri_study_dataset requires equal TR across datasets", {
     "All datasets must have equal TR"
   )
 })
+
+test_that("fmri_dataset deprecation warning does not hide invalid backend object", {
+  expect_warning(
+    expect_error(
+      fmri_dataset(
+        scans = c("scan.nii"),
+        mask = "mask.nii",
+        TR = 2,
+        run_length = 1,
+        backend = "nifti"
+      ),
+      "`backend` must be a storage backend object"
+    ),
+    "deprecated"
+  )
+})

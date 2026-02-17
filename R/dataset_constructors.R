@@ -27,6 +27,11 @@ matrix_dataset <- function(datamat, TR, run_length, event_table = data.frame()) 
   if (is.vector(datamat)) {
     datamat <- as.matrix(datamat)
   }
+
+  if (is.null(event_table) || (is.data.frame(event_table) && nrow(event_table) == 0 && ncol(event_table) == 0)) {
+    event_table <- data.frame(event_index = integer(0))
+  }
+
   assert_that(sum(run_length) == nrow(datamat))
 
   frame <- fmrihrf::sampling_frame(blocklens = run_length, TR = TR)
@@ -230,6 +235,9 @@ fmri_dataset <- function(scans, mask = NULL, TR,
     backend <- scans
   } else if (!is.null(backend)) {
     warning("backend parameter is deprecated. Pass backend as first argument.")
+    if (!inherits(backend, "storage_backend")) {
+      stop("`backend` must be a storage backend object when provided.")
+    }
   } else {
     # Legacy path: create a NiftiBackend from file paths
     assert_that(is.character(mask) && length(mask) == 1, msg = "'mask' should be the file name of the binary mask file")
