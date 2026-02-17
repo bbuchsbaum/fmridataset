@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 import numpy as np
 import pandas as pd
 import pytest
@@ -9,6 +10,7 @@ import pytest
 h5py = pytest.importorskip("h5py")
 
 from fmridataset.latent_dataset import LatentDataset, latent_dataset
+from fmridataset.errors import BackendIOError
 
 
 @pytest.fixture()
@@ -207,6 +209,20 @@ class TestLatentDatasetMethods:
         assert info["n_components"] == loadings.shape[1]
         assert info["format"] == "latent_h5"
 
+    def test_get_component_info_requires_open(self, latent_h5_file):
+        path, _, _, _, _ = latent_h5_file
+        ds = latent_dataset(source=path, TR=2.0, run_length=20)
+        ds.backend.close()
+        with pytest.raises(BackendIOError, match="Backend not opened"):
+            ds.get_component_info()
+
+    def test_get_spatial_loadings_requires_open(self, latent_h5_file):
+        path, _, _, _, _ = latent_h5_file
+        ds = latent_dataset(source=path, TR=2.0, run_length=20)
+        ds.backend.close()
+        with pytest.raises(BackendIOError, match="Backend not opened"):
+            ds.get_spatial_loadings()
+
     def test_get_component_info_metadata_fields(self, latent_h5_file):
         path, basis, loadings, _, _ = latent_h5_file
         ds = latent_dataset(source=path, TR=2.0, run_length=20)
@@ -229,6 +245,14 @@ class TestLatentDatasetMethods:
         ds = latent_dataset(source=path, TR=2.0, run_length=20)
         data = ds.get_data()
         np.testing.assert_array_almost_equal(data, basis)
+
+    def test_get_data_matrix_no_warning(self, latent_h5_file):
+        path, basis, _, _, _ = latent_h5_file
+        ds = latent_dataset(source=path, TR=2.0, run_length=20)
+        with warnings.catch_warnings(record=True) as caught:
+            data = ds.get_data_matrix()
+            np.testing.assert_array_almost_equal(data, basis)
+        assert len(caught) == 0
 
     def test_get_data_warns(self, latent_h5_file):
         path, _, _, _, _ = latent_h5_file

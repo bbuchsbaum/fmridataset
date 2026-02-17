@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
-from .backend_protocol import StorageBackend
+from .backend_protocol import BackendDims, StorageBackend
 from .errors import ConfigError
 from .sampling_frame import SamplingFrame
 
@@ -78,6 +78,10 @@ class FmriDataset:
     @property
     def censor(self) -> NDArray[np.intp]:
         return self._censor
+
+    def get_dims(self) -> BackendDims:
+        """Return spatial and temporal dimensions."""
+        return self._backend.get_dims()
 
     @property
     def TR(self) -> float:  # noqa: N802

@@ -171,6 +171,13 @@ class TestDataAccess:
         assert mask.shape == (5,)
         assert mask.all()
 
+    def test_get_dims(self) -> None:
+        mat = np.zeros((10, 5))
+        ds = matrix_dataset(mat, TR=1.0, run_length=10)
+        dims = ds.get_dims()
+        assert dims.time == 10
+        assert dims.spatial == (5, 1, 1)
+
 
 class TestBlockids:
     def test_blockids_two_runs(self) -> None:

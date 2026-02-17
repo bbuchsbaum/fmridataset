@@ -99,6 +99,32 @@ class TestStudyBackendData:
         np.testing.assert_array_almost_equal(data[0], mat1[0, cols])
         np.testing.assert_array_almost_equal(data[1], mat2[5, cols])
 
+    def test_get_data_logical_rows(self, two_backends):
+        b1, b2, mat1, mat2 = two_backends
+        sb = StudyBackend(backends=[b1, b2])
+        rows = np.array([True, False, True] + [False] * 47, dtype=bool)
+        data = sb.get_data(rows=rows)
+        expected = np.vstack([mat1[:], mat2[:]])[[0, 2]]
+        np.testing.assert_array_almost_equal(data, expected)
+
+    def test_get_data_rejects_negative_or_oob_rows(self, two_backends):
+        b1, b2, _, _ = two_backends
+        sb = StudyBackend(backends=[b1, b2])
+        with pytest.raises(ValueError, match="rows indices must be within"):
+            sb.get_data(rows=np.array([-1, 0], dtype=np.intp))
+        with pytest.raises(ValueError, match="rows indices must be within"):
+            sb.get_data(rows=np.array([50], dtype=np.intp))
+
+    def test_get_data_rejects_invalid_cols(self, two_backends):
+        b1, b2, _, _ = two_backends
+        sb = StudyBackend(backends=[b1, b2])
+        with pytest.raises(ValueError, match="cols indices must be within"):
+            sb.get_data(cols=np.array([50], dtype=np.intp))
+        with pytest.raises(ValueError, match="cols indices must be integers"):
+            sb.get_data(cols=np.array([1.5], dtype=float))
+        with pytest.raises(ValueError, match="cols indices must be integers"):
+            sb.get_data(cols=np.array([1.2], dtype=float))
+
 
 class TestStudyBackendMask:
     def test_identical_mask(self, rng):

@@ -195,6 +195,18 @@ class TestLatentBackendMask:
 
 
 class TestLatentBackendMetadata:
+    def test_metadata_requires_open(self, latent_h5):
+        path, _, _, _, _ = latent_h5
+        backend = LatentBackend(source=str(path))
+        with pytest.raises(BackendIOError, match="Backend not opened"):
+            backend.get_metadata()
+
+    def test_get_loadings_requires_open(self, latent_h5):
+        path, _, _, _, _ = latent_h5
+        backend = LatentBackend(source=str(path))
+        with pytest.raises(BackendIOError, match="Backend not opened"):
+            backend.get_loadings()
+
     def test_metadata(self, latent_h5):
         path, _, _, offset, _ = latent_h5
         backend = LatentBackend(source=str(path))

@@ -51,14 +51,9 @@ class LatentDataset(FmriDataset):
         components:
             Optional component indices to subset columns.
         """
-        lb = self._latent_backend
-        if lb._loadings is None:
-            raise RuntimeError("Backend not opened")
-        loadings = lb._loadings.copy()
-        if components is None:
-            return loadings
-        comps = np.asarray(components, dtype=np.intp)
-        return loadings[:, comps]
+        return self._latent_backend.get_loadings(
+            components=components if components is None else np.asarray(components, dtype=np.intp)
+        )
 
     def __repr__(self) -> str:
         meta = self._backend.get_metadata()
@@ -91,6 +86,14 @@ class LatentDataset(FmriDataset):
             UserWarning,
             stacklevel=2,
         )
+        return self.get_latent_scores(rows=rows, cols=cols)
+
+    def get_data_matrix(
+        self,
+        rows: NDArray[np.intp] | None = None,
+        cols: NDArray[np.intp] | None = None,
+    ) -> NDArray[np.floating[Any]]:
+        """Return latent scores as a dense matrix without a warning."""
         return self.get_latent_scores(rows=rows, cols=cols)
 
     def reconstruct_voxels(

@@ -108,6 +108,17 @@ class TestStudyDatasetData:
         assert list(sds.blocklens) == [15, 15, 20]
 
 
+class TestStudyDatasetSubjectData:
+    def test_get_subject_data_accepts_numpy_subject_id_array(self, two_datasets):
+        ds1, ds2, mat1, mat2 = two_datasets
+        sds = study_dataset([ds1, ds2], subject_ids=["S01", "S02"])
+
+        data = sds.get_subject_data(np.array(["S01", "S02"]))
+        expected = np.vstack([mat1, mat2])
+
+        np.testing.assert_array_almost_equal(data, expected)
+
+
 class TestStudyDatasetRepr:
     def test_repr(self, two_datasets):
         ds1, ds2, _, _ = two_datasets

@@ -54,3 +54,19 @@ class TestStudyDatasetSubjectAccess:
         s1_sub = sds.get_subject_data(subject_id="S01", cols=cols)
         assert s1_sub.shape == (20, 3)
         np.testing.assert_array_almost_equal(s1_sub, mat1[:, cols])
+
+
+class TestStudyBackendIndexValidation:
+    def test_study_dataset_rejects_negative_or_oob_rows(self, two_subject_study) -> None:
+        sds, _, _ = two_subject_study
+        with pytest.raises(ValueError, match="rows indices must be within"):
+            sds.get_data(rows=np.array([-1, 0], dtype=np.intp))
+        with pytest.raises(ValueError, match="rows indices must be within"):
+            sds.get_data(rows=np.array([40], dtype=np.intp))
+
+    def test_study_dataset_rejects_invalid_cols(self, two_subject_study) -> None:
+        sds, _, _ = two_subject_study
+        with pytest.raises(ValueError, match="cols indices must be within"):
+            sds.get_data(cols=np.array([10], dtype=np.intp))
+        with pytest.raises(ValueError, match="cols indices must be integers"):
+            sds.get_data(cols=np.array([0.5], dtype=float))

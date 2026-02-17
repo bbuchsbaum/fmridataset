@@ -61,7 +61,13 @@ class StudyDataset(FmriDataset):
         """
         sb: StudyBackend = self._backend  # type: ignore[assignment]
 
-        ids = [subject_id] if not isinstance(subject_id, (list, tuple)) else list(subject_id)
+        if isinstance(subject_id, np.ndarray):
+            flat_ids = subject_id.ravel()
+            ids = [flat_ids.item()] if flat_ids.ndim == 0 else list(flat_ids)
+        elif isinstance(subject_id, (list, tuple)):
+            ids = list(subject_id)
+        else:
+            ids = [subject_id]
 
         indices: list[int] = []
         for sid in ids:

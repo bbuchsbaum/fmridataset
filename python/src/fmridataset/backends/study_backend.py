@@ -107,6 +107,37 @@ class StudyBackend(StorageBackend):
     def get_mask(self) -> NDArray[np.bool_]:
         return self._mask.copy()
 
+    @staticmethod
+    def _validate_indices(
+        indices: NDArray[np.intp] | float | int | None,
+        upper: int,
+        name: str,
+    ) -> NDArray[np.intp] | None:
+        if indices is None:
+            return None
+
+        arr = np.asarray(indices)
+        arr = np.atleast_1d(arr)
+
+        if arr.dtype == np.bool_:
+            arr = np.nonzero(arr)[0].astype(np.intp)
+
+        if not np.issubdtype(arr.dtype, np.integer):
+            if np.issubdtype(arr.dtype, np.floating):
+                if not np.all(arr.astype(np.int64) == arr):
+                    raise ValueError(
+                        f"{name} indices must be integers, received non-integer values"
+                    )
+            else:
+                raise ValueError(f"{name} indices must be integers")
+
+        arr = arr.astype(np.intp, copy=False)
+        if np.any(arr < 0) or np.any(arr >= upper):
+            raise ValueError(
+                f"{name} indices must be within [0, {upper - 1}]"
+            )
+        return arr
+
     def get_data(
         self,
         rows: NDArray[np.intp] | None = None,
@@ -120,10 +151,12 @@ class StudyBackend(StorageBackend):
         if cols is None:
             cols = np.arange(n_vox, dtype=np.intp)
 
-        rows = np.asarray(rows, dtype=np.intp)
-        cols = np.asarray(cols, dtype=np.intp)
+        rows = self._validate_indices(rows, total_time, "rows")
+        cols = self._validate_indices(cols, n_vox, "cols")
 
         # Sort rows for efficient subject-boundary lookup
+        assert rows is not None
+        assert cols is not None
         order = np.argsort(rows)
         sorted_rows = rows[order]
         result = np.empty((len(rows), len(cols)), dtype=np.float64)

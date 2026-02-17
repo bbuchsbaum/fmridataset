@@ -216,6 +216,7 @@ class LatentBackend(StorageBackend):
         return data
 
     def get_metadata(self) -> dict[str, Any]:
+        self._require_open("get_metadata")
         n_components = self._loadings.shape[1] if self._loadings is not None else 0
         if self._dims is None:
             raise BackendIOError("Backend not opened", operation="get_metadata")
@@ -245,3 +246,18 @@ class LatentBackend(StorageBackend):
             "loadings_norm": loadings_norm,
             "loadings_sparsity": loadings_sparsity,
         }
+
+    def get_loadings(
+        self,
+        components: NDArray[np.intp] | None = None,
+    ) -> NDArray[np.floating[Any]]:
+        """Return spatial loadings (voxels x components)."""
+        self._require_open("get_loadings")
+        if self._loadings is None:
+            raise BackendIOError("No loadings loaded", operation="get_loadings")
+
+        if components is None:
+            return self._loadings.copy()
+
+        comps = np.asarray(components, dtype=np.intp)
+        return self._loadings[:, comps]
