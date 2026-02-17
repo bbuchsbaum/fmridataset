@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fmridataset"
+version = "0.1.0"
+description = "Unified container for fMRI datasets"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+requires-python = ">=3.9"
+authors = [
+    { name = "Bradley Buchsbaum", email = "bbuchsbaum@gmail.com" }
+]
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+]
+
+[project.optional-dependencies]
+h5 = ["h5py>=3.8"]
+zarr = ["zarr>=2.16"]
+dask = ["dask[array]>=2023.1"]
+sparse = ["scipy>=1.10"]
+cache = ["cachetools>=5.3"]
+neuro = ["nibabel>=4.0"]
+all = ["fmridataset[h5,zarr,dask,sparse,cache]", "pyarrow>=12.0"]
+dev = ["pytest>=7.0", "pytest-cov>=4.0", "mypy>=1.0", "pyyaml>=6.0", "pandas-stubs>=2.0", "types-cachetools>=5.3"]
+test-parity = ["rpy2>=3.5"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fmridataset"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "parity: cross-language parity tests requiring R",
+    "slow: slow tests",
+]
+
+[tool.mypy]
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = ["h5py", "h5py.*", "zarr", "zarr.*", "yaml", "yaml.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["nibabel", "nibabel.*"]
+ignore_missing_imports = true
+disable_error_code = ["attr-defined"]
