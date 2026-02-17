@@ -27,7 +27,9 @@ from .fmri_series import (
     fmri_series,
     resolve_selector,
     resolve_timepoints,
+    series,
 )
+from .lazy_array import as_dask_array, as_dask_array_dataset
 from .latent_dataset import LatentDataset, latent_dataset
 from .mask_utils import mask_to_logical, mask_to_volume
 from .sampling_frame import SamplingFrame
@@ -86,6 +88,10 @@ __all__ = [
     "fmri_series",
     "resolve_selector",
     "resolve_timepoints",
+    "series",
+    # lazy array
+    "as_dask_array",
+    "as_dask_array_dataset",
     # group
     "FmriGroup",
     "fmri_group",

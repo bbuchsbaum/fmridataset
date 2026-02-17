@@ -1,11 +1,13 @@
 """FmriSeries: lazy time-series container and query function.
 
 Port of ``R/FmriSeries.R``, ``R/fmri_series.R``,
-``R/fmri_series_resolvers.R``, and ``R/fmri_series_metadata.R``.
+``R/fmri_series_resolvers.R``, ``R/fmri_series_metadata.R``,
+and ``R/series_alias.R``.
 """
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -159,8 +161,60 @@ def resolve_selector(
         return selector.resolve_indices(dataset)
 
     arr = np.asarray(selector)
+
+    # Legacy integer vector selector (including np.ndarray-like).
+    if arr.ndim == 2 and arr.shape[1] == 3 and np.issubdtype(arr.dtype, np.integer):
+        dims = dataset.get_dims().spatial
+        mask = dataset.get_mask().ravel()
+        mask_indices = np.flatnonzero(mask).astype(np.intp)
+
+        if np.any(arr[:, 0] < 1) or np.any(arr[:, 0] > dims[0]):
+            raise IndexError("Coordinate x values must be in 1-based mask dimensions")
+        if np.any(arr[:, 1] < 1) or np.any(arr[:, 1] > dims[1]):
+            raise IndexError("Coordinate y values must be in 1-based mask dimensions")
+        if np.any(arr[:, 2] < 1) or np.any(arr[:, 2] > dims[2]):
+            raise IndexError("Coordinate z values must be in 1-based mask dimensions")
+
+        arr_i = arr.astype(np.intp)
+        full_indices = (
+            (arr_i[:, 0] - 1)
+            + (arr_i[:, 1] - 1) * dims[0]
+            + (arr_i[:, 2] - 1) * dims[0] * dims[1]
+        ).astype(np.intp)
+
+        position = np.searchsorted(mask_indices, full_indices)
+        valid = (
+            (position < mask_indices.size)
+            & (position >= 0)
+            & (mask_indices[position] == full_indices)
+        )
+        result: NDArray[np.intp] = position[valid]
+        return result
+
     if np.issubdtype(arr.dtype, np.integer):
-        return arr.astype(np.intp, copy=False)
+        return arr.astype(np.intp, copy=False).ravel()
+
+    # Legacy logical selector. Supports both masked-space and full-volume masks.
+    if np.issubdtype(arr.dtype, np.bool_):
+        flat = arr.ravel().astype(np.bool_)
+        dataset_mask = dataset.get_mask().ravel()
+        n_masked = int(dataset_mask.sum())
+
+        if flat.size == n_masked:
+            return np.flatnonzero(flat).astype(np.intp)
+
+        if flat.size != dataset_mask.size:
+            raise ValueError(
+                "Unsupported selector type: boolean selector length must match "
+                "number of masked voxels or full mask length"
+            )
+
+        mask_positions = np.full(dataset_mask.size, -1, dtype=np.intp)
+        mask_positions[np.flatnonzero(dataset_mask)] = np.arange(
+            int(dataset_mask.sum()), dtype=np.intp
+        )
+        selected = mask_positions[flat]
+        return selected[selected >= 0]
 
     raise ValueError(f"Unsupported selector type: {type(selector)}")
 
@@ -226,7 +280,9 @@ def fmri_series(
     dataset: FmriDataset,
     selector: SeriesSelector | NDArray[np.intp] | None = None,
     timepoints: NDArray[np.intp] | NDArray[np.bool_] | None = None,
-) -> FmriSeries:
+    output: str = "fmri_series",
+    event_window: Any | None = None,
+) -> FmriSeries | Any:
     """Query fMRI time-series from a dataset.
 
     Parameters
@@ -237,14 +293,29 @@ def fmri_series(
         Spatial selection. ``None`` selects all voxels.
     timepoints : ndarray or None
         Temporal selection. ``None`` selects all timepoints.
+    output : {'fmri_series', 'DelayedMatrix'}
+        Return type requested by the caller.
+    event_window
+        Reserved for future use. Present for API compatibility only.
 
     Returns
     -------
-    FmriSeries
+    FmriSeries or dask array
         Container with data, voxel_info, and temporal_info.
     """
     voxel_ind = resolve_selector(dataset, selector)
     time_ind = resolve_timepoints(dataset, timepoints)
+
+    if output == "DelayedMatrix":
+        from .lazy_array import as_dask_array
+
+        lazy = as_dask_array(dataset._backend)
+        # Dask doesn't support simultaneous fancy indexing on two axes;
+        # slice rows first, then columns.
+        return lazy[time_ind][:, voxel_ind]
+
+    if output != "fmri_series":
+        raise ValueError("output must be one of {'fmri_series', 'DelayedMatrix'}")
 
     data = dataset.get_data(rows=time_ind, cols=voxel_ind)
 
@@ -262,4 +333,35 @@ def fmri_series(
             "timepoints": repr(timepoints) if timepoints is not None else None,
         },
         dataset_info={"backend_type": backend_type},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Deprecated alias (port of R/series_alias.R)
+# ---------------------------------------------------------------------------
+
+
+def series(
+    dataset: FmriDataset,
+    selector: SeriesSelector | NDArray[np.intp] | None = None,
+    timepoints: NDArray[np.intp] | NDArray[np.bool_] | None = None,
+    output: str = "fmri_series",
+    event_window: Any | None = None,
+) -> FmriSeries | Any:
+    """Deprecated alias for :func:`fmri_series`.
+
+    .. deprecated:: 0.1.0
+        Use :func:`fmri_series` instead.
+    """
+    warnings.warn(
+        "series() is deprecated; use fmri_series() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return fmri_series(
+        dataset=dataset,
+        selector=selector,
+        timepoints=timepoints,
+        output=output,
+        event_window=event_window,
     )

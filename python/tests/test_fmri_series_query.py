@@ -43,6 +43,30 @@ class TestResolveSelector:
         idx = resolve_selector(ds, arr)
         np.testing.assert_array_equal(idx, arr)
 
+    def test_array_coordinate_matrix(self, simple_ds) -> None:
+        ds, mat = simple_ds
+        selector = np.array(
+            [
+                [1, 1, 1],
+                [5, 1, 1],
+            ],
+            dtype=int,
+        )
+        idx = resolve_selector(ds, selector)
+        np.testing.assert_array_equal(idx, [0, 4])
+        fs = fmri_series(ds, selector=selector)
+        np.testing.assert_array_almost_equal(fs.data, mat[:, [0, 4]])
+
+    def test_array_logical_mask(self, simple_ds) -> None:
+        ds, mat = simple_ds
+        mask = np.zeros(10, dtype=bool)
+        mask[0] = True
+        mask[9] = True
+        idx = resolve_selector(ds, mask)
+        np.testing.assert_array_equal(idx, [0, 9])
+        fs = fmri_series(ds, selector=mask)
+        np.testing.assert_array_almost_equal(fs.data, mat[:, [0, 9]])
+
     def test_unsupported_type(self, simple_ds) -> None:
         ds, _ = simple_ds
         with pytest.raises(ValueError, match="Unsupported"):
@@ -120,6 +144,18 @@ class TestFmriSeriesFunction:
         sel = IndexSelector([3, 7])
         fs = fmri_series(ds, selector=sel)
         assert list(fs.voxel_info["voxel"]) == [3, 7]
+
+    def test_delayed_matrix_output(self, simple_ds) -> None:
+        pytest.importorskip("dask.array")
+        ds, mat = simple_ds
+        out = fmri_series(ds, output="DelayedMatrix")
+        assert getattr(out, "shape", None) == (20, 10)
+        np.testing.assert_array_almost_equal(out.compute(), mat)
+
+    def test_invalid_output(self, simple_ds) -> None:
+        ds, _ = simple_ds
+        with pytest.raises(ValueError, match="output must be one of"):
+            fmri_series(ds, output="bad")
 
     def test_dataset_info(self, simple_ds) -> None:
         ds, _ = simple_ds
