@@ -6,10 +6,6 @@ docs
 ..Rcheck/
 repomix-output.xml
 .covr_result.rds
-python/**/__pycache__/
-python/**/*.egg-info/
-python/dist/
-python/.venv/
 .omc/
 .rcmdcheck_result.rds
 fmridataset.Rcheck/
