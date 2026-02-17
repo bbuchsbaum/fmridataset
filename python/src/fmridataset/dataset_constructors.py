@@ -98,6 +98,22 @@ def matrix_dataset(
     )
 
 
+def _ensure_event_table_unique(event_table: pd.DataFrame | None) -> pd.DataFrame | None:
+    """Ensure event table columns are uniquely named."""
+
+    if event_table is None:
+        return None
+
+    duplicates = pd.Index(event_table.columns)[pd.Index(event_table.columns).duplicated()]
+    if len(duplicates):
+        duplicate_list = ", ".join(sorted(set(map(str, duplicates))))
+        raise ValueError(
+            f"event_table columns must be unique, duplicate columns: {duplicate_list}"
+        )
+
+    return event_table
+
+
 def fmri_dataset(
     backend: Any,
     TR: float,  # noqa: N803
@@ -131,6 +147,6 @@ def fmri_dataset(
     return FmriDataset(
         backend=backend,
         sampling_frame=frame,
-        event_table=event_table,
+        event_table=_ensure_event_table_unique(event_table),
         censor=censor,
     )

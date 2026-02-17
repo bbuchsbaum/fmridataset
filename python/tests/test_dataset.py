@@ -123,6 +123,18 @@ class TestFmriDatasetFromBackend:
         assert len(ds.event_table.columns) == 0
         assert len(ds.event_table) == 0
 
+    def test_duplicate_event_table_columns_error(self) -> None:
+        mat = np.zeros((20, 10))
+        backend = MatrixBackend(data_matrix=mat)
+        bad_events = pd.DataFrame([[1, 2], [3, 4]], columns=["onset", "onset"])
+        with pytest.raises(ValueError, match="columns must be unique"):
+            fmri_dataset(
+                backend,
+                TR=1.0,
+                run_length=20,
+                event_table=bad_events,
+            )
+
 
 class TestDataAccess:
     def test_get_data(self) -> None:
