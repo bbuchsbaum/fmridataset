@@ -46,10 +46,6 @@ class FmriDataset:
         self._sampling_frame = sampling_frame
         if event_table is None:
             event_table = pd.DataFrame()
-        if len(event_table.columns) == 0:
-            # Maintain compatibility with the R implementation, which seeds
-            # empty event tables with a placeholder index column.
-            event_table = pd.DataFrame({"event_index": pd.Series(dtype=int)})
         self._event_table = event_table
 
         if censor is None:

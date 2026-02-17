@@ -55,6 +55,12 @@ class TestLatentDatasetConstructor:
         with pytest.raises(ValueError, match="run_length values must be integers"):
             latent_dataset(source=path, TR=2.0, run_length=[2.5, 2.5])
 
+    def test_default_event_table_remains_empty(self, latent_h5_file):
+        path, _, _, _, _ = latent_h5_file
+        ds = latent_dataset(source=path, TR=2.0, run_length=20)
+        assert len(ds.event_table.columns) == 0
+        assert len(ds.event_table) == 0
+
 
 class TestLatentDatasetMethods:
     def test_get_latent_scores(self, latent_h5_file):
