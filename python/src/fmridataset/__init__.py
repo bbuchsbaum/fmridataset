@@ -15,10 +15,16 @@ from .data_chunks import (
     data_chunks,
 )
 from .dataset import FmriDataset, MatrixDataset
-from .dataset_constructors import fmri_dataset, matrix_dataset
+from .dataset_constructors import (
+    fmri_dataset,
+    fmri_zarr_dataset,
+    matrix_dataset,
+    zarr_dataset,
+)
 from .errors import BackendIOError, ConfigError, FmriDatasetError
 from .fmri_series import FmriSeries
 from .latent_dataset import LatentDataset, latent_dataset
+from .mask_utils import mask_to_logical, mask_to_volume
 from .sampling_frame import SamplingFrame
 from .selectors import AllSelector, IndexSelector, ROISelector, SeriesSelector
 from .study_dataset import StudyDataset, study_dataset
@@ -50,12 +56,17 @@ __all__ = [
     # constructors
     "matrix_dataset",
     "fmri_dataset",
+    "fmri_zarr_dataset",
     "latent_dataset",
     "study_dataset",
+    "zarr_dataset",
     # data access
     "get_data",
     "get_data_matrix",
     "get_mask",
+    # mask utilities
+    "mask_to_logical",
+    "mask_to_volume",
     # series
     "FmriSeries",
     # selectors

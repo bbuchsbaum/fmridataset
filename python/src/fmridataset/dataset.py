@@ -99,6 +99,25 @@ class FmriDataset:
     def blockids(self) -> NDArray[np.intp]:
         return self._sampling_frame.blockids
 
+    @property
+    def samples(self) -> NDArray[np.intp]:
+        """Sample indices (0-based) for each time-point."""
+        return self._sampling_frame.samples
+
+    @property
+    def run_durations(self) -> NDArray[np.float64]:
+        """Duration of each run in seconds."""
+        return self._sampling_frame.run_durations
+
+    @property
+    def total_duration(self) -> float:
+        """Total duration across all runs in seconds."""
+        return self._sampling_frame.total_duration
+
+    def run_indices(self, run: int) -> NDArray[np.intp]:
+        """Return row indices for a specific run (1-based)."""
+        return self._sampling_frame.run_indices(run)
+
     # -- data access -------------------------------------------------------
 
     def get_data(
