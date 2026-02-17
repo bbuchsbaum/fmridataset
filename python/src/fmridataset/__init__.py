@@ -22,7 +22,12 @@ from .dataset_constructors import (
     zarr_dataset,
 )
 from .errors import BackendIOError, ConfigError, FmriDatasetError
-from .fmri_series import FmriSeries
+from .fmri_series import (
+    FmriSeries,
+    fmri_series,
+    resolve_selector,
+    resolve_timepoints,
+)
 from .latent_dataset import LatentDataset, latent_dataset
 from .mask_utils import mask_to_logical, mask_to_volume
 from .sampling_frame import SamplingFrame
@@ -78,6 +83,9 @@ __all__ = [
     "mask_to_volume",
     # series
     "FmriSeries",
+    "fmri_series",
+    "resolve_selector",
+    "resolve_timepoints",
     # group
     "FmriGroup",
     "fmri_group",

@@ -1,15 +1,20 @@
-"""FmriSeries: lazy time-series container.
+"""FmriSeries: lazy time-series container and query function.
 
-Port of ``R/FmriSeries.R``.
+Port of ``R/FmriSeries.R``, ``R/fmri_series.R``,
+``R/fmri_series_resolvers.R``, and ``R/fmri_series_metadata.R``.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    from .dataset import FmriDataset
+    from .selectors import SeriesSelector
 
 
 class FmriSeries:
@@ -122,3 +127,139 @@ class FmriSeries:
 
     def __len__(self) -> int:
         return int(self._data.shape[0])
+
+
+# ---------------------------------------------------------------------------
+# Resolver helpers (port of R/fmri_series_resolvers.R)
+# ---------------------------------------------------------------------------
+
+
+def resolve_selector(
+    dataset: FmriDataset,
+    selector: SeriesSelector | NDArray[np.intp] | None,
+) -> NDArray[np.intp]:
+    """Resolve a spatial selector to 0-based column indices.
+
+    Parameters
+    ----------
+    dataset : FmriDataset
+        The dataset to resolve against.
+    selector : SeriesSelector, ndarray, or None
+        ``None`` selects all voxels. An integer array is used directly.
+        A :class:`SeriesSelector` is resolved via its ``resolve_indices``
+        method.
+    """
+    from .selectors import SeriesSelector as _SS
+
+    if selector is None:
+        n_voxels = int(dataset.get_mask().sum())
+        return np.arange(n_voxels, dtype=np.intp)
+
+    if isinstance(selector, _SS):
+        return selector.resolve_indices(dataset)
+
+    arr = np.asarray(selector)
+    if np.issubdtype(arr.dtype, np.integer):
+        return arr.astype(np.intp, copy=False)
+
+    raise ValueError(f"Unsupported selector type: {type(selector)}")
+
+
+def resolve_timepoints(
+    dataset: FmriDataset,
+    timepoints: NDArray[np.intp] | NDArray[np.bool_] | None,
+) -> NDArray[np.intp]:
+    """Resolve a temporal selection to 0-based row indices.
+
+    Parameters
+    ----------
+    dataset : FmriDataset
+        The dataset to resolve against.
+    timepoints : ndarray or None
+        ``None`` selects all timepoints. A boolean array is converted via
+        ``np.where``. An integer array is used directly (0-based).
+    """
+    n_time = dataset.n_timepoints
+    if timepoints is None:
+        return np.arange(n_time, dtype=np.intp)
+
+    arr = np.asarray(timepoints)
+    if np.issubdtype(arr.dtype, np.bool_):
+        if arr.size != n_time:
+            raise ValueError(
+                f"Boolean timepoints length ({arr.size}) must equal "
+                f"n_timepoints ({n_time})"
+            )
+        return np.where(arr)[0].astype(np.intp)
+
+    if np.issubdtype(arr.dtype, np.integer):
+        return arr.astype(np.intp, copy=False)
+
+    raise ValueError(f"Unsupported timepoints type: {arr.dtype}")
+
+
+# ---------------------------------------------------------------------------
+# Temporal metadata builder (port of R/fmri_series_metadata.R)
+# ---------------------------------------------------------------------------
+
+
+def _build_temporal_info(
+    dataset: FmriDataset,
+    time_indices: NDArray[np.intp],
+) -> pd.DataFrame:
+    """Build a ``temporal_info`` DataFrame for selected timepoints."""
+    blockids = dataset.blockids
+    return pd.DataFrame(
+        {
+            "run_id": blockids[time_indices],
+            "timepoint": time_indices,
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# Top-level query function (port of R/fmri_series.R)
+# ---------------------------------------------------------------------------
+
+
+def fmri_series(
+    dataset: FmriDataset,
+    selector: SeriesSelector | NDArray[np.intp] | None = None,
+    timepoints: NDArray[np.intp] | NDArray[np.bool_] | None = None,
+) -> FmriSeries:
+    """Query fMRI time-series from a dataset.
+
+    Parameters
+    ----------
+    dataset : FmriDataset
+        Source dataset.
+    selector : SeriesSelector, ndarray, or None
+        Spatial selection. ``None`` selects all voxels.
+    timepoints : ndarray or None
+        Temporal selection. ``None`` selects all timepoints.
+
+    Returns
+    -------
+    FmriSeries
+        Container with data, voxel_info, and temporal_info.
+    """
+    voxel_ind = resolve_selector(dataset, selector)
+    time_ind = resolve_timepoints(dataset, timepoints)
+
+    data = dataset.get_data(rows=time_ind, cols=voxel_ind)
+
+    voxel_info = pd.DataFrame({"voxel": voxel_ind})
+    temporal_info = _build_temporal_info(dataset, time_ind)
+
+    backend_type = type(dataset._backend).__name__
+
+    return FmriSeries(
+        data=data,
+        voxel_info=voxel_info,
+        temporal_info=temporal_info,
+        selection_info={
+            "selector": repr(selector) if selector is not None else None,
+            "timepoints": repr(timepoints) if timepoints is not None else None,
+        },
+        dataset_info={"backend_type": backend_type},
+    )
