@@ -18,6 +18,15 @@ test_that("matrix_dataset handles type coercion with appropriate messages", {
   expect_equal(ncol(dset$datamat), 2)
 })
 
+test_that("matrix_dataset provides non-empty event_table schema by default", {
+  mat <- matrix(rnorm(100), nrow = 100, ncol = 1)
+  dset <- matrix_dataset(mat, TR = 2, run_length = 100)
+
+  expect_s3_class(dset$event_table, "data.frame")
+  expect_equal(nrow(dset$event_table), 0)
+  expect_equal(ncol(dset$event_table), 1)
+})
+
 test_that("matrix_dataset validates run_length properly", {
   mat <- matrix(rnorm(100 * 50), 100, 50)
 
