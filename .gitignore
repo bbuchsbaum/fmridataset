@@ -16,3 +16,4 @@ fmridataset.Rcheck/
 vignettes/*.html
 *.bak
 CLAUDE.md.bak
+fmridataset_*.tar.gz

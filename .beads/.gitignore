@@ -13,4 +13,7 @@ last-touched
 # Runtime
 daemon-error
 daemon.log
+daemon.pid
 .local_version
+sync-state.json
+beads.left.*
