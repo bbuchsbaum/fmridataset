@@ -4,12 +4,15 @@
 \name{n_runs}
 \alias{n_runs}
 \alias{n_runs.fmri_dataset}
+\alias{n_runs.fmri_study_dataset}
 \alias{n_runs.sampling_frame}
 \title{Get Number of Runs from Sampling Frame}
 \usage{
 n_runs(x, ...)
 
 \method{n_runs}{fmri_dataset}(x, ...)
+
+\method{n_runs}{fmri_study_dataset}(x, ...)
 
 \method{n_runs}{sampling_frame}(x, ...)
 }

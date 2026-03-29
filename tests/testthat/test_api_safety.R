@@ -24,12 +24,24 @@ test_that("api critical symbols are exported from package namespace", {
   expect_true("%||%" %in% exports)
   expect_true("new_fmri_series" %in% exports)
 
-  expect_true("backend_open.h5_backend" %in% exports)
-  expect_true("backend_close.h5_backend" %in% exports)
-  expect_true("backend_get_dims.h5_backend" %in% exports)
-  expect_true("backend_get_mask.h5_backend" %in% exports)
-  expect_true("backend_get_data.h5_backend" %in% exports)
-  expect_true("backend_get_metadata.h5_backend" %in% exports)
+  # S3 methods are registered via S3method() in NAMESPACE, making them
+  # available through dispatch. They are accessible in the namespace but
+  # getNamespaceExports() only returns explicitly export()-ed symbols.
+  # Verify the generics (not the method-specific names) are exported.
+  expect_true("backend_open" %in% exports)
+  expect_true("backend_close" %in% exports)
+  expect_true("backend_get_dims" %in% exports)
+  expect_true("backend_get_mask" %in% exports)
+  expect_true("backend_get_data" %in% exports)
+  expect_true("backend_get_metadata" %in% exports)
+
+  # Verify the h5_backend methods are registered for S3 dispatch
+  expect_true(!is.null(utils::getS3method("backend_open",        "h5_backend", optional = TRUE)))
+  expect_true(!is.null(utils::getS3method("backend_close",       "h5_backend", optional = TRUE)))
+  expect_true(!is.null(utils::getS3method("backend_get_dims",    "h5_backend", optional = TRUE)))
+  expect_true(!is.null(utils::getS3method("backend_get_mask",    "h5_backend", optional = TRUE)))
+  expect_true(!is.null(utils::getS3method("backend_get_data",    "h5_backend", optional = TRUE)))
+  expect_true(!is.null(utils::getS3method("backend_get_metadata","h5_backend", optional = TRUE)))
 })
 
 test_that("matrix_dataset provides non-empty event_table schema by default", {

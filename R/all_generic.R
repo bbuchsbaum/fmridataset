@@ -546,3 +546,97 @@ resolve_indices <- function(selector, dataset, ...) {
 subject_ids <- function(x, ...) {
   UseMethod("subject_ids")
 }
+
+#' Get Participant IDs from a Dataset
+#'
+#' Generic function to extract participant/subject identifiers from
+#' study-level fMRI dataset objects. Defined here in fmridataset so
+#' methods work without requiring bidser to be installed.
+#'
+#' @param x A study dataset object (e.g., bids_h5_study_dataset)
+#' @param ... Additional arguments passed to methods
+#'
+#' @return Character vector of participant identifiers
+#'
+#' @export
+participants <- function(x, ...) {
+  UseMethod("participants")
+}
+
+#' Get Task Names from a Dataset
+#'
+#' Generic function to extract task names from study-level fMRI dataset
+#' objects. Defined here in fmridataset so methods work without requiring
+#' bidser to be installed.
+#'
+#' @param x A study dataset object (e.g., bids_h5_study_dataset)
+#' @param ... Additional arguments passed to methods
+#'
+#' @return Character vector of task names present in the dataset
+#'
+#' @export
+tasks <- function(x, ...) {
+  UseMethod("tasks")
+}
+
+#' Get Session Names from a Dataset
+#'
+#' Generic function to extract session names from study-level fMRI dataset
+#' objects. Defined here in fmridataset so methods work without requiring
+#' bidser to be installed.
+#'
+#' @param x A study dataset object (e.g., bids_h5_study_dataset)
+#' @param ... Additional arguments passed to methods
+#'
+#' @return Character vector of session names, or NULL if no sessions
+#'
+#' @export
+sessions <- function(x, ...) {
+  UseMethod("sessions")
+}
+
+#' Get Scan Manifest from a BIDS H5 Dataset
+#'
+#' Generic function to extract the per-scan metadata table from a
+#' BIDS HDF5 study dataset.
+#'
+#' @param x A BIDS H5 study dataset object
+#' @param ... Additional arguments passed to methods
+#'
+#' @return A tibble with columns: scan_name, subject, task, session, run,
+#'   n_time, has_events, has_confounds
+#'
+#' @export
+scan_manifest <- function(x, ...) {
+  UseMethod("scan_manifest")
+}
+
+#' Get Parcellation Information from a BIDS H5 Dataset
+#'
+#' Generic function to retrieve parcellation metadata from a BIDS HDF5
+#' dataset stored in parcellated mode.
+#'
+#' @param x A BIDS H5 study dataset object
+#' @param ... Additional arguments passed to methods
+#'
+#' @return A list with elements: cluster_ids, cluster_map, labels, n_parcels
+#'
+#' @export
+parcellation_info <- function(x, ...) {
+  UseMethod("parcellation_info")
+}
+
+#' Get Confound Regressors from a BIDS H5 Dataset
+#'
+#' Generic function to retrieve confound regressor matrices stored in
+#' a BIDS HDF5 dataset.
+#'
+#' @param x A BIDS H5 study dataset object
+#' @param ... Additional arguments passed to methods
+#'
+#' @return A tibble (single scan) or named list of tibbles (multiple scans)
+#'
+#' @export
+get_confounds <- function(x, ...) {
+  UseMethod("get_confounds")
+}
