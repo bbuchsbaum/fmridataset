@@ -43,13 +43,19 @@ fmridataset is the natural home because:
 study <- bids_h5_dataset("my_study.h5")   # one file, one call
 ```
 
-Internally:
+Internally — **two-level nesting** that matches `fmri_study_dataset`'s expectations:
+
 1. Open H5 file once → shared ref-counted connection
 2. Create one `bids_h5_scan_backend` per scan (just a group path pointer)
-3. Group scans by subject → one `fmri_dataset` per subject
-4. Compose via existing `fmri_study_dataset(datasets, subject_ids)`
+3. Group scans by subject. For each subject:
+   - If the subject has multiple runs: compose that subject's scan backends into a `study_backend` (acting as a run-composite)
+   - If single run: use the scan backend directly
+   - Wrap into a `fmri_dataset` with per-subject event_table, sampling_frame, and censor
+4. Compose the per-subject `fmri_dataset` objects via `fmri_study_dataset(datasets, subject_ids)`
 
-This gives us `data_chunks()`, `as_delarr()`, per-subject access, and `fmri_group()` for free.
+The top level is **subject-composite** (`study_backend` over per-subject datasets). Each subject's backend may itself be **scan-composite** (a `study_backend` over that subject's scan backends). This matches how `get_data_matrix(study, subject_id="01")` indexes into `x$backend$backends[[idx]]` — it reaches the subject level, not individual scans.
+
+This gives us `data_chunks()`, `as_delarr()`, and per-subject access for free.
 
 ### Decision 2: Parcellated data is native feature-space (K parcel columns, not V voxels)
 
@@ -225,13 +231,18 @@ compress_bids_study <- function(
 ```r
 bids_h5_dataset <- function(file, preload = FALSE)
 # Returns: bids_h5_study_dataset (subclass of fmri_study_dataset) with:
-#   - scan_manifest: tibble of scan metadata
-#   - event_table: combined events from all runs, with task/session columns
+#   - scan_manifest: tibble of scan metadata (subject, task, session, run, n_time)
+#   - event_table: combined events from all runs, with columns:
+#       onset, duration, trial_type, ..., run (BIDS label), run_id (sequential int),
+#       subject_id, task, session
 #   - sampling_frame: temporal structure from TR + run lengths
-#   - backend: study_backend composed from per-scan bids_h5_scan_backends
+#   - censor: concatenated censor vector across all subjects (managed by
+#       bids_h5_study_dataset, not inherited from fmri_study_dataset)
+#   - backend: subject-composite study_backend, where each subject's backend
+#       is itself a scan-composite study_backend (for multi-run subjects)
 #   - h5_connection: shared ref-counted H5 file handle
 #
-# BIDS-specific accessors (reuse bidser generics where they exist):
+# BIDS-specific accessors (local generics with conditional bidser delegation):
 #   participants(study)  → character vector of subject IDs
 #   tasks(study)         → character vector of task names
 #   sessions(study)      → character vector of session names (or NULL)
@@ -298,15 +309,18 @@ study$event_table
 #>   onset duration trial_type run subject_id task    session
 #>   ...
 
-# Group operations
-group <- as_fmri_group(nback)
+# Group operations (requires explicit conversion — as_fmri_group is not
+# an S3 method on fmri_study_dataset; we provide a helper)
+group <- study_to_group(nback)
 results <- group_map(group, function(ds) {
   mat <- get_data_matrix(ds)
   cor(mat)
 })
 
-# Confounds (new accessor)
-get_confounds(study, subject = "01")  # → tibble of confound regressors
+# Confounds — keyed by scan_name for unambiguous access
+get_confounds(study, scan_name = "sub-01_task-nback_run-01")  # → single tibble
+get_confounds(study, subject = "01")  # → named list of tibbles (one per scan)
+get_confounds(study, task = "nback")  # → named list of tibbles
 
 # Parcellation metadata (not in backend contract, on the study object)
 parcellation_info(study)
@@ -321,8 +335,9 @@ parcellation_info(study)
 2. Select corresponding per-scan backends (already in memory, just pointers)
 3. Regroup by subject → new per-subject `fmri_dataset` objects
 4. Return new `bids_h5_study_dataset` via `fmri_study_dataset()` with:
-   - Filtered event_table (only matching scans)
+   - Filtered event_table (only matching scans, preserving both `run` and `run_id`)
    - Filtered sampling_frame (only matching run lengths)
+   - Concatenated censor vector from matching scans
    - Shared H5 connection (same handle, ref count adjusted)
 
 ---
@@ -332,7 +347,7 @@ parcellation_info(study)
 | File | Contents |
 |:-----|:---------|
 | `R/bids_h5_backend.R` | `bids_h5_scan_backend` class, 6-method contract, `h5_shared_connection` |
-| `R/bids_h5_dataset.R` | `bids_h5_dataset()` reader, `bids_h5_study_dataset` class, `subset_bids_h5()`, `participants()`, `tasks()`, `sessions()`, `parcellation_info()`, `get_confounds()` |
+| `R/bids_h5_dataset.R` | `bids_h5_dataset()` reader, `bids_h5_study_dataset` class, `subset_bids_h5()`, `study_to_group()`, `participants()`, `tasks()`, `sessions()`, `parcellation_info()`, `get_confounds()` |
 | `R/bids_h5_write.R` | `compress_bids_study()` writer |
 | `R/bids_h5_events.R` | Event read/write helpers for HDF5 column arrays |
 | `tests/testthat/test-bids_h5.R` | Round-trip tests, subsetting, events, confounds |
@@ -376,7 +391,7 @@ parcellation_info(study)
 - Open H5, read scan_index → per-scan backends → group by subject
 - Compose via `fmri_study_dataset()`
 - scan_manifest as first-class field
-- `participants()`, `tasks()`, `sessions()` methods (extend bidser generics)
+- `participants()`, `tasks()`, `sessions()` methods. These generics are owned by bidser (a Suggests-only dep), so methods must use conditional S3 registration via `S3method()` directives in NAMESPACE with `.onLoad()` fallback, or define local generics that defer to bidser's when available. The plan must not silently require bidser to be attached for these to work. Approach: define fmridataset-local generics that check for and delegate to bidser generics if loaded, otherwise dispatch on local methods only.
 
 ### Step 4: `subset_bids_h5()` for task/subject/session/run filtering
 - Filter manifest → select backends → recompose study_dataset
@@ -384,9 +399,10 @@ parcellation_info(study)
 
 ### Step 5: Events, confounds, censor
 - Column-array HDF5 event read/write
-- `get_confounds()` accessor
-- Censor vector propagation
+- `get_confounds(study, scan_name=)` accessor — keyed by scan_name, returns named list of tibbles when multiple scans match; single tibble when unambiguous
+- Censor vector: `fmri_study_dataset()` does not propagate censor (R/dataset_constructors.R:486 drops it). `bids_h5_study_dataset` must aggregate per-scan censor vectors itself and store as a top-level field. The per-subject `fmri_dataset` objects carry their own censor; the study-level censor is the concatenation across all subjects.
 - Task column in event_table
+- Events carry both BIDS `run` (the BIDS run label, e.g. "01") and internal `run_id` (sequential integer across runs within a subject, as fmridataset expects in multiple places)
 
 ### Step 6: Integration tests
 - Round-trip: `create_mock_bids()` → `compress_bids_study()` → `bids_h5_dataset()` → verify
