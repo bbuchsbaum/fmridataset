@@ -2,10 +2,10 @@
 title: "Getting Started with fmridataset"
 author: "fmridataset Team"
 date: "`r Sys.Date()`"
-output: 
+output:
   rmarkdown::html_vignette:
     toc: true
-    toc_depth: 3
+    toc_depth: 2
     number_sections: true
 vignette: >
   %\VignetteIndexEntry{Getting Started with fmridataset}
@@ -13,684 +13,149 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r setup, include = FALSE}
+```{r setup, include=FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  fig.width = 7,
-  fig.height = 5,
-  eval = TRUE, # Enable evaluation for demonstration
+  eval = TRUE,
   warning = FALSE,
   message = FALSE
 )
-
-suppressPackageStartupMessages({
-  library(fmridataset)
-})
-
-# Source helper functions for examples
-if (file.exists("../R/vignette_helpers.R")) {
-  source("../R/vignette_helpers.R")
-}
-```
-
-# Motivation: Unified fMRI Data Access
-
-fMRI analyses frequently involve heterogeneous data sources: NIfTI files from different scanners, BIDS-organized datasets, preprocessed matrices from various pipelines, and archived HDF5 files. Each format traditionally requires distinct loading procedures, memory management approaches, and temporal organization methods.
-
-The fmridataset package provides a unified interface layer that abstracts these format-specific differences. This abstraction enables:
-
-- **Consistent data access**: Identical functions work across all supported formats
-- **Format-specific optimization**: Each backend implements optimal loading strategies
-- **Temporal structure preservation**: Unified handling of runs, TR, and event timing
-- **Memory efficiency**: Lazy loading and chunking strategies adapt to data characteristics
-
-# Quick Start: Multi-Format Data Access
-
-Let's jump into a concrete example that shows how fmridataset simplifies a typical workflow. We'll create a dataset from a simple matrix, add temporal structure and experimental events, then demonstrate the unified interface for data access:
-
-```{r real-example}
 library(fmridataset)
+```
 
-# Create realistic synthetic fMRI data using helper function
-activation_periods <- c(20:30, 50:60, 120:130, 150:160)
-fmri_matrix <- generate_example_fmri_data(
-  n_timepoints = 200,
-  n_voxels = 1000,
-  n_active = 100,
-  activation_periods = activation_periods,
-  signal_strength = 0.5
-)
+# Motivation
 
-# Create dataset with temporal structure
-dataset <- matrix_dataset(
-  datamat = fmri_matrix,
-  TR = 2.0, # 2-second repetition time
-  run_length = c(100, 100) # Two runs of 100 timepoints each
-)
+fMRI analyses involve heterogeneous sources: NIfTI files, BIDS datasets, preprocessed matrices, and HDF5 archives. fmridataset provides a unified interface that abstracts format differences so the same functions work regardless of how data is stored.
 
-# Add experimental design using helper function
-events <- generate_example_events(
-  n_runs = 2,
-  events_per_run = 2,
+# Creating a Dataset
+
+The simplest starting point is a matrix dataset, which wraps an in-memory matrix with temporal metadata.
+
+```{r create-dataset}
+set.seed(42)
+mat <- matrix(rnorm(150 * 1000), nrow = 150, ncol = 1000)
+
+ds <- matrix_dataset(
+  datamat = mat,
   TR = 2.0,
-  run_length = 100
+  run_length = c(75, 75)
 )
 
-dataset$event_table <- events
-
-# Display the dataset
-print_dataset_info(dataset, "Dataset Summary")
+print(ds)
 ```
 
-Now let's see the unified interface in action:
+The dataset holds 150 timepoints split into two runs of 75, with a 2-second TR.
 
-```{r unified-interface}
-# Access temporal information (same methods regardless of data source)
-cat("TR:", get_TR(dataset), "seconds\n")
-cat("Number of runs:", n_runs(dataset), "\n")
-cat("Total timepoints:", n_timepoints(dataset), "\n")
-cat("Run durations:", get_run_duration(dataset), "seconds\n")
+# Accessing Data
 
-# Get data for analysis (returns standard R matrix)
-all_data <- get_data_matrix(dataset)
-cat("Full data dimensions:", dim(all_data), "\n")
+`get_data_matrix()` returns a standard timepoints-by-voxels matrix. You can retrieve all runs or a single run by index.
 
-# Get data from specific runs
-run1_data <- get_data_matrix(dataset, run_id = 1)
-cat("Run 1 dimensions:", dim(run1_data), "\n")
+```{r get-data}
+all_data <- get_data_matrix(ds)
+cat("Full dimensions:", dim(all_data), "\n")
 
-# Access experimental events
-cat("\nEvent Table:\n")
-print(head(dataset$event_table, 4))
+run1 <- get_data_matrix(ds, run_id = 1)
+cat("Run 1 dimensions:", dim(run1), "\n")
 ```
 
-**Technical Note**: This unified interface operates through backend abstraction. Each data format implements the same contract, enabling format-independent analysis code.
+The returned matrix is always in timepoints x voxels orientation.
 
-# Core Concepts
+# Temporal Structure
 
-Now that we've seen the unified interface in action, let's understand the key abstractions that make fmridataset powerful and flexible.
-
-## The Dataset: Your Analysis Starting Point
-
-A dataset in fmridataset represents everything you need for fMRI analysis in one unified object. Think of it as a smart container that knows about your data's spatial organization (which voxels contain brain tissue), temporal structure (how timepoints are organized into runs), and experimental design (when events occurred). Unlike working with raw files or matrices, a dataset maintains all this metadata and provides consistent access methods regardless of how the underlying data is stored.
-
-This abstraction enables analysis functions to operate on any dataset type through method dispatch. The dataset implementation handles format-specific I/O operations while maintaining consistent public methods across all backends.
-
-## Storage Backends: Format Independence
-
-Behind every dataset is a storage backend that handles the actual data input/output operations. When you create a dataset from NIfTI files, fmridataset automatically creates a NIfTI backend that knows how to read those files efficiently. If you create a dataset from a matrix, it uses a matrix backend optimized for in-memory data.
-
-This separation between interface and implementation enables format independence through the backend abstraction layer. Backend implementations provide lazy loading for file-based data sources and chunked processing for memory-constrained operations.
-
-## Temporal Structure: More Than Just Time
-
-fMRI data has rich temporal structure that goes beyond simple time series. Runs may have different lengths, repetition times vary between studies, and experimental events need to be aligned with acquisition timing. The sampling frame abstraction captures all this temporal complexity in a unified model.
-
-Sampling frames maintain run boundary information and time-to-sample index mappings. They provide methods for run-specific data extraction and temporal unit conversion between seconds and TR indices.
-
-## Data Chunking: Efficiency Without Complexity
-
-Modern fMRI datasets can be enormous, often exceeding available memory. Traditional approaches require you to manually split data into pieces and carefully manage memory usage. fmridataset provides automatic data chunking that handles this complexity transparently.
-
-The chunking system partitions datasets into memory-manageable segments for independent processing. Chunk generation uses configurable parameters (`nchunks`, `runwise`) to determine voxel groupings, with each chunk containing data subsets and corresponding voxel metadata.
-
-# Deep Dive: Creating and Using Datasets
-
-With the fundamentals clear, let's explore how to create datasets from different sources and use their full capabilities effectively.
-
-## Creating Datasets from Different Sources
-
-### Matrix Datasets: When Data is Already in Memory
-
-Matrix datasets are perfect when you already have preprocessed data in R or when working with simulated data. They provide the fastest access since no file I/O is required:
-
-```{r matrix-dataset}
-# Create from existing matrix
-data_matrix <- matrix(rnorm(1000 * 150), nrow = 150, ncol = 1000)
-
-dataset <- matrix_dataset(
-  datamat = data_matrix,
-  TR = 2.5,
-  run_length = c(75, 75) # Two equal runs
-)
-
-# Immediate access - no loading delay
-data <- get_data_matrix(dataset)
-cat("Matrix dataset dimensions:", dim(data), "\n")
-```
-
-Matrix datasets store all data in memory, providing optimal access performance for datasets within available RAM limits.
-
-### File Datasets: Lazy Loading for Large Data
-
-File datasets work with NIfTI files and implement lazy loading, where data remains on disk until explicitly accessed:
-
-```{r file-dataset, eval = FALSE}
-# File-based dataset (paths would be real NIfTI files)
-file_paths <- c(
-  "/path/to/subject01_run1.nii.gz",
-  "/path/to/subject01_run2.nii.gz"
-)
-mask_path <- "/path/to/brain_mask.nii.gz"
-
-# Creating the dataset doesn't load any data
-dataset <- fmri_file_dataset(
-  scans = file_paths,
-  mask = mask_path,
-  TR = 2.0,
-  run_length = c(180, 180)
-)
-
-# Data loads when first accessed
-print(dataset) # Shows metadata only
-# data <- get_data_matrix(dataset)  # This would trigger loading
-```
-
-File datasets implement lazy loading and apply brain mask filtering to minimize memory requirements.
-
-### Memory Datasets: Working with NeuroVec Objects
-
-If you're already using the neuroim2 package, memory datasets let you work with existing NeuroVec objects:
-
-```{r neurovec-dataset}
-# Example with NeuroVec objects (requires neuroim2)
-if (requireNamespace("neuroim2", quietly = TRUE)) {
-  # Create example NeuroVec
-  dims <- c(10, 10, 10, 100) # 10x10x10 voxels, 100 timepoints
-  nvec <- neuroim2::NeuroVec(
-    array(rnorm(prod(dims)), dims),
-    space = neuroim2::NeuroSpace(dims)
-  )
-
-  # Create mask
-  mask_dims <- dims[1:3]
-  mask <- neuroim2::NeuroVol(
-    array(1, mask_dims),
-    space = neuroim2::NeuroSpace(mask_dims)
-  )
-
-  # Create dataset
-  dataset <- fmri_mem_dataset(
-    scans = list(nvec),
-    mask = mask,
-    TR = 2.0,
-    run_length = 100
-  )
-}
-```
-
-Memory datasets preserve the spatial structure of NeuroVec objects while providing the unified dataset interface.
-
-## Accessing Data Efficiently
-
-### Direct Data Access
-
-The primary way to get data is through `get_data_matrix()`, which always returns a standard R matrix in timepoints × voxels orientation:
-
-```{r data-access}
-# Get complete dataset
-full_data <- get_data_matrix(dataset)
-cat("Full data shape:", dim(full_data), "\n")
-
-# Get specific runs
-run1 <- get_data_matrix(dataset, run_id = 1)
-run2 <- get_data_matrix(dataset, run_id = 2)
-cat("Run 1 shape:", dim(run1), "\n")
-cat("Run 2 shape:", dim(run2), "\n")
-
-# Get multiple runs
-runs_1_2 <- get_data_matrix(dataset, run_id = c(1, 2))
-cat("Runs 1-2 combined shape:", dim(runs_1_2), "\n")
-```
-
-For file-based datasets, these operations trigger data loading. The package automatically applies brain masks and handles any necessary format conversions.
-
-### Memory-Efficient Chunking
-
-For large datasets, chunking enables processing without loading everything into memory:
-
-```{r chunking}
-# Create chunks for processing
-chunks <- data_chunks(dataset, nchunks = 4)
-
-# Process each chunk independently using foreach
-`%do%` <- foreach::`%do%`
-results <- foreach::foreach(chunk = chunks) %do% {
-  cat(
-    "Processing chunk", chunk$chunk_num,
-    "with", ncol(chunk$data), "voxels\n"
-  )
-
-  # Your analysis here - each chunk$data is a standard matrix
-  colMeans(chunk$data) # Example: compute mean time series
-}
-
-# Combine results
-all_means <- do.call(c, results)
-cat("Computed means for", length(all_means), "total voxels\n")
-```
-
-The chunking system automatically divides voxels optimally and provides metadata about which voxels each chunk contains.
-
-### Run-wise Processing
-
-Many fMRI analyses need to process runs separately. The chunking system supports this directly:
-
-```{r runwise}
-# Create one chunk per run
-run_chunks <- data_chunks(dataset, runwise = TRUE)
-
-# Process runs independently using foreach
-`%do%` <- foreach::`%do%`
-run_results <- foreach::foreach(chunk = run_chunks) %do% {
-  cat(
-    "Processing run", chunk$chunk_num,
-    "with", nrow(chunk$data), "timepoints\n"
-  )
-
-  # Run-specific analysis
-  analyze_run(chunk$data)
-}
-
-cat("Processed", length(run_results), "runs\n")
-```
-
-Run-wise chunking ensures each chunk contains data from exactly one run, making it perfect for analyses that require run boundaries.
-
-## Working with Temporal Structure
-
-### Understanding Sampling Frames
-
-Every dataset contains a sampling frame that captures temporal organization:
+Every dataset contains a `sampling_frame` that records run boundaries, TR, and duration.
 
 ```{r sampling-frame}
-# Access the sampling frame
-sf <- dataset$sampling_frame
-print(sf)
-
-# Query temporal properties
+sf <- ds$sampling_frame
 cat("TR:", get_TR(sf), "seconds\n")
-cat("Number of runs:", n_runs(sf), "\n")
+cat("Runs:", n_runs(sf), "\n")
 cat("Run lengths:", get_run_lengths(sf), "timepoints\n")
 cat("Total duration:", get_total_duration(sf), "seconds\n")
 
-# Get timing information
-run_durations <- get_run_duration(sf)
-cat("Run durations:", run_durations, "seconds\n")
-
-# Get sample time points (in seconds)
-sample_times <- samples(sf)
-cat("First 6 sample times:", head(sample_times), "seconds\n")
-cat("Last 6 sample times:", tail(sample_times), "seconds\n")
+# First six acquisition times (seconds)
+head(samples(sf))
 ```
 
-The sampling frame provides all the temporal metadata needed for sophisticated time series analyses.
+`blockids()` maps each timepoint to its run index, which is useful for run-specific indexing.
 
-### Converting Between Time and Samples
+# Event Tables
 
-Sampling frames enable easy conversion between time units and sample indices:
+Experimental design attaches to the dataset as a data frame in `$event_table`.
 
-```{r time-conversion}
-# Convert event times to sample indices
-event_onsets <- c(30, 75, 130, 175) # seconds
-TR <- get_TR(dataset$sampling_frame)
-
-# Manual conversion
-sample_indices <- round(event_onsets / TR) + 1
-cat("Event onsets at samples:", sample_indices, "\n")
-
-# Use sampling frame to identify run boundaries
-block_ids <- blockids(dataset$sampling_frame)
-for (run_idx in 1:n_runs(dataset$sampling_frame)) {
-  run_samples <- which(block_ids == run_idx)
-  cat("Run", run_idx, "contains samples", min(run_samples), "to", max(run_samples), "\n")
-}
-```
-
-This timing awareness is crucial for proper event-related analyses and temporal alignment.
-
-# Advanced Topics
-
-Once you're comfortable with basic dataset creation and access, these advanced techniques help you handle complex scenarios and optimize performance.
-
-## Memory Management Strategies
-
-Understanding when data is loaded helps you optimize memory usage for large datasets:
-
-```{r memory-management, eval = FALSE}
-# File datasets: creation is cheap, access triggers loading
-file_dataset <- fmri_file_dataset(file_paths, mask_path, TR = 2.0)
-cat("Created file dataset (no data loaded yet)\n")
-
-# First access loads data
-first_access <- get_data_matrix(file_dataset, run_id = 1)
-cat("Loaded run 1:", object.size(first_access), "bytes\n")
-
-# Subsequent accesses use cached data
-second_access <- get_data_matrix(file_dataset, run_id = 1)
-cat("Second access (cached)\n")
-
-# Convert to matrix dataset to keep everything in memory
-matrix_version <- as.matrix_dataset(file_dataset)
-cat("Converted to matrix dataset\n")
-```
-
-Use file datasets for exploration and convert to matrix datasets when you need repeated fast access to the same data.
-
-## Custom Event Integration
-
-Experimental design information integrates seamlessly with temporal structure:
-
-```{r events-integration}
-# Create detailed event table
+```{r event-table}
 events <- data.frame(
-  onset = c(10, 30, 50, 70, 110, 130, 150, 170),
-  duration = c(2, 2, 2, 2, 2, 2, 2, 2),
+  onset     = c(10, 30, 50, 70, 110, 130, 150, 170),
+  duration  = 2,
   trial_type = rep(c("faces", "houses"), 4),
-  amplitude = c(1, 1, 1, 1, 1, 1, 1, 1),
-  run = c(1, 1, 1, 1, 2, 2, 2, 2)
+  run       = c(1, 1, 1, 1, 2, 2, 2, 2)
 )
 
-# Add to dataset
-dataset$event_table <- events
-
-# Analyze events in context of temporal structure
-TR <- get_TR(dataset$sampling_frame)
-for (i in 1:nrow(events)) {
-  onset_sample <- round(events$onset[i] / TR) + 1
-  run_id <- events$run[i]
-
-  cat(
-    "Event", i, ":", events$trial_type[i],
-    "at sample", onset_sample, "in run", run_id, "\n"
-  )
-}
-
-# Extract data around events
-extract_event_data <- function(dataset, event_row, window = c(-2, 8)) {
-  TR <- get_TR(dataset$sampling_frame)
-  onset_sample <- round(event_row$onset / TR) + 1
-  run_id <- event_row$run
-
-  # Get samples for this window
-  samples <- (onset_sample + window[1]):(onset_sample + window[2])
-
-  # Extract data for this run and time window
-  run_data <- get_data_matrix(dataset, run_id = run_id)
-  event_data <- run_data[samples, , drop = FALSE]
-
-  return(event_data)
-}
-
-# Example: extract data around first event
-event1_data <- extract_event_data(dataset, events[1, ])
-cat("Event 1 data shape:", dim(event1_data), "\n")
+ds$event_table <- events
+head(ds$event_table)
 ```
 
-This integration of experimental design with temporal structure enables sophisticated event-related analyses.
+Event onsets are in seconds and align with the sampling frame's time axis.
 
-## Performance Optimization
+# Chunked Processing
 
-Several strategies can significantly improve performance for large datasets:
+For large datasets, `data_chunks()` partitions voxels into memory-manageable pieces without loading the entire matrix at once.
 
-```{r performance}
-# Strategy 1: Use appropriate chunk sizes
-small_chunks <- data_chunks(dataset, nchunks = 20) # Many small chunks
-large_chunks <- data_chunks(dataset, nchunks = 4) # Fewer large chunks
+```{r chunked-processing}
+chunks <- data_chunks(ds, nchunks = 4)
 
-# Strategy 2: Process runs separately when appropriate
-run_chunks <- data_chunks(dataset, runwise = TRUE)
+results <- lapply(chunks, function(chunk) {
+  colMeans(chunk$data)
+})
 
-# Strategy 3: Use partial loading for file datasets
-partial_data <- get_data_matrix(dataset, run_id = 1) # Load only one run
-
-# Strategy 4: Monitor memory usage
-if (requireNamespace("pryr", quietly = TRUE)) {
-  cat("Memory before loading:", pryr::mem_used(), "\n")
-  data <- get_data_matrix(dataset)
-  cat("Memory after loading:", pryr::mem_used(), "\n")
-}
+voxel_means <- do.call(c, results)
+cat("Computed means for", length(voxel_means), "voxels\n")
 ```
 
-Choose chunk sizes based on available memory and processing requirements. More chunks mean less memory usage but more overhead.
+Each element of `results` corresponds to one chunk; `do.call(c, ...)` reassembles them in voxel order.
 
-# Tips and Best Practices
+# Run-wise Processing
 
-Here are practical guidelines learned from real-world usage that will help you avoid common pitfalls and work more effectively.
+Set `runwise = TRUE` to get one chunk per run. This is appropriate for analyses that must respect run boundaries such as detrending or temporal filtering.
 
-## Memory Management
+```{r runwise-processing}
+run_chunks <- data_chunks(ds, runwise = TRUE)
 
-**Important**: For file-based datasets exceeding available RAM, use partial loading by specifying `run_id` in `get_data_matrix()`. Loading complete datasets should only occur when all runs are required simultaneously for analysis.
+run_stats <- lapply(run_chunks, function(chunk) {
+  cat("Run", chunk$chunk_num, ":", nrow(chunk$data), "timepoints\n")
+  rowMeans(chunk$data)
+})
 
-When working with large datasets, memory management becomes crucial:
-
-```{r memory-tips}
-# Good: Process in chunks
-analyze_large_dataset <- function(dataset) {
-  chunks <- data_chunks(dataset, nchunks = 10)
-
-  `%do%` <- foreach::`%do%`
-  results <- foreach::foreach(chunk = chunks, .combine = rbind) %do% {
-    # Process chunk
-    result <- colMeans(chunk$data)
-
-    # Optionally force garbage collection
-    if (chunk$chunk_num %% 5 == 0) {
-      gc()
-    }
-
-    result
-  }
-
-  return(results)
-}
-
-# Bad: Loading everything at once for large datasets
-# big_data <- get_data_matrix(very_large_dataset)  # May exhaust memory
+cat("Processed", length(run_stats), "runs\n")
 ```
 
-Monitor memory usage and adjust chunk sizes based on your system's capabilities.
+Each chunk's `$data` contains only that run's timepoints.
 
-## Data Validation
+# File-based Datasets
 
-**Required Check**: Validate temporal structure using `get_run_lengths()` to ensure alignment with experimental design. Run length mismatches indicate data organization errors that will propagate through subsequent analyses.
+When working with NIfTI files, use `fmri_file_dataset()`. Data remains on disk until explicitly accessed.
 
-## Chunking Configuration
+```{r file-dataset, eval=FALSE}
+ds_files <- fmri_file_dataset(
+  scans = c("/path/to/run1.nii.gz", "/path/to/run2.nii.gz"),
+  mask  = "/path/to/mask.nii.gz",
+  TR    = 2.0,
+  run_length = c(180, 180)
+)
 
-**Run-Boundary Operations**: Configure `data_chunks(dataset, runwise = TRUE)` for analyses requiring run boundary preservation, including:
-- Temporal detrending
-- Motion parameter regression
-- Run-level normalization
-- Temporal filtering
+# Inspect metadata without loading data
+print(ds_files)
 
-## Error Prevention
-
-Common validation checks that prevent downstream errors:
-
-```{r validation}
-validate_dataset <- function(dataset) {
-  # Check temporal consistency
-  sf <- dataset$sampling_frame
-  expected_timepoints <- n_timepoints(sf)
-
-  if (inherits(dataset, "matrix_dataset")) {
-    actual_timepoints <- nrow(dataset$datamat)
-    if (expected_timepoints != actual_timepoints) {
-      stop(
-        "Temporal structure mismatch: expected ", expected_timepoints,
-        " timepoints, found ", actual_timepoints
-      )
-    }
-  }
-
-  # Check event table consistency
-  if (nrow(dataset$event_table) > 0) {
-    max_run <- max(dataset$event_table$run)
-    n_runs_data <- n_runs(sf)
-
-    if (max_run > n_runs_data) {
-      stop(
-        "Events reference run ", max_run,
-        " but dataset only has ", n_runs_data, " runs"
-      )
-    }
-
-    # Check event timing
-    total_duration <- get_total_duration(sf)
-    max_event_time <- max(dataset$event_table$onset + dataset$event_table$duration)
-
-    if (max_event_time > total_duration) {
-      warning(
-        "Events extend beyond scan duration (",
-        max_event_time, " > ", total_duration, " seconds)"
-      )
-    }
-  }
-
-  cat("Dataset validation passed\n")
-}
-
-# validate_dataset(dataset)
+# Load one run only
+run1 <- get_data_matrix(ds_files, run_id = 1)
 ```
 
-Early validation catches problems before they affect your analysis.
-
-## Reproducibility
-
-Document dataset creation for reproducible research:
-
-```{r reproducibility}
-# Create metadata record
-create_dataset_record <- function(dataset) {
-  list(
-    timestamp = Sys.time(),
-    r_version = R.version.string,
-    fmridataset_version = packageVersion("fmridataset"),
-    dataset_class = class(dataset)[1],
-    temporal_structure = list(
-      n_runs = n_runs(dataset$sampling_frame),
-      run_lengths = get_run_lengths(dataset$sampling_frame),
-      TR = get_TR(dataset$sampling_frame)
-    ),
-    spatial_structure = list(
-      n_voxels = if (inherits(dataset, "matrix_dataset")) {
-        ncol(dataset$datamat)
-      } else {
-        "unknown"
-      }
-    ),
-    events = list(
-      n_events = nrow(dataset$event_table),
-      event_types = if (nrow(dataset$event_table) > 0) {
-        unique(dataset$event_table$trial_type)
-      } else {
-        character(0)
-      }
-    )
-  )
-}
-
-# Store metadata
-# metadata <- create_dataset_record(dataset)
-# saveRDS(metadata, "analysis_dataset_metadata.rds")
-```
-
-Good metadata practices make your analyses reproducible and help collaborators understand your data structure.
-
-# Troubleshooting
-
-When things don't work as expected, these solutions address the most common issues encountered in real usage.
-
-## Common Error Messages
-
-**"Error: Run lengths do not sum to number of timepoints"**
-: This occurs when the `run_length` parameter doesn't match your actual data dimensions. Check that `sum(run_length)` equals the number of timepoints in your data matrix or files.
-
-**"Error: Cannot read file: [filename]"**
-: File path issues are common. Use `file.exists()` to verify paths and ensure you're using absolute paths or correct relative paths from your working directory.
-
-**"Warning: Events extend beyond scan duration"**
-: Your event table contains onsets or durations that exceed the total scan time. Verify event timing and units (seconds vs. TRs).
-
-**"Error: Mask dimensions do not match data dimensions"**
-: The spatial dimensions of your mask don't match your data. For matrix datasets, the mask should have one element per column. For file datasets, mask spatial dimensions must match the data files.
-
-## Performance Issues
-
-If dataset operations are slow:
-
-1. **Check file paths**: Network drives or compressed files can be slow to read
-2. **Monitor memory**: Use `gc()` and consider smaller chunk sizes
-3. **Use run-specific access**: Load only needed runs with `run_id` parameter
-4. **Consider format conversion**: Convert frequently-accessed file datasets to matrix datasets
-
-```{r performance-debugging}
-# Benchmark different access patterns
-if (requireNamespace("microbenchmark", quietly = TRUE)) {
-  # Compare full vs. partial loading
-  mb <- microbenchmark::microbenchmark(
-    full_data = get_data_matrix(dataset),
-    run1_only = get_data_matrix(dataset, run_id = 1),
-    times = 5
-  )
-  print(mb)
-}
-```
-
-## Memory Issues
-
-When you encounter memory problems:
-
-```{r memory-debugging}
-# Monitor memory usage during operations
-memory_profile <- function(dataset) {
-  if (requireNamespace("pryr", quietly = TRUE)) {
-    start_mem <- pryr::mem_used()
-    cat("Starting memory:", start_mem, "\n")
-
-    # Try loading data
-    tryCatch(
-      {
-        data <- get_data_matrix(dataset, run_id = 1)
-        loaded_mem <- pryr::mem_used()
-        cat("After loading run 1:", loaded_mem, "\n")
-        cat("Data size:", object.size(data), "\n")
-
-        rm(data)
-        gc()
-        final_mem <- pryr::mem_used()
-        cat("After cleanup:", final_mem, "\n")
-      },
-      error = function(e) {
-        cat("Memory error:", conditionMessage(e), "\n")
-      }
-    )
-  }
-}
-
-# memory_profile(dataset)
-```
-
-Use chunking for datasets that exceed available memory, and consider processing runs separately.
+Use `run_id` to load only the run you need, which keeps peak memory usage low.
 
 # See Also
 
-This getting started guide is the first step in learning fmridataset. Continue with:
-
-**Core Documentation** (recommended reading order):
-- [Architecture Overview](architecture-overview.html) - Design principles and extensibility model behind the unified interface
-- [H5 Backend Usage](h5-backend-usage.html) - Efficient HDF5 storage for large datasets
-- [Study-Level Analysis](study-level-analysis.html) - Multi-subject studies and group analyses
-
-**Advanced Topics**:
-- Backend Registry - Create custom backends for new data formats
-- Extending Backends - Deep dive into backend development
-
-**Related Packages**: fmridataset integrates seamlessly with the broader neuroimaging ecosystem:
-- **neuroim2**: Spatial data structures and NeuroVec objects
-- **fmrireg**: Regression modeling with fMRI data
-- **DelayedArray**: Lazy array operations for memory efficiency
+- `vignette("architecture-overview")` - Design principles and backend extensibility
+- `vignette("h5-backend-usage")` - Efficient HDF5 storage for large datasets
+- `vignette("study-level-analysis")` - Multi-subject studies and group analyses
 
 # Session Information
 

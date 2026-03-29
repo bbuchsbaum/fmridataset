@@ -29,7 +29,7 @@ session, and run. You download one file and start analyzing immediately.
 library(fmridataset)
 ```
 
-# Two compression modes
+# Which compression mode should you use?
 
 The archive supports two modes. Pick the one that matches your analysis:
 
@@ -41,7 +41,7 @@ The archive supports two modes. Pick the one that matches your analysis:
 Both modes store events, confounds, censor vectors, and BIDS metadata
 alongside the data. The standard `fmridataset` API works on either.
 
-# Writing an archive
+# How do you create an archive?
 
 `compress_bids_study()` reads a BIDS directory and streams scans one at a
 time into the archive. Only one NIfTI is held in memory at once.
@@ -98,7 +98,7 @@ study <- compress_bids_study(
 )
 ```
 
-# Reading an archive
+# How do you open an archive?
 
 One function, one file:
 
@@ -253,3 +253,10 @@ pinfo$cluster_ids
 ```
 
 This returns `NULL` for latent-mode archives.
+
+# Next steps
+
+- `vignette("fmridataset-intro")` for the core dataset API
+- `vignette("study-level-analysis")` for multi-subject workflows without BIDS
+- `vignette("backend-development-basics")` if you want to write a custom backend
+- `?compress_bids_study`, `?bids_h5_dataset`, `?subset_bids_h5` for full parameter docs
