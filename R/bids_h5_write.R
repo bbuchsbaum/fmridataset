@@ -390,18 +390,24 @@ compress_bids_study <- function(
 
       if (!is.null(template_loadings)) {
         # -- Template mode: project data onto shared template loadings
-        # coefficients = mat %*% loadings %*% solve(t(loadings) %*% loadings)
-        # Use template_project if available, otherwise manual OLS
-        basis_mat <- tryCatch(
-          as.matrix(fmrilatent::template_project(template, mat)),
-          error = function(e) {
-            # Manual fallback: OLS projection
-            mat %*% template_loadings %*% solve(crossprod(template_loadings))
-          }
-        )
-        # No per-scan loadings or offset in template mode
+        # Center data per-voxel, store offset for reconstruction fidelity
+        col_means <- colMeans(mat)
+        mat_centered <- sweep(mat, 2L, col_means, `-`)
+
+        # Project: coefficients = centered_mat %*% loadings %*% solve(t(L) %*% L)
+        basis_mat <- tryCatch({
+          proj <- fmrilatent::template_project(template, mat_centered)
+          as.matrix(proj)
+        }, error = function(e) {
+          # Manual fallback: OLS projection
+          as.matrix(mat_centered %*% template_loadings %*%
+                      solve(crossprod(template_loadings)))
+        })
+
+        # Store per-scan offset (voxel means) for round-trip fidelity
         loadings_mat <- NULL
-        offset_vec   <- numeric(0)
+        offset_vec   <- col_means
+        rm(mat_centered, col_means)
       } else {
         # -- Independent encoding mode
         lvec <- fmrilatent::encode(mat, encoding, mask = mask)
@@ -515,14 +521,18 @@ compress_bids_study <- function(
     h5$create_group("latent_meta")
     lm_grp <- h5[["latent_meta"]]
 
-    encoding_family <- if (!is.null(encoding)) {
-      class(encoding)[[1]]
-    } else if (!is.null(template_loadings)) {
+    # Template takes priority: when template is used, encoding is irrelevant
+    # (data is projected onto template, not independently encoded)
+    encoding_family <- if (!is.null(template_loadings)) {
       "shared_template"
+    } else if (!is.null(encoding)) {
+      class(encoding)[[1]]
     } else {
       "unknown"
     }
-    encoding_params <- if (!is.null(encoding)) {
+    encoding_params <- if (!is.null(template_loadings)) {
+      "{}"
+    } else if (!is.null(encoding)) {
       tryCatch(
         jsonlite::toJSON(as.list(encoding), auto_unbox = TRUE),
         error = function(e) "{}"
@@ -772,8 +782,21 @@ compress_bids_study <- function(
     bg$create_dataset("dataset_description", robj = desc_json)
   }
 
-  # Participants sub-group
+  # Participants sub-group — filter to subjects actually included in scans_df
   parts <- tryCatch(bidser::participants(bids_proj), error = function(e) NULL)
+  if (!is.null(parts) && is.data.frame(parts) && nrow(parts) > 0L) {
+    # Identify the participant ID column and filter to selected subjects
+    pid_col <- intersect(c("participant_id", "subid", "sub"), names(parts))
+    selected_subs <- unique(as.character(scans_df$subid))
+    if (length(pid_col) > 0L) {
+      pid_vals <- as.character(parts[[pid_col[1]]])
+      # Match with or without "sub-" prefix
+      keep <- pid_vals %in% selected_subs |
+              pid_vals %in% paste0("sub-", selected_subs) |
+              sub("^sub-", "", pid_vals) %in% selected_subs
+      parts <- parts[keep, , drop = FALSE]
+    }
+  }
   if (!is.null(parts) && is.data.frame(parts) && nrow(parts) > 0L) {
     bg$create_group("participants")
     pg <- bg[["participants"]]
