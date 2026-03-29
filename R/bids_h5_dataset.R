@@ -587,18 +587,29 @@ get_loadings.bids_h5_study_dataset <- function(x, scan_name = NULL, ...) {
     stop("H5 file handle is no longer valid.", call. = FALSE)
   }
 
+  # Check for shared template
+  has_template <- .has_shared_template(h5)
+
   all_scans <- x$scan_manifest$scan_name
+
+  .get_one_loadings <- function(sn) {
+    sgp <- paste0("/scans/", sn)
+    per_scan <- .read_scan_loadings(h5, sgp)
+    if (!is.null(per_scan)) return(per_scan)
+    # Fall back to shared template loadings
+    if (has_template) return(.read_template_loadings(h5))
+    stop(sprintf("No loadings found for scan '%s' and no shared template.", sn),
+         call. = FALSE)
+  }
 
   if (!is.null(scan_name)) {
     if (!scan_name %in% all_scans) {
       stop(sprintf("scan_name '%s' not found in this dataset.", scan_name), call. = FALSE)
     }
-    return(.read_scan_loadings(h5, paste0("/scans/", scan_name)))
+    return(.get_one_loadings(scan_name))
   }
 
-  result <- lapply(all_scans, function(sn) {
-    .read_scan_loadings(h5, paste0("/scans/", sn))
-  })
+  result <- lapply(all_scans, .get_one_loadings)
   names(result) <- all_scans
   result
 }
@@ -632,8 +643,15 @@ reconstruct_voxels.bids_h5_study_dataset <- function(x, scan_name, rows = NULL,
 
   # Read basis [T, K]
   basis    <- backend_get_data(backend)
-  # Read loadings [V, K]
+  # Read loadings [V, K] — per-scan or shared template
   loadings <- .read_scan_loadings(h5, sgp)
+  if (is.null(loadings) && .has_shared_template(h5)) {
+    loadings <- .read_template_loadings(h5)
+  }
+  if (is.null(loadings)) {
+    stop(sprintf("No loadings found for scan '%s' and no shared template.", scan_name),
+         call. = FALSE)
+  }
   # Read offset [V]
   offset   <- .read_scan_offset(h5, sgp)
 
@@ -686,10 +704,22 @@ encoding_info.bids_h5_study_dataset <- function(x, ...) {
 
   n_components <- as.integer(h5[["latent_meta/n_components"]]$read())
 
+  has_template <- .has_shared_template(h5)
+  template_meta <- if (has_template) {
+    tryCatch({
+      meta_json <- h5[["latent_meta/template/meta"]]$read()
+      jsonlite::fromJSON(meta_json)
+    }, error = function(e) list())
+  } else {
+    NULL
+  }
+
   list(
-    encoding_family = encoding_family,
-    encoding_params = encoding_params,
-    n_components    = n_components
+    encoding_family      = encoding_family,
+    encoding_params      = encoding_params,
+    n_components         = n_components,
+    has_shared_template  = has_template,
+    template_meta        = template_meta
   )
 }
 

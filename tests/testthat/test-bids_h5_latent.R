@@ -428,3 +428,189 @@ test_that("data_chunks() works on latent-mode study", {
   total_cols <- sum(vapply(all_data, ncol, integer(1L)))
   expect_equal(total_cols, K)
 })
+
+
+# ============================================================
+# Shared template tests
+# ============================================================
+
+.make_template_h5 <- function(path,
+                                n_scans      = 2L,
+                                n_time_each  = c(10L, 12L),
+                                K            = 5L,
+                                V            = 20L,
+                                tr           = 2.0) {
+  h5 <- hdf5r::H5File$new(path, mode = "w")
+  on.exit(if (h5$is_valid) h5$close_all(), add = TRUE)
+
+  h5$create_attr("format",           "bids_h5_study")
+  h5$create_attr("version",          "1.0")
+  h5$create_attr("compression_mode", "latent")
+
+  # /latent_meta/ with shared template
+  lm <- h5$create_group("latent_meta")
+  lm$create_dataset("n_components",       robj = as.integer(K))
+  lm$create_dataset("encoding_family",    robj = "shared_template")
+  lm$create_dataset("encoding_params",    robj = "{}")
+  lm$create_dataset("has_shared_template", robj = TRUE)
+
+  # /latent_meta/template/ — shared loadings
+  tpl <- lm$create_group("template")
+  template_loadings <- matrix(rnorm(V * K), nrow = V, ncol = K)
+  tpl$create_dataset("loadings", robj = template_loadings)
+  tpl$create_dataset("meta", robj = '{"basis_spec":"slepian","k":5}')
+
+  # /spatial/
+  sp <- h5$create_group("spatial")
+  sp_hdr <- sp$create_group("header")
+  sp_hdr$create_dataset("dim",    robj = c(V, 1L, 1L))
+  sp_hdr$create_dataset("pixdim", robj = c(2.0, 2.0, 2.0))
+  sp$create_dataset("mask",         robj = rep(1L, V))
+  sp$create_dataset("voxel_coords", robj = matrix(seq_len(V * 3L), ncol = 3L))
+
+  # /scans/ — per-scan basis only, NO loadings
+  h5$create_group("scans")
+  subjects <- c("01", "02")[seq_len(n_scans)]
+  scan_names <- paste0("sub-", subjects, "_task-rest_run-01")
+
+  for (i in seq_len(n_scans)) {
+    nt <- n_time_each[i]
+    sg <- h5[["scans"]]$create_group(scan_names[i])
+    dg <- sg$create_group("data")
+    dg$create_dataset("basis", robj = matrix(rnorm(nt * K), nrow = nt, ncol = K))
+    # NO loadings or offset — template mode
+
+    # events
+    eg <- sg$create_group("events")
+    hdf5r::h5attr(eg, "n_events") <- 2L
+    eg$create_dataset("onset",      robj = c(0.0, 5.0))
+    eg$create_dataset("duration",   robj = c(1.0, 1.0))
+    eg$create_dataset("trial_type", robj = c("A", "B"))
+
+    # censor
+    sg$create_dataset("censor", robj = rep(0L, nt))
+
+    # metadata
+    mg <- sg$create_group("metadata")
+    mg$create_dataset("subject", robj = subjects[i])
+    mg$create_dataset("task",    robj = "rest")
+    mg$create_dataset("run",     robj = "01")
+    mg$create_dataset("tr",      robj = tr)
+  }
+
+  # /scan_index/
+  si <- h5$create_group("scan_index")
+  si$create_dataset("scan_name",    robj = scan_names)
+  si$create_dataset("subject",      robj = subjects)
+  si$create_dataset("task",         robj = rep("rest", n_scans))
+  si$create_dataset("session",      robj = rep("", n_scans))
+  si$create_dataset("run",          robj = rep("01", n_scans))
+  si$create_dataset("n_time",       robj = as.integer(n_time_each))
+  si$create_dataset("time_offset",  robj = c(0L, cumsum(n_time_each[-n_scans])))
+  si$create_dataset("has_events",   robj = rep(TRUE, n_scans))
+  si$create_dataset("has_confounds", robj = rep(FALSE, n_scans))
+
+  invisible(list(template_loadings = template_loadings))
+}
+
+
+test_that("shared template: reader opens correctly", {
+  tmp <- tempfile(fileext = ".h5")
+  on.exit(unlink(tmp), add = TRUE)
+
+  info <- .make_template_h5(tmp)
+  study <- bids_h5_dataset(tmp)
+  on.exit(study$h5_connection$release(), add = TRUE)
+
+  expect_s3_class(study, "bids_h5_study_dataset")
+  expect_equal(study$compression_mode, "latent")
+})
+
+test_that("shared template: get_data_matrix returns correct dims", {
+  tmp <- tempfile(fileext = ".h5")
+  on.exit(unlink(tmp), add = TRUE)
+
+  K <- 5L
+  n_time <- c(10L, 12L)
+  .make_template_h5(tmp, K = K, n_time_each = n_time)
+  study <- bids_h5_dataset(tmp)
+  on.exit(study$h5_connection$release(), add = TRUE)
+
+  mat <- get_data_matrix(study)
+  expect_equal(nrow(mat), sum(n_time))
+  expect_equal(ncol(mat), K)
+})
+
+test_that("shared template: get_loadings falls back to template", {
+  tmp <- tempfile(fileext = ".h5")
+  on.exit(unlink(tmp), add = TRUE)
+
+  K <- 5L; V <- 20L
+  info <- .make_template_h5(tmp, K = K, V = V)
+  study <- bids_h5_dataset(tmp)
+  on.exit(study$h5_connection$release(), add = TRUE)
+
+  # Single scan — should get template loadings
+  loadings <- get_loadings(study, scan_name = "sub-01_task-rest_run-01")
+  expect_equal(dim(loadings), c(V, K))
+  expect_equal(loadings, info$template_loadings)
+
+  # All scans — each should get same template loadings
+  all_loadings <- get_loadings(study)
+  expect_length(all_loadings, 2L)
+  expect_equal(all_loadings[[1]], info$template_loadings)
+  expect_equal(all_loadings[[2]], info$template_loadings)
+})
+
+test_that("shared template: reconstruct_voxels works", {
+  tmp <- tempfile(fileext = ".h5")
+  on.exit(unlink(tmp), add = TRUE)
+
+  K <- 5L; V <- 20L; nt <- c(10L, 12L)
+  info <- .make_template_h5(tmp, K = K, V = V, n_time_each = nt)
+  study <- bids_h5_dataset(tmp)
+  on.exit(study$h5_connection$release(), add = TRUE)
+
+  recon <- reconstruct_voxels(study, scan_name = "sub-01_task-rest_run-01")
+  expect_equal(dim(recon), c(nt[1], V))
+
+  # Subset rows
+  recon_sub <- reconstruct_voxels(study, scan_name = "sub-01_task-rest_run-01",
+                                   rows = 1:3)
+  expect_equal(dim(recon_sub), c(3L, V))
+
+  # Subset voxels
+  recon_vox <- reconstruct_voxels(study, scan_name = "sub-01_task-rest_run-01",
+                                   voxels = c(1L, 5L, 10L))
+  expect_equal(dim(recon_vox), c(nt[1], 3L))
+})
+
+test_that("shared template: encoding_info reports template", {
+  tmp <- tempfile(fileext = ".h5")
+  on.exit(unlink(tmp), add = TRUE)
+
+  .make_template_h5(tmp, K = 5L)
+  study <- bids_h5_dataset(tmp)
+  on.exit(study$h5_connection$release(), add = TRUE)
+
+  info <- encoding_info(study)
+  expect_equal(info$encoding_family, "shared_template")
+  expect_true(info$has_shared_template)
+  expect_equal(info$n_components, 5L)
+  expect_is(info$template_meta, "list")
+})
+
+test_that("shared template: subset preserves template fallback", {
+  tmp <- tempfile(fileext = ".h5")
+  on.exit(unlink(tmp), add = TRUE)
+
+  K <- 5L; V <- 20L
+  info <- .make_template_h5(tmp, K = K, V = V)
+  study <- bids_h5_dataset(tmp)
+  on.exit(study$h5_connection$release(), add = TRUE)
+
+  sub <- subset_bids_h5(study, subject = "01")
+  loadings <- get_loadings(sub, scan_name = "sub-01_task-rest_run-01")
+  expect_equal(dim(loadings), c(V, K))
+  expect_equal(loadings, info$template_loadings)
+})

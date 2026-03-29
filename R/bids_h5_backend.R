@@ -355,10 +355,34 @@ print.bids_h5_scan_backend <- function(x, ...) {
 #' @param h5_handle An open \code{hdf5r::H5File} object.
 #' @param scan_group_path Character string. HDF5 group path for the scan.
 #'
-#' @return A numeric matrix of shape \code{[V, K]}.
+#' @return A numeric matrix of shape \code{[V, K]}, or \code{NULL} if the
+#'   dataset is absent (e.g. shared template mode where per-scan loadings are
+#'   not stored).
 #' @keywords internal
 .read_scan_loadings <- function(h5_handle, scan_group_path) {
   path <- paste0(scan_group_path, "/data/loadings")
+  if (!h5_handle$exists(path)) return(NULL)
+  h5_handle[[path]][, ]
+}
+
+#' Check if archive has a shared template
+#'
+#' @param h5_handle An open \code{hdf5r::H5File} object.
+#' @return Logical.
+#' @keywords internal
+.has_shared_template <- function(h5_handle) {
+  h5_handle$exists("latent_meta/has_shared_template") &&
+    isTRUE(h5_handle[["latent_meta/has_shared_template"]]$read())
+}
+
+#' Read shared template loadings
+#'
+#' @param h5_handle An open \code{hdf5r::H5File} object.
+#' @return A numeric matrix \code{[V, K]} or \code{NULL}.
+#' @keywords internal
+.read_template_loadings <- function(h5_handle) {
+  path <- "latent_meta/template/loadings"
+  if (!h5_handle$exists(path)) return(NULL)
   h5_handle[[path]][, ]
 }
 

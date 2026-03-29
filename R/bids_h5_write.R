@@ -46,6 +46,13 @@
 #'   If \code{encoding} is \code{NULL} and \code{n_components} is provided,
 #'   \code{fmrilatent::spec_space_pca(k = n_components)} is used.
 #'   Only used for \code{mode = "latent"}.
+#' @param template Optional \code{fmrilatent} template object (e.g. from
+#'   \code{fmrilatent::parcel_basis_template()} or
+#'   \code{fmrilatent::build_hierarchical_template()}). When provided, the
+#'   template's spatial loadings are stored once in \code{/latent_meta/template/}
+#'   and per-scan data is reduced to \code{[T, K]} projection coefficients
+#'   (no per-scan loadings). This significantly reduces file size for
+#'   multi-subject studies. Only used for \code{mode = "latent"}.
 #' @param mask A \code{neuroim2::LogicalNeuroVol} brain mask. For
 #'   \code{mode = "parcellated"}, derived from \code{clusters} when \code{NULL}.
 #'   For \code{mode = "latent"}, \code{mask} is required (cannot be derived
@@ -105,6 +112,7 @@ compress_bids_study <- function(
   summary_fun  = mean,
   encoding     = NULL,
   n_components = NULL,
+  template = NULL,
   mask         = NULL,
   space        = "MNI152NLin2009cAsym",
   tasks        = NULL,
@@ -235,16 +243,39 @@ compress_bids_study <- function(
       stop("'mask' must be a neuroim2::LogicalNeuroVol object.", call. = FALSE)
     }
 
-    if (is.null(encoding)) {
-      if (is.null(n_components)) {
-        stop("For mode='latent', either 'encoding' or 'n_components' must be provided.",
+    if (!is.null(template)) {
+      # Template mode: shared loadings, per-scan coefficients only
+      if (!inherits(template, "parcel_basis_template") &&
+          !inherits(template, "HierarchicalBasisTemplate") &&
+          !is.list(template)) {
+        stop("'template' must be a fmrilatent template object (parcel_basis_template or HierarchicalBasisTemplate).",
              call. = FALSE)
       }
-      encoding <- fmrilatent::spec_space_pca(k = as.integer(n_components))
+      # Extract template loadings
+      template_loadings <- tryCatch(
+        as.matrix(fmrilatent::template_loadings(template)),
+        error = function(e) {
+          stop(sprintf("Failed to extract loadings from template: %s", e$message),
+               call. = FALSE)
+        }
+      )
+      K <- ncol(template_loadings)
+      if (is.null(encoding)) {
+        # Template provides the spatial basis; no explicit encoding needed
+        encoding <- NULL
+      }
+    } else {
+      template_loadings <- NULL
+      if (is.null(encoding)) {
+        if (is.null(n_components)) {
+          stop("For mode='latent', either 'encoding', 'n_components', or 'template' must be provided.",
+               call. = FALSE)
+        }
+        encoding <- fmrilatent::spec_space_pca(k = as.integer(n_components))
+      }
+      # K will be determined after encoding the first scan; set a placeholder
+      K <- NULL
     }
-
-    # K will be determined after encoding the first scan; set a placeholder
-    K <- NULL
     cluster_ids <- NULL
   }
 
@@ -354,17 +385,30 @@ compress_bids_study <- function(
       rm(parcel_mat)
     } else {
       # latent mode
-      # Extract masked matrix [T, V]
       mask_indices <- which(as.logical(mask))
       mat <- neuroim2::series(nvec, mask_indices)  # [T, V]
 
-      # Encode via fmrilatent
-      lvec <- fmrilatent::encode(mat, encoding, mask = mask)
-
-      # Extract components
-      basis_mat    <- as.matrix(fmrilatent::basis(lvec))     # [T, K]
-      loadings_mat <- as.matrix(fmrilatent::loadings(lvec))  # [V, K]
-      offset_vec   <- fmrilatent::offset(lvec)               # [V] or numeric(0)
+      if (!is.null(template_loadings)) {
+        # -- Template mode: project data onto shared template loadings
+        # coefficients = mat %*% loadings %*% solve(t(loadings) %*% loadings)
+        # Use template_project if available, otherwise manual OLS
+        basis_mat <- tryCatch(
+          as.matrix(fmrilatent::template_project(template, mat)),
+          error = function(e) {
+            # Manual fallback: OLS projection
+            mat %*% template_loadings %*% solve(crossprod(template_loadings))
+          }
+        )
+        # No per-scan loadings or offset in template mode
+        loadings_mat <- NULL
+        offset_vec   <- numeric(0)
+      } else {
+        # -- Independent encoding mode
+        lvec <- fmrilatent::encode(mat, encoding, mask = mask)
+        basis_mat    <- as.matrix(fmrilatent::basis(lvec))     # [T, K]
+        loadings_mat <- as.matrix(fmrilatent::loadings(lvec))  # [V, K]
+        offset_vec   <- fmrilatent::offset(lvec)               # [V] or numeric(0)
+      }
 
       # Determine K from first scan
       if (is.null(K)) {
@@ -373,7 +417,6 @@ compress_bids_study <- function(
 
       chunk_t <- min(n_time, 128L)
       chunk_k <- min(K, 256L)
-      chunk_v <- min(nrow(loadings_mat), 4096L)
 
       dg$create_dataset(
         "basis",
@@ -381,12 +424,17 @@ compress_bids_study <- function(
         chunk_dims = c(chunk_t, chunk_k),
         gzip_level = compression
       )
-      dg$create_dataset(
-        "loadings",
-        robj       = loadings_mat,
-        chunk_dims = c(chunk_v, chunk_k),
-        gzip_level = compression
-      )
+
+      # Per-scan loadings only in non-template mode
+      if (!is.null(loadings_mat)) {
+        chunk_v <- min(nrow(loadings_mat), 4096L)
+        dg$create_dataset(
+          "loadings",
+          robj       = loadings_mat,
+          chunk_dims = c(chunk_v, chunk_k),
+          gzip_level = compression
+        )
+      }
       if (length(offset_vec) > 0L) {
         dg$create_dataset(
           "offset",
@@ -397,7 +445,10 @@ compress_bids_study <- function(
       }
       hdf5r::h5attr(dg, "k") <- ncol(basis_mat)
 
-      rm(mat, lvec, basis_mat, loadings_mat, offset_vec)
+      rm(mat, basis_mat)
+      if (!is.null(loadings_mat)) rm(loadings_mat)
+      rm(offset_vec)
+      if (exists("lvec", inherits = FALSE)) rm(lvec)
     }
 
     n_features_vec[[i]] <- K
@@ -464,15 +515,55 @@ compress_bids_study <- function(
     h5$create_group("latent_meta")
     lm_grp <- h5[["latent_meta"]]
 
-    encoding_family <- class(encoding)[[1]]
-    encoding_params <- tryCatch(
-      jsonlite::toJSON(as.list(encoding), auto_unbox = TRUE),
-      error = function(e) "{}"
-    )
+    encoding_family <- if (!is.null(encoding)) {
+      class(encoding)[[1]]
+    } else if (!is.null(template_loadings)) {
+      "shared_template"
+    } else {
+      "unknown"
+    }
+    encoding_params <- if (!is.null(encoding)) {
+      tryCatch(
+        jsonlite::toJSON(as.list(encoding), auto_unbox = TRUE),
+        error = function(e) "{}"
+      )
+    } else {
+      "{}"
+    }
 
     lm_grp$create_dataset("encoding_family",  robj = encoding_family)
     lm_grp$create_dataset("encoding_params",  robj = as.character(encoding_params))
     lm_grp$create_dataset("n_components",     robj = as.integer(K))
+
+    # Write shared template if provided
+    has_template <- !is.null(template_loadings)
+    lm_grp$create_dataset("has_shared_template", robj = has_template)
+
+    if (has_template) {
+      if (verbose) message("Writing /latent_meta/template/ ...")
+      lm_grp$create_group("template")
+      tpl_grp <- lm_grp[["template"]]
+
+      chunk_v <- min(nrow(template_loadings), 4096L)
+      chunk_k <- min(ncol(template_loadings), 256L)
+      tpl_grp$create_dataset(
+        "loadings",
+        robj       = template_loadings,
+        chunk_dims = c(chunk_v, chunk_k),
+        gzip_level = compression
+      )
+
+      # Store template metadata
+      tpl_meta <- tryCatch(
+        as.list(fmrilatent::template_meta(template)),
+        error = function(e) list()
+      )
+      tpl_meta_json <- tryCatch(
+        jsonlite::toJSON(tpl_meta, auto_unbox = TRUE),
+        error = function(e) "{}"
+      )
+      tpl_grp$create_dataset("meta", robj = as.character(tpl_meta_json))
+    }
   }
 
   # ---------------------------------------------------------------
