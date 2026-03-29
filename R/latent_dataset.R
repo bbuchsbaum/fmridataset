@@ -43,8 +43,9 @@ NULL
 #' Creates a dataset object for working with latent space representations of fMRI data.
 #' This is the primary constructor for latent datasets.
 #'
-#' @param source Character vector of file paths to LatentNeuroVec HDF5 files (.lv.h5) or
-#'   a list of LatentNeuroVec objects from the fmristore package.
+#' @param source Character vector of file paths to LatentNeuroVec HDF5 files (.lv.h5),
+#'   or a list of LatentNeuroVec objects from the fmristore or fmrilatent packages.
+#'   File paths require the fmristore package; in-memory objects do not.
 #' @param TR The repetition time in seconds.
 #' @param run_length Vector of integers indicating the number of scans in each run.
 #' @param event_table Optional data.frame containing event onsets and experimental variables.

@@ -14,9 +14,78 @@
 #' The backend maintains compatibility with the storage_backend contract while
 #' providing specialized methods for latent data access.
 #'
+#' Supports LatentNeuroVec objects from both the fmristore and fmrilatent packages.
+#' fmristore is only required when source contains file paths (.lv.h5).
+#' fmrilatent objects with lazy BasisHandle/LoadingsHandle slots are materialized
+#' automatically on access.
+#'
 #' @name latent-backend
 #' @keywords internal
 NULL
+
+# --- Internal helpers for slot materialization ---
+
+#' Materialize a basis slot to a dense matrix
+#'
+#' Handles concrete matrices, sparse Matrix objects, and fmrilatent BasisHandle
+#' objects. Returns a standard matrix.
+#' @param obj A LatentNeuroVec object
+#' @return A matrix (time x components)
+#' @keywords internal
+.materialize_basis <- function(obj) {
+  b <- methods::slot(obj, "basis")
+  if (is.matrix(b)) return(b)
+  if (inherits(b, "Matrix")) return(as.matrix(b))
+  # BasisHandle or other lazy type — try as.matrix dispatch
+  tryCatch(
+    as.matrix(b),
+    error = function(e) {
+      # Fallback: try fmrilatent accessor
+      if (requireNamespace("fmrilatent", quietly = TRUE)) {
+        return(as.matrix(fmrilatent::basis(obj)))
+      }
+      stop_fmridataset(
+        fmridataset_error_backend_io,
+        sprintf("Cannot materialize basis slot of class '%s': %s", class(b)[1], e$message),
+        operation = "materialize_basis"
+      )
+    }
+  )
+}
+
+#' Materialize a loadings slot to a matrix (possibly sparse)
+#'
+#' Handles concrete matrices, sparse Matrix objects, and fmrilatent LoadingsHandle
+#' objects. Returns a matrix or sparse Matrix.
+#' @param obj A LatentNeuroVec object
+#' @return A matrix or Matrix (voxels x components)
+#' @keywords internal
+.materialize_loadings <- function(obj) {
+  l <- methods::slot(obj, "loadings")
+  if (is.matrix(l) || inherits(l, "Matrix")) return(l)
+  # LoadingsHandle or other lazy type
+  tryCatch(
+    as.matrix(l),
+    error = function(e) {
+      if (requireNamespace("fmrilatent", quietly = TRUE)) {
+        return(fmrilatent::loadings(obj))
+      }
+      stop_fmridataset(
+        fmridataset_error_backend_io,
+        sprintf("Cannot materialize loadings slot of class '%s': %s", class(l)[1], e$message),
+        operation = "materialize_loadings"
+      )
+    }
+  )
+}
+
+#' Get offset from a LatentNeuroVec object
+#' @param obj A LatentNeuroVec object
+#' @return Numeric vector (may be length 0)
+#' @keywords internal
+.get_offset <- function(obj) {
+  methods::slot(obj, "offset")
+}
 
 #' Create a Latent Backend
 #'
@@ -24,20 +93,28 @@ NULL
 #' Creates a storage backend for latent space fMRI data.
 #'
 #' @param source Character vector of paths to LatentNeuroVec HDF5 files (.lv.h5) or
-#'   a list of LatentNeuroVec objects from the fmristore package.
+#'   a list of LatentNeuroVec objects from the fmristore or fmrilatent packages.
+#'   When file paths are provided, the fmristore package is required for reading.
+#'   When in-memory LatentNeuroVec objects are provided, neither fmristore nor
+#'   fmrilatent is required at runtime (though fmrilatent is used for lazy
+#'   handle materialization if present).
 #' @param preload Logical, whether to load all data into memory (default: FALSE)
 #' @return A latent_backend S3 object
 #' @export
 #' @keywords internal
 #' @examples
 #' \dontrun{
-#' # From HDF5 files
+#' # From HDF5 files (requires fmristore)
 #' backend <- latent_backend(c("run1.lv.h5", "run2.lv.h5"))
 #'
-#' # From pre-loaded objects
+#' # From fmristore objects
 #' lvec1 <- fmristore::read_vec("run1.lv.h5")
 #' lvec2 <- fmristore::read_vec("run2.lv.h5")
 #' backend <- latent_backend(list(lvec1, lvec2))
+#'
+#' # From fmrilatent objects (no fmristore needed)
+#' lvec <- fmrilatent::encode(data_matrix, spec_time_dct(k = 15), mask = brain_mask)
+#' backend <- latent_backend(list(lvec))
 #' }
 latent_backend <- function(source, preload = FALSE) {
   # Validate source
@@ -111,11 +188,14 @@ backend_open.latent_backend <- function(backend) {
     return(backend)
   }
 
-  # Check if fmristore is available
-  if (!requireNamespace("fmristore", quietly = TRUE)) {
+  # Determine whether fmristore is needed (only for file-path sources)
+  needs_fmristore <- is.character(backend$source) ||
+    (is.list(backend$source) && any(vapply(backend$source, is.character, logical(1))))
+
+  if (needs_fmristore && !requireNamespace("fmristore", quietly = TRUE)) {
     stop_fmridataset(
       fmridataset_error_config,
-      "The fmristore package is required for latent_backend but is not installed",
+      "The fmristore package is required to read LatentNeuroVec files (.lv.h5)",
       details = "Install with: remotes::install_github('bbuchsbaum/fmristore')"
     )
   }
@@ -153,11 +233,11 @@ backend_open.latent_backend <- function(backend) {
   # Validate consistency across runs
   if (length(data) > 1) {
     first_dims <- get_latent_space_dims(data[[1]])[1:3]
-    first_ncomp <- ncol(data[[1]]@basis)
+    first_ncomp <- ncol(.materialize_basis(data[[1]]))
 
     for (i in 2:length(data)) {
       dims <- get_latent_space_dims(data[[i]])[1:3]
-      ncomp <- ncol(data[[i]]@basis)
+      ncomp <- ncol(.materialize_basis(data[[i]]))
 
       if (!identical(first_dims, dims)) {
         stop_fmridataset(
@@ -182,8 +262,8 @@ backend_open.latent_backend <- function(backend) {
   # Store dimensions
   first_obj <- data[[1]]
   spatial_dims <- get_latent_space_dims(first_obj)[1:3]
-  n_components <- ncol(first_obj@basis)
-  n_voxels <- nrow(first_obj@loadings)
+  n_components <- ncol(.materialize_basis(first_obj))
+  n_voxels <- nrow(.materialize_loadings(first_obj))
 
   # Total time across all runs
   total_time <- sum(sapply(data, function(obj) {
@@ -322,9 +402,10 @@ backend_get_data.latent_backend <- function(backend, rows = NULL, cols = NULL) {
     # Local indices within run
     local_rows <- rows[run_rows] - time_offsets[run_idx]
 
-    # Extract data from basis matrix
+    # Extract data from basis matrix (handles both concrete and lazy types)
     obj <- backend$data[[run_idx]]
-    result[run_rows, ] <- as.matrix(obj@basis[local_rows, cols, drop = FALSE])
+    basis_mat <- .materialize_basis(obj)
+    result[run_rows, ] <- basis_mat[local_rows, cols, drop = FALSE]
   }
 
   result
@@ -343,13 +424,16 @@ backend_get_metadata.latent_backend <- function(backend) {
   }
 
   obj <- backend$data[[1]]
+  basis_mat <- .materialize_basis(obj)
+  loadings_mat <- .materialize_loadings(obj)
+  offset_vec <- .get_offset(obj)
 
   # Calculate variance explained by each component
-  basis_var <- apply(obj@basis, 2, var)
-  loadings_norm <- if (inherits(obj@loadings, "Matrix")) {
-    sqrt(Matrix::colSums(obj@loadings^2))
+  basis_var <- apply(basis_mat, 2, var)
+  loadings_norm <- if (inherits(loadings_mat, "Matrix")) {
+    sqrt(Matrix::colSums(loadings_mat^2))
   } else {
-    sqrt(colSums(obj@loadings^2))
+    sqrt(colSums(loadings_mat^2))
   }
 
   metadata <- list(
@@ -357,11 +441,11 @@ backend_get_metadata.latent_backend <- function(backend) {
     n_components = backend$dims$n_components,
     n_voxels = backend$dims$n_voxels,
     n_runs = backend$dims$n_runs,
-    has_offset = length(obj@offset) > 0,
+    has_offset = length(offset_vec) > 0,
     basis_variance = basis_var,
     loadings_norm = loadings_norm,
-    loadings_sparsity = if (inherits(obj@loadings, "Matrix")) {
-      1 - Matrix::nnzero(obj@loadings) / length(obj@loadings)
+    loadings_sparsity = if (inherits(loadings_mat, "Matrix")) {
+      1 - Matrix::nnzero(loadings_mat) / length(loadings_mat)
     } else {
       0 # Dense matrix has 0 sparsity
     }
@@ -390,7 +474,7 @@ backend_get_loadings <- function(backend, components = NULL) {
 
   # Get loadings from first object (all should be identical)
   obj <- backend$data[[1]]
-  loadings <- obj@loadings
+  loadings <- .materialize_loadings(obj)
 
   if (!is.null(components)) {
     loadings <- loadings[, components, drop = FALSE]
@@ -437,8 +521,9 @@ backend_reconstruct_voxels <- function(backend, rows = NULL, voxels = NULL) {
 
   # Add offset if present
   obj <- backend$data[[1]]
-  if (length(obj@offset) > 0) {
-    offset <- if (!is.null(voxels)) obj@offset[voxels] else obj@offset
+  offset_vec <- .get_offset(obj)
+  if (length(offset_vec) > 0) {
+    offset <- if (!is.null(voxels)) offset_vec[voxels] else offset_vec
     reconstructed <- sweep(reconstructed, 2, offset, "+")
   }
 
