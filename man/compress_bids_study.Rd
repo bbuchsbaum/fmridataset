@@ -7,9 +7,12 @@
 compress_bids_study(
   x,
   file,
-  mode = c("parcellated"),
-  clusters,
+  mode = c("parcellated", "latent"),
+  clusters = NULL,
   summary_fun = mean,
+  encoding = NULL,
+  n_components = NULL,
+  template = NULL,
   mask = NULL,
   space = "MNI152NLin2009cAsym",
   tasks = NULL,
@@ -27,17 +30,38 @@ BIDS directory (automatically opened with \code{bidser::bids_project()}).}
 \item{file}{Character. Path for the output \code{.h5} file. Parent directory
 must exist. Existing files are overwritten.}
 
-\item{mode}{Character. Compression strategy. Currently only
-\code{"parcellated"} is supported.}
+\item{mode}{Character. Compression strategy: \code{"parcellated"} (default)
+or \code{"latent"}.}
 
 \item{clusters}{A \code{neuroim2::ClusteredNeuroVol} defining the parcellation
-atlas in study space. Required for \code{mode = "parcellated"}.}
+atlas in study space. Required for \code{mode = "parcellated"};
+ignored for \code{"latent"}.}
 
 \item{summary_fun}{Function applied to voxel time-series within each parcel
-to produce a scalar summary (default: \code{mean}).}
+to produce a scalar summary (default: \code{mean}). Only used for
+\code{mode = "parcellated"}.}
 
-\item{mask}{A \code{neuroim2::LogicalNeuroVol} brain mask. If \code{NULL}
-(default), the mask is derived from \code{clusters} (all non-zero voxels).}
+\item{encoding}{A \code{fmrilatent} encoding specification object (e.g.
+\code{fmrilatent::spec_time_dct(k = 15)}). Required for
+\code{mode = "latent"} unless \code{n_components} is provided.}
+
+\item{n_components}{Integer. Shorthand for latent PCA with K components.
+If \code{encoding} is \code{NULL} and \code{n_components} is provided,
+\code{fmrilatent::spec_space_pca(k = n_components)} is used.
+Only used for \code{mode = "latent"}.}
+
+\item{template}{Optional \code{fmrilatent} template object (e.g. from
+\code{fmrilatent::parcel_basis_template()} or
+\code{fmrilatent::build_hierarchical_template()}). When provided, the
+template's spatial loadings are stored once in \code{/latent_meta/template/}
+and per-scan data is reduced to \code{[T, K]} projection coefficients
+(no per-scan loadings). This significantly reduces file size for
+multi-subject studies. Only used for \code{mode = "latent"}.}
+
+\item{mask}{A \code{neuroim2::LogicalNeuroVol} brain mask. For
+\code{mode = "parcellated"}, derived from \code{clusters} when \code{NULL}.
+For \code{mode = "latent"}, \code{mask} is required (cannot be derived
+without clusters).}
 
 \item{space}{Character. Template space name stored as metadata
 (default: \code{"MNI152NLin2009cAsym"}).}
@@ -64,7 +88,7 @@ If the reader is not yet available the file path is returned invisibly.
 }
 \description{
 Converts a BIDS directory (or \code{bidser::bids_project}) into a single
-compressed HDF5 file containing parcellated fMRI data, events, confounds, and
+compressed HDF5 file containing compressed fMRI data, events, confounds, and
 study metadata. The output file can be opened with \code{\link{bids_h5_dataset}}.
 }
 \details{
@@ -72,10 +96,12 @@ The writer streams scans one at a time — only one NIfTI image is held in
 memory at a time. For each scan it:
 \enumerate{
 \item Reads the NIfTI via \code{neuroim2::read_vec()}.
-\item Computes parcel averages via \code{fmristore::summarize_by_clusters()}
-(or manual aggregation if unavailable).
-\item Writes the \code{[T, K]} parcel matrix to
-\code{/scans/<name>/data/summary_data}.
+\item For \strong{parcellated} mode: computes parcel averages via
+\code{fmristore::summarize_by_clusters()} and writes \code{[T, K]}
+to \code{/scans/<name>/data/summary_data}.
+\item For \strong{latent} mode: encodes via \code{fmrilatent::encode()}
+and writes basis \code{[T, K]}, loadings \code{[V, K]}, and
+(optionally) offset \code{[V]} to \code{/scans/<name>/data/}.
 \item Writes events, confounds, censor, and metadata sub-groups.
 \item Releases the NIfTI from memory.
 }
@@ -86,7 +112,7 @@ populated and the function returns a \code{bids_h5_dataset} reader object.
 \section{HDF5 schema}{
 
 See \code{bids_plan.md} in the package source for the full v1.0 schema.
-The root \code{compression_mode} attribute is \code{"parcellated"} in Phase 1.
+The root \code{compression_mode} attribute reflects the chosen \code{mode}.
 }
 
 \examples{
@@ -98,12 +124,24 @@ library(fmristore)
 bids_dir  <- system.file("extdata", "ds001", package = "bidser")
 atlas     <- fmristore::get_schaefer_atlas(100)   # example atlas
 
+# Parcellated mode
 study <- compress_bids_study(
   x          = bids_dir,
   file       = tempfile(fileext = ".h5"),
   clusters   = atlas,
   tasks      = "nback",
   verbose    = TRUE
+)
+
+# Latent mode (PCA with 50 components)
+study_lat <- compress_bids_study(
+  x            = bids_dir,
+  file         = tempfile(fileext = ".h5"),
+  mode         = "latent",
+  n_components = 50L,
+  mask         = brain_mask,
+  tasks        = "nback",
+  verbose      = TRUE
 )
 }
 }

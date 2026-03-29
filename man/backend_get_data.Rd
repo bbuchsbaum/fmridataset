@@ -42,4 +42,11 @@ A matrix in timepoints × voxels orientation
 \description{
 Reads data from the backend in canonical timepoints × voxels orientation.
 }
+\details{
+For \code{compression_mode = "parcellated"} reads
+\code{/scans/<name>/data/summary_data} (\code{[T, K]}).
+For \code{compression_mode = "latent"} reads
+\code{/scans/<name>/data/basis} (\code{[T, K]}).
+In both cases the return value is a \code{[T, K]} numeric matrix.
+}
 \keyword{internal}

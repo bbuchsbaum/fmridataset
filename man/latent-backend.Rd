@@ -18,5 +18,10 @@ Unlike traditional voxel-based backends, latent backends store:
 
 The backend maintains compatibility with the storage_backend contract while
 providing specialized methods for latent data access.
+
+Supports LatentNeuroVec objects from both the fmristore and fmrilatent packages.
+fmristore is only required when source contains file paths (.lv.h5).
+fmrilatent objects with lazy BasisHandle/LoadingsHandle slots are materialized
+automatically on access.
 }
 \keyword{internal}

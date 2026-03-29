@@ -7,9 +7,10 @@
 bids_h5_scan_backend(
   h5_connection,
   scan_group_path,
-  n_parcels,
+  n_features,
   n_time,
-  metadata = list()
+  metadata = list(),
+  compression_mode = "parcellated"
 )
 }
 \arguments{
@@ -18,12 +19,17 @@ bids_h5_scan_backend(
 \item{scan_group_path}{Character string. HDF5 group path for this scan,
 e.g. \code{"/scans/sub-01_task-nback_run-01"}.}
 
-\item{n_parcels}{Integer. Number of parcels (columns in the data matrix).}
+\item{n_features}{Integer. Number of features (parcels or latent components)
+— i.e. the number of columns in the data matrix.}
 
 \item{n_time}{Integer. Number of timepoints (rows in the data matrix).}
 
 \item{metadata}{Named list of scan metadata (subject, task, session, run, tr).
 May be empty; defaults to \code{list()}.}
+
+\item{compression_mode}{Character. Either \code{"parcellated"} (default) or
+\code{"latent"}. Determines which HDF5 dataset is read by
+\code{backend_get_data}.}
 }
 \value{
 A \code{bids_h5_scan_backend} / \code{storage_backend} environment.
@@ -31,6 +37,8 @@ A \code{bids_h5_scan_backend} / \code{storage_backend} environment.
 \description{
 Constructs a lightweight backend for one scan stored in a BIDS HDF5 archive.
 The backend holds a reference to a shared \code{h5_shared_connection} and
-reads data from the HDF5 group \code{/scans/<scan_name>/data/summary_data}.
+reads data from the HDF5 group for this scan. For \code{"parcellated"} mode
+data is at \code{/scans/<name>/data/summary_data}; for \code{"latent"} mode
+the temporal basis is at \code{/scans/<name>/data/basis}.
 }
 \keyword{internal}

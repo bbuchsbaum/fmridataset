@@ -15,8 +15,9 @@ latent_dataset(
 )
 }
 \arguments{
-\item{source}{Character vector of file paths to LatentNeuroVec HDF5 files (.lv.h5) or
-a list of LatentNeuroVec objects from the fmristore package.}
+\item{source}{Character vector of file paths to LatentNeuroVec HDF5 files (.lv.h5),
+or a list of LatentNeuroVec objects from the fmristore or fmrilatent packages.
+File paths require the fmristore package; in-memory objects do not.}
 
 \item{TR}{The repetition time in seconds.}
 

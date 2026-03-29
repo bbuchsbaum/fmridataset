@@ -674,7 +674,7 @@ get_loadings <- function(x, scan_name = NULL, ...) {
 #' @return A numeric matrix \code{[T, V]} (or subset thereof).
 #'
 #' @export
-reconstruct_voxels <- function(x, scan_name, rows = NULL, voxels = NULL, ...) {
+reconstruct_voxels <- function(x, scan_name = NULL, rows = NULL, voxels = NULL, ...) {
   UseMethod("reconstruct_voxels")
 }
 

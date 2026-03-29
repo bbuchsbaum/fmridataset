@@ -237,20 +237,11 @@ get_component_info.latent_dataset <- function(x, ...) {
 #' Reconstruct the full voxel-space data from the latent representation.
 #' This is computationally expensive and should be used sparingly.
 #'
-#' @param x A latent_dataset object
-#' @param rows Optional row indices (timepoints) to reconstruct
-#' @param voxels Optional voxel indices to reconstruct
-#' @param ... Additional arguments
-#'
-#' @return Matrix of reconstructed voxel data (time × voxels)
+#' @rdname reconstruct_voxels
+#' @method reconstruct_voxels latent_dataset
 #' @export
 #' @family latent_data
-reconstruct_voxels <- function(x, rows = NULL, voxels = NULL, ...) {
-  UseMethod("reconstruct_voxels")
-}
-
-#' @export
-reconstruct_voxels.latent_dataset <- function(x, rows = NULL, voxels = NULL, ...) {
+reconstruct_voxels.latent_dataset <- function(x, scan_name = NULL, rows = NULL, voxels = NULL, ...) {
   backend <- x$backend
   if (!backend$is_open) {
     stop("Dataset backend is not open")

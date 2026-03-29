@@ -10,7 +10,8 @@
   h5,
   h5_connection,
   tr,
-  bids_meta
+  bids_meta,
+  compression_mode = "parcellated"
 )
 }
 \arguments{
@@ -25,6 +26,8 @@
 \item{tr}{Numeric TR.}
 
 \item{bids_meta}{Named list: space, pipeline, name (from /bids/).}
+
+\item{compression_mode}{Character. Either "parcellated" or "latent".}
 }
 \description{
 Shared by bids_h5_dataset() and subset_bids_h5(). Takes the full manifest

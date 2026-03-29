@@ -39,3 +39,8 @@
 ^\.covr_result\.rds$
 ^python$
 ^shared$
+^\.beads$
+^\.pytest_cache$
+^AGENTS\.md$
+^bids_plan\.md$
+^fmrilatent_plan\.md$

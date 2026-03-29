@@ -28,6 +28,7 @@
 #' parcels by column index.
 #'
 #' @name bids-h5-dataset
+#' @importFrom stats setNames
 #' @keywords internal
 NULL
 

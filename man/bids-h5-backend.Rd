@@ -10,13 +10,22 @@ BIDS HDF5 archive. Many \code{bids_h5_scan_backend} objects share a single
 study without leaking file descriptors.
 }
 \details{
-The backend operates in \strong{parcel feature-space}: columns are K parcels,
-not V voxels. This satisfies the backend contract by reporting
-\code{spatial = c(K, 1, 1)} and \code{mask = rep(TRUE, K)}, so
-\code{validate_backend()} passes and all downstream components (study_backend,
-as_delarr, data_chunks) work unchanged.
+The backend operates in \strong{feature-space}: columns are K features
+(parcels for \code{compression_mode = "parcellated"}, or latent components
+for \code{compression_mode = "latent"}), not V voxels. This satisfies the
+backend contract by reporting \code{spatial = c(K, 1, 1)} and
+\code{mask = rep(TRUE, K)}, so \code{validate_backend()} passes and all
+downstream components (study_backend, as_delarr, data_chunks) work unchanged.
+
+For \code{"parcellated"} mode, data is read from
+\code{/scans/<name>/data/summary_data} (shape \code{[T, K]}).
+For \code{"latent"} mode, the temporal basis is read from
+\code{/scans/<name>/data/basis} (shape \code{[T, K]}). Loadings and offset
+can be accessed via \code{.read_scan_loadings()} and
+\code{.read_scan_offset()} helpers.
 
 Original voxel geometry is stored in the HDF5 file under \code{/spatial/}
-and \code{/parcellation/} but does \strong{not} flow through the backend contract.
+and (for parcellated mode) \code{/parcellation/}, but does \strong{not} flow
+through the backend contract.
 }
 \keyword{internal}

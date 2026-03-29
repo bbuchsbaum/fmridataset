@@ -218,7 +218,7 @@ compress_bids_study <- function(
 
     if (is.null(mask)) {
       # Derive mask: all voxels belonging to a non-zero cluster
-      mask <- neuroim2::as.LogicalNeuroVol(clusters > 0)
+      mask <- neuroim2::LogicalNeuroVol(clusters > 0, neuroim2::space(clusters))
     }
 
     if (!inherits(mask, "LogicalNeuroVol")) {
@@ -709,8 +709,9 @@ compress_bids_study <- function(
 .compute_parcel_matrix <- function(nvec, clusters, cluster_ids, summary_fun) {
   # Try fmristore first
   if (requireNamespace("fmristore", quietly = TRUE)) {
+    sbc <- get("summarize_by_clusters", envir = asNamespace("fmristore"))
     result <- tryCatch(
-      fmristore::summarize_by_clusters(nvec, clusters, FUN = summary_fun),
+      sbc(nvec, clusters, FUN = summary_fun),
       error = function(e) NULL
     )
     if (!is.null(result)) {
