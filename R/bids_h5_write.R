@@ -738,7 +738,7 @@ compress_bids_study <- function(
       }
 
       gram_factor <- NULL
-      if (methods::isS4(template) && "gram_factor" %in% methods::slotNames(template)) {
+      if (isS4(template) && "gram_factor" %in% methods::slotNames(template)) {
         gram_factor <- methods::slot(template, "gram_factor")
       } else if (is.list(template) && !is.null(template$gram_factor)) {
         gram_factor <- template$gram_factor
