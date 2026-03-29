@@ -36,6 +36,58 @@ NULL
 # Internal helpers
 # ============================================================
 
+.bind_data_frames <- function(dfs) {
+  dfs <- Filter(function(df) !is.null(df) && nrow(df) > 0L, dfs)
+  if (length(dfs) == 0L) {
+    return(NULL)
+  }
+
+  dfs <- lapply(dfs, function(df) {
+    out <- as.data.frame(df, stringsAsFactors = FALSE)
+    rownames(out) <- NULL
+    out
+  })
+
+  all_names <- unique(unlist(lapply(dfs, names), use.names = FALSE))
+
+  aligned <- lapply(dfs, function(df) {
+    missing <- setdiff(all_names, names(df))
+    for (nm in missing) {
+      df[[nm]] <- NA
+    }
+    df[all_names]
+  })
+
+  out <- do.call(rbind, aligned)
+  rownames(out) <- NULL
+  out
+}
+
+.make_bids_h5_scan_backends <- function(manifest, h5_connection, n_features, tr,
+                                        compression_mode = "parcellated") {
+  setNames(
+    lapply(seq_len(nrow(manifest)), function(i) {
+      row <- manifest[i, ]
+
+      bids_h5_scan_backend(
+        h5_connection    = h5_connection,
+        scan_group_path  = paste0("/scans/", row$scan_name),
+        n_features       = n_features,
+        n_time           = row$n_time,
+        metadata         = list(
+          subject = row$subject,
+          task    = row$task,
+          session = if (!is.na(row$session) && nzchar(row$session)) row$session else NULL,
+          run     = row$run,
+          tr      = tr
+        ),
+        compression_mode = compression_mode
+      )
+    }),
+    manifest$scan_name
+  )
+}
+
 #' Read scan index from open H5 file
 #' @keywords internal
 .read_scan_index <- function(h5) {
@@ -124,7 +176,7 @@ NULL
     }
   }
 
-  combined_events <- do.call(rbind, Filter(Negate(is.null), events_list))
+  combined_events <- .bind_data_frames(events_list)
   if (is.null(combined_events)) {
     combined_events <- data.frame()
   }
@@ -169,10 +221,12 @@ NULL
 #' @param h5_connection The h5_shared_connection (stored on the result).
 #' @param tr Numeric TR.
 #' @param bids_meta Named list: space, pipeline, name (from /bids/).
+#' @param compression_mode Character. Either "parcellated" or "latent".
 #' @keywords internal
 .compose_bids_h5_study_dataset <- function(manifest, scan_backends,
                                             h5, h5_connection,
-                                            tr, bids_meta) {
+                                            tr, bids_meta,
+                                            compression_mode = "parcellated") {
   subjects_in_manifest <- unique(manifest$subject)
 
   datasets    <- vector("list", length(subjects_in_manifest))
@@ -194,11 +248,11 @@ NULL
   study <- fmri_study_dataset(datasets, subject_ids = subject_ids)
 
   # Wrap as bids_h5_study_dataset subclass with extra fields
-  study$scan_manifest   <- manifest
-  study$h5_connection   <- h5_connection
-  study$compression_mode <- "parcellated"
-  study$.bids_metadata  <- bids_meta
-  study$.scan_backends  <- scan_backends
+  study$scan_manifest    <- manifest
+  study$h5_connection    <- h5_connection
+  study$compression_mode <- compression_mode
+  study$.bids_metadata   <- bids_meta
+  study$.scan_backends   <- scan_backends
 
   class(study) <- c("bids_h5_study_dataset", "fmri_study_dataset", "fmri_dataset", "list")
   study
@@ -276,11 +330,11 @@ bids_h5_dataset <- function(file, preload = FALSE) {
   } else {
     "parcellated"
   }
-  if (!identical(comp_mode, "parcellated")) {
+  if (!comp_mode %in% c("parcellated", "latent")) {
     stop_fmridataset(
       fmridataset_error_backend_io,
       message = sprintf(
-        "Compression mode '%s' is not yet supported (only 'parcellated' is implemented).",
+        "Unknown compression_mode '%s' (expected 'parcellated' or 'latent').",
         comp_mode
       ),
       file = file, operation = "validate"
@@ -297,16 +351,28 @@ bids_h5_dataset <- function(file, preload = FALSE) {
     )
   }
 
-  # Number of parcels from /parcellation/cluster_ids
-  if (!h5$exists("parcellation/cluster_ids")) {
-    stop_fmridataset(
-      fmridataset_error_backend_io,
-      message = "BIDS H5 archive is missing /parcellation/cluster_ids.",
-      file = file, operation = "read"
-    )
+  # Number of features depends on compression mode
+  if (comp_mode == "parcellated") {
+    if (!h5$exists("parcellation/cluster_ids")) {
+      stop_fmridataset(
+        fmridataset_error_backend_io,
+        message = "BIDS H5 archive is missing /parcellation/cluster_ids.",
+        file = file, operation = "read"
+      )
+    }
+    cluster_ids <- h5[["parcellation/cluster_ids"]]$read()
+    n_features  <- length(cluster_ids)
+  } else {
+    # latent mode: K from /latent_meta/n_components
+    if (!h5$exists("latent_meta/n_components")) {
+      stop_fmridataset(
+        fmridataset_error_backend_io,
+        message = "Latent-mode archive is missing /latent_meta/n_components.",
+        file = file, operation = "read"
+      )
+    }
+    n_features <- as.integer(h5[["latent_meta/n_components"]]$read())
   }
-  cluster_ids <- h5[["parcellation/cluster_ids"]]$read()
-  n_parcels   <- length(cluster_ids)
 
   # TR from first scan's metadata
   first_scan_name <- manifest$scan_name[[1]]
@@ -335,38 +401,22 @@ bids_h5_dataset <- function(file, preload = FALSE) {
   }
 
   # Create per-scan backends (all share same h5_connection)
-  scan_backends <- setNames(
-    lapply(seq_len(nrow(manifest)), function(i) {
-      row <- manifest[i, ]
-      grp_path <- paste0("/scans/", row$scan_name)
-
-      # Per-scan metadata
-      meta <- list(
-        subject = row$subject,
-        task    = row$task,
-        session = if (!is.na(row$session) && nzchar(row$session)) row$session else NULL,
-        run     = row$run,
-        tr      = tr
-      )
-
-      bids_h5_scan_backend(
-        h5_connection    = h5_connection,
-        scan_group_path  = grp_path,
-        n_parcels        = n_parcels,
-        n_time           = row$n_time,
-        metadata         = meta
-      )
-    }),
-    manifest$scan_name
+  scan_backends <- .make_bids_h5_scan_backends(
+    manifest         = manifest,
+    h5_connection    = h5_connection,
+    n_features       = n_features,
+    tr               = tr,
+    compression_mode = comp_mode
   )
 
   .compose_bids_h5_study_dataset(
-    manifest      = manifest,
-    scan_backends = scan_backends,
-    h5            = h5,
-    h5_connection = h5_connection,
-    tr            = tr,
-    bids_meta     = bids_meta
+    manifest         = manifest,
+    scan_backends    = scan_backends,
+    h5               = h5,
+    h5_connection    = h5_connection,
+    tr               = tr,
+    bids_meta        = bids_meta,
+    compression_mode = comp_mode
   )
 }
 
@@ -417,18 +467,32 @@ subset_bids_h5 <- function(x,
     stop("subset_bids_h5: no scans match the provided filters.", call. = FALSE)
   }
 
-  # Reuse existing scan backends (already have the shared h5_connection)
-  sub_backends <- x$.scan_backends[sub_manifest$scan_name]
+  n_features <- if (!is.null(x$.scan_backends) && length(x$.scan_backends) > 0L) {
+    x$.scan_backends[[1]]$n_features
+  } else if (x$compression_mode == "latent") {
+    as.integer(x$h5_connection$handle[["latent_meta/n_components"]]$read())
+  } else {
+    length(x$h5_connection$handle[["parcellation/cluster_ids"]]$read())
+  }
+
+  sub_backends <- .make_bids_h5_scan_backends(
+    manifest         = sub_manifest,
+    h5_connection    = x$h5_connection,
+    n_features       = n_features,
+    tr               = get_TR(x),
+    compression_mode = x$compression_mode
+  )
 
   h5 <- x$h5_connection$handle
 
   .compose_bids_h5_study_dataset(
-    manifest      = sub_manifest,
-    scan_backends = sub_backends,
-    h5            = h5,
-    h5_connection = x$h5_connection,
-    tr            = get_TR(x),
-    bids_meta     = x$.bids_metadata
+    manifest         = sub_manifest,
+    scan_backends    = sub_backends,
+    h5               = h5,
+    h5_connection    = x$h5_connection,
+    tr               = get_TR(x),
+    bids_meta        = x$.bids_metadata,
+    compression_mode = x$compression_mode
   )
 }
 
@@ -472,6 +536,10 @@ scan_manifest.bids_h5_study_dataset <- function(x, ...) {
 #' @method parcellation_info bids_h5_study_dataset
 #' @export
 parcellation_info.bids_h5_study_dataset <- function(x, ...) {
+  if (identical(x$compression_mode, "latent")) {
+    return(NULL)
+  }
+
   h5 <- x$h5_connection$handle
 
   if (!h5$is_valid) {
@@ -502,6 +570,126 @@ parcellation_info.bids_h5_study_dataset <- function(x, ...) {
     cluster_map = cluster_map,
     labels      = labels,
     n_parcels   = n_parcels
+  )
+}
+
+#' @rdname get_loadings
+#' @method get_loadings bids_h5_study_dataset
+#' @export
+get_loadings.bids_h5_study_dataset <- function(x, scan_name = NULL, ...) {
+  if (!identical(x$compression_mode, "latent")) {
+    stop("get_loadings() is only available for latent-mode archives.", call. = FALSE)
+  }
+
+  h5 <- x$h5_connection$handle
+
+  if (!h5$is_valid) {
+    stop("H5 file handle is no longer valid.", call. = FALSE)
+  }
+
+  all_scans <- x$scan_manifest$scan_name
+
+  if (!is.null(scan_name)) {
+    if (!scan_name %in% all_scans) {
+      stop(sprintf("scan_name '%s' not found in this dataset.", scan_name), call. = FALSE)
+    }
+    return(.read_scan_loadings(h5, paste0("/scans/", scan_name)))
+  }
+
+  result <- lapply(all_scans, function(sn) {
+    .read_scan_loadings(h5, paste0("/scans/", sn))
+  })
+  names(result) <- all_scans
+  result
+}
+
+#' @rdname reconstruct_voxels
+#' @method reconstruct_voxels bids_h5_study_dataset
+#' @export
+reconstruct_voxels.bids_h5_study_dataset <- function(x, scan_name, rows = NULL,
+                                                       voxels = NULL, ...) {
+  if (!identical(x$compression_mode, "latent")) {
+    stop("reconstruct_voxels() is only available for latent-mode archives.", call. = FALSE)
+  }
+
+  h5 <- x$h5_connection$handle
+
+  if (!h5$is_valid) {
+    stop("H5 file handle is no longer valid.", call. = FALSE)
+  }
+
+  all_scans <- x$scan_manifest$scan_name
+  if (!scan_name %in% all_scans) {
+    stop(sprintf("scan_name '%s' not found in this dataset.", scan_name), call. = FALSE)
+  }
+
+  backend <- x$.scan_backends[[scan_name]]
+  if (is.null(backend)) {
+    stop(sprintf("No backend found for scan '%s'.", scan_name), call. = FALSE)
+  }
+
+  sgp <- paste0("/scans/", scan_name)
+
+  # Read basis [T, K]
+  basis    <- backend_get_data(backend)
+  # Read loadings [V, K]
+  loadings <- .read_scan_loadings(h5, sgp)
+  # Read offset [V]
+  offset   <- .read_scan_offset(h5, sgp)
+
+  # Reconstruct: [T, K] %*% t([V, K]) = [T, V]
+  recon <- basis %*% t(loadings)
+
+  if (length(offset) > 0L) {
+    # offset is [V]; add row-wise
+    recon <- sweep(recon, 2L, offset, `+`)
+  }
+
+  if (!is.null(rows)) {
+    recon <- recon[rows, , drop = FALSE]
+  }
+  if (!is.null(voxels)) {
+    recon <- recon[, voxels, drop = FALSE]
+  }
+
+  recon
+}
+
+#' @rdname encoding_info
+#' @method encoding_info bids_h5_study_dataset
+#' @export
+encoding_info.bids_h5_study_dataset <- function(x, ...) {
+  if (!identical(x$compression_mode, "latent")) {
+    return(NULL)
+  }
+
+  h5 <- x$h5_connection$handle
+
+  if (!h5$is_valid) {
+    stop("H5 file handle is no longer valid.", call. = FALSE)
+  }
+
+  encoding_family <- if (h5$exists("latent_meta/encoding_family")) {
+    h5[["latent_meta/encoding_family"]]$read()
+  } else {
+    NA_character_
+  }
+
+  encoding_params <- if (h5$exists("latent_meta/encoding_params")) {
+    tryCatch(
+      jsonlite::fromJSON(h5[["latent_meta/encoding_params"]]$read()),
+      error = function(e) NULL
+    )
+  } else {
+    NULL
+  }
+
+  n_components <- as.integer(h5[["latent_meta/n_components"]]$read())
+
+  list(
+    encoding_family = encoding_family,
+    encoding_params = encoding_params,
+    n_components    = n_components
   )
 }
 
@@ -645,8 +833,8 @@ print.bids_h5_study_dataset <- function(x, ...) {
   sess_vals  <- sess_vals[!is.na(sess_vals) & nzchar(sess_vals)]
   n_sessions <- length(sess_vals)
   n_scans    <- nrow(m)
-  n_parcels  <- if (!is.null(x$.scan_backends) && length(x$.scan_backends) > 0) {
-    x$.scan_backends[[1]]$n_parcels
+  n_features <- if (!is.null(x$.scan_backends) && length(x$.scan_backends) > 0) {
+    x$.scan_backends[[1]]$n_features
   } else {
     NA_integer_
   }
@@ -655,7 +843,13 @@ print.bids_h5_study_dataset <- function(x, ...) {
 
   cat("<bids_h5_study_dataset>\n")
   cat("  format        : BIDS H5 Study Archive\n")
-  cat("  mode          :", x$compression_mode, "\n")
+
+  if (identical(x$compression_mode, "latent")) {
+    cat("  mode          : latent (", n_features, "components)\n", sep = "")
+  } else {
+    cat("  mode          : parcellated (", n_features, "parcels)\n", sep = "")
+  }
+
   cat("  subjects      :", n_subjects, "\n")
   cat("  tasks         :", n_tasks,
       "(", paste(unique(m$task), collapse = ", "), ")\n")
@@ -664,7 +858,6 @@ print.bids_h5_study_dataset <- function(x, ...) {
         "(", paste(sess_vals, collapse = ", "), ")\n")
   }
   cat("  scans         :", n_scans, "\n")
-  cat("  parcels       :", n_parcels, "\n")
   cat("  TR            :", tr_val, "s\n")
   cat("  total time    :", total_tp, "volumes\n")
   if (!is.null(x$.bids_metadata$name)) {

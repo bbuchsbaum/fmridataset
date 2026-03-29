@@ -219,7 +219,7 @@ test_that("bids_h5_dataset errors when compression_mode is unsupported", {
   h5f$create_attr("compression_mode", "lna_future")
   h5f$close_all()
 
-  expect_error(bids_h5_dataset(tmp), "not yet supported")
+  expect_error(bids_h5_dataset(tmp), "Unknown compression_mode")
 })
 
 

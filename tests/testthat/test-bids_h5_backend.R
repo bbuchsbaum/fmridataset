@@ -28,7 +28,8 @@ make_scan_backend <- function(conn = make_mock_conn(),
                                n_parcels = 100L,
                                n_time    = 200L,
                                metadata  = list(subject = "01", task = "nback", tr = 2.0)) {
-  bids_h5_scan_backend(conn, path, n_parcels, n_time, metadata)
+  bids_h5_scan_backend(conn, path, n_features = n_parcels, n_time = n_time,
+                        metadata = metadata)
 }
 
 # ==============================================================================
@@ -75,10 +76,10 @@ test_that("bids_h5_scan_backend stores fields correctly", {
   conn <- make_mock_conn()
   b <- bids_h5_scan_backend(
     conn, "/scans/sub-02_task-rest_run-01",
-    n_parcels = 50L, n_time = 150L,
+    n_features = 50L, n_time = 150L,
     metadata = list(subject = "02", task = "rest", tr = 1.5)
   )
-  expect_equal(b$n_parcels, 50L)
+  expect_equal(b$n_features, 50L)
   expect_equal(b$n_time,    150L)
   expect_equal(b$scan_group_path, "/scans/sub-02_task-rest_run-01")
   expect_false(b$is_open)
@@ -94,11 +95,11 @@ test_that("bids_h5_scan_backend rejects invalid connection", {
   )
 })
 
-test_that("bids_h5_scan_backend rejects n_parcels < 1", {
+test_that("bids_h5_scan_backend rejects n_features < 1", {
   conn <- make_mock_conn()
   expect_error(
     bids_h5_scan_backend(conn, "/scans/x", 0L, 20L),
-    "n_parcels"
+    "n_features"
   )
 })
 
@@ -219,6 +220,31 @@ test_that("multiple backends share ref_count correctly", {
   expect_equal(conn$ref_count, 0L)
 })
 
+test_that("shared connection can reopen after all references are released", {
+  skip_if_not_installed("hdf5r")
+
+  tmp <- tempfile(fileext = ".h5")
+  on.exit(unlink(tmp), add = TRUE)
+
+  h5f <- hdf5r::H5File$new(tmp, mode = "w")
+  scan_grp <- h5f$create_group("scans")$create_group("sub-01_task-test_run-01")
+  scan_grp$create_group("data")$create_dataset("summary_data", robj = matrix(1:6, nrow = 2, ncol = 3))
+  h5f$close_all()
+
+  conn <- h5_shared_connection(tmp)
+  b <- bids_h5_scan_backend(conn, "/scans/sub-01_task-test_run-01", 3L, 2L)
+
+  b <- backend_open(b)
+  backend_close(b)
+  expect_false(conn$handle$is_valid)
+
+  b <- backend_open(b)
+  expect_true(conn$handle$is_valid)
+  expect_equal(dim(backend_get_data(b)), c(2L, 3L))
+
+  backend_close(b)
+})
+
 # ==============================================================================
 # backend_get_metadata
 # ==============================================================================
@@ -229,7 +255,7 @@ test_that("backend_get_metadata returns compression_mode and scan fields", {
   m    <- backend_get_metadata(b)
 
   expect_equal(m$compression_mode, "parcellated")
-  expect_equal(m$n_parcels,        100L)
+  expect_equal(m$n_features,       100L)
   expect_equal(m$subject,          "01")
   expect_equal(m$task,             "nback")
   expect_equal(m$tr,               2.0)

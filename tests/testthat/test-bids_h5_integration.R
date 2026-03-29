@@ -181,6 +181,51 @@ make_default_scans <- function(K = 20L, T1 = 50L, T2 = 60L) {
   )
 }
 
+make_bidser_writer_project <- function(events = NULL, confounds = NULL) {
+  temp_dir <- tempfile("bids_writer_")
+  dir.create(temp_dir)
+
+  write.table(
+    data.frame(participant_id = "01"),
+    file.path(temp_dir, "participants.tsv"),
+    sep = "\t",
+    quote = FALSE,
+    row.names = FALSE
+  )
+  writeLines(
+    '{"Name":"TestWriter","BIDSVersion":"1.7.0"}',
+    file.path(temp_dir, "dataset_description.json")
+  )
+
+  dir.create(file.path(temp_dir, "sub-01", "func"), recursive = TRUE)
+  if (!is.null(events)) {
+    write.table(
+      events,
+      file.path(temp_dir, "sub-01", "func", "sub-01_task-test_run-01_events.tsv"),
+      sep = "\t",
+      quote = FALSE,
+      row.names = FALSE
+    )
+  }
+
+  conf_dir <- file.path(temp_dir, "derivatives", "fmriprep", "sub-01", "func")
+  dir.create(conf_dir, recursive = TRUE)
+  if (!is.null(confounds)) {
+    write.table(
+      confounds,
+      file.path(conf_dir, "sub-01_task-test_run-01_desc-confounds_timeseries.tsv"),
+      sep = "\t",
+      quote = FALSE,
+      row.names = FALSE
+    )
+  }
+
+  list(
+    path = temp_dir,
+    project = bidser::bids_project(temp_dir, fmriprep = TRUE)
+  )
+}
+
 
 # ============================================================
 # bids_h5_dataset() — reader
@@ -424,6 +469,49 @@ test_that("event_table has task and run columns added by reader", {
   expect_true("subject_id" %in% names(et))
 })
 
+test_that("event_table supports heterogeneous task-specific event schemas", {
+  tmp <- tempfile(fileext = ".h5")
+  on.exit(unlink(tmp), add = TRUE)
+
+  scans <- list(
+    "sub-01_task-face_run-01" = list(
+      subject = "01",
+      task = "face",
+      run = "01",
+      n_time = 20L,
+      events = data.frame(
+        onset = c(0, 10),
+        duration = c(2, 2),
+        trial_type = c("face", "house"),
+        stringsAsFactors = FALSE
+      )
+    ),
+    "sub-01_task-memory_run-01" = list(
+      subject = "01",
+      task = "memory",
+      run = "01",
+      n_time = 20L,
+      events = data.frame(
+        onset = c(0, 12),
+        duration = c(2, 2),
+        condition = c("old", "new"),
+        stringsAsFactors = FALSE
+      )
+    )
+  )
+
+  make_test_h5(tmp, scans, n_parcels = 8L)
+  study <- bids_h5_dataset(tmp)
+
+  expect_equal(nrow(study$event_table), 4L)
+  expect_true(all(c("trial_type", "condition") %in% names(study$event_table)))
+
+  face_rows <- study$event_table$task == "face"
+  memory_rows <- study$event_table$task == "memory"
+  expect_true(all(is.na(study$event_table$condition[face_rows])))
+  expect_true(all(is.na(study$event_table$trial_type[memory_rows])))
+})
+
 
 # ============================================================
 # get_confounds
@@ -527,6 +615,21 @@ test_that("subset shares the same H5 connection (ref-count stable)", {
   sub <- subset_bids_h5(study, task = "nback")
   # Same underlying handle
   expect_true(identical(study$h5_connection, sub$h5_connection))
+  expect_true(sub$h5_connection$handle$is_valid)
+})
+
+test_that("closing parent backend does not invalidate subset data", {
+  tmp <- tempfile(fileext = ".h5")
+  on.exit(unlink(tmp), add = TRUE)
+  make_test_h5(tmp, make_default_scans(), n_parcels = 20L)
+
+  study <- bids_h5_dataset(tmp)
+  sub <- subset_bids_h5(study, task = "nback", subject = "02")
+
+  backend_close(study$backend)
+
+  mat <- as.matrix(get_data_matrix(sub))
+  expect_equal(dim(mat), c(50L, 20L))
   expect_true(sub$h5_connection$handle$is_valid)
 })
 
@@ -661,4 +764,50 @@ test_that("all scan backends pass validate_backend", {
     b <- study$.scan_backends[[sn]]
     expect_true(validate_backend(b), label = paste("validate_backend:", sn))
   }
+})
+
+
+# ============================================================
+# bidser helper normalization for writer path
+# ============================================================
+
+test_that(".read_scan_events flattens nested bidser event results", {
+  skip_if_not_installed("bidser")
+
+  setup <- make_bidser_writer_project(
+    events = data.frame(
+      onset = c(0, 1),
+      duration = c(1, 1),
+      trial_type = c("face", "house"),
+      stringsAsFactors = FALSE
+    )
+  )
+  on.exit(unlink(setup$path, recursive = TRUE, force = TRUE), add = TRUE)
+
+  scan_row <- data.frame(subid = "01", task = "test", run = "01", stringsAsFactors = FALSE)
+  ev <- .read_scan_events(setup$project, scan_row)
+
+  expect_s3_class(ev, "data.frame")
+  expect_false("data" %in% names(ev))
+  expect_equal(nrow(ev), 2L)
+  expect_true(all(c("onset", "duration", "trial_type") %in% names(ev)))
+})
+
+test_that(".read_scan_confounds returns only per-timepoint regressors", {
+  skip_if_not_installed("bidser")
+
+  setup <- make_bidser_writer_project(
+    confounds = data.frame(
+      CSF = c(0.1, 0.2),
+      WhiteMatter = c(0.3, 0.4)
+    )
+  )
+  on.exit(unlink(setup$path, recursive = TRUE, force = TRUE), add = TRUE)
+
+  scan_row <- data.frame(subid = "01", task = "test", run = "01", stringsAsFactors = FALSE)
+  cf <- .read_scan_confounds(setup$project, scan_row, c("CSF", "WhiteMatter"))
+
+  expect_s3_class(cf, "data.frame")
+  expect_equal(names(cf), c("CSF", "WhiteMatter"))
+  expect_equal(nrow(cf), 2L)
 })

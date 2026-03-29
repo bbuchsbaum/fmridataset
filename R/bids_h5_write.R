@@ -2,7 +2,7 @@
 #'
 #' @description
 #' Converts a BIDS directory (or \code{bidser::bids_project}) into a single
-#' compressed HDF5 file containing parcellated fMRI data, events, confounds, and
+#' compressed HDF5 file containing compressed fMRI data, events, confounds, and
 #' study metadata. The output file can be opened with \code{\link{bids_h5_dataset}}.
 #'
 #' @details
@@ -10,10 +10,12 @@
 #' memory at a time. For each scan it:
 #' \enumerate{
 #'   \item Reads the NIfTI via \code{neuroim2::read_vec()}.
-#'   \item Computes parcel averages via \code{fmristore::summarize_by_clusters()}
-#'         (or manual aggregation if unavailable).
-#'   \item Writes the \code{[T, K]} parcel matrix to
-#'         \code{/scans/<name>/data/summary_data}.
+#'   \item For \strong{parcellated} mode: computes parcel averages via
+#'         \code{fmristore::summarize_by_clusters()} and writes \code{[T, K]}
+#'         to \code{/scans/<name>/data/summary_data}.
+#'   \item For \strong{latent} mode: encodes via \code{fmrilatent::encode()}
+#'         and writes basis \code{[T, K]}, loadings \code{[V, K]}, and
+#'         (optionally) offset \code{[V]} to \code{/scans/<name>/data/}.
 #'   \item Writes events, confounds, censor, and metadata sub-groups.
 #'   \item Releases the NIfTI from memory.
 #' }
@@ -23,20 +25,31 @@
 #'
 #' @section HDF5 schema:
 #' See \code{bids_plan.md} in the package source for the full v1.0 schema.
-#' The root \code{compression_mode} attribute is \code{"parcellated"} in Phase 1.
+#' The root \code{compression_mode} attribute reflects the chosen \code{mode}.
 #'
 #' @param x A \code{bidser::bids_project} object **or** a character path to a
 #'   BIDS directory (automatically opened with \code{bidser::bids_project()}).
 #' @param file Character. Path for the output \code{.h5} file. Parent directory
 #'   must exist. Existing files are overwritten.
-#' @param mode Character. Compression strategy. Currently only
-#'   \code{"parcellated"} is supported.
+#' @param mode Character. Compression strategy: \code{"parcellated"} (default)
+#'   or \code{"latent"}.
 #' @param clusters A \code{neuroim2::ClusteredNeuroVol} defining the parcellation
-#'   atlas in study space. Required for \code{mode = "parcellated"}.
+#'   atlas in study space. Required for \code{mode = "parcellated"};
+#'   ignored for \code{"latent"}.
 #' @param summary_fun Function applied to voxel time-series within each parcel
-#'   to produce a scalar summary (default: \code{mean}).
-#' @param mask A \code{neuroim2::LogicalNeuroVol} brain mask. If \code{NULL}
-#'   (default), the mask is derived from \code{clusters} (all non-zero voxels).
+#'   to produce a scalar summary (default: \code{mean}). Only used for
+#'   \code{mode = "parcellated"}.
+#' @param encoding A \code{fmrilatent} encoding specification object (e.g.
+#'   \code{fmrilatent::spec_time_dct(k = 15)}). Required for
+#'   \code{mode = "latent"} unless \code{n_components} is provided.
+#' @param n_components Integer. Shorthand for latent PCA with K components.
+#'   If \code{encoding} is \code{NULL} and \code{n_components} is provided,
+#'   \code{fmrilatent::spec_space_pca(k = n_components)} is used.
+#'   Only used for \code{mode = "latent"}.
+#' @param mask A \code{neuroim2::LogicalNeuroVol} brain mask. For
+#'   \code{mode = "parcellated"}, derived from \code{clusters} when \code{NULL}.
+#'   For \code{mode = "latent"}, \code{mask} is required (cannot be derived
+#'   without clusters).
 #' @param space Character. Template space name stored as metadata
 #'   (default: \code{"MNI152NLin2009cAsym"}).
 #' @param tasks Character vector. Task filter; \code{NULL} means all tasks.
@@ -64,6 +77,7 @@
 #' bids_dir  <- system.file("extdata", "ds001", package = "bidser")
 #' atlas     <- fmristore::get_schaefer_atlas(100)   # example atlas
 #'
+#' # Parcellated mode
 #' study <- compress_bids_study(
 #'   x          = bids_dir,
 #'   file       = tempfile(fileext = ".h5"),
@@ -71,21 +85,34 @@
 #'   tasks      = "nback",
 #'   verbose    = TRUE
 #' )
+#'
+#' # Latent mode (PCA with 50 components)
+#' study_lat <- compress_bids_study(
+#'   x            = bids_dir,
+#'   file         = tempfile(fileext = ".h5"),
+#'   mode         = "latent",
+#'   n_components = 50L,
+#'   mask         = brain_mask,
+#'   tasks        = "nback",
+#'   verbose      = TRUE
+#' )
 #' }
 compress_bids_study <- function(
   x,
   file,
-  mode        = c("parcellated"),
-  clusters,
-  summary_fun = mean,
-  mask        = NULL,
-  space       = "MNI152NLin2009cAsym",
-  tasks       = NULL,
-  subjects    = NULL,
-  sessions    = NULL,
-  confounds   = NULL,
-  compression = 4L,
-  verbose     = TRUE
+  mode         = c("parcellated", "latent"),
+  clusters     = NULL,
+  summary_fun  = mean,
+  encoding     = NULL,
+  n_components = NULL,
+  mask         = NULL,
+  space        = "MNI152NLin2009cAsym",
+  tasks        = NULL,
+  subjects     = NULL,
+  sessions     = NULL,
+  confounds    = NULL,
+  compression  = 4L,
+  verbose      = TRUE
 ) {
   # ---------------------------------------------------------------
   # 1. Dependency checks
@@ -100,13 +127,20 @@ compress_bids_study <- function(
          "Install it with: install.packages('hdf5r')",
          call. = FALSE)
   }
-  if (!requireNamespace("fmristore", quietly = TRUE)) {
-    stop("Package 'fmristore' is required for compress_bids_study() but is not installed.\n",
+
+  mode <- match.arg(mode)
+
+  if (mode == "parcellated" && !requireNamespace("fmristore", quietly = TRUE)) {
+    stop("Package 'fmristore' is required for mode='parcellated' but is not installed.\n",
          "Install it with: remotes::install_github('bbuchsbaum/fmristore')",
          call. = FALSE)
   }
+  if (mode == "latent" && !requireNamespace("fmrilatent", quietly = TRUE)) {
+    stop("Package 'fmrilatent' is required for mode='latent' but is not installed.\n",
+         "Install it with: remotes::install_github('bbuchsbaum/fmrilatent')",
+         call. = FALSE)
+  }
 
-  mode <- match.arg(mode)
   compression <- as.integer(compression)
 
   # ---------------------------------------------------------------
@@ -166,28 +200,52 @@ compress_bids_study <- function(
   TR_value <- trs[[1]]
 
   # ---------------------------------------------------------------
-  # 5. Validate clusters and derive mask
+  # 5. Validate mode-specific arguments and derive mask/encoding
   # ---------------------------------------------------------------
-  if (!inherits(clusters, "ClusteredNeuroVol")) {
-    stop("'clusters' must be a neuroim2::ClusteredNeuroVol object.", call. = FALSE)
-  }
+  if (mode == "parcellated") {
+    if (is.null(clusters) || !inherits(clusters, "ClusteredNeuroVol")) {
+      stop("'clusters' must be a neuroim2::ClusteredNeuroVol object for mode='parcellated'.",
+           call. = FALSE)
+    }
 
-  if (is.null(mask)) {
-    # Derive mask: all voxels belonging to a non-zero cluster
-    mask <- neuroim2::as.LogicalNeuroVol(clusters > 0)
-  }
+    if (is.null(mask)) {
+      # Derive mask: all voxels belonging to a non-zero cluster
+      mask <- neuroim2::as.LogicalNeuroVol(clusters > 0)
+    }
 
-  if (!inherits(mask, "LogicalNeuroVol")) {
-    stop("'mask' must be a neuroim2::LogicalNeuroVol object.", call. = FALSE)
-  }
+    if (!inherits(mask, "LogicalNeuroVol")) {
+      stop("'mask' must be a neuroim2::LogicalNeuroVol object.", call. = FALSE)
+    }
 
-  # Parcel IDs and count
-  cluster_ids <- sort(unique(as.integer(clusters[clusters > 0])))
-  K <- length(cluster_ids)
+    # Parcel IDs and count
+    cluster_ids <- sort(unique(as.integer(clusters[clusters > 0])))
+    K <- length(cluster_ids)
 
-  if (K == 0L) {
-    stop("No parcels found in 'clusters'. Check that the ClusteredNeuroVol is valid.",
-         call. = FALSE)
+    if (K == 0L) {
+      stop("No parcels found in 'clusters'. Check that the ClusteredNeuroVol is valid.",
+           call. = FALSE)
+    }
+  } else {
+    # latent mode
+    if (is.null(mask)) {
+      stop("'mask' is required for mode='latent' (no clusters to derive mask from).",
+           call. = FALSE)
+    }
+    if (!inherits(mask, "LogicalNeuroVol")) {
+      stop("'mask' must be a neuroim2::LogicalNeuroVol object.", call. = FALSE)
+    }
+
+    if (is.null(encoding)) {
+      if (is.null(n_components)) {
+        stop("For mode='latent', either 'encoding' or 'n_components' must be provided.",
+             call. = FALSE)
+      }
+      encoding <- fmrilatent::spec_space_pca(k = as.integer(n_components))
+    }
+
+    # K will be determined after encoding the first scan; set a placeholder
+    K <- NULL
+    cluster_ids <- NULL
   }
 
   # ---------------------------------------------------------------
@@ -216,7 +274,7 @@ compress_bids_study <- function(
   # ---------------------------------------------------------------
   h5$create_attr("format",           "bids_h5_study")
   h5$create_attr("version",          "1.0")
-  h5$create_attr("compression_mode", "parcellated")
+  h5$create_attr("compression_mode", mode)
   h5$create_attr("writer_version",   as.character(utils::packageVersion("fmridataset")))
 
   # ---------------------------------------------------------------
@@ -232,10 +290,13 @@ compress_bids_study <- function(
   .write_spatial_group(h5, mask, compression)
 
   # ---------------------------------------------------------------
-  # 11. Write /parcellation/ group
+  # 11. Write mode-specific metadata group
   # ---------------------------------------------------------------
-  if (verbose) message("Writing /parcellation/ metadata ...")
-  .write_parcellation_group(h5, clusters, cluster_ids, compression)
+  if (mode == "parcellated") {
+    if (verbose) message("Writing /parcellation/ metadata ...")
+    .write_parcellation_group(h5, clusters, cluster_ids, compression)
+  }
+  # latent_meta is written after scan loop once K is known
 
   # ---------------------------------------------------------------
   # 12. Write /scans/ — streaming one scan at a time
@@ -244,8 +305,9 @@ compress_bids_study <- function(
   scans_grp <- h5[["scans"]]
 
   n_scans  <- nrow(scans_df)
-  n_time_vec    <- integer(n_scans)
-  has_events_vec   <- logical(n_scans)
+  n_time_vec        <- integer(n_scans)
+  n_features_vec    <- integer(n_scans)
+  has_events_vec    <- logical(n_scans)
   has_confounds_vec <- logical(n_scans)
 
   for (i in seq_len(n_scans)) {
@@ -269,26 +331,76 @@ compress_bids_study <- function(
     n_time <- dim(nvec)[4]
     n_time_vec[[i]] <- n_time
 
-    # -- Compute parcel averages: [T, K] matrix
-    parcel_mat <- .compute_parcel_matrix(nvec, clusters, cluster_ids, summary_fun)
-
     # -- Create scan HDF5 group
     scans_grp$create_group(scan_name)
     sg <- scans_grp[[scan_name]]
-
-    # -- Write summary data
     sg$create_group("data")
     dg <- sg[["data"]]
 
-    chunk_t <- min(n_time, 128L)
-    chunk_k <- min(K, 256L)
+    if (mode == "parcellated") {
+      # -- Compute parcel averages: [T, K] matrix
+      parcel_mat <- .compute_parcel_matrix(nvec, clusters, cluster_ids, summary_fun)
 
-    dg$create_dataset(
-      "summary_data",
-      robj       = parcel_mat,
-      chunk_dims = c(chunk_t, chunk_k),
-      gzip_level = compression
-    )
+      chunk_t <- min(n_time, 128L)
+      chunk_k <- min(K, 256L)
+
+      dg$create_dataset(
+        "summary_data",
+        robj       = parcel_mat,
+        chunk_dims = c(chunk_t, chunk_k),
+        gzip_level = compression
+      )
+
+      rm(parcel_mat)
+    } else {
+      # latent mode
+      # Extract masked matrix [T, V]
+      mask_indices <- which(as.logical(mask))
+      mat <- neuroim2::series(nvec, mask_indices)  # [T, V]
+
+      # Encode via fmrilatent
+      lvec <- fmrilatent::encode(mat, encoding, mask = mask)
+
+      # Extract components
+      basis_mat    <- as.matrix(fmrilatent::basis(lvec))     # [T, K]
+      loadings_mat <- as.matrix(fmrilatent::loadings(lvec))  # [V, K]
+      offset_vec   <- fmrilatent::offset(lvec)               # [V] or numeric(0)
+
+      # Determine K from first scan
+      if (is.null(K)) {
+        K <- ncol(basis_mat)
+      }
+
+      chunk_t <- min(n_time, 128L)
+      chunk_k <- min(K, 256L)
+      chunk_v <- min(nrow(loadings_mat), 4096L)
+
+      dg$create_dataset(
+        "basis",
+        robj       = basis_mat,
+        chunk_dims = c(chunk_t, chunk_k),
+        gzip_level = compression
+      )
+      dg$create_dataset(
+        "loadings",
+        robj       = loadings_mat,
+        chunk_dims = c(chunk_v, chunk_k),
+        gzip_level = compression
+      )
+      if (length(offset_vec) > 0L) {
+        dg$create_dataset(
+          "offset",
+          robj       = offset_vec,
+          chunk_dims = min(length(offset_vec), 4096L),
+          gzip_level = compression
+        )
+      }
+      hdf5r::h5attr(dg, "k") <- ncol(basis_mat)
+
+      rm(mat, lvec, basis_mat, loadings_mat, offset_vec)
+    }
+
+    n_features_vec[[i]] <- K
 
     # -- Read and write events
     events_df <- tryCatch(
@@ -337,12 +449,34 @@ compress_bids_study <- function(
     h5_write_scan_metadata(sg, meta)
 
     # -- Release NIfTI from memory
-    rm(nvec, parcel_mat)
+    rm(nvec)
     gc(verbose = FALSE)
   }
 
   # ---------------------------------------------------------------
-  # 13. Write /scan_index/
+  # 13. Write /latent_meta/ (latent mode only)
+  # ---------------------------------------------------------------
+  if (mode == "latent") {
+    if (is.null(K)) {
+      stop("No scans were processed; cannot determine K for latent_meta.", call. = FALSE)
+    }
+    if (verbose) message("Writing /latent_meta/ ...")
+    h5$create_group("latent_meta")
+    lm_grp <- h5[["latent_meta"]]
+
+    encoding_family <- class(encoding)[[1]]
+    encoding_params <- tryCatch(
+      jsonlite::toJSON(as.list(encoding), auto_unbox = TRUE),
+      error = function(e) "{}"
+    )
+
+    lm_grp$create_dataset("encoding_family",  robj = encoding_family)
+    lm_grp$create_dataset("encoding_params",  robj = as.character(encoding_params))
+    lm_grp$create_dataset("n_components",     robj = as.integer(K))
+  }
+
+  # ---------------------------------------------------------------
+  # 14. Write /scan_index/
   # ---------------------------------------------------------------
   if (verbose) message("Writing /scan_index/ ...")
   time_offset <- c(0L, cumsum(n_time_vec[-n_scans]))
@@ -357,6 +491,7 @@ compress_bids_study <- function(
   si$create_dataset("task",           robj = as.character(scans_df$task),  gzip_level = compression)
   si$create_dataset("run",            robj = as.character(scans_df$run),   gzip_level = compression)
   si$create_dataset("n_time",         robj = n_time_vec,                   gzip_level = compression)
+  si$create_dataset("n_features",     robj = n_features_vec,               gzip_level = compression)
   si$create_dataset("time_offset",    robj = time_offset,                  gzip_level = compression)
   si$create_dataset("has_events",     robj = as.integer(has_events_vec),   gzip_level = compression)
   si$create_dataset("has_confounds",  robj = as.integer(has_confounds_vec),gzip_level = compression)
@@ -677,9 +812,15 @@ compress_bids_study <- function(
     error = function(e) NULL
   )
 
-  # bidser may return a list of data.frames for multiple runs; collapse to one
-  if (is.list(result) && !is.data.frame(result)) {
-    result <- do.call(rbind, result)
+  if (is.null(result)) {
+    return(NULL)
+  }
+
+  # bidser returns a nested tibble with a `data` list-column by default.
+  if (is.data.frame(result) && "data" %in% names(result) && is.list(result$data)) {
+    result <- .bind_data_frames(lapply(result$data, as.data.frame))
+  } else if (is.list(result) && !is.data.frame(result)) {
+    result <- .bind_data_frames(lapply(result, as.data.frame))
   }
 
   result
@@ -702,20 +843,36 @@ compress_bids_study <- function(
     args$session <- as.character(scan_row$session)
   }
   if (!is.null(confounds_spec)) {
-    args$confound_set <- confounds_spec
+    args$cvars <- confounds_spec
   }
+  args$nest <- FALSE
 
   result <- tryCatch(
     do.call(bidser::read_confounds, args),
     error = function(e) NULL
   )
 
+  if (is.null(result)) {
+    return(NULL)
+  }
+
   # Normalize to data.frame
   if (is.matrix(result)) {
     result <- as.data.frame(result)
   }
-  if (is.list(result) && !is.data.frame(result)) {
-    result <- do.call(rbind, lapply(result, as.data.frame))
+  if (is.data.frame(result) && "data" %in% names(result) && is.list(result$data)) {
+    result <- .bind_data_frames(lapply(result$data, as.data.frame))
+  } else if (is.list(result) && !is.data.frame(result)) {
+    result <- .bind_data_frames(lapply(result, as.data.frame))
+  }
+
+  meta_cols <- intersect(
+    c("participant_id", "subject", "subid", ".subid",
+      "task", ".task", "run", ".run", "session", ".session"),
+    names(result)
+  )
+  if (length(meta_cols) > 0L) {
+    result <- result[setdiff(names(result), meta_cols)]
   }
 
   result

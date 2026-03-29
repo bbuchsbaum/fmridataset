@@ -640,3 +640,57 @@ parcellation_info <- function(x, ...) {
 get_confounds <- function(x, ...) {
   UseMethod("get_confounds")
 }
+
+#' Get Spatial Loadings from a Latent-Mode BIDS H5 Dataset
+#'
+#' Retrieves the spatial loadings matrix (or matrices) from a latent-mode
+#' BIDS HDF5 archive. Only available when \code{compression_mode = "latent"}.
+#'
+#' @param x A \code{bids_h5_study_dataset} object opened in latent mode.
+#' @param scan_name Character. Name of a specific scan, or \code{NULL} to return
+#'   loadings for all scans as a named list.
+#' @param ... Additional arguments passed to methods.
+#'
+#' @return A numeric matrix \code{[V, K]} for a single scan, or a named list of
+#'   such matrices when \code{scan_name = NULL}.
+#'
+#' @export
+get_loadings <- function(x, scan_name = NULL, ...) {
+  UseMethod("get_loadings")
+}
+
+#' Reconstruct Voxel-Space Data from a Latent-Mode BIDS H5 Dataset
+#'
+#' Reconstructs full voxel-space time series for a scan by computing
+#' \code{basis \%*\% t(loadings) + offset}. Only available when
+#' \code{compression_mode = "latent"}.
+#'
+#' @param x A \code{bids_h5_study_dataset} object opened in latent mode.
+#' @param scan_name Character. Name of the scan to reconstruct.
+#' @param rows Integer vector of timepoint indices to return, or \code{NULL} for all.
+#' @param voxels Integer vector of voxel indices to return, or \code{NULL} for all.
+#' @param ... Additional arguments passed to methods.
+#'
+#' @return A numeric matrix \code{[T, V]} (or subset thereof).
+#'
+#' @export
+reconstruct_voxels <- function(x, scan_name, rows = NULL, voxels = NULL, ...) {
+  UseMethod("reconstruct_voxels")
+}
+
+#' Get Encoding Metadata from a Latent-Mode BIDS H5 Dataset
+#'
+#' Returns encoding metadata (family, parameters, number of components) stored
+#' in the \code{/latent_meta/} group of a latent-mode BIDS HDF5 archive.
+#' Returns \code{NULL} for parcellated-mode archives.
+#'
+#' @param x A \code{bids_h5_study_dataset} object.
+#' @param ... Additional arguments passed to methods.
+#'
+#' @return A named list with elements \code{encoding_family},
+#'   \code{encoding_params}, and \code{n_components}, or \code{NULL}.
+#'
+#' @export
+encoding_info <- function(x, ...) {
+  UseMethod("encoding_info")
+}
