@@ -49,7 +49,7 @@ Internally:
 3. Group scans by subject → one `fmri_dataset` per subject
 4. Compose via existing `fmri_study_dataset(datasets, subject_ids)`
 
-This gives us `data_chunks()`, `as_delayed_array()`, per-subject access, and `fmri_group()` for free.
+This gives us `data_chunks()`, `as_delarr()`, per-subject access, and `fmri_group()` for free.
 
 ### Decision 2: Parcellated data is native feature-space (K parcel columns, not V voxels)
 
@@ -59,7 +59,7 @@ This is the main structural issue. The current backend contract couples three th
 - `backend_get_mask()` → logical vector of length `prod(spatial)`
 - `backend_get_data(rows, cols)` → matrix where `ncol == sum(mask)`
 
-This coupling is enforced in `validate_backend()` (storage_backend.R:170-188), `study_backend` column bounds (study_backend.R:161), and `StudyBackendSeed` dims (study_backend_seed_s3.R:142-153).
+This coupling is enforced in `validate_backend()` (storage_backend.R:170-188), `study_backend` column bounds (study_backend.R:161), `as_delarr()` column sizing (as_delarr.R:26), selectors (series_selector.R:39), and printing.
 
 For parcellated data, the columns are K parcels, not V voxels. Trying to keep voxel geometry in the backend while returning parcel data breaks `study_backend`, `as_delayed_array()`, and chunking.
 
@@ -75,11 +75,12 @@ The original voxel geometry, brain mask, and cluster-to-voxel mapping live in th
 
 - `validate_backend()` passes: `length(mask) == prod(spatial) == K`, `sum(mask) == K`
 - `study_backend` works: column bounds are K, consistent across scans
-- `StudyBackendSeed` works: dims are `[T_total, K]`
-- `data_chunks()`, `as_delayed_array()` all work unchanged
-- Voxel selectors (`fmri_series()` with ROI/sphere) do **not** work on parcellated data — and that's correct, because parcellated data doesn't have voxel resolution
+- `as_delarr()` works: column count derived from mask is K
+- `data_chunks()` works unchanged
+- `index_selector()` works over parcel columns (select parcels 1:10, etc.)
+- ROI/sphere/voxel selectors do **not** work on parcellated data — correct, because parcellated data doesn't have voxel resolution
 
-**No voxel-feature space refactor needed for Phase 1.** If LNA mode is added later (voxel-reconstructable data), that's when the backend contract distinction might need revisiting.
+**No voxel-feature space refactor needed for Phase 1.** delarr is the primary lazy matrix path in fmridataset; DelayedArray is a secondary fallback. Phase 1 does not need to optimize for DelayedArray/StudyBackendSeed at all. If LNA mode is added later (voxel-reconstructable data), that's when the backend contract distinction might need revisiting.
 
 ### Decision 3: neuroarchive deferred, schema extensible
 
@@ -393,7 +394,8 @@ parcellation_info(study)
 - `event_table` matches original events.tsv content
 - `subset_bids_h5(task = "nback")` returns correct subset
 - `data_chunks()` works on the result
-- `as_delayed_array()` works on the result
+- `as_delarr()` works on the result
+- `index_selector()` works over parcel columns
 - `fmri_group()` works on the result
 - Missing dependency errors are informative
 
@@ -417,7 +419,7 @@ parcellation_info(study)
 
 ## Key Constraints & Non-Goals (Phase 1)
 
-- **No voxel selectors on parcellated data.** Parcels are the feature space. `fmri_series()` with ROI/sphere selectors does not apply. This is honest about what parcellated data is.
+- **No voxel selectors on parcellated data.** Parcels are the feature space. `index_selector()` works (select parcels by column index), but ROI/sphere/voxel selectors do not apply. This is honest about what parcellated data is.
 - **TR must be constant across all scans.** `fmri_study_dataset` enforces this. Writer validates upfront.
 - **No neuroarchive dependency.** Schema leaves a seam; code doesn't touch it.
 - **No NSE filtering.** `subset_bids_h5()` uses standard evaluation with named arguments.
@@ -432,6 +434,6 @@ parcellation_info(study)
 5. `subset_bids_h5(task = ...)` produces valid study_dataset
 6. `event_table` has task, session, subject_id, run columns
 7. `data_chunks()` iterates correctly over study
-8. `as_delayed_array()` produces correct `[T_total, K]` DelayedMatrix
+8. `as_delarr()` produces correct `[T_total, K]` lazy matrix
 9. Missing bidser/fmristore/hdf5r produces clear error
 10. R CMD check passes
