@@ -242,7 +242,7 @@ bids_h5_dataset <- function(file, preload = FALSE)
 #       is itself a scan-composite study_backend (for multi-run subjects)
 #   - h5_connection: shared ref-counted H5 file handle
 #
-# BIDS-specific accessors (local generics with conditional bidser delegation):
+# BIDS-specific accessors (fmridataset-local generics, no bidser required):
 #   participants(study)  → character vector of subject IDs
 #   tasks(study)         → character vector of task names
 #   sessions(study)      → character vector of session names (or NULL)
@@ -269,9 +269,29 @@ bids_h5_scan_backend <- function(h5_connection, scan_group_path, n_parcels, n_ti
 h5_shared_connection <- function(file)
 # Ref-counted wrapper around hdf5r::H5File
 # - h5_connection$handle: the open H5File object
-# - h5_connection$ref_count: incremented per scan backend
+# - h5_connection$ref_count: number of live scan backends
 # - h5_connection$release(): decrements; closes file when ref_count hits 0
 # - h5_connection$acquire(): increments ref_count
+```
+
+**Handle lifecycle:** Each `bids_h5_scan_backend` carries an `is_open` flag. `backend_open()` and `backend_close()` are **idempotent per instance**: open increments the shared ref_count only on first open (when `is_open` is FALSE → TRUE), close decrements only on final close (when `is_open` is TRUE → FALSE). This is critical because `fmri_dataset()` calls `backend_open()` during construction (dataset_constructors.R:280) and `study_backend` recursively opens/closes children (study_backend.R:122). Without idempotent guards, nested composition drifts the ref_count, leaking the file handle or closing it prematurely.
+
+```r
+backend_open.bids_h5_scan_backend <- function(backend) {
+  if (!backend$is_open) {
+    backend$h5_connection$acquire()
+    backend$is_open <- TRUE
+  }
+  backend
+}
+
+backend_close.bids_h5_scan_backend <- function(backend) {
+  if (backend$is_open) {
+    backend$h5_connection$release()
+    backend$is_open <- FALSE
+  }
+  invisible(NULL)
+}
 ```
 
 ### Query & Access
@@ -391,7 +411,7 @@ parcellation_info(study)
 - Open H5, read scan_index → per-scan backends → group by subject
 - Compose via `fmri_study_dataset()`
 - scan_manifest as first-class field
-- `participants()`, `tasks()`, `sessions()` methods. These generics are owned by bidser (a Suggests-only dep), so methods must use conditional S3 registration via `S3method()` directives in NAMESPACE with `.onLoad()` fallback, or define local generics that defer to bidser's when available. The plan must not silently require bidser to be attached for these to work. Approach: define fmridataset-local generics that check for and delegate to bidser generics if loaded, otherwise dispatch on local methods only.
+- `participants()`, `tasks()`, `sessions()` methods. **Concrete approach: fmridataset-local generics.** Define `participants()`, `tasks()`, `sessions()` as S3 generics in `R/all_generic.R` owned by fmridataset. This avoids any conditional registration complexity and works whether or not bidser is installed. If a user loads both packages, standard S3 dispatch resolves by class — bidser methods handle `bids_project` objects, fmridataset methods handle `bids_h5_study_dataset` objects, no conflict. Users call `fmridataset::participants(study)` or just `participants(study)` with no bidser dependency.
 
 ### Step 4: `subset_bids_h5()` for task/subject/session/run filtering
 - Filter manifest → select backends → recompose study_dataset
