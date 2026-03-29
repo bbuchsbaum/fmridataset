@@ -460,6 +460,7 @@ parcellation_info(study)
 - **No neuroarchive dependency.** Schema leaves a seam; code doesn't touch it.
 - **No NSE filtering.** `subset_bids_h5()` uses standard evaluation with named arguments.
 - **No incremental writes.** The archive is written once from a complete BIDS directory.
+- **Parcellation must be consistent across subjects.** The writer takes a single `clusters` atlas applied to all subjects, and `study_backend` enforces identical spatial dims (K) across backends. Subject-specific parcellations (individual functional atlases, variable brain coverage) are a future enhancement — they would require either per-subject `/parcellation/` groups with a mapping layer, or using `fmri_group` (no stacking) instead of `fmri_study_dataset`.
 
 ## Verification Checklist
 
