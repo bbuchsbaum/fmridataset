@@ -389,25 +389,13 @@ compress_bids_study <- function(
       mat <- neuroim2::series(nvec, mask_indices)  # [T, V]
 
       if (!is.null(template_loadings)) {
-        # -- Template mode: project data onto shared template loadings
-        # Center data per-voxel, store offset for reconstruction fidelity
-        col_means <- colMeans(mat)
-        mat_centered <- sweep(mat, 2L, col_means, `-`)
-
-        # Project: coefficients = centered_mat %*% loadings %*% solve(t(L) %*% L)
-        basis_mat <- tryCatch({
-          proj <- fmrilatent::template_project(template, mat_centered)
-          as.matrix(proj)
-        }, error = function(e) {
-          # Manual fallback: OLS projection
-          as.matrix(mat_centered %*% template_loadings %*%
-                      solve(crossprod(template_loadings)))
-        })
-
-        # Store per-scan offset (voxel means) for round-trip fidelity
+        # -- Template mode: project onto the shared template and honor the
+        # template's own offset semantics for round-trip reconstruction.
+        tpl_proj <- .project_template_with_offset(template, mat, template_loadings)
+        basis_mat    <- tpl_proj$basis
         loadings_mat <- NULL
-        offset_vec   <- col_means
-        rm(mat_centered, col_means)
+        offset_vec   <- tpl_proj$offset
+        rm(tpl_proj)
       } else {
         # -- Independent encoding mode
         lvec <- fmrilatent::encode(mat, encoding, mask = mask)
@@ -697,6 +685,75 @@ compress_bids_study <- function(
          call. = FALSE)
   }
   as.character(scan_row[[path_col[[1]]]])
+}
+
+
+#' Project data onto a shared latent template and recover any scan offset
+#' @keywords internal
+.project_template_with_offset <- function(template, data, template_loadings) {
+  normalize_projection <- function(proj, n_time, n_components) {
+    if (is.list(proj)) {
+      coeff <- proj$coefficients
+      offset <- proj$offset
+    } else {
+      coeff <- proj
+      offset <- numeric(0)
+    }
+
+    if (is.null(coeff)) {
+      stop("template_project() returned no coefficients.", call. = FALSE)
+    }
+
+    basis_mat <- as.matrix(coeff)
+    if (!is.matrix(basis_mat) || typeof(basis_mat) == "list") {
+      stop("template_project() did not return a numeric coefficient matrix.", call. = FALSE)
+    }
+    if (nrow(basis_mat) != n_time || ncol(basis_mat) != n_components) {
+      stop(
+        sprintf(
+          "template_project() returned [%d, %d]; expected [%d, %d].",
+          nrow(basis_mat), ncol(basis_mat), n_time, n_components
+        ),
+        call. = FALSE
+      )
+    }
+
+    offset_vec <- if (is.null(offset)) numeric(0) else as.numeric(offset)
+    list(basis = basis_mat, offset = offset_vec)
+  }
+
+  tryCatch(
+    {
+      proj <- fmrilatent::template_project(template, data)
+      normalize_projection(proj, nrow(data), ncol(template_loadings))
+    },
+    error = function(e) {
+      template_center <- is.list(template) && isTRUE(template$center)
+      proj_data <- data
+      offset_vec <- numeric(0)
+
+      if (template_center) {
+        offset_vec <- colMeans(data)
+        proj_data <- sweep(data, 2L, offset_vec, `-`)
+      }
+
+      gram_factor <- NULL
+      if (methods::isS4(template) && "gram_factor" %in% methods::slotNames(template)) {
+        gram_factor <- methods::slot(template, "gram_factor")
+      } else if (is.list(template) && !is.null(template$gram_factor)) {
+        gram_factor <- template$gram_factor
+      }
+
+      basis_mat <- if (!is.null(gram_factor)) {
+        proj_scores <- proj_data %*% template_loadings
+        as.matrix(t(Matrix::solve(gram_factor, Matrix::t(proj_scores))))
+      } else {
+        as.matrix(proj_data %*% template_loadings %*% solve(crossprod(template_loadings)))
+      }
+
+      list(basis = basis_mat, offset = offset_vec)
+    }
+  )
 }
 
 

@@ -811,3 +811,59 @@ test_that(".read_scan_confounds returns only per-timepoint regressors", {
   expect_equal(names(cf), c("CSF", "WhiteMatter"))
   expect_equal(nrow(cf), 2L)
 })
+
+test_that(".project_template_with_offset returns numeric coefficients from template_project()", {
+  skip_if_not_installed("fmrilatent")
+  skip_if_not_installed("Matrix")
+
+  set.seed(1)
+  loadings <- Matrix::Matrix(matrix(rnorm(20), nrow = 5L), sparse = FALSE)
+  template <- structure(
+    list(
+      loadings = loadings,
+      gram_factor = Matrix::Cholesky(crossprod(loadings)),
+      center = TRUE,
+      meta = list()
+    ),
+    class = "ParcelBasisTemplate"
+  )
+  mat <- matrix(rnorm(15), nrow = 3L)
+
+  expected <- fmrilatent::template_project(template, mat)
+  proj <- .project_template_with_offset(template, mat, as.matrix(loadings))
+
+  expect_true(is.matrix(proj$basis))
+  expect_type(proj$basis, "double")
+  expect_equal(proj$basis, as.matrix(expected$coefficients))
+  expect_equal(proj$offset, as.numeric(expected$offset))
+
+  tmp <- tempfile(fileext = ".h5")
+  on.exit(unlink(tmp), add = TRUE)
+  h5 <- hdf5r::H5File$new(tmp, mode = "w")
+  on.exit(tryCatch(h5$close_all(), error = function(e) NULL), add = TRUE)
+  expect_no_error(h5$create_dataset("basis", robj = proj$basis))
+})
+
+test_that(".project_template_with_offset preserves center = FALSE template semantics", {
+  skip_if_not_installed("fmrilatent")
+  skip_if_not_installed("Matrix")
+
+  set.seed(2)
+  loadings <- Matrix::Matrix(matrix(rnorm(20), nrow = 5L), sparse = FALSE)
+  template <- structure(
+    list(
+      loadings = loadings,
+      gram_factor = Matrix::Cholesky(crossprod(loadings)),
+      center = FALSE,
+      meta = list()
+    ),
+    class = "ParcelBasisTemplate"
+  )
+  mat <- matrix(rnorm(15), nrow = 3L)
+
+  expected <- fmrilatent::template_project(template, mat)
+  proj <- .project_template_with_offset(template, mat, as.matrix(loadings))
+
+  expect_equal(proj$basis, as.matrix(expected$coefficients))
+  expect_length(proj$offset, 0L)
+})
