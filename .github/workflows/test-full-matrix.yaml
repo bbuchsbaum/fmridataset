@@ -125,7 +125,7 @@ jobs:
       # Upload test results
       - name: Upload check results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ runner.os }}-r${{ matrix.config.r }}-results
           path: check
