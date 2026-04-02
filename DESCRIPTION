@@ -58,5 +58,6 @@ Suggests:
     yaml,
     zarr
 VignetteBuilder: knitr
+Remotes: bbuchsbaum/delarr
 URL: https://github.com/bbuchsbaum/fmridataset, https://bbuchsbaum.github.io/fmridataset/
 BugReports: https://github.com/bbuchsbaum/fmridataset/issues
