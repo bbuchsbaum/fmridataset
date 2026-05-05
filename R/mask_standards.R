@@ -63,3 +63,35 @@ mask_to_volume <- function(mask_vec, dims) {
   }
   array(as.logical(mask_vec), dims)
 }
+
+mask_to_spatial_volume <- function(mask_vec, dims, space = NULL) {
+  mask <- mask_to_volume(mask_vec, dims)
+
+  if (!inherits(space, "NeuroSpace")) {
+    return(mask)
+  }
+
+  space_dims <- dim(space)
+  if (length(space_dims) != 3 || !identical(as.integer(space_dims), as.integer(dims))) {
+    return(mask)
+  }
+
+  neuroim2::LogicalNeuroVol(mask, space)
+}
+
+backend_mask_space <- function(backend) {
+  mask <- backend$mask
+  if (inherits(mask, "NeuroVol")) {
+    mask_space <- tryCatch(neuroim2::space(mask), error = function(e) NULL)
+    if (inherits(mask_space, "NeuroSpace")) {
+      return(mask_space)
+    }
+  }
+
+  metadata <- tryCatch(backend_get_metadata(backend), error = function(e) NULL)
+  if (is.list(metadata) && inherits(metadata$space, "NeuroSpace")) {
+    return(metadata$space)
+  }
+
+  NULL
+}

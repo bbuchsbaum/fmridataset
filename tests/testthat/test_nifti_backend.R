@@ -69,6 +69,47 @@ test_that("nifti_backend works with mock NeuroVec objects", {
   expect_equal(sum(mask_result), 500)
 })
 
+test_that("get_mask preserves spatial metadata for nifti-backed datasets", {
+  skip_if_not_installed("neuroim2")
+
+  dims <- c(4, 3, 2, 5)
+  vec_space <- neuroim2::NeuroSpace(
+    dim = dims,
+    spacing = c(2, 2, 3),
+    origin = c(10, 20, 30)
+  )
+  mask_space <- neuroim2::NeuroSpace(
+    dim = dims[1:3],
+    spacing = c(2, 2, 3),
+    origin = c(10, 20, 30)
+  )
+  vec <- neuroim2::NeuroVec(array(rnorm(prod(dims)), dims), vec_space)
+  mask_array <- array(TRUE, dims[1:3])
+  mask_array[1, 1, 1] <- FALSE
+  mask <- neuroim2::LogicalNeuroVol(mask_array, mask_space)
+
+  backend <- nifti_backend(
+    source = list(vec),
+    mask_source = mask,
+    preload = FALSE
+  )
+  dset <- fmri_dataset(
+    scans = backend,
+    TR = 2,
+    run_length = dims[4]
+  )
+
+  result <- get_mask(dset)
+
+  expect_true(inherits(result, "LogicalNeuroVol"))
+  expect_equal(dim(result), dims[1:3])
+  expect_equal(as.logical(as.vector(result)), as.logical(as.vector(mask_array)))
+  expect_equal(
+    neuroim2::spacing(neuroim2::space(result)),
+    neuroim2::spacing(mask_space)
+  )
+})
+
 test_that("nifti_backend handles multiple source files", {
   # Create mock file list
   mock_files <- c("scan1.nii", "scan2.nii", "scan3.nii")

@@ -243,7 +243,7 @@ get_mask.fmri_file_dataset <- function(x, ...) {
     mask_vec <- backend_get_mask(x$backend)
     # Need to reshape to 3D volume for compatibility
     dims <- backend_get_dims(x$backend)$spatial
-    array(mask_vec, dims)
+    mask_to_spatial_volume(mask_vec, dims, backend_mask_space(x$backend))
   } else if (is.null(x$mask)) { # nocov start
     # Legacy path
     neuroim2::read_vol(x$mask_file)
