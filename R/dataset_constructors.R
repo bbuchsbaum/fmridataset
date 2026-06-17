@@ -174,7 +174,10 @@ fmri_latent_dataset <- function(latent_files, mask_source = NULL, TR,
 #'
 #' @param scans A vector of one or more file names of the images comprising the dataset,
 #'   or a pre-created storage backend object.
-#' @param mask Name of the binary mask file indicating the voxels to include in the analysis.
+#' @param mask The binary mask indicating the voxels to include in the analysis,
+#'   given either as the name of a mask file (length-1 character) or as an
+#'   in-memory \code{neuroim2::NeuroVol}/\code{LogicalNeuroVol}. An in-memory
+#'   mask is routed straight to the backend, avoiding a write-to-disk round-trip.
 #'   Ignored if scans is a backend object.
 #' @param TR The repetition time in seconds of the scan-to-scan interval.
 #' @param run_length A vector of one or more integers indicating the number of scans in each run.
@@ -206,6 +209,15 @@ fmri_latent_dataset <- function(latent_files, mask_source = NULL, TR,
 #'   mask = "mask.nii", TR = 2,
 #'   run_length = 300,
 #'   event_table = data.frame(onsets = c(3, 20, 99), run = rep(1, 3))
+#' )
+#'
+#' # Create an fMRI dataset with an in-memory mask (no temp file needed)
+#' mask_vol <- neuroim2::LogicalNeuroVol(
+#'   array(TRUE, c(10, 10, 10)),
+#'   neuroim2::NeuroSpace(c(10, 10, 10))
+#' )
+#' dset <- fmri_dataset(c("scan1.nii", "scan2.nii"),
+#'   mask = mask_vol, TR = 2, run_length = c(150, 150)
 #' )
 #'
 #' # Create an fMRI dataset with a backend
@@ -240,15 +252,23 @@ fmri_dataset <- function(scans, mask = NULL, TR,
     }
   } else {
     # Legacy path: create a NiftiBackend from file paths
-    assert_that(is.character(mask) && length(mask) == 1, msg = "'mask' should be the file name of the binary mask file")
+    assert_that(
+      (is.character(mask) && length(mask) == 1) || inherits(mask, "NeuroVol"),
+      msg = "'mask' must be a file path (length-1 character) or a neuroim2 NeuroVol/LogicalNeuroVol"
+    )
     mode <- match.arg(mode)
 
-    # Handle paths
-    abs_mask <- fs::is_absolute_path(mask)
-    maskfile <- if (length(abs_mask) == 1 && abs_mask) {
+    # Resolve the mask source: an in-memory NeuroVol is passed straight to the
+    # backend (no write-to-disk round-trip); a path is resolved against base_path.
+    mask_source <- if (inherits(mask, "NeuroVol")) {
       mask
     } else {
-      file.path(base_path, mask)
+      abs_mask <- fs::is_absolute_path(mask)
+      if (length(abs_mask) == 1 && abs_mask) {
+        mask
+      } else {
+        file.path(base_path, mask)
+      }
     }
 
     # For scan files, handle each one
@@ -265,7 +285,7 @@ fmri_dataset <- function(scans, mask = NULL, TR,
     # Use registry to create backend for future extensibility
     backend <- create_backend("nifti",
       source = scan_files,
-      mask_source = maskfile,
+      mask_source = mask_source,
       preload = preload,
       mode = mode,
       dummy_mode = dummy_mode

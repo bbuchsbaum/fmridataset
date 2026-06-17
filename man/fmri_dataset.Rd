@@ -22,7 +22,10 @@ fmri_dataset(
 \item{scans}{A vector of one or more file names of the images comprising the dataset,
 or a pre-created storage backend object.}
 
-\item{mask}{Name of the binary mask file indicating the voxels to include in the analysis.
+\item{mask}{The binary mask indicating the voxels to include in the analysis,
+given either as the name of a mask file (length-1 character) or as an
+in-memory \code{neuroim2::NeuroVol}/\code{LogicalNeuroVol}. An in-memory
+mask is routed straight to the backend, avoiding a write-to-disk round-trip.
 Ignored if scans is a backend object.}
 
 \item{TR}{The repetition time in seconds of the scan-to-scan interval.}
@@ -67,6 +70,15 @@ dset <- fmri_dataset("scan1.nii",
   mask = "mask.nii", TR = 2,
   run_length = 300,
   event_table = data.frame(onsets = c(3, 20, 99), run = rep(1, 3))
+)
+
+# Create an fMRI dataset with an in-memory mask (no temp file needed)
+mask_vol <- neuroim2::LogicalNeuroVol(
+  array(TRUE, c(10, 10, 10)),
+  neuroim2::NeuroSpace(c(10, 10, 10))
+)
+dset <- fmri_dataset(c("scan1.nii", "scan2.nii"),
+  mask = mask_vol, TR = 2, run_length = c(150, 150)
 )
 
 # Create an fMRI dataset with a backend
