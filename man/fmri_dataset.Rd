@@ -8,7 +8,7 @@ fmri_dataset(
   scans,
   mask = NULL,
   TR,
-  run_length,
+  run_length = NULL,
   event_table = data.frame(),
   base_path = ".",
   censor = NULL,
@@ -30,7 +30,11 @@ Ignored if scans is a backend object.}
 
 \item{TR}{The repetition time in seconds of the scan-to-scan interval.}
 
-\item{run_length}{A vector of one or more integers indicating the number of scans in each run.}
+\item{run_length}{A vector of one or more integers indicating the number of scans in each run.
+Optional: if omitted (\code{NULL}), run lengths are derived from the per-file BOLD
+volume counts (one run per scan file). When supplied with one entry per scan file, each
+value is validated against the file header and a mismatch errors early, naming the
+offending run. Required when \code{dummy_mode = TRUE} (no headers to derive from).}
 
 \item{event_table}{A data.frame containing the event onsets and experimental variables. Default is an empty data.frame.}
 

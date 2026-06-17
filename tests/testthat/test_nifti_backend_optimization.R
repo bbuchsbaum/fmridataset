@@ -19,9 +19,12 @@ test_that("nifti_backend uses read_header for efficient dimension extraction", {
 
   # Verify dimensions are correct
   expect_type(dims, "list")
-  expect_named(dims, c("spatial", "time"))
+  expect_true(all(c("spatial", "time") %in% names(dims)))
   expect_length(dims$spatial, 3)
   expect_type(dims$time, "integer")
+
+  # Per-file volume counts are exposed for run_length derivation/validation
+  expect_equal(dims$time_per_file, dims$time)
 
   # Check that dimensions match what we'd get from read_vec
   vec <- neuroim2::read_vec(test_file)

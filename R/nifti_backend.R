@@ -258,25 +258,26 @@ backend_get_dims.nifti_backend <- function(backend) {
         }
         spatial_dims <- as.integer(header_dims[1:3])
 
-        # Sum time dimension across all files
-        total_time <- if (length(backend$source) > 1) {
-          sum(sapply(backend$source, function(f) {
+        # Time dimension per scan file (the natural one-run-per-file mapping)
+        time_per_file <- if (length(backend$source) > 1) {
+          vapply(backend$source, function(f) {
             h <- neuroim2::read_header(f)
-            if (inherits(h, "NIFTIMetaInfo")) {
-              if (isS4(h)) {
-                h@dims[4]
-              } else {
-                h$dims[4]
-              }
+            hd <- if (inherits(h, "NIFTIMetaInfo")) {
+              if (isS4(h)) h@dims else h$dims
             } else {
-              dim(h)[4]
+              dim(h)
             }
-          }))
+            as.integer(hd[4])
+          }, integer(1))
         } else {
-          header_dims[4]
+          as.integer(header_dims[4])
         }
 
-        backend$dims <- list(spatial = spatial_dims, time = as.integer(total_time))
+        backend$dims <- list(
+          spatial = spatial_dims,
+          time = as.integer(sum(time_per_file)),
+          time_per_file = unname(time_per_file)
+        )
         backend$dims
       },
       error = function(e) {
@@ -290,16 +291,29 @@ backend_get_dims.nifti_backend <- function(backend) {
     )
   } else {
     # In-memory objects
-    obj <- if (is.list(backend$source)) backend$source[[1]] else backend$source
-    d <- dim(obj)
-    total_time <- if (is.list(backend$source) && length(backend$source) > 1) {
-      sum(sapply(backend$source, function(x) dim(x)[4]))
-    } else {
-      d[4]
-    }
+    sources <- if (is.list(backend$source)) backend$source else list(backend$source)
+    time_per_file <- vapply(sources, function(x) as.integer(dim(x)[4]), integer(1))
+    d <- dim(sources[[1]])
 
-    backend$dims <- list(spatial = d[1:3], time = total_time)
+    backend$dims <- list(
+      spatial = d[1:3],
+      time = as.integer(sum(time_per_file)),
+      time_per_file = unname(time_per_file)
+    )
     backend$dims
+  }
+}
+
+# Human-readable per-run labels for error messages: file basenames when the
+# source is a set of paths, otherwise positional "scan N" labels.
+backend_run_labels <- function(backend) {
+  src <- backend$source
+  if (is.character(src)) {
+    basename(src)
+  } else if (is.list(src)) {
+    paste0("scan ", seq_along(src))
+  } else {
+    "scan 1"
   }
 }
 

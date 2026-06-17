@@ -181,6 +181,10 @@ fmri_latent_dataset <- function(latent_files, mask_source = NULL, TR,
 #'   Ignored if scans is a backend object.
 #' @param TR The repetition time in seconds of the scan-to-scan interval.
 #' @param run_length A vector of one or more integers indicating the number of scans in each run.
+#'   Optional: if omitted (\code{NULL}), run lengths are derived from the per-file BOLD
+#'   volume counts (one run per scan file). When supplied with one entry per scan file, each
+#'   value is validated against the file header and a mismatch errors early, naming the
+#'   offending run. Required when \code{dummy_mode = TRUE} (no headers to derive from).
 #' @param event_table A data.frame containing the event onsets and experimental variables. Default is an empty data.frame.
 #' @param base_path Base directory for relative file names. Absolute paths are used as-is.
 #' @param censor A binary vector indicating which scans to remove. Default is NULL.
@@ -234,7 +238,7 @@ fmri_latent_dataset <- function(latent_files, mask_source = NULL, TR,
 #' )
 #' }
 fmri_dataset <- function(scans, mask = NULL, TR,
-                         run_length,
+                         run_length = NULL,
                          event_table = data.frame(),
                          base_path = ".",
                          censor = NULL,
@@ -292,8 +296,18 @@ fmri_dataset <- function(scans, mask = NULL, TR,
     )
   }
 
-  # Store run_length in backend for dummy mode (must be before validation)
+  run_length_supplied <- !is.null(run_length)
+
+  # Store run_length in backend for dummy mode (must be before validation).
+  # In dummy mode there are no headers, so run_length cannot be derived.
   if (inherits(backend, "nifti_backend") && isTRUE(backend$dummy_mode)) {
+    if (!run_length_supplied) {
+      stop_fmridataset(
+        fmridataset_error_config,
+        message = "`run_length` must be supplied when dummy_mode = TRUE (no headers available to derive it from).",
+        parameter = "run_length"
+      )
+    }
     backend$run_length <- run_length
   }
 
@@ -301,20 +315,62 @@ fmri_dataset <- function(scans, mask = NULL, TR,
   backend <- backend_open(backend)
   validate_backend(backend)
 
+  # Get dimensions; derive or validate run_length against per-file volume counts.
+  dims <- backend_get_dims(backend)
+  time_per_file <- dims$time_per_file
+
+  if (!run_length_supplied) {
+    # Derive run lengths from the data: one run per scan file.
+    if (is.null(time_per_file)) {
+      stop_fmridataset(
+        fmridataset_error_config,
+        message = paste(
+          "`run_length` was not supplied and could not be derived from the backend",
+          "(no per-file volume counts available). Please pass `run_length` explicitly."
+        ),
+        parameter = "run_length"
+      )
+    }
+    run_length <- time_per_file
+  } else if (!is.null(time_per_file) && length(run_length) == length(time_per_file)) {
+    # One run per scan file: validate elementwise, naming the offending run.
+    mismatched <- which(as.integer(run_length) != as.integer(time_per_file))
+    if (length(mismatched) > 0) {
+      labels <- backend_run_labels(backend)
+      detail <- paste(
+        vapply(mismatched, function(i) {
+          sprintf(
+            "  run %d (%s): run_length = %d but BOLD has %d volumes",
+            i, labels[i], as.integer(run_length[i]), as.integer(time_per_file[i])
+          )
+        }, character(1)),
+        collapse = "\n"
+      )
+      stop_fmridataset(
+        fmridataset_error_config,
+        message = sprintf(
+          "`run_length` disagrees with the data for %d run(s):\n%s",
+          length(mismatched), detail
+        ),
+        parameter = "run_length"
+      )
+    }
+  } else {
+    # Cannot map run_length to files one-to-one (e.g. a single 4D file holding
+    # multiple runs, or a non-NIfTI backend); fall back to the total check.
+    assert_that(sum(run_length) == dims$time,
+      msg = sprintf(
+        "Sum of run_length (%d) must equal total time points (%d)",
+        sum(run_length), dims$time
+      )
+    )
+  }
+
   if (is.null(censor)) {
     censor <- rep(0, sum(run_length))
   }
 
   frame <- fmrihrf::sampling_frame(blocklens = run_length, TR = TR)
-
-  # Get dimensions to validate run_length
-  dims <- backend_get_dims(backend)
-  assert_that(sum(run_length) == dims$time,
-    msg = sprintf(
-      "Sum of run_length (%d) must equal total time points (%d)",
-      sum(run_length), dims$time
-    )
-  )
 
   ret <- list(
     backend = backend,
