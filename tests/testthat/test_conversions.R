@@ -42,7 +42,7 @@ test_that("as.matrix_dataset works with all dataset types", {
       converted_mem <- as.matrix_dataset(mem_dset)
       expect_s3_class(converted_mem, "matrix_dataset")
       expect_equal(nrow(converted_mem$datamat), 20)
-      expect_equal(ncol(converted_mem$datamat), 125) # 5*5*5
+      expect_equal(ncol(converted_mem$datamat), 125) # 5 by 5 by 5 voxels
     }
   )
 

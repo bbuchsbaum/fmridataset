@@ -41,7 +41,7 @@ test_that("as_tibble.fmri_series supports dplyr summarise", {
   dset <- create_test_dataset()
   fs <- fmri_series(dset, selector = 1:2, timepoints = 1:4)
   tb <- as_tibble(fs)
-  res <- dplyr::group_by(tb, voxel) %>% dplyr::summarise(mean_signal = mean(signal))
+  res <- dplyr::group_by(tb, voxel) |> dplyr::summarise(mean_signal = mean(signal))
   expected <- colMeans(dset$backend$data_matrix[1:4, 1:2])
   expect_equal(res$mean_signal, as.numeric(expected))
 })

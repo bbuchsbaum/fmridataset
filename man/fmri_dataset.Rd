@@ -36,7 +36,8 @@ volume counts (one run per scan file). When supplied with one entry per scan fil
 value is validated against the file header and a mismatch errors early, naming the
 offending run. Required when \code{dummy_mode = TRUE} (no headers to derive from).}
 
-\item{event_table}{A data.frame containing the event onsets and experimental variables. Default is an empty data.frame.}
+\item{event_table}{A data.frame containing the event onsets and experimental
+variables. Default is an empty data.frame.}
 
 \item{base_path}{Base directory for relative file names. Absolute paths are used as-is.}
 

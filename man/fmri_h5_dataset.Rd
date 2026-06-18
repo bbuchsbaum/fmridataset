@@ -26,7 +26,8 @@ fmri_h5_dataset(
 
 \item{run_length}{A vector of one or more integers indicating the number of scans in each run.}
 
-\item{event_table}{A data.frame containing the event onsets and experimental variables. Default is an empty data.frame.}
+\item{event_table}{A data.frame containing the event onsets and experimental
+variables. Default is an empty data.frame.}
 
 \item{base_path}{Base directory for relative file names. Absolute paths are used as-is.}
 

@@ -15,8 +15,8 @@ test_that("fmri_series can be created and displayed", {
 
   mat <- matrix(1:6, nrow = 3)
   lazy_mat <- make_delarr(mat)
-  vox_info <- data.frame(id = 1:ncol(mat))
-  tmp_info <- data.frame(id = 1:nrow(mat))
+  vox_info <- data.frame(id = seq_len(ncol(mat)))
+  tmp_info <- data.frame(id = seq_len(nrow(mat)))
 
   fs <- new_fmri_series(
     data = lazy_mat,
@@ -35,8 +35,8 @@ test_that("fmri_series can be created and displayed", {
 test_that("fmri_series as.matrix works", {
   mat <- matrix(1:6, nrow = 3)
   lazy_mat <- make_delarr(mat)
-  vox_info <- data.frame(id = 1:ncol(lazy_mat))
-  tmp_info <- data.frame(id = 1:nrow(lazy_mat))
+  vox_info <- data.frame(id = seq_len(ncol(lazy_mat)))
+  tmp_info <- data.frame(id = seq_len(nrow(lazy_mat)))
 
   fs <- new_fmri_series(
     data = lazy_mat,

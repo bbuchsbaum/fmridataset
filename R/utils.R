@@ -15,4 +15,3 @@
 .require_namespace <- function(package, ...) {
   base::requireNamespace(package, ...)
 }
-

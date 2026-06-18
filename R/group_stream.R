@@ -13,7 +13,10 @@ stream_subjects <- function(gd, prefetch = 1L, order_by = NULL) {
   stopifnot(length(prefetch) == 1L)
   prefetch <- as.integer(prefetch)
   if (prefetch != 1L) {
-    warning("Prefetch values other than 1 are not yet implemented; falling back to sequential iteration.", call. = FALSE)
+    warning(
+      "Prefetch values other than 1 are not yet implemented; falling back to sequential iteration.",
+      call. = FALSE
+    )
   }
   iter_subjects(gd, order_by = order_by)
 }

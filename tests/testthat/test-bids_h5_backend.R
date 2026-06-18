@@ -13,7 +13,10 @@ make_mock_conn <- function(ref_count = 0L) {
   conn$file      <- "fake_study.h5"
   conn$ref_count <- as.integer(ref_count)
   conn$handle    <- list(is_valid = TRUE)
-  conn$acquire   <- function() { conn$ref_count <- conn$ref_count + 1L; invisible(NULL) }
+  conn$acquire   <- function() {
+    conn$ref_count <- conn$ref_count + 1L
+    invisible(NULL)
+  }
   conn$release   <- function() {
     conn$ref_count <- conn$ref_count - 1L
     if (conn$ref_count < 0L) conn$ref_count <- 0L
@@ -24,12 +27,12 @@ make_mock_conn <- function(ref_count = 0L) {
 }
 
 make_scan_backend <- function(conn = make_mock_conn(),
-                               path = "/scans/sub-01_task-nback_run-01",
-                               n_parcels = 100L,
-                               n_time    = 200L,
-                               metadata  = list(subject = "01", task = "nback", tr = 2.0)) {
+                              path = "/scans/sub-01_task-nback_run-01",
+                              n_parcels = 100L,
+                              n_time    = 200L,
+                              metadata  = list(subject = "01", task = "nback", tr = 2.0)) {
   bids_h5_scan_backend(conn, path, n_features = n_parcels, n_time = n_time,
-                        metadata = metadata)
+                       metadata = metadata)
 }
 
 # ==============================================================================
@@ -167,7 +170,7 @@ test_that("validate_backend passes without opening (dims/mask don't require open
 })
 
 # ==============================================================================
-# backend_open / backend_close (idempotency)
+# backend_open and backend_close idempotency
 # ==============================================================================
 
 test_that("backend_open sets is_open and increments ref_count", {
@@ -276,8 +279,9 @@ test_that("backend_get_data reads [T, K] matrix from HDF5", {
   h5f <- hdf5r::H5File$new(tmp, mode = "w")
   on.exit(tryCatch(h5f$close_all(), error = function(e) NULL), add = TRUE)
 
-  K <- 30L; T <- 50L
-  expected <- matrix(rnorm(T * K), nrow = T, ncol = K)
+  K <- 30L
+  n_time <- 50L
+  expected <- matrix(rnorm(n_time * K), nrow = n_time, ncol = K)
 
   scans_grp <- h5f$create_group("scans")
   scan_grp  <- scans_grp$create_group("sub-01_task-test_run-01")
@@ -287,13 +291,13 @@ test_that("backend_get_data reads [T, K] matrix from HDF5", {
 
   # Now read via backend
   conn <- h5_shared_connection(tmp)
-  b    <- bids_h5_scan_backend(conn, "/scans/sub-01_task-test_run-01", K, T)
+  b    <- bids_h5_scan_backend(conn, "/scans/sub-01_task-test_run-01", K, n_time)
   conn$acquire()  # simulate backend_open without environment mutation
 
   mat <- backend_get_data(b)
   conn$release()
 
-  expect_equal(dim(mat), c(T, K))
+  expect_equal(dim(mat), c(n_time, K))
   expect_equal(mat, expected, tolerance = 1e-6)
 })
 
@@ -303,8 +307,9 @@ test_that("backend_get_data respects rows and cols subsetting", {
   tmp <- tempfile(fileext = ".h5")
   on.exit(unlink(tmp), add = TRUE)
 
-  K <- 20L; T <- 40L
-  full_mat <- matrix(seq_len(T * K), nrow = T, ncol = K)
+  K <- 20L
+  n_time <- 40L
+  full_mat <- matrix(seq_len(n_time * K), nrow = n_time, ncol = K)
 
   h5f <- hdf5r::H5File$new(tmp, mode = "w")
   on.exit(tryCatch(h5f$close_all(), error = function(e) NULL), add = TRUE)
@@ -313,7 +318,7 @@ test_that("backend_get_data respects rows and cols subsetting", {
   h5f$close_all()
 
   conn <- h5_shared_connection(tmp)
-  b    <- bids_h5_scan_backend(conn, "/scans/sub-01_task-test_run-01", K, T)
+  b    <- bids_h5_scan_backend(conn, "/scans/sub-01_task-test_run-01", K, n_time)
   conn$acquire()
 
   row_idx <- c(1L, 3L, 5L)

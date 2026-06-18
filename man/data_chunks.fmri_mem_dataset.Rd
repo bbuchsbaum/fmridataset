@@ -19,7 +19,9 @@
 A list of data chunks, with each chunk containing the data, voxel indices, row indices, and chunk number.
 }
 \description{
-This function creates data chunks for fmri_mem_dataset objects. It allows for the retrieval of run-wise or sequence-wise data chunks, as well as arbitrary chunks.
+This function creates data chunks for fmri_mem_dataset objects. It allows
+for the retrieval of run-wise or sequence-wise data chunks, as well as
+arbitrary chunks.
 }
 \examples{
 \dontrun{

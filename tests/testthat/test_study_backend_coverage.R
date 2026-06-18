@@ -66,7 +66,7 @@ test_that("backend_get_dims.study_backend returns combined dims", {
   sb <- study_backend(list(b1, b2), subject_ids = c("s1", "s2"))
   dims <- backend_get_dims(sb)
 
-  expect_equal(dims$time, 25) # 10 + 15
+  expect_equal(dims$time, 25) # 10 plus 15 timepoints
 })
 
 test_that("backend_get_mask.study_backend returns mask", {

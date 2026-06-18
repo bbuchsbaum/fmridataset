@@ -225,9 +225,9 @@ NULL
 #' @param compression_mode Character. Either "parcellated" or "latent".
 #' @keywords internal
 .compose_bids_h5_study_dataset <- function(manifest, scan_backends,
-                                            h5, h5_connection,
-                                            tr, bids_meta,
-                                            compression_mode = "parcellated") {
+                                           h5, h5_connection,
+                                           tr, bids_meta,
+                                           compression_mode = "parcellated") {
   subjects_in_manifest <- unique(manifest$subject)
 
   datasets    <- vector("list", length(subjects_in_manifest))
@@ -444,10 +444,10 @@ bids_h5_dataset <- function(file, preload = FALSE) {
 #'
 #' @export
 subset_bids_h5 <- function(x,
-                            task    = NULL,
-                            subject = NULL,
-                            session = NULL,
-                            run     = NULL) {
+                           task    = NULL,
+                           subject = NULL,
+                           session = NULL,
+                           run     = NULL) {
   if (!inherits(x, "bids_h5_study_dataset")) {
     stop("'x' must be a bids_h5_study_dataset object.", call. = FALSE)
   }
@@ -558,8 +558,8 @@ parcellation_info.bids_h5_study_dataset <- function(x, ...) {
 
   labels <- tryCatch({
     if (h5$exists("parcellation") &&
-        h5[["parcellation"]]$exists("cluster_meta") &&
-        h5[["parcellation/cluster_meta"]]$exists("labels")) {
+          h5[["parcellation"]]$exists("cluster_meta") &&
+          h5[["parcellation/cluster_meta"]]$exists("labels")) {
       h5[["parcellation/cluster_meta/labels"]]$read()
     } else {
       NULL
@@ -619,7 +619,7 @@ get_loadings.bids_h5_study_dataset <- function(x, scan_name = NULL, ...) {
 #' @method reconstruct_voxels bids_h5_study_dataset
 #' @export
 reconstruct_voxels.bids_h5_study_dataset <- function(x, scan_name, rows = NULL,
-                                                       voxels = NULL, ...) {
+                                                     voxels = NULL, ...) {
   if (!identical(x$compression_mode, "latent")) {
     stop("reconstruct_voxels() is only available for latent-mode archives.", call. = FALSE)
   }
@@ -731,10 +731,10 @@ encoding_info.bids_h5_study_dataset <- function(x, ...) {
 #' @param task Character. Task filter, or \code{NULL}.
 #' @export
 get_confounds.bids_h5_study_dataset <- function(x,
-                                                 scan_name = NULL,
-                                                 subject   = NULL,
-                                                 task      = NULL,
-                                                 ...) {
+                                                scan_name = NULL,
+                                                subject   = NULL,
+                                                task      = NULL,
+                                                ...) {
   manifest <- x$scan_manifest
   keep      <- manifest$has_confounds
 

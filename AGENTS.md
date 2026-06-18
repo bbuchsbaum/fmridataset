@@ -2,7 +2,7 @@
 
 ## Issue Tracking with Beads
 
-This project uses **beads** (`br`/`bd`) for git-backed issue tracking. See https://github.com/Dicklesworthstone/beads_rust
+This project uses **beads** (`bd`) for git-backed issue tracking. See https://github.com/gastownhall/beads
 
 ### Essential Commands
 
@@ -15,7 +15,7 @@ This project uses **beads** (`br`/`bd`) for git-backed issue tracking. See https
 | `bd close <id> --reason="text"` | Close completed task |
 | `bd dep add <child> <parent>` | Add dependency |
 | `bd list --json` | List all open issues |
-| `bd sync --flush-only` | Export DB to JSONL for git |
+| `bd sync` | Sync beads changes to git |
 
 ### Critical Rules for Agents
 
@@ -27,7 +27,7 @@ This project uses **beads** (`br`/`bd`) for git-backed issue tracking. See https
 
 2. **Always use `--json` flag** for programmatic access
 
-3. **Run `bd sync --flush-only` after changes** to ensure JSONL export
+3. **Run `bd sync` after changes** to ensure git sync
 
 ### Landing the Plane Protocol
 
@@ -38,7 +38,7 @@ When ending a work session, you MUST complete these steps in order:
 3. **Update issue statuses** - close completed, update in-progress
 4. **Sync and push**:
    ```bash
-   bd sync --flush-only
+   bd sync
    git pull --rebase
    git push
    ```

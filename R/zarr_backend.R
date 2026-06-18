@@ -100,7 +100,7 @@ backend_open.zarr_backend <- function(backend) {
         ignore.case = TRUE
       )
       if (!is_remote_source &&
-        !file.exists(backend$source)) {
+            !file.exists(backend$source)) {
         stop_fmridataset(
           fmridataset_error_backend_io,
           sprintf("Zarr store not found: %s", backend$source),
@@ -256,10 +256,6 @@ backend_get_data.zarr_backend <- function(backend, rows = NULL, cols = NULL) {
     # Use cached data
     data_4d <- backend$data_cache
   } else {
-    # Convert column indices to 3D coordinates
-    spatial_dims <- backend$dims$spatial
-    coords <- arrayInd(cols, spatial_dims)
-
     # Determine optimal reading strategy
     # For simplicity, read full array if requesting >50% of data
     proportion <- (length(rows) * length(cols)) / (n_timepoints * n_voxels)

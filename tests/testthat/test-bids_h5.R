@@ -18,10 +18,10 @@
 #' @param tr         Numeric. TR in seconds.
 #' @param space      Character. Space name.
 make_test_h5 <- function(file,
-                          scans,
-                          n_parcels = 20L,
-                          tr        = 2.0,
-                          space     = "MNI152") {
+                         scans,
+                         n_parcels = 20L,
+                         tr        = 2.0,
+                         space     = "MNI152") {
   h5f <- hdf5r::H5File$new(file, mode = "w")
   on.exit(tryCatch(h5f$close_all(), error = function(e) NULL), add = TRUE)
 
@@ -43,7 +43,7 @@ make_test_h5 <- function(file,
   meta_grp$create_dataset("labels", robj = paste0("parcel_", seq_len(n_parcels)))
 
   # /spatial/ group (minimal)
-  spat_grp <- h5f$create_group("spatial")
+  h5f$create_group("spatial")
 
   # /scans/ group
   scans_grp <- h5f$create_group("scans")
@@ -130,10 +130,13 @@ make_test_h5 <- function(file,
 
 # Convenience: minimal 2-subject, 2-task dataset
 make_standard_test_h5 <- function(file = tempfile(fileext = ".h5"),
-                                   n_parcels = 15L,
-                                   tr        = 2.0) {
+                                  n_parcels = 15L,
+                                  tr        = 2.0) {
   K <- n_parcels
-  t1 <- 30L; t2 <- 25L; t3 <- 28L; t4 <- 22L
+  t1 <- 30L
+  t2 <- 25L
+  t3 <- 28L
+  t4 <- 22L
 
   ev1 <- data.frame(onset = c(0, 10, 20), duration = c(2, 2, 2), trial_type = c("A", "B", "A"))
   ev2 <- data.frame(onset = c(0, 12),     duration = c(2, 2),     trial_type = c("C", "C"))
@@ -239,7 +242,7 @@ test_that("scan_manifest has expected columns and rows", {
   expect_s3_class(mf, "tbl_df")
   expect_equal(nrow(mf), 4L)
   expect_true(all(c("scan_name", "subject", "task", "session", "run",
-                     "n_time", "has_events", "has_confounds") %in% names(mf)))
+                    "n_time", "has_events", "has_confounds") %in% names(mf)))
 })
 
 test_that("participants() returns unique subject IDs", {
@@ -285,11 +288,12 @@ test_that("sessions() returns session names when sessions present", {
   tmp <- tempfile(fileext = ".h5")
   on.exit(unlink(tmp))
 
-  K <- 10L; T <- 20L
+  K <- 10L
+  n_time <- 20L
   scans <- list(
     "sub-01_ses-pre_task-rest_run-01" = list(
       subject = "01", task = "rest", session = "pre", run = "01",
-      n_time = T, data = matrix(rnorm(T * K), T, K),
+      n_time = n_time, data = matrix(rnorm(n_time * K), n_time, K),
       events = NULL, confounds = NULL, censor = NULL
     )
   )
@@ -372,8 +376,9 @@ test_that("get_data_matrix per-subject returns [T_subj, K]", {
 test_that("data stored in H5 is recovered correctly by get_data_matrix", {
   skip_if_not_installed("hdf5r")
 
-  K <- 10L; T <- 20L
-  expected_data <- matrix(seq_len(T * K) / 100, nrow = T, ncol = K)
+  K <- 10L
+  n_time <- 20L
+  expected_data <- matrix(seq_len(n_time * K) / 100, nrow = n_time, ncol = K)
 
   tmp <- tempfile(fileext = ".h5")
   on.exit(unlink(tmp))
@@ -381,7 +386,7 @@ test_that("data stored in H5 is recovered correctly by get_data_matrix", {
   scans <- list(
     "sub-01_task-test_run-01" = list(
       subject = "01", task = "test", session = "", run = "01",
-      n_time  = T, data = expected_data,
+      n_time  = n_time, data = expected_data,
       events  = NULL, confounds = NULL, censor = NULL
     )
   )
@@ -391,7 +396,7 @@ test_that("data stored in H5 is recovered correctly by get_data_matrix", {
   # Coerce to plain matrix (delarr may be returned when delarr package is installed)
   mat   <- as.matrix(get_data_matrix(study))
 
-  expect_equal(dim(mat), c(T, K))
+  expect_equal(dim(mat), c(n_time, K))
   expect_equal(mat, expected_data, tolerance = 1e-6)
 })
 
@@ -434,7 +439,8 @@ test_that("event_table contains events from both subjects", {
 test_that("event_table trial_type values match original", {
   skip_if_not_installed("hdf5r")
 
-  K <- 10L; T <- 20L
+  K <- 10L
+  n_time <- 20L
   ev <- data.frame(onset = c(0, 5), duration = c(2, 2), trial_type = c("go", "stop"))
 
   tmp <- tempfile(fileext = ".h5")
@@ -443,7 +449,7 @@ test_that("event_table trial_type values match original", {
   scans <- list(
     "sub-01_task-nback_run-01" = list(
       subject = "01", task = "nback", session = "", run = "01",
-      n_time  = T, data = matrix(rnorm(T * K), T, K),
+      n_time  = n_time, data = matrix(rnorm(n_time * K), n_time, K),
       events  = ev, confounds = NULL, censor = NULL
     )
   )
@@ -605,9 +611,10 @@ test_that("get_confounds returns NULL when scan has no confounds", {
 test_that("get_confounds filtered by subject returns named list", {
   skip_if_not_installed("hdf5r")
 
-  K <- 10L; T <- 20L
-  cf1 <- data.frame(csf = rnorm(T))
-  cf2 <- data.frame(csf = rnorm(T))
+  K <- 10L
+  n_time <- 20L
+  cf1 <- data.frame(csf = rnorm(n_time))
+  cf2 <- data.frame(csf = rnorm(n_time))
 
   tmp <- tempfile(fileext = ".h5")
   on.exit(unlink(tmp))
@@ -615,12 +622,12 @@ test_that("get_confounds filtered by subject returns named list", {
   scans <- list(
     "sub-01_task-test_run-01" = list(
       subject = "01", task = "test", session = "", run = "01",
-      n_time = T, data = matrix(rnorm(T * K), T, K),
+      n_time = n_time, data = matrix(rnorm(n_time * K), n_time, K),
       events = NULL, confounds = cf1, censor = NULL
     ),
     "sub-01_task-test_run-02" = list(
       subject = "01", task = "test", session = "", run = "02",
-      n_time = T, data = matrix(rnorm(T * K), T, K),
+      n_time = n_time, data = matrix(rnorm(n_time * K), n_time, K),
       events = NULL, confounds = cf2, censor = NULL
     )
   )
@@ -738,7 +745,8 @@ test_that("multi-run subject has correct total timepoints", {
   skip_if_not_installed("hdf5r")
 
   K <- 10L
-  T_run1 <- 20L; T_run2 <- 25L
+  T_run1 <- 20L
+  T_run2 <- 25L
 
   tmp <- tempfile(fileext = ".h5")
   on.exit(unlink(tmp))

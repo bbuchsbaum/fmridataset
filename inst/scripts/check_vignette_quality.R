@@ -10,32 +10,32 @@ calc_readability <- function(text) {
   # Remove code chunks and YAML
   text <- gsub("```\\{[^}]+\\}[^`]*```", "", text)
   text <- gsub("^---\n.*?\n---\n", "", text, perl = TRUE)
-  
+
   sentences <- length(unlist(strsplit(text, "[.!?]+")))
   words <- length(unlist(strsplit(text, "\\s+")))
-  
+
   # Simplified syllable counting
   word_list <- unlist(strsplit(text, "\\s+"))
   syllables <- sum(sapply(word_list, function(w) {
     max(1, nchar(gsub("[^aeiouAEIOU]", "", w)))
   }))
-  
+
   if (words > 0 && sentences > 0) {
-    fk_grade <- 0.39 * (words/sentences) + 11.8 * (syllables/words) - 15.59
+    fk_grade <- 0.39 * (words / sentences) + 11.8 * (syllables / words) - 15.59
     return(fk_grade)
   }
-  return(NA)
+  NA
 }
 
 # Check bullet usage
 check_bullets <- function(file) {
   lines <- readLines(file, warn = FALSE)
   bullets <- sum(grepl("^\\s*[-*+]\\s", lines))
-  
+
   text <- paste(lines, collapse = " ")
   text <- gsub("```\\{[^}]+\\}[^`]*```", "", text)
   words <- length(unlist(strsplit(text, "\\s+")))
-  
+
   if (words > 0) {
     return(list(
       bullets = bullets,
@@ -43,7 +43,7 @@ check_bullets <- function(file) {
       ratio = (bullets / words) * 100
     ))
   }
-  return(list(bullets = 0, words = 0, ratio = 0))
+  list(bullets = 0, words = 0, ratio = 0)
 }
 
 # Main quality check
@@ -74,7 +74,7 @@ for (v in vignettes) {
   text <- paste(readLines(v, warn = FALSE), collapse = "\n")
   grade <- calc_readability(text)
   bullet_stats <- check_bullets(v)
-  
+
   results <- rbind(results, data.frame(
     vignette = basename(v),
     grade_level = round(grade, 1),
@@ -114,7 +114,7 @@ print(results, row.names = FALSE)
 if (requireNamespace("spelling", quietly = TRUE)) {
   cli_h2("Spell Check")
   spell_errors <- spelling::spell_check_package()
-  
+
   if (nrow(spell_errors) == 0) {
     cli_alert_success("No spelling errors found {.emph ✓}")
   } else {

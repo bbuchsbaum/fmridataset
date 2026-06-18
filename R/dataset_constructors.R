@@ -53,12 +53,16 @@ matrix_dataset <- function(datamat, TR, run_length, event_table = data.frame()) 
 
 #' Create an fMRI Memory Dataset Object
 #'
-#' This function creates an fMRI memory dataset object, which is a list containing information about the scans, mask, TR, number of runs, event table, base path, sampling frame, and censor.
+#' This function creates an fMRI memory dataset object, which is a list
+#' containing information about the scans, mask, TR, number of runs, event
+#' table, base path, sampling frame, and censor.
 #'
 #' @param scans A list of objects of class \code{NeuroVec} from the neuroim2 package.
-#' @param mask A binary mask of class \code{NeuroVol} from the neuroim2 package indicating the set of voxels to include in analyses.
+#' @param mask A binary mask of class \code{NeuroVol} from the neuroim2 package
+#'   indicating the set of voxels to include in analyses.
 #' @param TR Repetition time (TR) of the fMRI acquisition.
-#' @param run_length A numeric vector specifying the length of each run in the dataset. Default is the length of the scans.
+#' @param run_length A numeric vector specifying the length of each run in the
+#'   dataset. Default is the length of the scans.
 #' @param event_table An optional data frame containing event information. Default is an empty data frame.
 #' @param base_path Base directory for relative file names. Absolute paths are used as-is.
 #' @param censor An optional numeric vector specifying which time points to censor. Default is NULL.
@@ -87,7 +91,6 @@ fmri_mem_dataset <- function(scans, mask, TR,
   assert_that(all(dim(mask) == dim(scans[[1]])[1:3]))
 
   ntotscans <- sum(sapply(scans, function(x) dim(x)[4]))
-  # run_length <- map_dbl(scans, ~ dim(.)[4])
   assert_that(sum(run_length) == ntotscans)
 
   if (is.null(censor)) {
@@ -185,7 +188,8 @@ fmri_latent_dataset <- function(latent_files, mask_source = NULL, TR,
 #'   volume counts (one run per scan file). When supplied with one entry per scan file, each
 #'   value is validated against the file header and a mismatch errors early, naming the
 #'   offending run. Required when \code{dummy_mode = TRUE} (no headers to derive from).
-#' @param event_table A data.frame containing the event onsets and experimental variables. Default is an empty data.frame.
+#' @param event_table A data.frame containing the event onsets and experimental
+#'   variables. Default is an empty data.frame.
 #' @param base_path Base directory for relative file names. Absolute paths are used as-is.
 #' @param censor A binary vector indicating which scans to remove. Default is NULL.
 #' @param preload Read image scans eagerly rather than on first access. Default is FALSE.
@@ -393,7 +397,8 @@ fmri_dataset <- function(scans, mask = NULL, TR,
 #' @param mask_source File path to H5 mask file, regular mask file, or in-memory NeuroVol object.
 #' @param TR The repetition time in seconds of the scan-to-scan interval.
 #' @param run_length A vector of one or more integers indicating the number of scans in each run.
-#' @param event_table A data.frame containing the event onsets and experimental variables. Default is an empty data.frame.
+#' @param event_table A data.frame containing the event onsets and experimental
+#'   variables. Default is an empty data.frame.
 #' @param base_path Base directory for relative file names. Absolute paths are used as-is.
 #' @param censor A binary vector indicating which scans to remove. Default is NULL.
 #' @param preload Read H5NeuroVec objects eagerly rather than on first access. Default is FALSE.

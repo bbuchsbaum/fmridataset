@@ -33,6 +33,7 @@ Imports:
     tibble,
     utils
 Suggests:
+    albersdown,
     arrow,
     bench,
     bidser,
@@ -45,6 +46,7 @@ Suggests:
     fmrilatent,
     fmristore,
     foreach,
+    ggplot2,
     hdf5r,
     iterators,
     jsonlite,
@@ -58,6 +60,8 @@ Suggests:
     yaml,
     zarr
 VignetteBuilder: knitr
-Remotes: bbuchsbaum/delarr
+Remotes: bbuchsbaum/delarr, bbuchsbaum/albersdown
+Additional_repositories: https://bbuchsbaum.r-universe.dev
 URL: https://github.com/bbuchsbaum/fmridataset, https://bbuchsbaum.github.io/fmridataset/
 BugReports: https://github.com/bbuchsbaum/fmridataset/issues
+Config/Needs/website: albersdown

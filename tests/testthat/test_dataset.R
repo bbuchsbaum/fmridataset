@@ -52,15 +52,6 @@ test_that("can construct an fmri_dataset", {
 })
 
 
-## design file not found during testing - commented out until extdata is available
-# test_that("can read a config file to create fmri_dataset", {
-# fname <- system.file("extdata", "config.R", package = "fmridataset")
-# base_path=dirname(fname)
-
-# config <- read_fmri_config(fname, base_path)
-# expect_true(!is.null(config))
-# })
-
 test_that("can construct an fmri_mem_dataset", {
   # Create synthetic design data since extdata may not be available
   facedes <- data.frame(
@@ -70,13 +61,16 @@ test_that("can construct an fmri_mem_dataset", {
   )
   facedes$repnum <- factor(facedes$rep_num)
 
-  scans <- lapply(1:length(unique(facedes$run)), function(i) {
+  scans <- lapply(seq_along(unique(facedes$run)), function(i) {
     arr <- array(rnorm(10 * 10 * 10 * 244), c(10, 10, 10, 244))
     bspace <- neuroim2::NeuroSpace(dim = c(10, 10, 10, 244))
     neuroim2::NeuroVec(arr, bspace)
   })
 
-  mask <- neuroim2::LogicalNeuroVol(array(rnorm(10 * 10 * 10), c(10, 10, 10)) > 0, neuroim2::NeuroSpace(dim = c(10, 10, 10)))
+  mask <- neuroim2::LogicalNeuroVol(
+    array(rnorm(10 * 10 * 10), c(10, 10, 10)) > 0,
+    neuroim2::NeuroSpace(dim = c(10, 10, 10))
+  )
 
   dset <- fmri_mem_dataset(
     scans = scans,

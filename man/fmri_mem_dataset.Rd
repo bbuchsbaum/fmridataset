@@ -17,11 +17,13 @@ fmri_mem_dataset(
 \arguments{
 \item{scans}{A list of objects of class \code{NeuroVec} from the neuroim2 package.}
 
-\item{mask}{A binary mask of class \code{NeuroVol} from the neuroim2 package indicating the set of voxels to include in analyses.}
+\item{mask}{A binary mask of class \code{NeuroVol} from the neuroim2 package
+indicating the set of voxels to include in analyses.}
 
 \item{TR}{Repetition time (TR) of the fMRI acquisition.}
 
-\item{run_length}{A numeric vector specifying the length of each run in the dataset. Default is the length of the scans.}
+\item{run_length}{A numeric vector specifying the length of each run in the
+dataset. Default is the length of the scans.}
 
 \item{event_table}{An optional data frame containing event information. Default is an empty data frame.}
 
@@ -33,7 +35,9 @@ fmri_mem_dataset(
 An fMRI memory dataset object of class c("fmri_mem_dataset", "volumetric_dataset", "fmri_dataset", "list").
 }
 \description{
-This function creates an fMRI memory dataset object, which is a list containing information about the scans, mask, TR, number of runs, event table, base path, sampling frame, and censor.
+This function creates an fMRI memory dataset object, which is a list
+containing information about the scans, mask, TR, number of runs, event
+table, base path, sampling frame, and censor.
 }
 \examples{
 # Create a NeuroVec object

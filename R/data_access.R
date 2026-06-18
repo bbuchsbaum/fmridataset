@@ -229,7 +229,10 @@ fmri_cache_resize <- function(size_mb) {
     stop("size_mb must be a positive number")
   }
 
-  warning("Cache resizing is not supported after package load. Please restart R session with the desired cache size option.")
+  warning(
+    "Cache resizing is not supported after package load. ",
+    "Please restart R session with the desired cache size option."
+  )
   warning("Use: options(fmridataset.cache_max_mb = ", size_mb, ") before loading the package")
 
   invisible(NULL)

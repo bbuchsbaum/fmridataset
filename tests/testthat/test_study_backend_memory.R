@@ -199,7 +199,7 @@ test_that("study_backend works with data_chunks", {
   # Add blockids method for sampling_frame if not available
   if (!exists("blockids.sampling_frame")) {
     blockids.sampling_frame <- function(x) {
-      rep(1:length(x$blocklens), times = x$blocklens)
+      rep(seq_along(x$blocklens), times = x$blocklens)
     }
   }
 

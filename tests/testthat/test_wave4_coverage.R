@@ -105,7 +105,7 @@ test_that("group_reduce accumulates values", {
     .init = 0
   )
 
-  expect_equal(result, 90) # 25 + 30 + 35
+  expect_equal(result, 90) # 25 plus 30 plus 35
 })
 
 test_that("group_reduce with on_error='skip' skips errors", {

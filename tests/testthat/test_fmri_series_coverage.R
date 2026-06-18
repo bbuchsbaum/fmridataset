@@ -102,7 +102,7 @@ test_that("as_tibble.fmri_series creates tibble", {
 
   tbl <- tibble::as_tibble(fs)
   expect_s3_class(tbl, "tbl_df")
-  expect_equal(nrow(tbl), 12) # 3 * 4
+  expect_equal(nrow(tbl), 12) # 3 timepoints by 4 voxels
   expect_true("signal" %in% names(tbl))
   expect_true("time" %in% names(tbl))
   expect_true("voxel" %in% names(tbl))

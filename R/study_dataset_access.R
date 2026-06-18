@@ -78,7 +78,7 @@ as_tibble.fmri_study_dataset <- function(x, materialise = FALSE, ...) {
   rowData <- data.frame(
     subject_id = row_subject,
     run_id = run_ids,
-    timepoint = seq_len(length(run_ids))
+    timepoint = seq_along(run_ids)
   )
 
   if (materialise) {

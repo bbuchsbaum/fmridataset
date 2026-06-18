@@ -80,7 +80,7 @@ test_that("dummy mode returns correct mask", {
 
   # Should return all TRUE by default
   expect_type(mask, "logical")
-  expect_equal(length(mask), 64 * 64 * 30) # prod(spatial_dims)
+  expect_equal(length(mask), 64 * 64 * 30) # product of spatial dims
   expect_true(all(mask))
 })
 

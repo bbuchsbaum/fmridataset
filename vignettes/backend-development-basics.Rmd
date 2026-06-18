@@ -6,8 +6,10 @@ output:
   rmarkdown::html_vignette:
     toc: yes
     toc_depth: 2
-vignette: '%\VignetteIndexEntry{Writing Custom Storage Backends} %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}'
+vignette: >
+  %\VignetteIndexEntry{Writing Custom Storage Backends}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 params:
   family: red
   preset: homage
@@ -23,7 +25,11 @@ includes:
 ---
 
 ```{r setup, include=FALSE}
-if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("albersdown", quietly = TRUE)) ggplot2::theme_set(albersdown::theme_albers(family = params$family, preset = params$preset))
+if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("albersdown", quietly = TRUE)) {
+  ggplot2::theme_set(
+    albersdown::theme_albers(family = params$family, preset = params$preset)
+  )
+}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
@@ -40,7 +46,9 @@ Every backend must implement exactly these six S3 generics, declared in `R/stora
 ### `backend_open(backend)`
 
 ```{r sig-open}
-backend_open.my_backend <- function(backend) { ... }
+backend_open.my_backend <- function(backend) {
+  ...
+}
 ```
 
 Acquire resources (file handles, connections). Must be idempotent: if the backend is already open, return it unchanged.
@@ -48,7 +56,9 @@ Acquire resources (file handles, connections). Must be idempotent: if the backen
 ### `backend_close(backend)`
 
 ```{r sig-close}
-backend_close.my_backend <- function(backend) { ... }
+backend_close.my_backend <- function(backend) {
+  ...
+}
 ```
 
 Release all resources and set `is_open <- FALSE`. Must be idempotent and return `invisible(backend)`.
@@ -56,7 +66,9 @@ Release all resources and set `is_open <- FALSE`. Must be idempotent and return 
 ### `backend_get_dims(backend)`
 
 ```{r sig-dims}
-backend_get_dims.my_backend <- function(backend) { ... }
+backend_get_dims.my_backend <- function(backend) {
+  ...
+}
 ```
 
 Return `list(spatial = c(nx, ny, nz), time = n_timepoints)` — a named list with a length-3 numeric `spatial` vector and a single positive integer `time`.
@@ -64,7 +76,9 @@ Return `list(spatial = c(nx, ny, nz), time = n_timepoints)` — a named list wit
 ### `backend_get_mask(backend)`
 
 ```{r sig-mask}
-backend_get_mask.my_backend <- function(backend) { ... }
+backend_get_mask.my_backend <- function(backend) {
+  ...
+}
 ```
 
 Return a logical vector of length `prod(spatial)` with no `NA` values and at least one `TRUE`.
@@ -72,7 +86,9 @@ Return a logical vector of length `prod(spatial)` with no `NA` values and at lea
 ### `backend_get_data(backend, rows = NULL, cols = NULL)`
 
 ```{r sig-data}
-backend_get_data.my_backend <- function(backend, rows = NULL, cols = NULL) { ... }
+backend_get_data.my_backend <- function(backend, rows = NULL, cols = NULL) {
+  ...
+}
 ```
 
 Return a matrix in **timepoints x voxels** orientation. `rows` and `cols` are 1-based integer vectors; `NULL` means "all". Always use `drop = FALSE` when subsetting.
@@ -80,7 +96,9 @@ Return a matrix in **timepoints x voxels** orientation. `rows` and `cols` are 1-
 ### `backend_get_metadata(backend)`
 
 ```{r sig-metadata}
-backend_get_metadata.my_backend <- function(backend) { ... }
+backend_get_metadata.my_backend <- function(backend) {
+  ...
+}
 ```
 
 Return a list — empty is fine. Include an `affine` matrix and `voxel_dims` when your format has them.
@@ -152,7 +170,7 @@ Open, query, and close the backend by calling the generics directly:
 b <- csv_backend("my_data.csv")
 b <- backend_open(b)
 
-dims <- backend_get_dims(b)        # list(spatial = c(500, 1, 1), time = 200)
+dims <- backend_get_dims(b)        # spatial 500 x 1 x 1, time 200
 mask <- backend_get_mask(b)        # logical vector, length 500
 d    <- backend_get_data(b, rows = 1:20, cols = 1:50)  # 20 x 50 matrix
 

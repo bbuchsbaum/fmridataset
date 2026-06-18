@@ -337,7 +337,7 @@ backend_get_mask.latent_backend <- function(backend) {
   }
 
   # Return a full-volume mask consistent with the backend contract:
-  # length(mask) == prod(spatial_dims)
+  # the mask length equals the product of the spatial dimensions.
   # Voxels with loadings are TRUE, all others FALSE.
   full_mask <- rep(FALSE, prod(backend$dims$spatial))
   if (!is.null(backend$dims$voxel_indices)) {
@@ -511,7 +511,7 @@ backend_reconstruct_voxels <- function(backend, rows = NULL, voxels = NULL) {
     loadings <- loadings[voxels, , drop = FALSE]
   }
 
-  # Reconstruct: data = basis %*% t(loadings)
+  # Reconstruct the data as basis times the transpose of the loadings.
   # Handle both regular and sparse matrices
   if (inherits(loadings, "Matrix")) {
     reconstructed <- scores %*% Matrix::t(loadings)

@@ -1,4 +1,4 @@
 url: https://bbuchsbaum.github.io/fmridataset/
 template:
   bootstrap: 5
-
+  package: albersdown

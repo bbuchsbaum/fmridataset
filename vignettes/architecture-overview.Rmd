@@ -6,8 +6,10 @@ output:
   rmarkdown::html_vignette:
     toc: yes
     toc_depth: 3
-vignette: '%\VignetteIndexEntry{Architecture Overview} %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}'
+vignette: >
+  %\VignetteIndexEntry{Architecture Overview}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 params:
   family: red
   preset: homage
@@ -23,7 +25,11 @@ includes:
 ---
 
 ```{r setup, include=FALSE}
-if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("albersdown", quietly = TRUE)) ggplot2::theme_set(albersdown::theme_albers(family = params$family, preset = params$preset))
+if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("albersdown", quietly = TRUE)) {
+  ggplot2::theme_set(
+    albersdown::theme_albers(family = params$family, preset = params$preset)
+  )
+}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
@@ -153,7 +159,7 @@ sf <- sampling_frame(
 )
 
 get_TR(sf)              # 2.0
-get_run_lengths(sf)     # c(150, 150)
+get_run_lengths(sf)     # 150 and 150
 get_total_duration(sf)  # 600 seconds
 ```
 
@@ -177,11 +183,21 @@ my_backend <- function(source, ...) {
   structure(list(source = source, ...), class = c("my_backend", "storage_backend"))
 }
 
-backend_open.my_backend         <- function(b) { ... }
-backend_close.my_backend        <- function(b) { ... }
-backend_get_dims.my_backend     <- function(b) { ... }
-backend_get_data.my_backend     <- function(b, rows = NULL, cols = NULL) { ... }
-validate_backend.my_backend     <- function(b) { ... }
+backend_open.my_backend <- function(b) {
+  ... # open the underlying source
+}
+backend_close.my_backend <- function(b) {
+  ... # release resources
+}
+backend_get_dims.my_backend <- function(b) {
+  ... # named list with spatial and time entries
+}
+backend_get_data.my_backend <- function(b, rows = NULL, cols = NULL) {
+  ... # return a [time x voxels] matrix
+}
+validate_backend.my_backend <- function(b) {
+  ... # check invariants
+}
 ```
 
 Once those five methods exist, your backend can be used inside any

@@ -44,3 +44,4 @@
 ^AGENTS\.md$
 ^bids_plan\.md$
 ^fmrilatent_plan\.md$
+^vignettes/.*\.html$

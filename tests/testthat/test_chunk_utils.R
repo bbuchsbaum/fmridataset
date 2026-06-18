@@ -13,7 +13,7 @@ test_that("arbitrary_chunks handles too many chunks", {
   )
   expect_length(ch, 2)
   # Extract all elements from the deflist object
-  all_indices <- unlist(lapply(seq_len(length(ch)), function(i) ch[[i]]))
+  all_indices <- unlist(lapply(seq_along(ch), function(i) ch[[i]]))
   expect_equal(sort(unique(all_indices)), 1:2)
 })
 

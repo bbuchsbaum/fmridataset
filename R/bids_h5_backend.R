@@ -158,11 +158,11 @@ print.h5_shared_connection <- function(x, ...) {
 #' @keywords internal
 #' @export
 bids_h5_scan_backend <- function(h5_connection,
-                                  scan_group_path,
-                                  n_features,
-                                  n_time,
-                                  metadata = list(),
-                                  compression_mode = "parcellated") {
+                                 scan_group_path,
+                                 n_features,
+                                 n_time,
+                                 metadata = list(),
+                                 compression_mode = "parcellated") {
   if (!inherits(h5_connection, "h5_shared_connection")) {
     stop_fmridataset(
       fmridataset_error_config,

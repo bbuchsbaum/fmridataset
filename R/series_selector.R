@@ -230,8 +230,8 @@ resolve_indices.sphere_selector <- function(selector, dataset, ...) {
   # Find voxels within radius
   coords <- expand.grid(x = x, y = y, z = z)
   dist <- sqrt((coords$x - center[1])^2 +
-    (coords$y - center[2])^2 +
-    (coords$z - center[3])^2)
+                 (coords$y - center[2])^2 +
+                 (coords$z - center[3])^2)
 
   sphere_ind <- which(dist <= radius)
 

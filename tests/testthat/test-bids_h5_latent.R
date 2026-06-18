@@ -9,13 +9,13 @@ skip_if_not_installed("tibble")
 # ============================================================
 
 .make_latent_h5 <- function(path,
-                              n_scans      = 2L,
-                              n_time_each  = c(10L, 12L),
-                              K            = 5L,
-                              V            = 20L,
-                              tr           = 2.0,
-                              encoding_family = "pca",
-                              encoding_params = '{"n_components":5}') {
+                            n_scans      = 2L,
+                            n_time_each  = c(10L, 12L),
+                            K            = 5L,
+                            V            = 20L,
+                            tr           = 2.0,
+                            encoding_family = "pca",
+                            encoding_params = '{"n_components":5}') {
   h5 <- hdf5r::H5File$new(path, mode = "w")
   on.exit(if (h5$is_valid) h5$close_all(), add = TRUE)
 
@@ -89,10 +89,10 @@ skip_if_not_installed("tibble")
 # ============================================================
 
 .make_parcellated_h5 <- function(path,
-                                   n_scans     = 2L,
-                                   n_time_each = c(10L, 12L),
-                                   K           = 5L,
-                                   tr          = 2.0) {
+                                 n_scans     = 2L,
+                                 n_time_each = c(10L, 12L),
+                                 K           = 5L,
+                                 tr          = 2.0) {
   h5 <- hdf5r::H5File$new(path, mode = "w")
   on.exit(if (h5$is_valid) h5$close_all(), add = TRUE)
 
@@ -199,7 +199,7 @@ test_that("get_data_matrix() returns [T_total, K] for latent archive", {
 
   ds  <- bids_h5_dataset(h5_path)
   mat <- get_data_matrix(ds)
-  expect_equal(nrow(mat), 22L)   # 10 + 12
+  expect_equal(nrow(mat), 22L)   # 10 and 12 timepoints
   expect_equal(ncol(mat), K)
 })
 
@@ -220,8 +220,8 @@ test_that("encoding_info() returns correct family, params and K", {
   h5_path <- tempfile(fileext = ".h5")
   on.exit(unlink(h5_path), add = TRUE)
   .make_latent_h5(h5_path, K = 7L,
-                   encoding_family = "ica",
-                   encoding_params = '{"n_components":7,"whiten":true}')
+                  encoding_family = "ica",
+                  encoding_params = '{"n_components":7,"whiten":true}')
 
   ds   <- bids_h5_dataset(h5_path)
   info <- encoding_info(ds)
@@ -235,7 +235,8 @@ test_that("encoding_info() returns correct family, params and K", {
 test_that("get_loadings(study, scan_name=...) returns [V, K] matrix", {
   h5_path <- tempfile(fileext = ".h5")
   on.exit(unlink(h5_path), add = TRUE)
-  K <- 5L; V <- 20L
+  K <- 5L
+  V <- 20L
   .make_latent_h5(h5_path, n_scans = 2L, K = K, V = V)
 
   ds     <- bids_h5_dataset(h5_path)
@@ -268,7 +269,9 @@ test_that("get_loadings(study) returns named list of all scans", {
 test_that("reconstruct_voxels() returns [T, V] matrix", {
   h5_path <- tempfile(fileext = ".h5")
   on.exit(unlink(h5_path), add = TRUE)
-  K <- 5L; V <- 20L; T_i <- 10L
+  K <- 5L
+  V <- 20L
+  T_i <- 10L
   .make_latent_h5(h5_path, n_scans = 2L, n_time_each = c(T_i, 12L), K = K, V = V)
 
   ds    <- bids_h5_dataset(h5_path)
@@ -435,11 +438,11 @@ test_that("data_chunks() works on latent-mode study", {
 # ============================================================
 
 .make_template_h5 <- function(path,
-                                n_scans      = 2L,
-                                n_time_each  = c(10L, 12L),
-                                K            = 5L,
-                                V            = 20L,
-                                tr           = 2.0) {
+                              n_scans      = 2L,
+                              n_time_each  = c(10L, 12L),
+                              K            = 5L,
+                              V            = 20L,
+                              tr           = 2.0) {
   h5 <- hdf5r::H5File$new(path, mode = "w")
   on.exit(if (h5$is_valid) h5$close_all(), add = TRUE)
 
@@ -545,7 +548,8 @@ test_that("shared template: get_loadings falls back to template", {
   tmp <- tempfile(fileext = ".h5")
   on.exit(unlink(tmp), add = TRUE)
 
-  K <- 5L; V <- 20L
+  K <- 5L
+  V <- 20L
   info <- .make_template_h5(tmp, K = K, V = V)
   study <- bids_h5_dataset(tmp)
   on.exit(study$h5_connection$release(), add = TRUE)
@@ -566,7 +570,9 @@ test_that("shared template: reconstruct_voxels works", {
   tmp <- tempfile(fileext = ".h5")
   on.exit(unlink(tmp), add = TRUE)
 
-  K <- 5L; V <- 20L; nt <- c(10L, 12L)
+  K <- 5L
+  V <- 20L
+  nt <- c(10L, 12L)
   info <- .make_template_h5(tmp, K = K, V = V, n_time_each = nt)
   study <- bids_h5_dataset(tmp)
   on.exit(study$h5_connection$release(), add = TRUE)
@@ -576,12 +582,12 @@ test_that("shared template: reconstruct_voxels works", {
 
   # Subset rows
   recon_sub <- reconstruct_voxels(study, scan_name = "sub-01_task-rest_run-01",
-                                   rows = 1:3)
+                                  rows = 1:3)
   expect_equal(dim(recon_sub), c(3L, V))
 
   # Subset voxels
   recon_vox <- reconstruct_voxels(study, scan_name = "sub-01_task-rest_run-01",
-                                   voxels = c(1L, 5L, 10L))
+                                  voxels = c(1L, 5L, 10L))
   expect_equal(dim(recon_vox), c(nt[1], 3L))
 })
 
@@ -604,7 +610,8 @@ test_that("shared template: subset preserves template fallback", {
   tmp <- tempfile(fileext = ".h5")
   on.exit(unlink(tmp), add = TRUE)
 
-  K <- 5L; V <- 20L
+  K <- 5L
+  V <- 20L
   info <- .make_template_h5(tmp, K = K, V = V)
   study <- bids_h5_dataset(tmp)
   on.exit(study$h5_connection$release(), add = TRUE)

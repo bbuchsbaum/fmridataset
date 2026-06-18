@@ -20,7 +20,7 @@ skip_if_not_installed("hdf5r")
 #' @param tr     Numeric. TR in seconds.
 #' @param cluster_ids Integer vector of parcel IDs (length K).
 make_test_h5 <- function(file, scans, n_parcels, tr = 2.0,
-                          cluster_ids = seq_len(n_parcels)) {
+                         cluster_ids = seq_len(n_parcels)) {
   h5 <- hdf5r::H5File$new(file, mode = "w")
   on.exit(tryCatch(h5$close_all(), error = function(e) NULL), add = TRUE)
 
@@ -310,7 +310,7 @@ test_that("scan_manifest n_time values match what was written", {
 
 
 # ============================================================
-# participants / tasks / sessions
+# participants, tasks, sessions
 # ============================================================
 
 test_that("participants returns correct subject IDs", {
@@ -388,7 +388,9 @@ test_that("parcellation_info returns list with n_parcels", {
 test_that("get_data_matrix returns [T_total, K] matrix", {
   tmp <- tempfile(fileext = ".h5")
   on.exit(unlink(tmp), add = TRUE)
-  K <- 20L; T1 <- 30L; T2 <- 40L
+  K <- 20L
+  T1 <- 30L
+  T2 <- 40L
   scans <- make_default_scans(K = K, T1 = T1, T2 = T2)
   make_test_h5(tmp, scans, n_parcels = K)
   study <- bids_h5_dataset(tmp)
@@ -420,12 +422,13 @@ test_that("get_data_matrix returns correct K columns matching n_parcels", {
 test_that("get_data_matrix values round-trip correctly", {
   tmp <- tempfile(fileext = ".h5")
   on.exit(unlink(tmp), add = TRUE)
-  K <- 10L; T <- 20L
+  K <- 10L
+  n_time <- 20L
 
-  known_mat <- matrix(as.double(seq_len(T * K)), nrow = T, ncol = K)
+  known_mat <- matrix(as.double(seq_len(n_time * K)), nrow = n_time, ncol = K)
   scans <- list(
     "sub-01_task-test_run-01" = list(
-      subject = "01", task = "test", run = "01", n_time = T,
+      subject = "01", task = "test", run = "01", n_time = n_time,
       data_matrix = known_mat
     )
   )
@@ -433,7 +436,7 @@ test_that("get_data_matrix values round-trip correctly", {
   study <- bids_h5_dataset(tmp)
 
   mat <- as.matrix(get_data_matrix(study))
-  expect_equal(dim(mat), c(T, K))
+  expect_equal(dim(mat), c(n_time, K))
   expect_equal(mat, known_mat, tolerance = 1e-6)
 })
 
@@ -526,7 +529,7 @@ test_that("get_confounds returns tibble for single scan with confounds", {
   cf <- get_confounds(study, scan_name = "sub-01_task-nback_run-01")
   expect_s3_class(cf, "data.frame")
   expect_equal(ncol(cf), 2L)    # motion_x, motion_y
-  expect_equal(nrow(cf), 50L)   # T1 = 50
+  expect_equal(nrow(cf), 50L)   # T1 is 50
   expect_true("motion_x" %in% names(cf))
 })
 
@@ -636,7 +639,9 @@ test_that("closing parent backend does not invalidate subset data", {
 test_that("subset_bids_h5 result supports get_data_matrix", {
   tmp <- tempfile(fileext = ".h5")
   on.exit(unlink(tmp), add = TRUE)
-  K <- 15L; T1 <- 30L; T2 <- 45L
+  K <- 15L
+  T1 <- 30L
+  T2 <- 45L
   make_test_h5(tmp, make_default_scans(K = K, T1 = T1, T2 = T2), n_parcels = K)
   study <- bids_h5_dataset(tmp)
 

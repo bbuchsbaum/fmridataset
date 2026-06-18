@@ -41,7 +41,7 @@ test_that("api critical symbols are exported from package namespace", {
   expect_true(!is.null(utils::getS3method("backend_get_dims",    "h5_backend", optional = TRUE)))
   expect_true(!is.null(utils::getS3method("backend_get_mask",    "h5_backend", optional = TRUE)))
   expect_true(!is.null(utils::getS3method("backend_get_data",    "h5_backend", optional = TRUE)))
-  expect_true(!is.null(utils::getS3method("backend_get_metadata","h5_backend", optional = TRUE)))
+  expect_true(!is.null(utils::getS3method("backend_get_metadata", "h5_backend", optional = TRUE)))
 })
 
 test_that("matrix_dataset provides non-empty event_table schema by default", {

@@ -28,7 +28,6 @@ matrix_backend <- function(data_matrix, mask = NULL, spatial_dims = NULL, metada
     )
   }
 
-  n_timepoints <- nrow(data_matrix)
   n_voxels <- ncol(data_matrix)
 
   # Default mask: all voxels are valid

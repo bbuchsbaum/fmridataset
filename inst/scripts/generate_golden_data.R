@@ -28,7 +28,7 @@ cat("This will create reference data files in:", golden_dir, "\n\n")
 tryCatch({
   # Generate the data
   generate_all_golden_data()
-  
+
   # List generated files
   files <- list.files(golden_dir, pattern = "\\.rds$", full.names = FALSE)
   cat("\nGenerated files:\n")
@@ -36,7 +36,7 @@ tryCatch({
     size <- file.size(file.path(golden_dir, f))
     cat(sprintf("  - %s (%.1f KB)\n", f, size / 1024))
   }
-  
+
   cat("\nGolden test data generation complete!\n")
   cat("\nTo use these tests:\n")
   cat("1. Run: devtools::test(filter = 'golden')\n")
@@ -46,7 +46,7 @@ tryCatch({
   cat("   - testthat::test_file('tests/testthat/test-golden-backends.R')\n")
   cat("   - testthat::test_file('tests/testthat/test-golden-sampling-frame.R')\n")
   cat("   - testthat::test_file('tests/testthat/test-golden-snapshots.R')\n")
-  
+
 }, error = function(e) {
   cat("\nError generating golden test data:\n")
   cat(e$message, "\n")

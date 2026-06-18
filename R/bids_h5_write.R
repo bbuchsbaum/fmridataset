@@ -246,8 +246,8 @@ compress_bids_study <- function(
     if (!is.null(template)) {
       # Template mode: shared loadings, per-scan coefficients only
       if (!inherits(template, "parcel_basis_template") &&
-          !inherits(template, "HierarchicalBasisTemplate") &&
-          !is.list(template)) {
+            !inherits(template, "HierarchicalBasisTemplate") &&
+            !is.list(template)) {
         stop("'template' must be a fmrilatent template object (parcel_basis_template or HierarchicalBasisTemplate).",
              call. = FALSE)
       }
@@ -481,7 +481,7 @@ compress_bids_study <- function(
 
     # -- Write scan metadata
     has_session <- "session" %in% names(scan_row) && !is.na(scan_row$session) &&
-                   nchar(as.character(scan_row$session)) > 0L
+      nchar(as.character(scan_row$session)) > 0L
     meta <- list(
       subject = as.character(scan_row$subid),
       task    = as.character(scan_row$task),
@@ -583,7 +583,7 @@ compress_bids_study <- function(
   si$create_dataset("n_features",     robj = n_features_vec,               gzip_level = compression)
   si$create_dataset("time_offset",    robj = time_offset,                  gzip_level = compression)
   si$create_dataset("has_events",     robj = as.integer(has_events_vec),   gzip_level = compression)
-  si$create_dataset("has_confounds",  robj = as.integer(has_confounds_vec),gzip_level = compression)
+  si$create_dataset("has_confounds",  robj = as.integer(has_confounds_vec), gzip_level = compression)
 
   if (has_session_col) {
     session_vals <- ifelse(is.na(scans_df$session), "", as.character(scans_df$session))
@@ -618,8 +618,8 @@ compress_bids_study <- function(
 #' @keywords internal
 .make_scan_name <- function(scans_df) {
   has_session <- "session" %in% names(scans_df) &&
-                 !all(is.na(scans_df$session)) &&
-                 !all(nchar(as.character(scans_df$session)) == 0L)
+    !all(is.na(scans_df$session)) &&
+    !all(nchar(as.character(scans_df$session)) == 0L)
 
   if (has_session) {
     sprintf(
@@ -784,8 +784,8 @@ compress_bids_study <- function(
   cluster_vec <- as.integer(clusters)[mask_logical]
 
   K <- length(cluster_ids)
-  T <- nrow(vox_mat)
-  parcel_mat <- matrix(NA_real_, nrow = T, ncol = K)
+  n_time <- nrow(vox_mat)
+  parcel_mat <- matrix(NA_real_, nrow = n_time, ncol = K)
 
   for (j in seq_len(K)) {
     idx <- which(cluster_vec == cluster_ids[[j]])
@@ -850,8 +850,8 @@ compress_bids_study <- function(
       pid_vals <- as.character(parts[[pid_col[1]]])
       # Match with or without "sub-" prefix
       keep <- pid_vals %in% selected_subs |
-              pid_vals %in% paste0("sub-", selected_subs) |
-              sub("^sub-", "", pid_vals) %in% selected_subs
+        pid_vals %in% paste0("sub-", selected_subs) |
+        sub("^sub-", "", pid_vals) %in% selected_subs
       parts <- parts[keep, , drop = FALSE]
     }
   }
@@ -887,7 +887,7 @@ compress_bids_study <- function(
   hg$create_dataset("dim",    robj = as.integer(dims_3d))
   hg$create_dataset("pixdim", robj = as.numeric(neuroim2::spacing(sp)))
 
-  # qform/affine
+  # Store the qform affine transform
   aff <- tryCatch(neuroim2::trans(sp), error = function(e) diag(4))
   hg$create_dataset("qform", robj = aff)
 
@@ -975,7 +975,7 @@ compress_bids_study <- function(
     args$run <- as.character(scan_row$run)
   }
   if ("session" %in% names(scan_row) && !is.na(scan_row$session) &&
-      nchar(as.character(scan_row$session)) > 0L) {
+        nchar(as.character(scan_row$session)) > 0L) {
     args$session <- as.character(scan_row$session)
   }
 
@@ -1011,7 +1011,7 @@ compress_bids_study <- function(
     args$run <- as.character(scan_row$run)
   }
   if ("session" %in% names(scan_row) && !is.na(scan_row$session) &&
-      nchar(as.character(scan_row$session)) > 0L) {
+        nchar(as.character(scan_row$session)) > 0L) {
     args$session <- as.character(scan_row$session)
   }
   if (!is.null(confounds_spec)) {
