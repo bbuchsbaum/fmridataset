@@ -118,55 +118,7 @@ NULL
 #' }
 latent_backend <- function(source, preload = FALSE) {
   # Validate source
-  if (is.character(source)) {
-    if (!all(file.exists(source))) {
-      missing <- source[!file.exists(source)]
-      stop_fmridataset(
-        fmridataset_error_backend_io,
-        sprintf("Source files not found: %s", paste(missing, collapse = ", ")),
-        file = missing[1],
-        operation = "create"
-      )
-    }
-    if (!all(grepl("\\.(lv\\.h5|h5)$", source, ignore.case = TRUE))) {
-      stop_fmridataset(
-        fmridataset_error_config,
-        "All source files must be HDF5 files (.h5 or .lv.h5)",
-        parameter = "source"
-      )
-    }
-  } else if (is.list(source)) {
-    # Validate list items
-    for (i in seq_along(source)) {
-      item <- source[[i]]
-      if (is.character(item)) {
-        if (length(item) != 1 || !file.exists(item)) {
-          stop_fmridataset(
-            fmridataset_error_config,
-            sprintf("Source item %d must be an existing file path", i),
-            parameter = "source"
-          )
-        }
-      } else if (!inherits(item, "LatentNeuroVec")) {
-        # Allow mock objects for testing
-        has_basis <- isS4(item) && "basis" %in% methods::slotNames(item)
-        if (!has_basis) {
-          stop_fmridataset(
-            fmridataset_error_config,
-            sprintf("Source item %d must be a LatentNeuroVec object or file path", i),
-            parameter = "source"
-          )
-        }
-      }
-    }
-  } else {
-    stop_fmridataset(
-      fmridataset_error_config,
-      "source must be character vector or list",
-      parameter = "source",
-      value = class(source)
-    )
-  }
+  .latent_backend_validate_source(source)
 
   # Create backend object using environment for reference semantics
   backend <- new.env(parent = emptyenv())
@@ -180,17 +132,71 @@ latent_backend <- function(source, preload = FALSE) {
   backend
 }
 
-#' @rdname backend_open
-#' @method backend_open latent_backend
-#' @export
-backend_open.latent_backend <- function(backend) {
-  if (backend$is_open) {
-    return(backend)
+# Validate a character-vector source for latent_backend()
+.latent_backend_validate_character <- function(source) {
+  if (!all(file.exists(source))) {
+    missing <- source[!file.exists(source)]
+    stop_fmridataset(
+      fmridataset_error_backend_io,
+      sprintf("Source files not found: %s", paste(missing, collapse = ", ")),
+      file = missing[1],
+      operation = "create"
+    )
   }
+  if (!all(grepl("\\.(lv\\.h5|h5)$", source, ignore.case = TRUE))) {
+    stop_fmridataset(
+      fmridataset_error_config,
+      "All source files must be HDF5 files (.h5 or .lv.h5)",
+      parameter = "source"
+    )
+  }
+}
 
-  # Determine whether fmristore is needed (only for file-path sources)
-  needs_fmristore <- is.character(backend$source) ||
-    (is.list(backend$source) && any(vapply(backend$source, is.character, logical(1))))
+# Validate a single list item (file path or LatentNeuroVec-like object)
+.latent_backend_validate_list_item <- function(item, i) {
+  if (is.character(item)) {
+    if (length(item) != 1 || !file.exists(item)) {
+      stop_fmridataset(
+        fmridataset_error_config,
+        sprintf("Source item %d must be an existing file path", i),
+        parameter = "source"
+      )
+    }
+  } else if (!inherits(item, "LatentNeuroVec")) {
+    # Allow mock objects for testing
+    has_basis <- isS4(item) && "basis" %in% methods::slotNames(item)
+    if (!has_basis) {
+      stop_fmridataset(
+        fmridataset_error_config,
+        sprintf("Source item %d must be a LatentNeuroVec object or file path", i),
+        parameter = "source"
+      )
+    }
+  }
+}
+
+# Validate the source argument for latent_backend()
+.latent_backend_validate_source <- function(source) {
+  if (is.character(source)) {
+    .latent_backend_validate_character(source)
+  } else if (is.list(source)) {
+    for (i in seq_along(source)) {
+      .latent_backend_validate_list_item(source[[i]], i)
+    }
+  } else {
+    stop_fmridataset(
+      fmridataset_error_config,
+      "source must be character vector or list",
+      parameter = "source",
+      value = class(source)
+    )
+  }
+}
+
+# Determine whether fmristore is needed and ensure it is available
+.latent_backend_open_require_fmristore <- function(source) {
+  needs_fmristore <- is.character(source) ||
+    (is.list(source) && any(vapply(source, is.character, logical(1))))
 
   if (needs_fmristore && !requireNamespace("fmristore", quietly = TRUE)) {
     stop_fmridataset(
@@ -199,24 +205,26 @@ backend_open.latent_backend <- function(backend) {
       details = "Install with: remotes::install_github('bbuchsbaum/fmristore')"
     )
   }
+}
 
-  # Load data
+# Load the list of LatentNeuroVec objects from the backend source
+.latent_backend_open_load_data <- function(source) {
   data <- list()
 
   tryCatch(
     {
-      if (is.character(backend$source)) {
+      if (is.character(source)) {
         read_vec <- get("read_vec", envir = asNamespace("fmristore"))
-        for (i in seq_along(backend$source)) {
-          data[[i]] <- read_vec(backend$source[i])
+        for (i in seq_along(source)) {
+          data[[i]] <- read_vec(source[i])
         }
       } else {
-        for (i in seq_along(backend$source)) {
-          if (is.character(backend$source[[i]])) {
+        for (i in seq_along(source)) {
+          if (is.character(source[[i]])) {
             read_vec <- get("read_vec", envir = asNamespace("fmristore"))
-            data[[i]] <- read_vec(backend$source[[i]])
+            data[[i]] <- read_vec(source[[i]])
           } else {
-            data[[i]] <- backend$source[[i]]
+            data[[i]] <- source[[i]]
           }
         }
       }
@@ -230,36 +238,46 @@ backend_open.latent_backend <- function(backend) {
     }
   )
 
-  # Validate consistency across runs
-  if (length(data) > 1) {
-    first_dims <- get_latent_space_dims(data[[1]])[1:3]
-    first_ncomp <- ncol(.materialize_basis(data[[1]]))
+  data
+}
 
-    for (i in 2:length(data)) {
-      dims <- get_latent_space_dims(data[[i]])[1:3]
-      ncomp <- ncol(.materialize_basis(data[[i]]))
+# Validate that all runs share spatial dims and component counts
+.latent_backend_open_check_consistency <- function(data) {
+  if (length(data) <= 1) {
+    return(invisible(NULL))
+  }
 
-      if (!identical(first_dims, dims)) {
-        stop_fmridataset(
-          fmridataset_error_config,
-          sprintf("Run %d has inconsistent spatial dimensions", i),
-          parameter = "source"
-        )
-      }
-      if (first_ncomp != ncomp) {
-        stop_fmridataset(
-          fmridataset_error_config,
-          sprintf(
-            "Run %d has different number of components (%d vs %d)",
-            i, ncomp, first_ncomp
-          ),
-          parameter = "source"
-        )
-      }
+  first_dims <- get_latent_space_dims(data[[1]])[1:3]
+  first_ncomp <- ncol(.materialize_basis(data[[1]]))
+
+  for (i in 2:length(data)) {
+    dims <- get_latent_space_dims(data[[i]])[1:3]
+    ncomp <- ncol(.materialize_basis(data[[i]]))
+
+    if (!identical(first_dims, dims)) {
+      stop_fmridataset(
+        fmridataset_error_config,
+        sprintf("Run %d has inconsistent spatial dimensions", i),
+        parameter = "source"
+      )
+    }
+    if (first_ncomp != ncomp) {
+      stop_fmridataset(
+        fmridataset_error_config,
+        sprintf(
+          "Run %d has different number of components (%d vs %d)",
+          i, ncomp, first_ncomp
+        ),
+        parameter = "source"
+      )
     }
   }
 
-  # Store dimensions
+  invisible(NULL)
+}
+
+# Compute the backend$dims list from loaded data
+.latent_backend_open_compute_dims <- function(data) {
   first_obj <- data[[1]]
   spatial_dims <- get_latent_space_dims(first_obj)[1:3]
   n_components <- ncol(.materialize_basis(first_obj))
@@ -279,8 +297,7 @@ backend_open.latent_backend <- function(backend) {
     error = function(e) NULL
   )
 
-  backend$data <- data
-  backend$dims <- list(
+  list(
     spatial = spatial_dims, # Original spatial dimensions
     time = total_time, # Total timepoints
     n_components = n_components, # Number of latent components
@@ -288,6 +305,27 @@ backend_open.latent_backend <- function(backend) {
     n_runs = length(data),
     voxel_indices = voxel_indices # Indices into full volume (may be NULL)
   )
+}
+
+#' @rdname backend_open
+#' @method backend_open latent_backend
+#' @export
+backend_open.latent_backend <- function(backend) {
+  if (backend$is_open) {
+    return(backend)
+  }
+
+  # Determine whether fmristore is needed (only for file-path sources)
+  .latent_backend_open_require_fmristore(backend$source)
+
+  # Load data
+  data <- .latent_backend_open_load_data(backend$source)
+
+  # Validate consistency across runs
+  .latent_backend_open_check_consistency(data)
+
+  backend$data <- data
+  backend$dims <- .latent_backend_open_compute_dims(data)
   backend$is_open <- TRUE
 
   backend

@@ -160,25 +160,44 @@ fmri_cache_info <- function() {
   # Get current cache statistics using available methods
   n_objects <- length(.data_cache$keys())
 
-  # Convert bytes to human-readable format
-  format_bytes <- function(bytes) {
-    if (is.null(bytes) || is.na(bytes)) {
-      return("unknown")
-    }
+  # Estimate current size by summing cached objects
+  current_size_estimate <- .fmri_cache_info_size_estimate(n_objects)
 
-    units <- c("B", "KB", "MB", "GB")
-    size <- as.numeric(bytes)
+  list(
+    max_size = .fmri_cache_info_format_bytes(info$max_size),
+    current_size = .fmri_cache_info_format_bytes(current_size_estimate),
+    n_objects = n_objects,
+    eviction_policy = info$evict,
+    cache_hit_rate = NULL, # cachem doesn't provide hit/miss statistics
+    total_hits = NULL,
+    total_misses = NULL,
+    utilization_pct = .fmri_cache_info_utilization(
+      info$max_size,
+      current_size_estimate
+    )
+  )
+}
 
-    for (i in seq_along(units)) {
-      if (size < 1024 || i == length(units)) {
-        return(sprintf("%.1f %s", size, units[i]))
-      }
-      size <- size / 1024
-    }
+# Convert bytes to human-readable format for fmri_cache_info()
+.fmri_cache_info_format_bytes <- function(bytes) {
+  if (is.null(bytes) || is.na(bytes)) {
+    return("unknown")
   }
 
-  # Estimate current size by summing cached objects
-  current_size_estimate <- if (n_objects > 0) {
+  units <- c("B", "KB", "MB", "GB")
+  size <- as.numeric(bytes)
+
+  for (i in seq_along(units)) {
+    if (size < 1024 || i == length(units)) {
+      return(sprintf("%.1f %s", size, units[i]))
+    }
+    size <- size / 1024
+  }
+}
+
+# Estimate current cache size by summing cached objects for fmri_cache_info()
+.fmri_cache_info_size_estimate <- function(n_objects) {
+  if (n_objects > 0) {
     keys <- .data_cache$keys()
     total_size <- 0
     for (key in keys) {
@@ -191,21 +210,15 @@ fmri_cache_info <- function() {
   } else {
     0
   }
+}
 
-  list(
-    max_size = format_bytes(info$max_size),
-    current_size = format_bytes(current_size_estimate),
-    n_objects = n_objects,
-    eviction_policy = info$evict,
-    cache_hit_rate = NULL, # cachem doesn't provide hit/miss statistics
-    total_hits = NULL,
-    total_misses = NULL,
-    utilization_pct = if (!is.null(info$max_size) && info$max_size > 0) {
-      round(current_size_estimate / info$max_size * 100, 1)
-    } else {
-      NULL
-    }
-  )
+# Compute cache utilization percentage for fmri_cache_info()
+.fmri_cache_info_utilization <- function(max_size, current_size_estimate) {
+  if (!is.null(max_size) && max_size > 0) {
+    round(current_size_estimate / max_size * 100, 1)
+  } else {
+    NULL
+  }
 }
 
 #' Resize the fmridataset cache

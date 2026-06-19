@@ -250,70 +250,25 @@ fmri_dataset <- function(scans, mask = NULL, TR,
                          mode = c("normal", "bigvec", "mmap", "filebacked"),
                          backend = NULL,
                          dummy_mode = FALSE) {
-  # Check if scans is actually a backend object
-  if (inherits(scans, "storage_backend")) {
-    backend <- scans
-  } else if (!is.null(backend)) {
-    warning("backend parameter is deprecated. Pass backend as first argument.")
-    if (!inherits(backend, "storage_backend")) {
-      stop("`backend` must be a storage backend object when provided.")
-    }
-  } else {
-    # Legacy path: create a NiftiBackend from file paths
-    assert_that(
-      (is.character(mask) && length(mask) == 1) || inherits(mask, "NeuroVol"),
-      msg = "'mask' must be a file path (length-1 character) or a neuroim2 NeuroVol/LogicalNeuroVol"
-    )
-    mode <- match.arg(mode)
-
-    # Resolve the mask source: an in-memory NeuroVol is passed straight to the
-    # backend (no write-to-disk round-trip); a path is resolved against base_path.
-    mask_source <- if (inherits(mask, "NeuroVol")) {
-      mask
-    } else {
-      abs_mask <- fs::is_absolute_path(mask)
-      if (length(abs_mask) == 1 && abs_mask) {
-        mask
-      } else {
-        file.path(base_path, mask)
-      }
-    }
-
-    # For scan files, handle each one
-    abs_scans <- fs::is_absolute_path(scans)
-    scan_files <- character(length(scans))
-    for (i in seq_along(scans)) {
-      scan_files[i] <- if (length(abs_scans) >= i && abs_scans[i]) {
-        scans[i]
-      } else {
-        file.path(base_path, scans[i])
-      }
-    }
-
-    # Use registry to create backend for future extensibility
-    backend <- create_backend("nifti",
-      source = scan_files,
-      mask_source = mask_source,
-      preload = preload,
-      mode = mode,
-      dummy_mode = dummy_mode
-    )
-  }
+  # Resolve the storage backend from scans/backend (or build a NiftiBackend
+  # from file paths on the legacy path).
+  backend <- .fmri_dataset_resolve_backend(
+    scans = scans,
+    mask = mask,
+    base_path = base_path,
+    preload = preload,
+    mode = mode,
+    backend = backend,
+    dummy_mode = dummy_mode
+  )
 
   run_length_supplied <- !is.null(run_length)
 
   # Store run_length in backend for dummy mode (must be before validation).
   # In dummy mode there are no headers, so run_length cannot be derived.
-  if (inherits(backend, "nifti_backend") && isTRUE(backend$dummy_mode)) {
-    if (!run_length_supplied) {
-      stop_fmridataset(
-        fmridataset_error_config,
-        message = "`run_length` must be supplied when dummy_mode = TRUE (no headers available to derive it from).",
-        parameter = "run_length"
-      )
-    }
-    backend$run_length <- run_length
-  }
+  backend <- .fmri_dataset_store_dummy_run_length(
+    backend, run_length, run_length_supplied
+  )
 
   # Open backend to initialize resources, then validate contract
   backend <- backend_open(backend)
@@ -321,54 +276,9 @@ fmri_dataset <- function(scans, mask = NULL, TR,
 
   # Get dimensions; derive or validate run_length against per-file volume counts.
   dims <- backend_get_dims(backend)
-  time_per_file <- dims$time_per_file
-
-  if (!run_length_supplied) {
-    # Derive run lengths from the data: one run per scan file.
-    if (is.null(time_per_file)) {
-      stop_fmridataset(
-        fmridataset_error_config,
-        message = paste(
-          "`run_length` was not supplied and could not be derived from the backend",
-          "(no per-file volume counts available). Please pass `run_length` explicitly."
-        ),
-        parameter = "run_length"
-      )
-    }
-    run_length <- time_per_file
-  } else if (!is.null(time_per_file) && length(run_length) == length(time_per_file)) {
-    # One run per scan file: validate elementwise, naming the offending run.
-    mismatched <- which(as.integer(run_length) != as.integer(time_per_file))
-    if (length(mismatched) > 0) {
-      labels <- backend_run_labels(backend)
-      detail <- paste(
-        vapply(mismatched, function(i) {
-          sprintf(
-            "  run %d (%s): run_length = %d but BOLD has %d volumes",
-            i, labels[i], as.integer(run_length[i]), as.integer(time_per_file[i])
-          )
-        }, character(1)),
-        collapse = "\n"
-      )
-      stop_fmridataset(
-        fmridataset_error_config,
-        message = sprintf(
-          "`run_length` disagrees with the data for %d run(s):\n%s",
-          length(mismatched), detail
-        ),
-        parameter = "run_length"
-      )
-    }
-  } else {
-    # Cannot map run_length to files one-to-one (e.g. a single 4D file holding
-    # multiple runs, or a non-NIfTI backend); fall back to the total check.
-    assert_that(sum(run_length) == dims$time,
-      msg = sprintf(
-        "Sum of run_length (%d) must equal total time points (%d)",
-        sum(run_length), dims$time
-      )
-    )
-  }
+  run_length <- .fmri_dataset_resolve_run_length(
+    backend, run_length, run_length_supplied, dims
+  )
 
   if (is.null(censor)) {
     censor <- rep(0, sum(run_length))
@@ -386,6 +296,154 @@ fmri_dataset <- function(scans, mask = NULL, TR,
 
   class(ret) <- c("fmri_file_dataset", "volumetric_dataset", "fmri_dataset", "list")
   ret
+}
+
+# Resolve the storage backend for fmri_dataset(). Returns the backend object,
+# either taken from `scans`/`backend` or built as a NiftiBackend from file paths.
+.fmri_dataset_resolve_backend <- function(scans, mask, base_path, preload,
+                                          mode, backend, dummy_mode) {
+  # Check if scans is actually a backend object
+  if (inherits(scans, "storage_backend")) {
+    return(scans)
+  }
+
+  if (!is.null(backend)) {
+    warning("backend parameter is deprecated. Pass backend as first argument.")
+    if (!inherits(backend, "storage_backend")) {
+      stop("`backend` must be a storage backend object when provided.")
+    }
+    return(backend)
+  }
+
+  # Legacy path: create a NiftiBackend from file paths
+  assert_that(
+    (is.character(mask) && length(mask) == 1) || inherits(mask, "NeuroVol"),
+    msg = "'mask' must be a file path (length-1 character) or a neuroim2 NeuroVol/LogicalNeuroVol"
+  )
+  mode <- match.arg(mode, c("normal", "bigvec", "mmap", "filebacked"))
+
+  mask_source <- .fmri_dataset_resolve_mask_source(mask, base_path)
+  scan_files <- .fmri_dataset_resolve_scan_files(scans, base_path)
+
+  # Use registry to create backend for future extensibility
+  create_backend("nifti",
+    source = scan_files,
+    mask_source = mask_source,
+    preload = preload,
+    mode = mode,
+    dummy_mode = dummy_mode
+  )
+}
+
+# Resolve the mask source: an in-memory NeuroVol is passed straight to the
+# backend (no write-to-disk round-trip); a path is resolved against base_path.
+.fmri_dataset_resolve_mask_source <- function(mask, base_path) {
+  if (inherits(mask, "NeuroVol")) {
+    return(mask)
+  }
+  abs_mask <- fs::is_absolute_path(mask)
+  if (length(abs_mask) == 1 && abs_mask) {
+    mask
+  } else {
+    file.path(base_path, mask)
+  }
+}
+
+# Resolve scan file paths against base_path, leaving absolute paths untouched.
+.fmri_dataset_resolve_scan_files <- function(scans, base_path) {
+  abs_scans <- fs::is_absolute_path(scans)
+  scan_files <- character(length(scans))
+  for (i in seq_along(scans)) {
+    scan_files[i] <- if (length(abs_scans) >= i && abs_scans[i]) {
+      scans[i]
+    } else {
+      file.path(base_path, scans[i])
+    }
+  }
+  scan_files
+}
+
+# Store run_length in the backend for dummy mode (must run before validation).
+# In dummy mode there are no headers, so run_length cannot be derived.
+.fmri_dataset_store_dummy_run_length <- function(backend, run_length,
+                                                 run_length_supplied) {
+  if (inherits(backend, "nifti_backend") && isTRUE(backend$dummy_mode)) {
+    if (!run_length_supplied) {
+      stop_fmridataset(
+        fmridataset_error_config,
+        message = "`run_length` must be supplied when dummy_mode = TRUE (no headers available to derive it from).",
+        parameter = "run_length"
+      )
+    }
+    backend$run_length <- run_length
+  }
+  backend
+}
+
+# Derive or validate run_length against per-file volume counts. Returns the
+# resolved run_length vector.
+.fmri_dataset_resolve_run_length <- function(backend, run_length,
+                                             run_length_supplied, dims) {
+  time_per_file <- dims$time_per_file
+
+  if (!run_length_supplied) {
+    # Derive run lengths from the data: one run per scan file.
+    if (is.null(time_per_file)) {
+      stop_fmridataset(
+        fmridataset_error_config,
+        message = paste(
+          "`run_length` was not supplied and could not be derived from the backend",
+          "(no per-file volume counts available). Please pass `run_length` explicitly."
+        ),
+        parameter = "run_length"
+      )
+    }
+    return(time_per_file)
+  }
+
+  if (!is.null(time_per_file) && length(run_length) == length(time_per_file)) {
+    # One run per scan file: validate elementwise, naming the offending run.
+    .fmri_dataset_validate_run_length(backend, run_length, time_per_file)
+  } else {
+    # Cannot map run_length to files one-to-one (e.g. a single 4D file holding
+    # multiple runs, or a non-NIfTI backend); fall back to the total check.
+    assert_that(sum(run_length) == dims$time,
+      msg = sprintf(
+        "Sum of run_length (%d) must equal total time points (%d)",
+        sum(run_length), dims$time
+      )
+    )
+  }
+
+  run_length
+}
+
+# Validate run_length elementwise against per-file volume counts, naming any
+# offending run(s) in the error.
+.fmri_dataset_validate_run_length <- function(backend, run_length,
+                                              time_per_file) {
+  mismatched <- which(as.integer(run_length) != as.integer(time_per_file))
+  if (length(mismatched) > 0) {
+    labels <- backend_run_labels(backend)
+    detail <- paste(
+      vapply(mismatched, function(i) {
+        sprintf(
+          "  run %d (%s): run_length = %d but BOLD has %d volumes",
+          i, labels[i], as.integer(run_length[i]), as.integer(time_per_file[i])
+        )
+      }, character(1)),
+      collapse = "\n"
+    )
+    stop_fmridataset(
+      fmridataset_error_config,
+      message = sprintf(
+        "`run_length` disagrees with the data for %d run(s):\n%s",
+        length(mismatched), detail
+      ),
+      parameter = "run_length"
+    )
+  }
+  invisible(NULL)
 }
 
 #' Create an fMRI Dataset Object from H5 Files

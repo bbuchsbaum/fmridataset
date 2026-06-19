@@ -117,17 +117,37 @@ backend_get_metadata <- function(backend) {
 #' @keywords internal
 validate_backend <- function(backend) {
   # First check basic inheritance
+  .validate_backend_inheritance(backend)
+
+  # Check that required methods are implemented.
+  .validate_backend_methods(backend)
+
+  # Validate dims and mask by calling the generics directly.
+  # The caller (e.g. fmri_dataset()) is responsible for lifecycle management.
+  dims <- backend_get_dims(backend)
+  .validate_backend_dims(dims)
+
+  mask <- backend_get_mask(backend)
+  .validate_backend_mask(mask, dims)
+
+  TRUE
+}
+
+# Check basic inheritance from the storage_backend class.
+.validate_backend_inheritance <- function(backend) {
   if (!inherits(backend, "storage_backend")) {
     stop_fmridataset(
       fmridataset_error_config,
       "Invalid backend object: must inherit from 'storage_backend'"
     )
   }
+}
 
-  # Check that required methods are implemented.
-  # Only check methods not exercised below via getS3method.
-  # Methods exercised below (backend_get_dims, backend_get_mask) are validated
-  # by calling them directly, which also works when generics are mocked in tests.
+# Check that required methods are implemented.
+# Only check methods not exercised by validate_backend via getS3method.
+# Methods exercised there (backend_get_dims, backend_get_mask) are validated
+# by calling them directly, which also works when generics are mocked in tests.
+.validate_backend_methods <- function(backend) {
   backend_class <- class(backend)[1]
   uncalled_methods <- c(
     "backend_open", "backend_close", "backend_get_data", "backend_get_metadata"
@@ -142,10 +162,10 @@ validate_backend <- function(backend) {
       )
     }
   }
+}
 
-  # Validate dims and mask by calling the generics directly.
-  # The caller (e.g. fmri_dataset()) is responsible for lifecycle management.
-  dims <- backend_get_dims(backend)
+# Validate the structure returned by backend_get_dims().
+.validate_backend_dims <- function(dims) {
   if (!is.list(dims) || !all(c("spatial", "time") %in% names(dims))) {
     stop_fmridataset(
       fmridataset_error_config,
@@ -166,8 +186,10 @@ validate_backend <- function(backend) {
       "time dimension must be a positive integer"
     )
   }
+}
 
-  mask <- backend_get_mask(backend)
+# Validate the mask returned by backend_get_mask() against the dims.
+.validate_backend_mask <- function(mask, dims) {
   expected_length <- prod(dims$spatial)
 
   if (!is.logical(mask)) {
@@ -200,6 +222,4 @@ validate_backend <- function(backend) {
       "mask must contain at least one TRUE value"
     )
   }
-
-  TRUE
 }

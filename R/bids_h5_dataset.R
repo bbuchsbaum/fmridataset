@@ -64,6 +64,112 @@ NULL
   out
 }
 
+# Validate the root format/version attributes of an open BIDS H5 file.
+.bids_h5_dataset_validate_root <- function(h5, file) {
+  if (!h5$attr_exists("format")) {
+    stop_fmridataset(
+      fmridataset_error_backend_io,
+      message = sprintf("'%s' does not look like a BIDS H5 archive: missing 'format' attribute.", file),
+      file = file, operation = "validate"
+    )
+  }
+  fmt <- h5$attr_open("format")$read()
+  if (!identical(fmt, "bids_h5_study")) {
+    stop_fmridataset(
+      fmridataset_error_backend_io,
+      message = sprintf("Unsupported archive format '%s' (expected 'bids_h5_study').", fmt),
+      file = file, operation = "validate"
+    )
+  }
+
+  if (h5$attr_exists("version")) {
+    ver <- h5$attr_open("version")$read()
+    if (!startsWith(as.character(ver), "1.")) {
+      stop_fmridataset(
+        fmridataset_error_backend_io,
+        message = sprintf("Unsupported BIDS H5 schema version '%s' (only 1.x is supported).", ver),
+        file = file, operation = "validate"
+      )
+    }
+  }
+}
+
+# Read and validate the compression_mode attribute (defaults to "parcellated").
+.bids_h5_dataset_read_comp_mode <- function(h5, file) {
+  comp_mode <- if (h5$attr_exists("compression_mode")) {
+    h5$attr_open("compression_mode")$read()
+  } else {
+    "parcellated"
+  }
+  if (!comp_mode %in% c("parcellated", "latent")) {
+    stop_fmridataset(
+      fmridataset_error_backend_io,
+      message = sprintf(
+        "Unknown compression_mode '%s' (expected 'parcellated' or 'latent').",
+        comp_mode
+      ),
+      file = file, operation = "validate"
+    )
+  }
+  comp_mode
+}
+
+# Determine the number of features (parcels or latent components).
+.bids_h5_dataset_n_features <- function(h5, comp_mode, file) {
+  if (comp_mode == "parcellated") {
+    if (!h5$exists("parcellation/cluster_ids")) {
+      stop_fmridataset(
+        fmridataset_error_backend_io,
+        message = "BIDS H5 archive is missing /parcellation/cluster_ids.",
+        file = file, operation = "read"
+      )
+    }
+    cluster_ids <- h5[["parcellation/cluster_ids"]]$read()
+    length(cluster_ids)
+  } else {
+    # latent mode: K from /latent_meta/n_components
+    if (!h5$exists("latent_meta/n_components")) {
+      stop_fmridataset(
+        fmridataset_error_backend_io,
+        message = "Latent-mode archive is missing /latent_meta/n_components.",
+        file = file, operation = "read"
+      )
+    }
+    as.integer(h5[["latent_meta/n_components"]]$read())
+  }
+}
+
+# Read the TR from the first scan's metadata.
+.bids_h5_dataset_read_tr <- function(h5, manifest, file) {
+  first_scan_name <- manifest$scan_name[[1]]
+  tr_path <- paste0("scans/", first_scan_name, "/metadata/tr")
+  if (!h5$exists(tr_path)) {
+    stop_fmridataset(
+      fmridataset_error_backend_io,
+      message = sprintf("Cannot find TR in '%s'.", tr_path),
+      file = file, operation = "read"
+    )
+  }
+  as.numeric(h5[[tr_path]]$read())
+}
+
+# Read /bids/ metadata (best effort): space, pipeline, name.
+.bids_h5_dataset_read_bids_meta <- function(h5) {
+  bids_meta <- list(space = NULL, pipeline = NULL, name = NULL)
+  if (h5$exists("bids")) {
+    bids_grp <- h5[["bids"]]
+    for (key in c("space", "pipeline", "name")) {
+      if (bids_grp$exists(key)) {
+        bids_meta[[key]] <- tryCatch(
+          as.character(bids_grp[[key]]$read()),
+          error = function(e) NULL
+        )
+      }
+    }
+  }
+  bids_meta
+}
+
 .make_bids_h5_scan_backends <- function(manifest, h5_connection, n_features, tr,
                                         compression_mode = "parcellated") {
   setNames(
@@ -299,48 +405,9 @@ bids_h5_dataset <- function(file, preload = FALSE) {
   h5            <- h5_connection$handle
 
   # Validate root attributes
-  if (!h5$attr_exists("format")) {
-    stop_fmridataset(
-      fmridataset_error_backend_io,
-      message = sprintf("'%s' does not look like a BIDS H5 archive: missing 'format' attribute.", file),
-      file = file, operation = "validate"
-    )
-  }
-  fmt <- h5$attr_open("format")$read()
-  if (!identical(fmt, "bids_h5_study")) {
-    stop_fmridataset(
-      fmridataset_error_backend_io,
-      message = sprintf("Unsupported archive format '%s' (expected 'bids_h5_study').", fmt),
-      file = file, operation = "validate"
-    )
-  }
+  .bids_h5_dataset_validate_root(h5, file)
 
-  if (h5$attr_exists("version")) {
-    ver <- h5$attr_open("version")$read()
-    if (!startsWith(as.character(ver), "1.")) {
-      stop_fmridataset(
-        fmridataset_error_backend_io,
-        message = sprintf("Unsupported BIDS H5 schema version '%s' (only 1.x is supported).", ver),
-        file = file, operation = "validate"
-      )
-    }
-  }
-
-  comp_mode <- if (h5$attr_exists("compression_mode")) {
-    h5$attr_open("compression_mode")$read()
-  } else {
-    "parcellated"
-  }
-  if (!comp_mode %in% c("parcellated", "latent")) {
-    stop_fmridataset(
-      fmridataset_error_backend_io,
-      message = sprintf(
-        "Unknown compression_mode '%s' (expected 'parcellated' or 'latent').",
-        comp_mode
-      ),
-      file = file, operation = "validate"
-    )
-  }
+  comp_mode <- .bids_h5_dataset_read_comp_mode(h5, file)
 
   # Read scan manifest
   manifest <- .read_scan_index(h5)
@@ -353,53 +420,13 @@ bids_h5_dataset <- function(file, preload = FALSE) {
   }
 
   # Number of features depends on compression mode
-  if (comp_mode == "parcellated") {
-    if (!h5$exists("parcellation/cluster_ids")) {
-      stop_fmridataset(
-        fmridataset_error_backend_io,
-        message = "BIDS H5 archive is missing /parcellation/cluster_ids.",
-        file = file, operation = "read"
-      )
-    }
-    cluster_ids <- h5[["parcellation/cluster_ids"]]$read()
-    n_features  <- length(cluster_ids)
-  } else {
-    # latent mode: K from /latent_meta/n_components
-    if (!h5$exists("latent_meta/n_components")) {
-      stop_fmridataset(
-        fmridataset_error_backend_io,
-        message = "Latent-mode archive is missing /latent_meta/n_components.",
-        file = file, operation = "read"
-      )
-    }
-    n_features <- as.integer(h5[["latent_meta/n_components"]]$read())
-  }
+  n_features <- .bids_h5_dataset_n_features(h5, comp_mode, file)
 
   # TR from first scan's metadata
-  first_scan_name <- manifest$scan_name[[1]]
-  tr_path <- paste0("scans/", first_scan_name, "/metadata/tr")
-  if (!h5$exists(tr_path)) {
-    stop_fmridataset(
-      fmridataset_error_backend_io,
-      message = sprintf("Cannot find TR in '%s'.", tr_path),
-      file = file, operation = "read"
-    )
-  }
-  tr <- as.numeric(h5[[tr_path]]$read())
+  tr <- .bids_h5_dataset_read_tr(h5, manifest, file)
 
   # Read /bids/ metadata (best effort)
-  bids_meta <- list(space = NULL, pipeline = NULL, name = NULL)
-  if (h5$exists("bids")) {
-    bids_grp <- h5[["bids"]]
-    for (key in c("space", "pipeline", "name")) {
-      if (bids_grp$exists(key)) {
-        bids_meta[[key]] <- tryCatch(
-          as.character(bids_grp[[key]]$read()),
-          error = function(e) NULL
-        )
-      }
-    }
-  }
+  bids_meta <- .bids_h5_dataset_read_bids_meta(h5)
 
   # Create per-scan backends (all share same h5_connection)
   scan_backends <- .make_bids_h5_scan_backends(

@@ -29,21 +29,7 @@ resolve_selector <- function(dataset, selector) {
 
   # Handle 3-column coordinate matrices BEFORE numeric check
   if (is.matrix(selector) && ncol(selector) == 3) {
-    dims <- backend_get_dims(dataset$backend)$spatial
-    # Convert coordinates to linear indices in the full volume
-    full_vol_indices <- selector[, 1] + (selector[, 2] - 1) * dims[1] + (selector[, 3] - 1) * dims[1] * dims[2]
-
-    # Get the indices of voxels that are inside the mask
-    mask_vec <- backend_get_mask(dataset$backend)
-    mask_indices <- which(mask_vec)
-
-    # Map from full volume indices to masked data indices
-    final_indices <- match(full_vol_indices, mask_indices)
-
-    # Remove any coordinates that fall outside the mask
-    final_indices <- final_indices[!is.na(final_indices)]
-
-    return(as.integer(final_indices))
+    return(.resolve_selector_coords(dataset, selector))
   }
 
   if (is.numeric(selector)) {
@@ -51,7 +37,7 @@ resolve_selector <- function(dataset, selector) {
   }
 
   # Handle general arrays, ROI volumes, and logical arrays as masks
-  if (is.array(selector) || inherits(selector, "ROIVol") || inherits(selector, "LogicalNeuroVol")) {
+  if (.resolve_selector_is_mask(selector)) {
     ind <- which(as.logical(as.vector(selector)))
     return(as.integer(ind))
   }
@@ -62,6 +48,32 @@ resolve_selector <- function(dataset, selector) {
     parameter = "selector",
     value = class(selector)[1]
   )
+}
+
+# Map a 3-column coordinate matrix to masked data indices.
+.resolve_selector_coords <- function(dataset, selector) {
+  dims <- backend_get_dims(dataset$backend)$spatial
+  # Convert coordinates to linear indices in the full volume
+  full_vol_indices <- selector[, 1] + (selector[, 2] - 1) * dims[1] + (selector[, 3] - 1) * dims[1] * dims[2]
+
+  # Get the indices of voxels that are inside the mask
+  mask_vec <- backend_get_mask(dataset$backend)
+  mask_indices <- which(mask_vec)
+
+  # Map from full volume indices to masked data indices
+  final_indices <- match(full_vol_indices, mask_indices)
+
+  # Remove any coordinates that fall outside the mask
+  final_indices <- final_indices[!is.na(final_indices)]
+
+  as.integer(final_indices)
+}
+
+# Identify selectors treated as logical masks (arrays, ROI/logical volumes).
+.resolve_selector_is_mask <- function(selector) {
+  is.array(selector) ||
+    inherits(selector, "ROIVol") ||
+    inherits(selector, "LogicalNeuroVol")
 }
 
 #' Resolve Timepoint Selection

@@ -66,33 +66,7 @@ NULL
 register_backend <- function(name, factory, description = NULL,
                              validate_function = NULL, overwrite = FALSE) {
   # Validate inputs
-  if (!is.character(name) || length(name) != 1 || nchar(name) == 0) {
-    stop_fmridataset(
-      fmridataset_error_config,
-      "name must be a non-empty character string"
-    )
-  }
-
-  if (!is.function(factory)) {
-    stop_fmridataset(
-      fmridataset_error_config,
-      "factory must be a function"
-    )
-  }
-
-  if (!is.null(description) && (!is.character(description) || length(description) != 1)) {
-    stop_fmridataset(
-      fmridataset_error_config,
-      "description must be a character string or NULL"
-    )
-  }
-
-  if (!is.null(validate_function) && !is.function(validate_function)) {
-    stop_fmridataset(
-      fmridataset_error_config,
-      "validate_function must be a function or NULL"
-    )
-  }
+  .register_backend_validate_args(name, factory, description, validate_function)
 
   # Check for existing registration
   if (exists(name, envir = .backend_registry) && !overwrite) {
@@ -113,6 +87,52 @@ register_backend <- function(name, factory, description = NULL,
 
   # Store in registry
   assign(name, registration, envir = .backend_registry)
+
+  invisible(TRUE)
+}
+
+# Validate the `name` argument supplied to register_backend().
+.register_backend_validate_name <- function(name) {
+  if (!is.character(name) || length(name) != 1 || nchar(name) == 0) {
+    stop_fmridataset(
+      fmridataset_error_config,
+      "name must be a non-empty character string"
+    )
+  }
+  invisible(TRUE)
+}
+
+# Validate the `description` argument supplied to register_backend().
+.register_backend_validate_description <- function(description) {
+  if (!is.null(description) && (!is.character(description) || length(description) != 1)) {
+    stop_fmridataset(
+      fmridataset_error_config,
+      "description must be a character string or NULL"
+    )
+  }
+  invisible(TRUE)
+}
+
+# Validate all arguments supplied to register_backend(). Throws the same
+# config errors as the inline checks did previously.
+.register_backend_validate_args <- function(name, factory, description, validate_function) {
+  .register_backend_validate_name(name)
+
+  if (!is.function(factory)) {
+    stop_fmridataset(
+      fmridataset_error_config,
+      "factory must be a function"
+    )
+  }
+
+  .register_backend_validate_description(description)
+
+  if (!is.null(validate_function) && !is.function(validate_function)) {
+    stop_fmridataset(
+      fmridataset_error_config,
+      "validate_function must be a function or NULL"
+    )
+  }
 
   invisible(TRUE)
 }

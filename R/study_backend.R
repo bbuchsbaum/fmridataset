@@ -16,8 +16,36 @@ study_backend <- function(backends, subject_ids = NULL,
     )
   }
 
-  # Coerce fmri_dataset objects to their backends
-  backends <- lapply(backends, function(b) {
+  backends <- .study_backend_coerce_backends(backends)
+  .study_backend_validate_backends(backends)
+  subject_ids <- .study_backend_resolve_subject_ids(subject_ids, backends)
+
+  dims_list <- lapply(backends, backend_get_dims)
+  # Ensure consistent numeric type for spatial dimensions
+  spatial_dims <- lapply(dims_list, function(x) as.numeric(x$spatial))
+  time_dims <- vapply(dims_list, function(x) x$time, numeric(1))
+
+  ref_spatial <- .study_backend_validate_spatial(spatial_dims)
+  combined_mask <- .study_backend_combine_masks(backends, strict)
+
+  subject_boundaries <- c(0L, cumsum(as.integer(time_dims)))
+
+  backend <- list(
+    backends = backends,
+    subject_ids = subject_ids,
+    strict = strict,
+    `_dims` = list(spatial = ref_spatial, time = sum(time_dims)),
+    `_mask` = combined_mask,
+    time_dims = as.integer(time_dims),
+    subject_boundaries = as.integer(subject_boundaries)
+  )
+  class(backend) <- c("study_backend", "storage_backend")
+  backend
+}
+
+# Coerce fmri_dataset objects to their underlying storage backends.
+.study_backend_coerce_backends <- function(backends) {
+  lapply(backends, function(b) {
     if (!inherits(b, "storage_backend")) {
       if (inherits(b, "matrix_dataset") && !is.null(b$datamat)) {
         # Legacy matrix_dataset - convert to matrix_backend
@@ -34,7 +62,10 @@ study_backend <- function(backends, subject_ids = NULL,
       b
     }
   })
+}
 
+# Ensure every coerced element is a storage_backend.
+.study_backend_validate_backends <- function(backends) {
   lapply(backends, function(b) {
     if (!inherits(b, "storage_backend")) {
       stop_fmridataset(
@@ -43,7 +74,11 @@ study_backend <- function(backends, subject_ids = NULL,
       )
     }
   })
+  invisible(NULL)
+}
 
+# Default subject_ids to positional indices and validate their length.
+.study_backend_resolve_subject_ids <- function(subject_ids, backends) {
   if (is.null(subject_ids)) {
     subject_ids <- seq_along(backends)
   }
@@ -54,12 +89,11 @@ study_backend <- function(backends, subject_ids = NULL,
       message = "subject_ids must match length of backends"
     )
   }
+  subject_ids
+}
 
-  dims_list <- lapply(backends, backend_get_dims)
-  # Ensure consistent numeric type for spatial dimensions
-  spatial_dims <- lapply(dims_list, function(x) as.numeric(x$spatial))
-  time_dims <- vapply(dims_list, function(x) x$time, numeric(1))
-
+# Verify spatial dimensions match across backends; return the reference dims.
+.study_backend_validate_spatial <- function(spatial_dims) {
   ref_spatial <- spatial_dims[[1]]
   for (i in seq_along(spatial_dims[-1])) {
     sd <- spatial_dims[[i + 1]]
@@ -70,7 +104,11 @@ study_backend <- function(backends, subject_ids = NULL,
       )
     }
   }
+  ref_spatial
+}
 
+# Validate masks per `strict` mode and return the combined mask.
+.study_backend_combine_masks <- function(backends, strict) {
   masks <- lapply(backends, backend_get_mask)
   ref_mask <- masks[[1]]
   if (strict == "identical") {
@@ -100,20 +138,7 @@ study_backend <- function(backends, subject_ids = NULL,
       message = "unknown strict setting"
     )
   }
-
-  subject_boundaries <- c(0L, cumsum(as.integer(time_dims)))
-
-  backend <- list(
-    backends = backends,
-    subject_ids = subject_ids,
-    strict = strict,
-    `_dims` = list(spatial = ref_spatial, time = sum(time_dims)),
-    `_mask` = combined_mask,
-    time_dims = as.integer(time_dims),
-    subject_boundaries = as.integer(subject_boundaries)
-  )
-  class(backend) <- c("study_backend", "storage_backend")
-  backend
+  combined_mask
 }
 
 #' @rdname backend_open
@@ -170,28 +195,11 @@ backend_get_data.study_backend <- function(backend, rows = NULL, cols = NULL) {
   if (is.logical(rows)) rows <- which(rows)
   if (is.logical(cols)) cols <- which(cols)
 
-  if (any(rows < 1L | rows > n_time)) {
-    stop("Row indices out of bounds", call. = FALSE)
-  }
-  if (any(cols < 1L | cols > n_vox)) {
-    stop("Column indices out of bounds", call. = FALSE)
-  }
+  .study_backend_get_data_check_bounds(rows, n_time, "Row")
+  .study_backend_get_data_check_bounds(cols, n_vox, "Column")
 
-  if (!is.integer(rows)) {
-    if (is.double(rows) && all(rows == as.integer(rows))) {
-      rows <- as.integer(rows)
-    } else {
-      stop("Row indices must be integer valued", call. = FALSE)
-    }
-  }
-
-  if (!is.integer(cols)) {
-    if (is.double(cols) && all(cols == as.integer(cols))) {
-      cols <- as.integer(cols)
-    } else {
-      stop("Column indices must be integer valued", call. = FALSE)
-    }
-  }
+  rows <- .study_backend_get_data_as_integer(rows, "Row")
+  cols <- .study_backend_get_data_as_integer(cols, "Column")
 
   .collect_study_backend_block(
     backends = backend$backends,
@@ -201,6 +209,26 @@ backend_get_data.study_backend <- function(backend, rows = NULL, cols = NULL) {
     n_time = n_time,
     n_vox = n_vox
   )
+}
+
+# Bounds-check an index vector. `label` is "Row" or "Column" for messages.
+.study_backend_get_data_check_bounds <- function(idx, n, label) {
+  if (any(idx < 1L | idx > n)) {
+    stop(paste(label, "indices out of bounds"), call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+# Coerce an integer-valued index vector to integer, erroring otherwise.
+.study_backend_get_data_as_integer <- function(idx, label) {
+  if (!is.integer(idx)) {
+    if (is.double(idx) && all(idx == as.integer(idx))) {
+      idx <- as.integer(idx)
+    } else {
+      stop(paste(label, "indices must be integer valued"), call. = FALSE)
+    }
+  }
+  idx
 }
 
 #' @rdname backend_get_metadata

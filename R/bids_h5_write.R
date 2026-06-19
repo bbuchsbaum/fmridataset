@@ -125,159 +125,39 @@ compress_bids_study <- function(
   # ---------------------------------------------------------------
   # 1. Dependency checks
   # ---------------------------------------------------------------
-  if (!requireNamespace("bidser",  quietly = TRUE)) {
-    stop("Package 'bidser' is required for compress_bids_study() but is not installed.\n",
-         "Install it with: install.packages('bidser') or remotes::install_github('bbuchsbaum/bidser')",
-         call. = FALSE)
-  }
-  if (!requireNamespace("hdf5r",   quietly = TRUE)) {
-    stop("Package 'hdf5r' is required for compress_bids_study() but is not installed.\n",
-         "Install it with: install.packages('hdf5r')",
-         call. = FALSE)
-  }
-
   mode <- match.arg(mode)
-
-  if (mode == "parcellated" && !requireNamespace("fmristore", quietly = TRUE)) {
-    stop("Package 'fmristore' is required for mode='parcellated' but is not installed.\n",
-         "Install it with: remotes::install_github('bbuchsbaum/fmristore')",
-         call. = FALSE)
-  }
-  if (mode == "latent" && !requireNamespace("fmrilatent", quietly = TRUE)) {
-    stop("Package 'fmrilatent' is required for mode='latent' but is not installed.\n",
-         "Install it with: remotes::install_github('bbuchsbaum/fmrilatent')",
-         call. = FALSE)
-  }
+  .compress_bids_study_check_deps(mode)
 
   compression <- as.integer(compression)
 
   # ---------------------------------------------------------------
   # 2. Resolve BIDS project
   # ---------------------------------------------------------------
-  if (is.character(x)) {
-    if (!dir.exists(x)) {
-      stop("BIDS directory not found: ", x, call. = FALSE)
-    }
-    if (verbose) message("Opening BIDS project: ", x)
-    x <- bidser::bids_project(x)
-  }
-  if (!inherits(x, "bids_project")) {
-    stop("'x' must be a bidser::bids_project object or a path to a BIDS directory.",
-         call. = FALSE)
-  }
+  x <- .compress_bids_study_resolve_project(x, verbose)
 
   # ---------------------------------------------------------------
-  # 3. Query scan manifest
+  # 3. Query scan manifest (with filtering)
   # ---------------------------------------------------------------
-  if (verbose) message("Querying scan manifest ...")
-  scans_df <- bidser::preproc_scans(x)
-
-  if (is.null(scans_df) || nrow(scans_df) == 0L) {
-    stop("No preprocessed scans found in BIDS project. ",
-         "Ensure fMRIPrep outputs are present.", call. = FALSE)
-  }
-
-  # Apply filters
-  if (!is.null(subjects)) {
-    scans_df <- scans_df[scans_df$subid %in% subjects, , drop = FALSE]
-  }
-  if (!is.null(tasks)) {
-    scans_df <- scans_df[scans_df$task %in% tasks, , drop = FALSE]
-  }
-  if (!is.null(sessions) && "session" %in% names(scans_df)) {
-    scans_df <- scans_df[scans_df$session %in% sessions, , drop = FALSE]
-  }
-
-  if (nrow(scans_df) == 0L) {
-    stop("No scans remain after filtering by tasks/subjects/sessions.", call. = FALSE)
-  }
-
-  if (verbose) message(sprintf("Found %d scans to process.", nrow(scans_df)))
+  scans_df <- .compress_bids_study_query_manifest(
+    x, subjects, tasks, sessions, verbose
+  )
 
   # ---------------------------------------------------------------
   # 4. Validate TR consistency
   # ---------------------------------------------------------------
-  trs <- .extract_trs(scans_df)
-
-  if (length(unique(round(trs, 6))) > 1L) {
-    stop(sprintf(
-      "TR values are not consistent across scans:\n%s\n",
-      paste(sprintf("  %s: TR=%.4f", scans_df$scan_name, trs), collapse = "\n")
-    ), call. = FALSE)
-  }
-  TR_value <- trs[[1]]
+  TR_value <- .compress_bids_study_resolve_tr(scans_df)
 
   # ---------------------------------------------------------------
   # 5. Validate mode-specific arguments and derive mask/encoding
   # ---------------------------------------------------------------
-  if (mode == "parcellated") {
-    if (is.null(clusters) || !inherits(clusters, "ClusteredNeuroVol")) {
-      stop("'clusters' must be a neuroim2::ClusteredNeuroVol object for mode='parcellated'.",
-           call. = FALSE)
-    }
-
-    if (is.null(mask)) {
-      # Derive mask: all voxels belonging to a non-zero cluster
-      mask <- neuroim2::LogicalNeuroVol(clusters > 0, neuroim2::space(clusters))
-    }
-
-    if (!inherits(mask, "LogicalNeuroVol")) {
-      stop("'mask' must be a neuroim2::LogicalNeuroVol object.", call. = FALSE)
-    }
-
-    # Parcel IDs and count
-    cluster_ids <- sort(unique(as.integer(clusters[clusters > 0])))
-    K <- length(cluster_ids)
-
-    if (K == 0L) {
-      stop("No parcels found in 'clusters'. Check that the ClusteredNeuroVol is valid.",
-           call. = FALSE)
-    }
-  } else {
-    # latent mode
-    if (is.null(mask)) {
-      stop("'mask' is required for mode='latent' (no clusters to derive mask from).",
-           call. = FALSE)
-    }
-    if (!inherits(mask, "LogicalNeuroVol")) {
-      stop("'mask' must be a neuroim2::LogicalNeuroVol object.", call. = FALSE)
-    }
-
-    if (!is.null(template)) {
-      # Template mode: shared loadings, per-scan coefficients only
-      if (!inherits(template, "parcel_basis_template") &&
-            !inherits(template, "HierarchicalBasisTemplate") &&
-            !is.list(template)) {
-        stop("'template' must be a fmrilatent template object (parcel_basis_template or HierarchicalBasisTemplate).",
-             call. = FALSE)
-      }
-      # Extract template loadings
-      template_loadings <- tryCatch(
-        as.matrix(fmrilatent::template_loadings(template)),
-        error = function(e) {
-          stop(sprintf("Failed to extract loadings from template: %s", e$message),
-               call. = FALSE)
-        }
-      )
-      K <- ncol(template_loadings)
-      if (is.null(encoding)) {
-        # Template provides the spatial basis; no explicit encoding needed
-        encoding <- NULL
-      }
-    } else {
-      template_loadings <- NULL
-      if (is.null(encoding)) {
-        if (is.null(n_components)) {
-          stop("For mode='latent', either 'encoding', 'n_components', or 'template' must be provided.",
-               call. = FALSE)
-        }
-        encoding <- fmrilatent::spec_space_pca(k = as.integer(n_components))
-      }
-      # K will be determined after encoding the first scan; set a placeholder
-      K <- NULL
-    }
-    cluster_ids <- NULL
-  }
+  derived <- .compress_bids_study_resolve_mode(
+    mode, clusters, mask, template, encoding, n_components
+  )
+  mask              <- derived$mask
+  encoding          <- derived$encoding
+  template_loadings <- derived$template_loadings
+  cluster_ids       <- derived$cluster_ids
+  K                 <- derived$K
 
   # ---------------------------------------------------------------
   # 6. Build scan names for manifest
@@ -332,6 +212,257 @@ compress_bids_study <- function(
   # ---------------------------------------------------------------
   # 12. Write /scans/ — streaming one scan at a time
   # ---------------------------------------------------------------
+  scan_loop <- .compress_bids_study_write_scans(
+    h5, x, scans_df, mode, mask, clusters, cluster_ids, summary_fun,
+    template, template_loadings, encoding, K, TR_value, confounds,
+    compression, verbose
+  )
+  K                 <- scan_loop$K
+  n_time_vec        <- scan_loop$n_time_vec
+  n_features_vec    <- scan_loop$n_features_vec
+  has_events_vec    <- scan_loop$has_events_vec
+  has_confounds_vec <- scan_loop$has_confounds_vec
+  n_scans           <- scan_loop$n_scans
+
+  # ---------------------------------------------------------------
+  # 13. Write /latent_meta/ (latent mode only)
+  # ---------------------------------------------------------------
+  if (mode == "latent") {
+    .compress_bids_study_write_latent_meta(
+      h5, K, encoding, template, template_loadings, compression, verbose
+    )
+  }
+
+  # ---------------------------------------------------------------
+  # 14. Write /scan_index/
+  # ---------------------------------------------------------------
+  if (verbose) message("Writing /scan_index/ ...")
+  .compress_bids_study_write_scan_index(
+    h5, scans_df, n_time_vec, n_features_vec,
+    has_events_vec, has_confounds_vec, n_scans, compression
+  )
+
+  # ---------------------------------------------------------------
+  # 14. Close file cleanly
+  # ---------------------------------------------------------------
+  h5$close_all()
+
+  if (verbose) message("Done. Archive written to: ", file)
+
+  # ---------------------------------------------------------------
+  # 15. Return reader
+  # ---------------------------------------------------------------
+  # TODO: replace with bids_h5_dataset(file) once Task #3 is complete
+  if (exists("bids_h5_dataset", mode = "function")) {
+    return(bids_h5_dataset(file))
+  }
+  invisible(file)
+}
+
+
+# ----------------------------------------------------------------------
+# compress_bids_study() phase helpers
+# ----------------------------------------------------------------------
+
+# Phase 1: dependency checks for compress_bids_study()
+.compress_bids_study_check_deps <- function(mode) {
+  if (!requireNamespace("bidser",  quietly = TRUE)) {
+    stop("Package 'bidser' is required for compress_bids_study() but is not installed.\n",
+         "Install it with: install.packages('bidser') or remotes::install_github('bbuchsbaum/bidser')",
+         call. = FALSE)
+  }
+  if (!requireNamespace("hdf5r",   quietly = TRUE)) {
+    stop("Package 'hdf5r' is required for compress_bids_study() but is not installed.\n",
+         "Install it with: install.packages('hdf5r')",
+         call. = FALSE)
+  }
+
+  if (mode == "parcellated" && !requireNamespace("fmristore", quietly = TRUE)) {
+    stop("Package 'fmristore' is required for mode='parcellated' but is not installed.\n",
+         "Install it with: remotes::install_github('bbuchsbaum/fmristore')",
+         call. = FALSE)
+  }
+  if (mode == "latent" && !requireNamespace("fmrilatent", quietly = TRUE)) {
+    stop("Package 'fmrilatent' is required for mode='latent' but is not installed.\n",
+         "Install it with: remotes::install_github('bbuchsbaum/fmrilatent')",
+         call. = FALSE)
+  }
+
+  invisible(NULL)
+}
+
+
+# Phase 2: resolve the BIDS project for compress_bids_study()
+.compress_bids_study_resolve_project <- function(x, verbose) {
+  if (is.character(x)) {
+    if (!dir.exists(x)) {
+      stop("BIDS directory not found: ", x, call. = FALSE)
+    }
+    if (verbose) message("Opening BIDS project: ", x)
+    x <- bidser::bids_project(x)
+  }
+  if (!inherits(x, "bids_project")) {
+    stop("'x' must be a bidser::bids_project object or a path to a BIDS directory.",
+         call. = FALSE)
+  }
+  x
+}
+
+
+# Phase 3: query and filter the scan manifest for compress_bids_study()
+.compress_bids_study_query_manifest <- function(x, subjects, tasks, sessions, verbose) {
+  if (verbose) message("Querying scan manifest ...")
+  scans_df <- bidser::preproc_scans(x)
+
+  if (is.null(scans_df) || nrow(scans_df) == 0L) {
+    stop("No preprocessed scans found in BIDS project. ",
+         "Ensure fMRIPrep outputs are present.", call. = FALSE)
+  }
+
+  # Apply filters
+  if (!is.null(subjects)) {
+    scans_df <- scans_df[scans_df$subid %in% subjects, , drop = FALSE]
+  }
+  if (!is.null(tasks)) {
+    scans_df <- scans_df[scans_df$task %in% tasks, , drop = FALSE]
+  }
+  if (!is.null(sessions) && "session" %in% names(scans_df)) {
+    scans_df <- scans_df[scans_df$session %in% sessions, , drop = FALSE]
+  }
+
+  if (nrow(scans_df) == 0L) {
+    stop("No scans remain after filtering by tasks/subjects/sessions.", call. = FALSE)
+  }
+
+  if (verbose) message(sprintf("Found %d scans to process.", nrow(scans_df)))
+
+  scans_df
+}
+
+
+# Phase 4: validate TR consistency and return the common TR value
+.compress_bids_study_resolve_tr <- function(scans_df) {
+  trs <- .extract_trs(scans_df)
+
+  if (length(unique(round(trs, 6))) > 1L) {
+    stop(sprintf(
+      "TR values are not consistent across scans:\n%s\n",
+      paste(sprintf("  %s: TR=%.4f", scans_df$scan_name, trs), collapse = "\n")
+    ), call. = FALSE)
+  }
+  trs[[1]]
+}
+
+
+# Phase 5: validate mode-specific args and derive mask/encoding/K
+#
+# Returns a list with mask, encoding, template_loadings, cluster_ids, and K.
+.compress_bids_study_resolve_mode <- function(mode, clusters, mask, template,
+                                              encoding, n_components) {
+  if (mode == "parcellated") {
+    return(.compress_bids_study_resolve_parcellated(clusters, mask))
+  }
+  .compress_bids_study_resolve_latent(mask, template, encoding, n_components)
+}
+
+
+# Phase 5 (parcellated): derive mask, cluster ids and K
+.compress_bids_study_resolve_parcellated <- function(clusters, mask) {
+  if (is.null(clusters) || !inherits(clusters, "ClusteredNeuroVol")) {
+    stop("'clusters' must be a neuroim2::ClusteredNeuroVol object for mode='parcellated'.",
+         call. = FALSE)
+  }
+
+  if (is.null(mask)) {
+    # Derive mask: all voxels belonging to a non-zero cluster
+    mask <- neuroim2::LogicalNeuroVol(clusters > 0, neuroim2::space(clusters))
+  }
+
+  if (!inherits(mask, "LogicalNeuroVol")) {
+    stop("'mask' must be a neuroim2::LogicalNeuroVol object.", call. = FALSE)
+  }
+
+  # Parcel IDs and count
+  cluster_ids <- sort(unique(as.integer(clusters[clusters > 0])))
+  K <- length(cluster_ids)
+
+  if (K == 0L) {
+    stop("No parcels found in 'clusters'. Check that the ClusteredNeuroVol is valid.",
+         call. = FALSE)
+  }
+
+  list(
+    mask = mask,
+    encoding = NULL,
+    template_loadings = NULL,
+    cluster_ids = cluster_ids,
+    K = K
+  )
+}
+
+
+# Phase 5 (latent): validate mask, derive template loadings / encoding / K
+.compress_bids_study_resolve_latent <- function(mask, template, encoding, n_components) {
+  if (is.null(mask)) {
+    stop("'mask' is required for mode='latent' (no clusters to derive mask from).",
+         call. = FALSE)
+  }
+  if (!inherits(mask, "LogicalNeuroVol")) {
+    stop("'mask' must be a neuroim2::LogicalNeuroVol object.", call. = FALSE)
+  }
+
+  if (!is.null(template)) {
+    # Template mode: shared loadings, per-scan coefficients only
+    if (!inherits(template, "parcel_basis_template") &&
+          !inherits(template, "HierarchicalBasisTemplate") &&
+          !is.list(template)) {
+      stop("'template' must be a fmrilatent template object (parcel_basis_template or HierarchicalBasisTemplate).",
+           call. = FALSE)
+    }
+    # Extract template loadings
+    template_loadings <- tryCatch(
+      as.matrix(fmrilatent::template_loadings(template)),
+      error = function(e) {
+        stop(sprintf("Failed to extract loadings from template: %s", e$message),
+             call. = FALSE)
+      }
+    )
+    K <- ncol(template_loadings)
+    if (is.null(encoding)) {
+      # Template provides the spatial basis; no explicit encoding needed
+      encoding <- NULL
+    }
+  } else {
+    template_loadings <- NULL
+    if (is.null(encoding)) {
+      if (is.null(n_components)) {
+        stop("For mode='latent', either 'encoding', 'n_components', or 'template' must be provided.",
+             call. = FALSE)
+      }
+      encoding <- fmrilatent::spec_space_pca(k = as.integer(n_components))
+    }
+    # K will be determined after encoding the first scan; set a placeholder
+    K <- NULL
+  }
+
+  list(
+    mask = mask,
+    encoding = encoding,
+    template_loadings = template_loadings,
+    cluster_ids = NULL,
+    K = K
+  )
+}
+
+
+# Phase 12: stream scans to /scans/ one at a time
+#
+# Returns a list with the (possibly updated) K, the per-scan accumulator
+# vectors, and n_scans.
+.compress_bids_study_write_scans <- function(h5, x, scans_df, mode, mask, clusters,
+                                             cluster_ids, summary_fun, template,
+                                             template_loadings, encoding, K, TR_value,
+                                             confounds, compression, verbose) {
   h5$create_group("scans")
   scans_grp <- h5[["scans"]]
 
@@ -369,110 +500,27 @@ compress_bids_study <- function(
     dg <- sg[["data"]]
 
     if (mode == "parcellated") {
-      # -- Compute parcel averages: [T, K] matrix
-      parcel_mat <- .compute_parcel_matrix(nvec, clusters, cluster_ids, summary_fun)
-
-      chunk_t <- min(n_time, 128L)
-      chunk_k <- min(K, 256L)
-
-      dg$create_dataset(
-        "summary_data",
-        robj       = parcel_mat,
-        chunk_dims = c(chunk_t, chunk_k),
-        gzip_level = compression
+      .compress_bids_study_scan_parcellated(
+        dg, nvec, clusters, cluster_ids, summary_fun, n_time, K, compression
       )
-
-      rm(parcel_mat)
     } else {
-      # latent mode
-      mask_indices <- which(as.logical(mask))
-      mat <- neuroim2::series(nvec, mask_indices)  # [T, V]
-
-      if (!is.null(template_loadings)) {
-        # -- Template mode: project onto the shared template and honor the
-        # template's own offset semantics for round-trip reconstruction.
-        tpl_proj <- .project_template_with_offset(template, mat, template_loadings)
-        basis_mat    <- tpl_proj$basis
-        loadings_mat <- NULL
-        offset_vec   <- tpl_proj$offset
-        rm(tpl_proj)
-      } else {
-        # -- Independent encoding mode
-        lvec <- fmrilatent::encode(mat, encoding, mask = mask)
-        basis_mat    <- as.matrix(fmrilatent::basis(lvec))     # [T, K]
-        loadings_mat <- as.matrix(fmrilatent::loadings(lvec))  # [V, K]
-        offset_vec   <- fmrilatent::offset(lvec)               # [V] or numeric(0)
-      }
-
-      # Determine K from first scan
-      if (is.null(K)) {
-        K <- ncol(basis_mat)
-      }
-
-      chunk_t <- min(n_time, 128L)
-      chunk_k <- min(K, 256L)
-
-      dg$create_dataset(
-        "basis",
-        robj       = basis_mat,
-        chunk_dims = c(chunk_t, chunk_k),
-        gzip_level = compression
+      K <- .compress_bids_study_scan_latent(
+        dg, nvec, mask, template, template_loadings, encoding, n_time, K, compression
       )
-
-      # Per-scan loadings only in non-template mode
-      if (!is.null(loadings_mat)) {
-        chunk_v <- min(nrow(loadings_mat), 4096L)
-        dg$create_dataset(
-          "loadings",
-          robj       = loadings_mat,
-          chunk_dims = c(chunk_v, chunk_k),
-          gzip_level = compression
-        )
-      }
-      if (length(offset_vec) > 0L) {
-        dg$create_dataset(
-          "offset",
-          robj       = offset_vec,
-          chunk_dims = min(length(offset_vec), 4096L),
-          gzip_level = compression
-        )
-      }
-      hdf5r::h5attr(dg, "k") <- ncol(basis_mat)
-
-      rm(mat, basis_mat)
-      if (!is.null(loadings_mat)) rm(loadings_mat)
-      rm(offset_vec)
-      if (exists("lvec", inherits = FALSE)) rm(lvec)
     }
 
     n_features_vec[[i]] <- K
 
     # -- Read and write events
-    events_df <- tryCatch(
-      .read_scan_events(x, scan_row),
-      error = function(e) {
-        if (verbose) message("    (no events: ", e$message, ")")
-        NULL
-      }
+    has_events_vec[[i]] <- .compress_bids_study_scan_events(
+      sg, x, scan_row, compression, verbose
     )
-    if (!is.null(events_df) && nrow(events_df) > 0L) {
-      h5_write_events(sg, events_df, compression = compression)
-      has_events_vec[[i]] <- TRUE
-    }
 
     # -- Read and write confounds
     if (!is.null(confounds)) {
-      confounds_df <- tryCatch(
-        .read_scan_confounds(x, scan_row, confounds),
-        error = function(e) {
-          if (verbose) message("    (no confounds: ", e$message, ")")
-          NULL
-        }
+      has_confounds_vec[[i]] <- .compress_bids_study_scan_confounds(
+        sg, x, scan_row, confounds, compression, verbose
       )
-      if (!is.null(confounds_df) && nrow(confounds_df) > 0L) {
-        h5_write_confounds(sg, confounds_df, compression = compression)
-        has_confounds_vec[[i]] <- TRUE
-      }
     }
 
     # -- Write all-zeros censor (default: no timepoints censored)
@@ -480,94 +528,240 @@ compress_bids_study <- function(
     h5_write_censor(sg, censor_vec, compression = compression)
 
     # -- Write scan metadata
-    has_session <- "session" %in% names(scan_row) && !is.na(scan_row$session) &&
-      nchar(as.character(scan_row$session)) > 0L
-    meta <- list(
-      subject = as.character(scan_row$subid),
-      task    = as.character(scan_row$task),
-      run     = as.character(scan_row$run),
-      tr      = TR_value
-    )
-    if (has_session) {
-      meta$session <- as.character(scan_row$session)
-    }
-    h5_write_scan_metadata(sg, meta)
+    .compress_bids_study_scan_metadata(sg, scan_row, TR_value)
 
     # -- Release NIfTI from memory
     rm(nvec)
     gc(verbose = FALSE)
   }
 
-  # ---------------------------------------------------------------
-  # 13. Write /latent_meta/ (latent mode only)
-  # ---------------------------------------------------------------
-  if (mode == "latent") {
-    if (is.null(K)) {
-      stop("No scans were processed; cannot determine K for latent_meta.", call. = FALSE)
-    }
-    if (verbose) message("Writing /latent_meta/ ...")
-    h5$create_group("latent_meta")
-    lm_grp <- h5[["latent_meta"]]
+  list(
+    K = K,
+    n_time_vec = n_time_vec,
+    n_features_vec = n_features_vec,
+    has_events_vec = has_events_vec,
+    has_confounds_vec = has_confounds_vec,
+    n_scans = n_scans
+  )
+}
 
-    # Template takes priority: when template is used, encoding is irrelevant
-    # (data is projected onto template, not independently encoded)
-    encoding_family <- if (!is.null(template_loadings)) {
-      "shared_template"
-    } else if (!is.null(encoding)) {
-      class(encoding)[[1]]
-    } else {
-      "unknown"
-    }
-    encoding_params <- if (!is.null(template_loadings)) {
-      "{}"
-    } else if (!is.null(encoding)) {
-      tryCatch(
-        jsonlite::toJSON(as.list(encoding), auto_unbox = TRUE),
-        error = function(e) "{}"
-      )
-    } else {
-      "{}"
-    }
 
-    lm_grp$create_dataset("encoding_family",  robj = encoding_family)
-    lm_grp$create_dataset("encoding_params",  robj = as.character(encoding_params))
-    lm_grp$create_dataset("n_components",     robj = as.integer(K))
+# Phase 12 (parcellated): compute and write the [T, K] summary matrix
+.compress_bids_study_scan_parcellated <- function(dg, nvec, clusters,
+                                                  cluster_ids, summary_fun,
+                                                  n_time, K, compression) {
+  # -- Compute parcel averages: [T, K] matrix
+  parcel_mat <- .compute_parcel_matrix(nvec, clusters, cluster_ids, summary_fun)
 
-    # Write shared template if provided
-    has_template <- !is.null(template_loadings)
-    lm_grp$create_dataset("has_shared_template", robj = has_template)
+  chunk_t <- min(n_time, 128L)
+  chunk_k <- min(K, 256L)
 
-    if (has_template) {
-      if (verbose) message("Writing /latent_meta/template/ ...")
-      lm_grp$create_group("template")
-      tpl_grp <- lm_grp[["template"]]
+  dg$create_dataset(
+    "summary_data",
+    robj       = parcel_mat,
+    chunk_dims = c(chunk_t, chunk_k),
+    gzip_level = compression
+  )
 
-      chunk_v <- min(nrow(template_loadings), 4096L)
-      chunk_k <- min(ncol(template_loadings), 256L)
-      tpl_grp$create_dataset(
-        "loadings",
-        robj       = template_loadings,
-        chunk_dims = c(chunk_v, chunk_k),
-        gzip_level = compression
-      )
+  rm(parcel_mat)
+  invisible(NULL)
+}
 
-      # Store template metadata
-      tpl_meta <- tryCatch(
-        as.list(fmrilatent::template_meta(template)),
-        error = function(e) list()
-      )
-      tpl_meta_json <- tryCatch(
-        jsonlite::toJSON(tpl_meta, auto_unbox = TRUE),
-        error = function(e) "{}"
-      )
-      tpl_grp$create_dataset("meta", robj = as.character(tpl_meta_json))
-    }
+
+# Phase 12 (latent): encode (or project) and write basis/loadings/offset
+#
+# Returns the (possibly newly determined) value of K.
+.compress_bids_study_scan_latent <- function(dg, nvec, mask, template,
+                                             template_loadings, encoding,
+                                             n_time, K, compression) {
+  mask_indices <- which(as.logical(mask))
+  mat <- neuroim2::series(nvec, mask_indices)  # [T, V]
+
+  if (!is.null(template_loadings)) {
+    # -- Template mode: project onto the shared template and honor the
+    # template's own offset semantics for round-trip reconstruction.
+    tpl_proj <- .project_template_with_offset(template, mat, template_loadings)
+    basis_mat    <- tpl_proj$basis
+    loadings_mat <- NULL
+    offset_vec   <- tpl_proj$offset
+    rm(tpl_proj)
+  } else {
+    # -- Independent encoding mode
+    lvec <- fmrilatent::encode(mat, encoding, mask = mask)
+    basis_mat    <- as.matrix(fmrilatent::basis(lvec))     # [T, K]
+    loadings_mat <- as.matrix(fmrilatent::loadings(lvec))  # [V, K]
+    offset_vec   <- fmrilatent::offset(lvec)               # [V] or numeric(0)
   }
 
-  # ---------------------------------------------------------------
-  # 14. Write /scan_index/
-  # ---------------------------------------------------------------
-  if (verbose) message("Writing /scan_index/ ...")
+  # Determine K from first scan
+  if (is.null(K)) {
+    K <- ncol(basis_mat)
+  }
+
+  chunk_t <- min(n_time, 128L)
+  chunk_k <- min(K, 256L)
+
+  dg$create_dataset(
+    "basis",
+    robj       = basis_mat,
+    chunk_dims = c(chunk_t, chunk_k),
+    gzip_level = compression
+  )
+
+  # Per-scan loadings only in non-template mode
+  if (!is.null(loadings_mat)) {
+    chunk_v <- min(nrow(loadings_mat), 4096L)
+    dg$create_dataset(
+      "loadings",
+      robj       = loadings_mat,
+      chunk_dims = c(chunk_v, chunk_k),
+      gzip_level = compression
+    )
+  }
+  if (length(offset_vec) > 0L) {
+    dg$create_dataset(
+      "offset",
+      robj       = offset_vec,
+      chunk_dims = min(length(offset_vec), 4096L),
+      gzip_level = compression
+    )
+  }
+  hdf5r::h5attr(dg, "k") <- ncol(basis_mat)
+
+  rm(mat, basis_mat)
+  if (!is.null(loadings_mat)) rm(loadings_mat)
+  rm(offset_vec)
+  if (exists("lvec", inherits = FALSE)) rm(lvec)
+
+  K
+}
+
+
+# Phase 12: read and write events for one scan; returns has_events flag
+.compress_bids_study_scan_events <- function(sg, x, scan_row, compression, verbose) {
+  events_df <- tryCatch(
+    .read_scan_events(x, scan_row),
+    error = function(e) {
+      if (verbose) message("    (no events: ", e$message, ")")
+      NULL
+    }
+  )
+  if (!is.null(events_df) && nrow(events_df) > 0L) {
+    h5_write_events(sg, events_df, compression = compression)
+    return(TRUE)
+  }
+  FALSE
+}
+
+
+# Phase 12: read and write confounds for one scan; returns has_confounds flag
+.compress_bids_study_scan_confounds <- function(sg, x, scan_row, confounds,
+                                                compression, verbose) {
+  confounds_df <- tryCatch(
+    .read_scan_confounds(x, scan_row, confounds),
+    error = function(e) {
+      if (verbose) message("    (no confounds: ", e$message, ")")
+      NULL
+    }
+  )
+  if (!is.null(confounds_df) && nrow(confounds_df) > 0L) {
+    h5_write_confounds(sg, confounds_df, compression = compression)
+    return(TRUE)
+  }
+  FALSE
+}
+
+
+# Phase 12: build and write per-scan metadata
+.compress_bids_study_scan_metadata <- function(sg, scan_row, TR_value) {
+  has_session <- "session" %in% names(scan_row) && !is.na(scan_row$session) &&
+    nchar(as.character(scan_row$session)) > 0L
+  meta <- list(
+    subject = as.character(scan_row$subid),
+    task    = as.character(scan_row$task),
+    run     = as.character(scan_row$run),
+    tr      = TR_value
+  )
+  if (has_session) {
+    meta$session <- as.character(scan_row$session)
+  }
+  h5_write_scan_metadata(sg, meta)
+  invisible(NULL)
+}
+
+
+# Phase 13: write /latent_meta/ (latent mode only)
+.compress_bids_study_write_latent_meta <- function(h5, K, encoding, template,
+                                                   template_loadings, compression, verbose) {
+  if (is.null(K)) {
+    stop("No scans were processed; cannot determine K for latent_meta.", call. = FALSE)
+  }
+  if (verbose) message("Writing /latent_meta/ ...")
+  h5$create_group("latent_meta")
+  lm_grp <- h5[["latent_meta"]]
+
+  # Template takes priority: when template is used, encoding is irrelevant
+  # (data is projected onto template, not independently encoded)
+  encoding_family <- if (!is.null(template_loadings)) {
+    "shared_template"
+  } else if (!is.null(encoding)) {
+    class(encoding)[[1]]
+  } else {
+    "unknown"
+  }
+  encoding_params <- if (!is.null(template_loadings)) {
+    "{}"
+  } else if (!is.null(encoding)) {
+    tryCatch(
+      jsonlite::toJSON(as.list(encoding), auto_unbox = TRUE),
+      error = function(e) "{}"
+    )
+  } else {
+    "{}"
+  }
+
+  lm_grp$create_dataset("encoding_family",  robj = encoding_family)
+  lm_grp$create_dataset("encoding_params",  robj = as.character(encoding_params))
+  lm_grp$create_dataset("n_components",     robj = as.integer(K))
+
+  # Write shared template if provided
+  has_template <- !is.null(template_loadings)
+  lm_grp$create_dataset("has_shared_template", robj = has_template)
+
+  if (has_template) {
+    if (verbose) message("Writing /latent_meta/template/ ...")
+    lm_grp$create_group("template")
+    tpl_grp <- lm_grp[["template"]]
+
+    chunk_v <- min(nrow(template_loadings), 4096L)
+    chunk_k <- min(ncol(template_loadings), 256L)
+    tpl_grp$create_dataset(
+      "loadings",
+      robj       = template_loadings,
+      chunk_dims = c(chunk_v, chunk_k),
+      gzip_level = compression
+    )
+
+    # Store template metadata
+    tpl_meta <- tryCatch(
+      as.list(fmrilatent::template_meta(template)),
+      error = function(e) list()
+    )
+    tpl_meta_json <- tryCatch(
+      jsonlite::toJSON(tpl_meta, auto_unbox = TRUE),
+      error = function(e) "{}"
+    )
+    tpl_grp$create_dataset("meta", robj = as.character(tpl_meta_json))
+  }
+
+  invisible(NULL)
+}
+
+
+# Phase 14: write the /scan_index/ lookup table
+.compress_bids_study_write_scan_index <- function(h5, scans_df, n_time_vec, n_features_vec,
+                                                  has_events_vec, has_confounds_vec,
+                                                  n_scans, compression) {
   time_offset <- c(0L, cumsum(n_time_vec[-n_scans]))
 
   h5$create_group("scan_index")
@@ -592,21 +786,7 @@ compress_bids_study <- function(
     si$create_dataset("session", robj = rep("", n_scans), gzip_level = compression)
   }
 
-  # ---------------------------------------------------------------
-  # 14. Close file cleanly
-  # ---------------------------------------------------------------
-  h5$close_all()
-
-  if (verbose) message("Done. Archive written to: ", file)
-
-  # ---------------------------------------------------------------
-  # 15. Return reader
-  # ---------------------------------------------------------------
-  # TODO: replace with bids_h5_dataset(file) once Task #3 is complete
-  if (exists("bids_h5_dataset", mode = "function")) {
-    return(bids_h5_dataset(file))
-  }
-  invisible(file)
+  invisible(NULL)
 }
 
 
@@ -691,69 +871,79 @@ compress_bids_study <- function(
 #' Project data onto a shared latent template and recover any scan offset
 #' @keywords internal
 .project_template_with_offset <- function(template, data, template_loadings) {
-  normalize_projection <- function(proj, n_time, n_components) {
-    if (is.list(proj)) {
-      coeff <- proj$coefficients
-      offset <- proj$offset
-    } else {
-      coeff <- proj
-      offset <- numeric(0)
-    }
-
-    if (is.null(coeff)) {
-      stop("template_project() returned no coefficients.", call. = FALSE)
-    }
-
-    basis_mat <- as.matrix(coeff)
-    if (!is.matrix(basis_mat) || typeof(basis_mat) == "list") {
-      stop("template_project() did not return a numeric coefficient matrix.", call. = FALSE)
-    }
-    if (nrow(basis_mat) != n_time || ncol(basis_mat) != n_components) {
-      stop(
-        sprintf(
-          "template_project() returned [%d, %d]; expected [%d, %d].",
-          nrow(basis_mat), ncol(basis_mat), n_time, n_components
-        ),
-        call. = FALSE
-      )
-    }
-
-    offset_vec <- if (is.null(offset)) numeric(0) else as.numeric(offset)
-    list(basis = basis_mat, offset = offset_vec)
-  }
-
   tryCatch(
     {
       proj <- fmrilatent::template_project(template, data)
-      normalize_projection(proj, nrow(data), ncol(template_loadings))
+      .project_template_with_offset_normalize(
+        proj, nrow(data), ncol(template_loadings)
+      )
     },
     error = function(e) {
-      template_center <- is.list(template) && isTRUE(template$center)
-      proj_data <- data
-      offset_vec <- numeric(0)
-
-      if (template_center) {
-        offset_vec <- colMeans(data)
-        proj_data <- sweep(data, 2L, offset_vec, `-`)
-      }
-
-      gram_factor <- NULL
-      if (isS4(template) && "gram_factor" %in% methods::slotNames(template)) {
-        gram_factor <- methods::slot(template, "gram_factor")
-      } else if (is.list(template) && !is.null(template$gram_factor)) {
-        gram_factor <- template$gram_factor
-      }
-
-      basis_mat <- if (!is.null(gram_factor)) {
-        proj_scores <- proj_data %*% template_loadings
-        as.matrix(t(Matrix::solve(gram_factor, Matrix::t(proj_scores))))
-      } else {
-        as.matrix(proj_data %*% template_loadings %*% solve(crossprod(template_loadings)))
-      }
-
-      list(basis = basis_mat, offset = offset_vec)
+      .project_template_with_offset_fallback(template, data, template_loadings)
     }
   )
+}
+
+
+# Normalize the output of fmrilatent::template_project()
+.project_template_with_offset_normalize <- function(proj, n_time, n_components) {
+  if (is.list(proj)) {
+    coeff <- proj$coefficients
+    offset <- proj$offset
+  } else {
+    coeff <- proj
+    offset <- numeric(0)
+  }
+
+  if (is.null(coeff)) {
+    stop("template_project() returned no coefficients.", call. = FALSE)
+  }
+
+  basis_mat <- as.matrix(coeff)
+  if (!is.matrix(basis_mat) || typeof(basis_mat) == "list") {
+    stop("template_project() did not return a numeric coefficient matrix.", call. = FALSE)
+  }
+  if (nrow(basis_mat) != n_time || ncol(basis_mat) != n_components) {
+    stop(
+      sprintf(
+        "template_project() returned [%d, %d]; expected [%d, %d].",
+        nrow(basis_mat), ncol(basis_mat), n_time, n_components
+      ),
+      call. = FALSE
+    )
+  }
+
+  offset_vec <- if (is.null(offset)) numeric(0) else as.numeric(offset)
+  list(basis = basis_mat, offset = offset_vec)
+}
+
+
+# Manual fallback projection when template_project() is unavailable/failed
+.project_template_with_offset_fallback <- function(template, data, template_loadings) {
+  template_center <- is.list(template) && isTRUE(template$center)
+  proj_data <- data
+  offset_vec <- numeric(0)
+
+  if (template_center) {
+    offset_vec <- colMeans(data)
+    proj_data <- sweep(data, 2L, offset_vec, `-`)
+  }
+
+  gram_factor <- NULL
+  if (isS4(template) && "gram_factor" %in% methods::slotNames(template)) {
+    gram_factor <- methods::slot(template, "gram_factor")
+  } else if (is.list(template) && !is.null(template$gram_factor)) {
+    gram_factor <- template$gram_factor
+  }
+
+  basis_mat <- if (!is.null(gram_factor)) {
+    proj_scores <- proj_data %*% template_loadings
+    as.matrix(t(Matrix::solve(gram_factor, Matrix::t(proj_scores))))
+  } else {
+    as.matrix(proj_data %*% template_loadings %*% solve(crossprod(template_loadings)))
+  }
+
+  list(basis = basis_mat, offset = offset_vec)
 }
 
 
@@ -841,34 +1031,59 @@ compress_bids_study <- function(
   }
 
   # Participants sub-group — filter to subjects actually included in scans_df
+  .write_bids_group_participants(bg, bids_proj, scans_df, compression)
+
+  invisible(NULL)
+}
+
+
+# Write the /bids/participants/ sub-group
+#
+# Filters the participants table to subjects present in scans_df and writes
+# each column as a dataset.
+.write_bids_group_participants <- function(bg, bids_proj, scans_df, compression) {
   parts <- tryCatch(bidser::participants(bids_proj), error = function(e) NULL)
   if (!is.null(parts) && is.data.frame(parts) && nrow(parts) > 0L) {
-    # Identify the participant ID column and filter to selected subjects
-    pid_col <- intersect(c("participant_id", "subid", "sub"), names(parts))
-    selected_subs <- unique(as.character(scans_df$subid))
-    if (length(pid_col) > 0L) {
-      pid_vals <- as.character(parts[[pid_col[1]]])
-      # Match with or without "sub-" prefix
-      keep <- pid_vals %in% selected_subs |
-        pid_vals %in% paste0("sub-", selected_subs) |
-        sub("^sub-", "", pid_vals) %in% selected_subs
-      parts <- parts[keep, , drop = FALSE]
-    }
+    parts <- .write_bids_group_filter_participants(parts, scans_df)
   }
   if (!is.null(parts) && is.data.frame(parts) && nrow(parts) > 0L) {
     bg$create_group("participants")
     pg <- bg[["participants"]]
-    for (col in names(parts)) {
-      col_vals <- parts[[col]]
-      if (is.factor(col_vals)) col_vals <- as.character(col_vals)
-      tryCatch(
-        pg$create_dataset(col, robj = col_vals, gzip_level = compression),
-        error = function(e) invisible(NULL)
-      )
-    }
+    .write_bids_group_participant_columns(pg, parts, compression)
   }
 
   invisible(NULL)
+}
+
+
+# Write each participants-table column as a dataset
+.write_bids_group_participant_columns <- function(pg, parts, compression) {
+  for (col in names(parts)) {
+    col_vals <- parts[[col]]
+    if (is.factor(col_vals)) col_vals <- as.character(col_vals)
+    tryCatch(
+      pg$create_dataset(col, robj = col_vals, gzip_level = compression),
+      error = function(e) invisible(NULL)
+    )
+  }
+  invisible(NULL)
+}
+
+
+# Filter a participants table to the subjects present in scans_df
+.write_bids_group_filter_participants <- function(parts, scans_df) {
+  # Identify the participant ID column and filter to selected subjects
+  pid_col <- intersect(c("participant_id", "subid", "sub"), names(parts))
+  selected_subs <- unique(as.character(scans_df$subid))
+  if (length(pid_col) > 0L) {
+    pid_vals <- as.character(parts[[pid_col[1]]])
+    # Match with or without "sub-" prefix
+    keep <- pid_vals %in% selected_subs |
+      pid_vals %in% paste0("sub-", selected_subs) |
+      sub("^sub-", "", pid_vals) %in% selected_subs
+    parts <- parts[keep, , drop = FALSE]
+  }
+  parts
 }
 
 
@@ -966,18 +1181,7 @@ compress_bids_study <- function(
 #' @keywords internal
 .read_scan_events <- function(bids_proj, scan_row) {
   # bidser::read_events expects subject + task (+ optionally session/run)
-  subid <- as.character(scan_row$subid)
-  task  <- as.character(scan_row$task)
-
-  args <- list(x = bids_proj, subid = subid, task = task)
-
-  if ("run" %in% names(scan_row) && !is.na(scan_row$run)) {
-    args$run <- as.character(scan_row$run)
-  }
-  if ("session" %in% names(scan_row) && !is.na(scan_row$session) &&
-        nchar(as.character(scan_row$session)) > 0L) {
-    args$session <- as.character(scan_row$session)
-  }
+  args <- .read_scan_events_build_args(bids_proj, scan_row)
 
   result <- tryCatch(
     do.call(bidser::read_events, args),
@@ -989,12 +1193,36 @@ compress_bids_study <- function(
   }
 
   # bidser returns a nested tibble with a `data` list-column by default.
+  .read_scan_events_unnest(result)
+}
+
+
+# Build the argument list for bidser::read_events()
+.read_scan_events_build_args <- function(bids_proj, scan_row) {
+  args <- list(
+    x     = bids_proj,
+    subid = as.character(scan_row$subid),
+    task  = as.character(scan_row$task)
+  )
+
+  if ("run" %in% names(scan_row) && !is.na(scan_row$run)) {
+    args$run <- as.character(scan_row$run)
+  }
+  if ("session" %in% names(scan_row) && !is.na(scan_row$session) &&
+        nchar(as.character(scan_row$session)) > 0L) {
+    args$session <- as.character(scan_row$session)
+  }
+  args
+}
+
+
+# Flatten the nested tibble / list returned by bidser::read_events()
+.read_scan_events_unnest <- function(result) {
   if (is.data.frame(result) && "data" %in% names(result) && is.list(result$data)) {
     result <- .bind_data_frames(lapply(result$data, as.data.frame))
   } else if (is.list(result) && !is.data.frame(result)) {
     result <- .bind_data_frames(lapply(result, as.data.frame))
   }
-
   result
 }
 
@@ -1002,10 +1230,29 @@ compress_bids_study <- function(
 #' Read confounds for a single scan from a BIDS project
 #' @keywords internal
 .read_scan_confounds <- function(bids_proj, scan_row, confounds_spec) {
-  subid <- as.character(scan_row$subid)
-  task  <- as.character(scan_row$task)
+  args <- .read_scan_confounds_build_args(bids_proj, scan_row, confounds_spec)
 
-  args <- list(x = bids_proj, subid = subid, task = task)
+  result <- tryCatch(
+    do.call(bidser::read_confounds, args),
+    error = function(e) NULL
+  )
+
+  if (is.null(result)) {
+    return(NULL)
+  }
+
+  result <- .read_scan_confounds_normalize(result)
+  .read_scan_confounds_drop_meta(result)
+}
+
+
+# Build the argument list for bidser::read_confounds()
+.read_scan_confounds_build_args <- function(bids_proj, scan_row, confounds_spec) {
+  args <- list(
+    x     = bids_proj,
+    subid = as.character(scan_row$subid),
+    task  = as.character(scan_row$task)
+  )
 
   if ("run" %in% names(scan_row) && !is.na(scan_row$run)) {
     args$run <- as.character(scan_row$run)
@@ -1018,17 +1265,12 @@ compress_bids_study <- function(
     args$cvars <- confounds_spec
   }
   args$nest <- FALSE
+  args
+}
 
-  result <- tryCatch(
-    do.call(bidser::read_confounds, args),
-    error = function(e) NULL
-  )
 
-  if (is.null(result)) {
-    return(NULL)
-  }
-
-  # Normalize to data.frame
+# Normalize the bidser::read_confounds() result to a flat data.frame
+.read_scan_confounds_normalize <- function(result) {
   if (is.matrix(result)) {
     result <- as.data.frame(result)
   }
@@ -1037,7 +1279,12 @@ compress_bids_study <- function(
   } else if (is.list(result) && !is.data.frame(result)) {
     result <- .bind_data_frames(lapply(result, as.data.frame))
   }
+  result
+}
 
+
+# Drop BIDS metadata identifier columns from a confounds data.frame
+.read_scan_confounds_drop_meta <- function(result) {
   meta_cols <- intersect(
     c("participant_id", "subject", "subid", ".subid",
       "task", ".task", "run", ".run", "session", ".session"),
@@ -1046,6 +1293,5 @@ compress_bids_study <- function(
   if (length(meta_cols) > 0L) {
     result <- result[setdiff(names(result), meta_cols)]
   }
-
   result
 }

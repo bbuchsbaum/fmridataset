@@ -57,16 +57,42 @@ as_delarr.nifti_backend <- function(backend, ...) {
   )
 }
 
-#' @rdname as_delarr
-#' @export
-as_delarr.study_backend <- function(backend, ...) {
-  .ensure_delarr()
-
+# Ensure the study backend has cached per-subject time dims and boundaries.
+.as_delarr_study_ensure_dims <- function(backend) {
   if (is.null(backend$time_dims) || is.null(backend$subject_boundaries)) {
     dims_list <- lapply(backend$backends, backend_get_dims)
     backend$time_dims <- vapply(dims_list, function(d) as.integer(d$time), integer(1))
     backend$subject_boundaries <- c(0L, cumsum(backend$time_dims))
   }
+  backend
+}
+
+# Coerce a single index vector (rows or cols) to validated integer indices.
+# `label` selects the error wording ("Row" or "Column").
+.as_delarr_study_coerce_index <- function(idx, n, label) {
+  if (is.logical(idx)) idx <- which(idx)
+
+  if (any(idx < 1L | idx > n)) {
+    stop(label, " indices out of bounds", call. = FALSE)
+  }
+
+  if (!is.integer(idx)) {
+    if (is.double(idx) && all(idx == as.integer(idx))) {
+      idx <- as.integer(idx)
+    } else {
+      stop(label, " indices must be integer valued", call. = FALSE)
+    }
+  }
+
+  idx
+}
+
+#' @rdname as_delarr
+#' @export
+as_delarr.study_backend <- function(backend, ...) {
+  .ensure_delarr()
+
+  backend <- .as_delarr_study_ensure_dims(backend)
 
   n_time <- sum(backend$time_dims)
   mask <- backend_get_mask(backend)
@@ -90,21 +116,8 @@ as_delarr.study_backend <- function(backend, ...) {
       return(matrix(numeric(), nrow = length(rows), ncol = length(cols)))
     }
 
-    if (!is.integer(rows)) {
-      if (is.double(rows) && all(rows == as.integer(rows))) {
-        rows <- as.integer(rows)
-      } else {
-        stop("Row indices must be integer valued", call. = FALSE)
-      }
-    }
-
-    if (!is.integer(cols)) {
-      if (is.double(cols) && all(cols == as.integer(cols))) {
-        cols <- as.integer(cols)
-      } else {
-        stop("Column indices must be integer valued", call. = FALSE)
-      }
-    }
+    rows <- .as_delarr_study_coerce_index(rows, n_time, "Row")
+    cols <- .as_delarr_study_coerce_index(cols, n_vox, "Column")
 
     .collect_study_backend_block(
       backends = backend$backends,

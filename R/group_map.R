@@ -38,18 +38,7 @@ group_map <- function(gd, .f, ..., out = c("list", "bind_rows"),
       error = function(e) NA_character_
     )
 
-    value <- tryCatch(
-      .f(row, ...),
-      error = function(e) {
-        if (on_error == "stop") {
-          stop(e)
-        }
-        if (on_error == "warn") {
-          warning("group_map(): ", conditionMessage(e), call. = FALSE)
-        }
-        skip_sentinel
-      }
-    )
+    value <- .group_map_apply(.f, row, list(...), on_error = on_error, skip_sentinel = skip_sentinel)
 
     if (identical(value, skip_sentinel)) {
       next
@@ -71,6 +60,30 @@ group_map <- function(gd, .f, ..., out = c("list", "bind_rows"),
     return(results)
   }
 
+  .group_map_bind_rows(results)
+}
+
+# Invoke `.f` on a subject row, applying the configured error policy.
+# `dots` carries the caller's `...` as a list so user-supplied argument names
+# (e.g. one literally named `skip_sentinel`) are forwarded to `.f` rather than
+# colliding with this helper's own formals.
+.group_map_apply <- function(.f, row, dots, on_error, skip_sentinel) {
+  tryCatch(
+    do.call(.f, c(list(row), dots)),
+    error = function(e) {
+      if (on_error == "stop") {
+        stop(e)
+      }
+      if (on_error == "warn") {
+        warning("group_map(): ", conditionMessage(e), call. = FALSE)
+      }
+      skip_sentinel
+    }
+  )
+}
+
+# Collect accumulated results into a bound table for `out = "bind_rows"`.
+.group_map_bind_rows <- function(results) {
   if (!length(results)) {
     if (isTRUE(requireNamespace("tibble", quietly = TRUE))) {
       return(tibble::tibble())

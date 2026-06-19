@@ -160,34 +160,47 @@ sample_subjects <- function(gd, n, replace = FALSE, strata = NULL) {
       strata_values <- strata
     }
     split_idx <- split(seq_len(total), strata_values, drop = TRUE)
-    strata_keys <- names(split_idx)
-    if (is.null(strata_keys)) {
-      strata_keys <- vapply(split_idx, function(idx) {
-        val <- strata_values[idx][1]
-        if (length(val) == 0L || is.na(val)) "NA" else as.character(val)
-      }, character(1))
-    } else {
-      empty <- is.na(strata_keys) | strata_keys == ""
-      if (any(empty)) {
-        strata_keys[empty] <- "NA"
-      }
-    }
-    idx <- integer(0)
-    for (i in seq_along(split_idx)) {
-      key <- strata_keys[i]
-      group_idx <- split_idx[[i]]
-      size <- if (length(n) == 1L) n else n[[key]]
-      if (is.null(size)) {
-        stop("Missing sample size for stratum `", key, "`.", call. = FALSE)
-      }
-      size <- as.integer(size)
-      if (!replace && size > length(group_idx)) {
-        stop("Cannot sample more subjects than available in stratum `", key, "` without replacement.", call. = FALSE)
-      }
-      idx <- c(idx, sample(group_idx, size = size, replace = replace))
-    }
+    strata_keys <- .sample_subjects_strata_keys(split_idx, strata_values)
+    idx <- .sample_subjects_stratified_idx(split_idx, strata_keys, n, replace)
   }
 
   subjects(gd) <- df[idx, , drop = FALSE]
   gd
+}
+
+# Resolve stable character keys for each stratum produced by split().
+.sample_subjects_strata_keys <- function(split_idx, strata_values) {
+  strata_keys <- names(split_idx)
+  if (is.null(strata_keys)) {
+    strata_keys <- vapply(split_idx, function(idx) {
+      val <- strata_values[idx][1]
+      if (length(val) == 0L || is.na(val)) "NA" else as.character(val)
+    }, character(1))
+  } else {
+    empty <- is.na(strata_keys) | strata_keys == ""
+    if (any(empty)) {
+      strata_keys[empty] <- "NA"
+    }
+  }
+  strata_keys
+}
+
+# Draw indices from each stratum in order, consuming RNG identically to the
+# original in-line loop.
+.sample_subjects_stratified_idx <- function(split_idx, strata_keys, n, replace) {
+  idx <- integer(0)
+  for (i in seq_along(split_idx)) {
+    key <- strata_keys[i]
+    group_idx <- split_idx[[i]]
+    size <- if (length(n) == 1L) n else n[[key]]
+    if (is.null(size)) {
+      stop("Missing sample size for stratum `", key, "`.", call. = FALSE)
+    }
+    size <- as.integer(size)
+    if (!replace && size > length(group_idx)) {
+      stop("Cannot sample more subjects than available in stratum `", key, "` without replacement.", call. = FALSE)
+    }
+    idx <- c(idx, sample(group_idx, size = size, replace = replace))
+  }
+  idx
 }

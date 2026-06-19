@@ -59,50 +59,15 @@ register_study_backend_seed_methods <- function() {
   })
 
   methods::setMethod(extract_array_generic, methods::signature(x = "StudyBackendSeed"), function(x, index) {
-    if (!is.list(index) || length(index) != 2) {
-      stop("index must be a list of length 2")
-    }
-
-    row_idx <- index[[1]]
-    col_idx <- index[[2]]
-
-    if (is.null(row_idx)) row_idx <- seq_len(x@dims[1])
-    if (is.null(col_idx)) col_idx <- seq_len(x@dims[2])
-
-    if (is.logical(row_idx)) row_idx <- which(row_idx)
-    if (is.logical(col_idx)) col_idx <- which(col_idx)
-
-    if (any(row_idx < 1L | row_idx > x@dims[1])) {
-      stop("Row indices out of bounds")
-    }
-    if (any(col_idx < 1L | col_idx > x@dims[2])) {
-      stop("Column indices out of bounds")
-    }
-
-    if (!length(row_idx) || !length(col_idx)) {
-      return(matrix(numeric(), nrow = length(row_idx), ncol = length(col_idx)))
-    }
-
-    if (!is.integer(row_idx)) {
-      if (is.double(row_idx) && all(row_idx == as.integer(row_idx))) {
-        row_idx <- as.integer(row_idx)
-      } else {
-        stop("Row indices must be integer valued")
-      }
-    }
-
-    if (!is.integer(col_idx)) {
-      if (is.double(col_idx) && all(col_idx == as.integer(col_idx))) {
-        col_idx <- as.integer(col_idx)
-      } else {
-        stop("Column indices must be integer valued")
-      }
+    norm <- .study_backend_seed_normalize_index(index, x@dims)
+    if (!is.null(norm$empty)) {
+      return(norm$empty)
     }
 
     .collect_study_backend_block(
       backends = x@backends,
-      rows = row_idx,
-      cols = col_idx,
+      rows = norm$row_idx,
+      cols = norm$col_idx,
       subject_boundaries = x@subject_boundaries,
       n_time = x@dims[1],
       n_vox = x@dims[2]
@@ -112,6 +77,57 @@ register_study_backend_seed_methods <- function() {
 
   .study_backend_seed_env$registered <- TRUE
   invisible(NULL)
+}
+
+# Normalize/validate an extract_array index for the StudyBackendSeed method.
+# Returns a list with row_idx/col_idx (integer) and, when the requested block is
+# empty, an `empty` matrix that the caller returns directly. Mirrors the exact
+# branching/error messages of the original inline method body.
+.study_backend_seed_normalize_index <- function(index, dims) {
+  if (!is.list(index) || length(index) != 2) {
+    stop("index must be a list of length 2")
+  }
+
+  row_idx <- index[[1]]
+  col_idx <- index[[2]]
+
+  if (is.null(row_idx)) row_idx <- seq_len(dims[1])
+  if (is.null(col_idx)) col_idx <- seq_len(dims[2])
+
+  if (is.logical(row_idx)) row_idx <- which(row_idx)
+  if (is.logical(col_idx)) col_idx <- which(col_idx)
+
+  if (any(row_idx < 1L | row_idx > dims[1])) {
+    stop("Row indices out of bounds")
+  }
+  if (any(col_idx < 1L | col_idx > dims[2])) {
+    stop("Column indices out of bounds")
+  }
+
+  if (!length(row_idx) || !length(col_idx)) {
+    return(list(
+      empty = matrix(numeric(), nrow = length(row_idx), ncol = length(col_idx))
+    ))
+  }
+
+  row_idx <- .study_backend_seed_as_int_index(row_idx, "Row")
+  col_idx <- .study_backend_seed_as_int_index(col_idx, "Column")
+
+  list(empty = NULL, row_idx = row_idx, col_idx = col_idx)
+}
+
+# Coerce a (non-empty) axis index to integer, matching the original validation:
+# integer-valued doubles are accepted, anything else errors with "<axis> indices
+# must be integer valued".
+.study_backend_seed_as_int_index <- function(idx, axis) {
+  if (!is.integer(idx)) {
+    if (is.double(idx) && all(idx == as.integer(idx))) {
+      idx <- as.integer(idx)
+    } else {
+      stop(sprintf("%s indices must be integer valued", axis))
+    }
+  }
+  idx
 }
 
 #' Create a Study Backend Seed
