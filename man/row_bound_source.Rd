@@ -10,7 +10,8 @@ row_bound_source(sources)
 \item{sources}{A non-empty list of two-dimensional array sources.}
 }
 \value{
-A serializable row-bound source.
+A serializable \code{row_sharded_source}. This compatibility constructor
+assigns deterministic shard IDs.
 }
 \description{
 Bind compatible sources along observations

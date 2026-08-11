@@ -549,38 +549,264 @@ source_close.fault_source <- function(x, ...) {
   source_close(x$source, ...)
 }
 
-#' Bind compatible sources along observations
+#' Construct a manifest-backed row-sharded source
 #'
-#' @param sources A non-empty list of two-dimensional array sources.
-#' @return A serializable row-bound source.
+#' `row_sharded_source()` presents compatible child sources as one logical
+#' observation-by-feature array. Stable shard IDs and explicit boundaries make
+#' global-to-local row routing inspectable and serializable. Reads are grouped
+#' by touched shard, so an arbitrary ordered selector is issued at most once to
+#' each selected child.
+#'
+#' @param sources A non-empty list of compatible two-dimensional array sources.
+#' @param shard_ids Stable, unique shard identifiers.
+#' @param shard_data Optional scalar metadata with one row per shard. Names used
+#'   by the shard manifest are reserved.
+#' @return A serializable `row_sharded_source`.
 #' @export
-row_bound_source <- function(sources) {
-  sources <- lapply(sources, as_array_source)
-  if (!length(sources)) {
+row_sharded_source <- function(sources, shard_ids = NULL, shard_data = NULL) {
+  if (!is.list(sources) || !length(sources)) {
     .frame_abort("At least one source is required.", "fmridataset_error_alignment")
   }
+  sources <- lapply(sources, as_array_source)
+  invisible(lapply(sources, validate_array_source))
   shapes <- lapply(sources, source_shape)
+  rows <- vapply(shapes, `[[`, integer(1), 1L)
+  if (any(rows == 0L)) {
+    .frame_abort(
+      "Row-sharded sources cannot contain shards with zero observations.",
+      "fmridataset_error_alignment"
+    )
+  }
   n_feature <- vapply(shapes, `[[`, integer(1), 2L)
   if (length(unique(n_feature)) != 1L) {
-    .frame_abort("Row-bound sources must have the same feature count.", "fmridataset_error_alignment")
+    .frame_abort("Row-sharded sources must have the same feature count.", "fmridataset_error_alignment")
   }
   dtypes <- vapply(sources, source_dtype, character(1))
   if (length(unique(dtypes)) != 1L) {
-    .frame_abort("Row-bound sources must have the same dtype.", "fmridataset_error_alignment")
+    .frame_abort("Row-sharded sources must have the same dtype.", "fmridataset_error_alignment")
   }
-  rows <- vapply(shapes, `[[`, integer(1), 1L)
+  if (is.null(shard_ids)) {
+    shard_ids <- sprintf("shard-%06d", seq_along(sources))
+  }
+  if (!is.character(shard_ids) || length(shard_ids) != length(sources) ||
+    anyNA(shard_ids) || any(!nzchar(shard_ids)) || anyDuplicated(shard_ids)) {
+    .frame_abort(
+      "shard_ids must contain one unique, non-empty string per source.",
+      "fmridataset_error_alignment"
+    )
+  }
+  shard_data <- .normalize_shard_data(shard_data, length(sources))
+  total_rows <- sum(as.double(rows))
+  if (total_rows > .Machine$integer.max) {
+    .frame_abort(
+      "The logical observation axis exceeds R's integer indexing limit.",
+      "fmridataset_error_alignment"
+    )
+  }
+  boundaries <- as.integer(c(0, cumsum(rows)))
   out <- structure(
     list(
       sources = sources,
+      shard_ids = unname(shard_ids),
+      shard_data = shard_data,
       rows = rows,
-      boundaries = c(0L, cumsum(rows)),
-      shape = c(sum(rows), n_feature[1L]),
-      dtype = dtypes[1L]
+      boundaries = boundaries,
+      shape = c(as.integer(total_rows), n_feature[[1L]]),
+      dtype = dtypes[[1L]],
+      schema_version = 1L
     ),
-    class = c("row_bound_source", "array_source")
+    class = c("row_sharded_source", "row_bound_source", "array_source")
   )
   validate_array_source(out)
   out
+}
+
+.shard_manifest_reserved <- c(
+  ".shard_id", ".start", ".end", ".n_observation", ".source_fingerprint"
+)
+
+.normalize_shard_data <- function(shard_data, n_shard) {
+  if (is.null(shard_data)) {
+    return(data.frame(row.names = seq_len(n_shard)))
+  }
+  if (!is.data.frame(shard_data) || nrow(shard_data) != n_shard) {
+    .frame_abort(
+      "shard_data must be a data frame with one row per shard.",
+      "fmridataset_error_alignment"
+    )
+  }
+  if (anyDuplicated(names(shard_data)) || any(names(shard_data) %in% .shard_manifest_reserved)) {
+    .frame_abort(
+      "shard_data names must be unique and cannot use reserved manifest names.",
+      "fmridataset_error_alignment"
+    )
+  }
+  row.names(shard_data) <- seq_len(n_shard)
+  shard_data
+}
+
+#' Inspect a row-sharded source manifest
+#'
+#' @param x A `row_sharded_source`.
+#' @return A data frame describing stable IDs, logical row ranges, source
+#'   fingerprints, and user-supplied shard metadata.
+#' @export
+shard_manifest <- function(x) {
+  if (!inherits(x, "row_sharded_source")) {
+    .frame_abort("x must be a row_sharded_source.", "fmridataset_error_alignment")
+  }
+  core <- data.frame(
+    .shard_id = x$shard_ids,
+    .start = head(x$boundaries, -1L) + 1L,
+    .end = tail(x$boundaries, -1L),
+    .n_observation = x$rows,
+    .source_fingerprint = vapply(x$sources, source_fingerprint, character(1)),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  cbind(core, x$shard_data, stringsAsFactors = FALSE)
+}
+
+#' Resolve logical observation rows to shards
+#'
+#' @param x A `row_sharded_source`.
+#' @param observations Logical observation positions in requested order.
+#' @return A data frame mapping each request position to a shard and local row.
+#' @export
+locate_source_rows <- function(x, observations = NULL) {
+  if (!inherits(x, "row_sharded_source")) {
+    .frame_abort("x must be a row_sharded_source.", "fmridataset_error_alignment")
+  }
+  observations <- .normalize_source_index(observations, x$shape[[1L]])
+  shard <- if (length(observations)) {
+    findInterval(observations - 1L, x$boundaries[-length(x$boundaries)])
+  } else {
+    integer()
+  }
+  data.frame(
+    .request_position = seq_along(observations),
+    .observation = observations,
+    .shard_index = as.integer(shard),
+    .shard_id = x$shard_ids[shard],
+    .local_observation = observations - x$boundaries[shard],
+    stringsAsFactors = FALSE
+  )
+}
+
+#' Append immutable source shards
+#'
+#' @param x An existing `row_sharded_source`.
+#' @param sources New compatible child sources.
+#' @param shard_ids Stable IDs for the new shards.
+#' @param shard_data Optional metadata for the new shards. Its columns must
+#'   match existing shard metadata.
+#' @return A new `row_sharded_source`; `x` and its child descriptors are not
+#'   modified.
+#' @export
+append_source_shards <- function(x, sources, shard_ids = NULL, shard_data = NULL) {
+  if (!inherits(x, "row_sharded_source")) {
+    .frame_abort("x must be a row_sharded_source.", "fmridataset_error_alignment")
+  }
+  if (!is.list(sources) || !length(sources)) {
+    .frame_abort("At least one new source is required.", "fmridataset_error_alignment")
+  }
+  n_new <- length(sources)
+  if (is.null(shard_ids)) {
+    shard_ids <- sprintf("shard-%06d", length(x$sources) + seq_len(n_new))
+  }
+  new_data <- .normalize_shard_data(shard_data, n_new)
+  if (!identical(names(x$shard_data), names(new_data))) {
+    .frame_abort(
+      "Appended shard_data columns must match the existing manifest metadata.",
+      "fmridataset_error_alignment"
+    )
+  }
+  combined_data <- if (!ncol(x$shard_data)) {
+    data.frame(row.names = seq_len(nrow(x$shard_data) + n_new))
+  } else {
+    value <- rbind(x$shard_data, new_data)
+    row.names(value) <- seq_len(nrow(value))
+    value
+  }
+  row_sharded_source(
+    c(x$sources, sources),
+    shard_ids = c(x$shard_ids, shard_ids),
+    shard_data = combined_data
+  )
+}
+
+#' @export
+source_shape.row_sharded_source <- function(x, ...) x$shape
+#' @export
+source_dtype.row_sharded_source <- function(x, ...) x$dtype
+#' @export
+source_chunks.row_sharded_source <- function(x, ...) {
+  chunks <- lapply(x$sources, source_chunks)
+  c(
+    max(1L, min(vapply(chunks, `[[`, integer(1), 1L))),
+    max(1L, min(vapply(chunks, `[[`, integer(1), 2L)))
+  )
+}
+#' @export
+source_capabilities.row_sharded_source <- function(x, ...) {
+  setdiff(Reduce(intersect, lapply(x$sources, source_capabilities)), "native_read")
+}
+#' @export
+source_fingerprint.row_sharded_source <- function(x, ...) {
+  .canonical_digest(list(
+    type = "row_sharded_source",
+    schema_version = x$schema_version,
+    shape = x$shape,
+    dtype = x$dtype,
+    boundaries = x$boundaries,
+    shard_ids = x$shard_ids,
+    shard_data = x$shard_data,
+    sources = lapply(x$sources, source_fingerprint)
+  ))
+}
+#' @export
+source_open.row_sharded_source <- function(x, ...) {
+  structure(list(source = x), class = c("row_sharded_source_handle", "array_source_handle"))
+}
+#' @export
+source_read.row_sharded_source <- function(x, observations = NULL, features = NULL, ...) {
+  observations <- .normalize_source_index(observations, x$shape[[1L]])
+  features <- .normalize_source_index(features, x$shape[[2L]])
+  if (!length(observations) || !length(features)) {
+    return(matrix(numeric(), nrow = length(observations), ncol = length(features)))
+  }
+  location <- locate_source_rows(x, observations)
+  out <- matrix(NA_real_, nrow = length(observations), ncol = length(features))
+  for (shard in unique(location$.shard_index)) {
+    at <- which(location$.shard_index == shard)
+    out[at, ] <- source_read(
+      x$sources[[shard]],
+      observations = location$.local_observation[at],
+      features = features,
+      ...
+    )
+  }
+  out
+}
+#' @export
+source_read_native.row_sharded_source <- function(x, observations = NULL, ...) {
+  .frame_abort(
+    "Native reads require an explicit per-shard dispatch plan.",
+    "fmridataset_error_backend_io",
+    operation = "native_read"
+  )
+}
+#' @export
+source_close.row_sharded_source <- function(x, ...) invisible(TRUE)
+
+#' Bind compatible sources along observations
+#'
+#' @param sources A non-empty list of two-dimensional array sources.
+#' @return A serializable `row_sharded_source`. This compatibility constructor
+#'   assigns deterministic shard IDs.
+#' @export
+row_bound_source <- function(sources) {
+  row_sharded_source(sources)
 }
 
 #' @export

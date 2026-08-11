@@ -36,6 +36,92 @@ test_that("row-bound sources preserve row order and push down selections", {
   expect_equal(source_read(source, c(5, 2, 4), c(4, 1)), reference[c(5, 2, 4), c(4, 1)])
 })
 
+test_that("row-sharded sources expose stable manifests and exact row mappings", {
+  shards <- list(
+    memory_source(matrix(1:12, 3, 4)),
+    memory_source(matrix(21:28, 2, 4)),
+    memory_source(matrix(41:52, 3, 4))
+  )
+  source <- row_sharded_source(
+    shards,
+    shard_ids = c("sub-01_run-1", "sub-01_run-2", "sub-02_run-1"),
+    shard_data = data.frame(subject = c("sub-01", "sub-01", "sub-02"))
+  )
+
+  expect_s3_class(source, "row_sharded_source")
+  expect_invisible(validate_array_source(source))
+  expect_identical(
+    shard_manifest(source),
+    data.frame(
+      .shard_id = c("sub-01_run-1", "sub-01_run-2", "sub-02_run-1"),
+      .start = c(1L, 4L, 6L),
+      .end = c(3L, 5L, 8L),
+      .n_observation = c(3L, 2L, 3L),
+      .source_fingerprint = vapply(shards, source_fingerprint, character(1)),
+      subject = c("sub-01", "sub-01", "sub-02")
+    )
+  )
+  expect_identical(
+    locate_source_rows(source, c(8L, 1L, 6L, 1L)),
+    data.frame(
+      .request_position = 1:4,
+      .observation = c(8L, 1L, 6L, 1L),
+      .shard_index = c(3L, 1L, 3L, 1L),
+      .shard_id = c("sub-02_run-1", "sub-01_run-1", "sub-02_run-1", "sub-01_run-1"),
+      .local_observation = c(3L, 1L, 1L, 1L)
+    )
+  )
+})
+
+test_that("row-sharded reads touch only selected shards once", {
+  matrices <- list(
+    matrix(1:12, 3, 4),
+    matrix(21:28, 2, 4),
+    matrix(41:52, 3, 4)
+  )
+  children <- lapply(matrices, function(x) counting_source(memory_source(x)))
+  source <- row_sharded_source(children, shard_ids = c("a", "b", "c"))
+  observations <- c(8L, 1L, 6L, 1L)
+  features <- c(4L, 1L, 4L)
+  reference <- do.call(rbind, matrices)[observations, features, drop = FALSE]
+
+  expect_equal(source_read(source, observations, features), reference)
+  expect_identical(vapply(children, function(x) source_counts(x)$reads, numeric(1)), c(1, 0, 1))
+  expect_identical(vapply(children, function(x) source_counts(x)$values, numeric(1)), c(6, 0, 6))
+})
+
+test_that("row-sharded descriptors serialize and append immutably", {
+  a <- memory_source(matrix(1:12, 3, 4))
+  b <- memory_source(matrix(21:28, 2, 4))
+  first <- row_sharded_source(list(a), shard_ids = "a")
+  appended <- append_source_shards(first, list(b), shard_ids = "b")
+  restored <- unserialize(serialize(appended, NULL))
+
+  expect_identical(source_shape(first), c(3L, 4L))
+  expect_identical(source_shape(appended), c(5L, 4L))
+  expect_identical(shard_manifest(first)$.shard_id, "a")
+  expect_identical(shard_manifest(restored)$.shard_id, c("a", "b"))
+  expect_identical(source_fingerprint(restored), source_fingerprint(appended))
+  expect_false(contains_runtime_state(restored))
+  expect_equal(delarr::collect(as_delarr(restored)), rbind(a$data, b$data))
+})
+
+test_that("row-sharded sources reject ambiguous or incompatible manifests", {
+  a <- memory_source(matrix(1:12, 3, 4))
+  wrong_features <- memory_source(matrix(1:15, 3, 5))
+  wrong_dtype <- memory_source(matrix(1:8, 2, 4), dtype = "float32")
+  empty <- memory_source(matrix(numeric(), 0, 4))
+
+  expect_error(row_sharded_source(list(a, a), shard_ids = c("same", "same")), "unique")
+  expect_error(row_sharded_source(list(a, wrong_features)), "feature count")
+  expect_error(row_sharded_source(list(a, wrong_dtype)), "dtype")
+  expect_error(row_sharded_source(list(empty)), "zero observations")
+  expect_error(
+    row_sharded_source(list(a), shard_data = data.frame(.start = 1L)),
+    "reserved"
+  )
+})
+
 test_that("frame binding rejects shape-only spatial matches", {
   obs1 <- data.frame(.obs_id = "a")
   obs2 <- data.frame(.obs_id = "b")

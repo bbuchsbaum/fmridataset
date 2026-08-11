@@ -20,6 +20,9 @@
 * Added a serializable NIfTI source with per-file volume pushdown, packed-mask
   feature selection, stale-file detection, native-volume reads, and direct
   `volume_space` recovery.
+* Added manifest-backed `row_sharded_source()` descriptors with stable shard
+  IDs, inspectable global-to-local row routing, exact touched-shard pushdown,
+  immutable shard append, and a compatible `row_bound_source()` constructor.
 * The historical `v0.9.0` tag is preserved; development continues from the
   current main line without retagging it.
 
