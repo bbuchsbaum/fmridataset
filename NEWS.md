@@ -64,6 +64,10 @@
 * Froze the backend-neutral FDS logical manifest at version 1, including a
   named-axis array registry, source-free assay and block declarations, strict
   validation, semantic digests, physical binding, and frame reconstruction.
+* Added `surface_space` with stable full-mesh vertex and hemisphere identity,
+  packed active/medial-wall support, content-addressed topology and geometry,
+  induced sparse adjacency, surface-map reconstruction, restriction, spatial
+  compatibility, and source-free FDS persistence.
 * The historical `v0.9.0` tag is preserved; development continues from the
   current main line without retagging it.
 

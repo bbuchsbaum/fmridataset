@@ -295,3 +295,215 @@ adjacency.volume_space <- function(x, ...) {
   }
   Matrix::sparseMatrix(i = from, j = to, x = TRUE, dims = c(nrow(coords), nrow(coords)))
 }
+
+.surface_asset <- function(x, type, n_vertices) {
+  if (is.null(x)) {
+    return(list(reference = NULL, digest = .canonical_digest(NULL), data = NULL))
+  }
+  if (is.matrix(x)) {
+    data <- x
+    reference <- NULL
+    supplied_digest <- NULL
+  } else if (is.list(x)) {
+    data <- x$data %||% x[[if (type == "topology") "faces" else "coordinates"]]
+    reference <- x$reference %||% NULL
+    supplied_digest <- x$digest %||% NULL
+    if (is.null(supplied_digest) && is.null(data)) {
+      .frame_abort(paste(type, "reference requires a digest."), "fmridataset_error_space_mismatch")
+    }
+  } else {
+    .frame_abort(paste(type, "must be a matrix or asset descriptor."), "fmridataset_error_space_mismatch")
+  }
+  if (!is.null(data)) {
+    if (type == "topology") {
+      data <- as.matrix(data)
+      if (ncol(data) != 3L || anyNA(data) || any(data != as.integer(data)) ||
+          any(data < 1L | data > n_vertices) ||
+          any(apply(data, 1L, anyDuplicated) > 0L)) {
+        .frame_abort("topology must contain valid non-degenerate vertex triangles.", "fmridataset_error_space_mismatch")
+      }
+      storage.mode(data) <- "integer"
+    } else {
+      data <- as.matrix(data)
+      storage.mode(data) <- "double"
+      if (!identical(dim(data), c(n_vertices, 3L)) || any(!is.finite(data))) {
+        .frame_abort("geometry must contain one finite xyz row per vertex.", "fmridataset_error_space_mismatch")
+      }
+    }
+  }
+  computed_digest <- if (!is.null(data)) .canonical_digest(data) else NULL
+  digest <- supplied_digest %||% computed_digest
+  if (!is.null(supplied_digest) && !is.null(computed_digest) &&
+      !identical(supplied_digest, computed_digest)) {
+    .frame_abort(paste(type, "digest does not match its data."), "fmridataset_error_space_mismatch")
+  }
+  if (!is.character(digest) || length(digest) != 1L ||
+      !grepl("^[0-9a-f]{64}$", digest)) {
+    .frame_abort(paste(type, "digest must be one SHA-256 string."), "fmridataset_error_space_mismatch")
+  }
+  list(reference = reference, digest = digest, data = data)
+}
+
+#' Construct a packed cortical surface feature space
+#'
+#' @param vertex_ids Stable IDs for every vertex in the full mesh.
+#' @param hemisphere One `"left"` or `"right"` label per full-mesh vertex.
+#' @param support Active vertex positions or IDs. By default, all non-medial-wall
+#'   vertices are active.
+#' @param topology A three-column face matrix or asset descriptor with
+#'   `reference`, `digest`, and optional `data`/`faces`.
+#' @param geometry A vertex-by-three coordinate matrix or asset descriptor with
+#'   `reference`, `digest`, and optional `data`/`coordinates`.
+#' @param medial_wall Logical full-mesh medial-wall mask.
+#' @param template Optional template identity such as `"fsLR-32k"`.
+#' @param units Coordinate units.
+#' @param metadata Additional serializable metadata.
+#' @return A `surface_space`.
+#' @export
+surface_space <- function(vertex_ids, hemisphere, support = NULL,
+                          topology = NULL, geometry = NULL,
+                          medial_wall = NULL, template = NULL,
+                          units = "mm", metadata = list()) {
+  vertex_ids <- .validate_stable_ids(as.character(vertex_ids), "vertex")
+  n <- length(vertex_ids)
+  hemisphere <- as.character(hemisphere)
+  if (length(hemisphere) != n || anyNA(hemisphere) ||
+      any(!hemisphere %in% c("left", "right"))) {
+    .frame_abort("hemisphere must label every vertex as left or right.", "fmridataset_error_space_mismatch")
+  }
+  if (is.null(medial_wall)) medial_wall <- rep(FALSE, n)
+  if (!is.logical(medial_wall) || length(medial_wall) != n || anyNA(medial_wall)) {
+    .frame_abort("medial_wall must be one complete logical value per vertex.", "fmridataset_error_space_mismatch")
+  }
+  if (is.null(support)) support <- which(!medial_wall)
+  if (is.character(support)) support <- match(support, vertex_ids)
+  if (is.logical(support)) {
+    if (length(support) != n || anyNA(support)) {
+      .frame_abort("Logical surface support must span the full mesh.", "fmridataset_error_space_mismatch")
+    }
+    support <- which(support)
+  }
+  support <- as.integer(support)
+  if (anyNA(support) || any(support < 1L | support > n) || anyDuplicated(support)) {
+    .frame_abort("surface support contains invalid or duplicate vertices.", "fmridataset_error_space_mismatch")
+  }
+  if (any(medial_wall[support])) {
+    .frame_abort("surface support cannot include medial-wall vertices.", "fmridataset_error_space_mismatch")
+  }
+  structure(
+    list(
+      vertex_ids = vertex_ids,
+      hemisphere = hemisphere,
+      support = support,
+      medial_wall = medial_wall,
+      topology = .surface_asset(topology, "topology", n),
+      geometry = .surface_asset(geometry, "geometry", n),
+      template = template,
+      units = units,
+      metadata = metadata,
+      schema_version = 1L
+    ),
+    class = c("surface_space", "feature_space")
+  )
+}
+
+#' @export
+n_features.surface_space <- function(x, ...) length(x$support)
+#' @export
+feature_ids.surface_space <- function(x, ...) x$vertex_ids[x$support]
+#' @export
+native_shape.surface_space <- function(x, ...) c(vertex = length(x$vertex_ids))
+#' @export
+feature_data.surface_space <- function(x, ...) {
+  tibble::tibble(
+    .feature_id = feature_ids(x),
+    .vertex_index = x$support,
+    vertex_id = x$vertex_ids[x$support],
+    hemisphere = x$hemisphere[x$support],
+    medial_wall = x$medial_wall[x$support]
+  )
+}
+#' @export
+space_digest.surface_space <- function(x, ...) {
+  .canonical_digest(list(
+    type = "surface_space",
+    schema_version = x$schema_version,
+    vertex_ids = x$vertex_ids,
+    hemisphere = x$hemisphere,
+    support = x$support,
+    medial_wall = x$medial_wall,
+    topology_digest = x$topology$digest,
+    geometry_digest = x$geometry$digest,
+    template = x$template,
+    units = x$units
+  ))
+}
+#' @export
+restrict_space.surface_space <- function(x, index, ...) {
+  surface_space(
+    vertex_ids = x$vertex_ids,
+    hemisphere = x$hemisphere,
+    support = x$support[index],
+    topology = x$topology,
+    geometry = x$geometry,
+    medial_wall = x$medial_wall,
+    template = x$template,
+    units = x$units,
+    metadata = x$metadata
+  )
+}
+#' @export
+vectorize_space.surface_space <- function(x, spatial_object, ...) {
+  if (inherits(spatial_object, "surface_map")) {
+    if (!identical(spatial_object$vertex_ids, x$vertex_ids)) {
+      .frame_abort("Surface map vertex IDs do not match the space.", "fmridataset_error_space_mismatch")
+    }
+    values <- spatial_object$values
+  } else {
+    values <- spatial_object
+    if (!is.null(names(values))) values <- values[x$vertex_ids]
+  }
+  values <- as.numeric(values)
+  if (length(values) != length(x$vertex_ids)) {
+    .frame_abort("Surface object does not match the full mesh.", "fmridataset_error_space_mismatch")
+  }
+  values[x$support]
+}
+#' @export
+reconstruct_space.surface_space <- function(x, vector, ...) {
+  if (length(vector) != length(x$support)) {
+    .frame_abort("Vector does not match surface support.", "fmridataset_error_space_mismatch")
+  }
+  values <- rep(NA_real_, length(x$vertex_ids))
+  values[x$support] <- vector
+  structure(
+    list(
+      values = values,
+      vertex_ids = x$vertex_ids,
+      hemisphere = x$hemisphere,
+      template = x$template,
+      space_digest = space_digest(x)
+    ),
+    class = "surface_map"
+  )
+}
+#' @export
+adjacency.surface_space <- function(x, ...) {
+  faces <- x$topology$data
+  if (is.null(faces)) return(NULL)
+  edges <- rbind(faces[, c(1L, 2L), drop = FALSE],
+                 faces[, c(2L, 3L), drop = FALSE],
+                 faces[, c(3L, 1L), drop = FALSE])
+  lookup <- integer(length(x$vertex_ids))
+  lookup[x$support] <- seq_along(x$support)
+  from <- lookup[edges[, 1L]]
+  to <- lookup[edges[, 2L]]
+  keep <- from > 0L & to > 0L
+  Matrix::sparseMatrix(
+    i = c(from[keep], to[keep]),
+    j = c(to[keep], from[keep]),
+    x = TRUE,
+    dims = rep(length(x$support), 2L),
+    use.last.ij = TRUE
+  )
+}
