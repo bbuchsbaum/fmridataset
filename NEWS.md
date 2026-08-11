@@ -6,6 +6,9 @@
   `fmri_frame`, with spatially typed features and serializable array sources.
 * Recorded package ownership and compatibility policy in
   `inst/architecture/ADR-001-canonical-data-model.md`.
+* Added `write_frame()` and `open_frame()` as semantic entry points for
+  atomic, manifest-backed HDF5 persistence supplied by `fmristore`; reopened
+  assays remain reconstructible lazy sources.
 * The historical `v0.9.0` tag is preserved; development continues from the
   current main line without retagging it.
 
