@@ -39,6 +39,12 @@
   containment paths, with entity-order-stable grouping codes, crossed-relation
   exclusion, ambiguity checks, missing-ancestry propagation, and lazy-view
   invariance.
+
+* `observations(..., resolve = TRUE)` now exposes namespaced scalar annotations
+  from every entity reachable through validated key relations, while
+  `obs_blocks(..., resolve = TRUE)` provides lazy observation-aligned views of
+  entity blocks without duplicating their stored rows. `filter_obs()` resolves
+  entity annotations by default and still performs no assay reads.
 * Added serializable balanced, imagewise, and featurewise block planners with
   explicit byte ceilings, chunk-aware block shapes, stale-plan detection, and
   bounded execution over frame views.

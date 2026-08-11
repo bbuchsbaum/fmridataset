@@ -148,6 +148,8 @@ fmri_frame <- function(assays, observations, features = NULL, space = NULL,
 #' Frame accessors
 #'
 #' @param x An `fmri_frame` or `fmri_view`.
+#' @param resolve Whether to append reachable, namespaced entity annotations or
+#'   lazily lifted entity blocks.
 #' @param ... Additional method arguments.
 #' @name frame-accessors
 NULL
@@ -185,9 +187,12 @@ observation_axis.fmri_frame <- function(x, ...) x$observations
 
 #' @rdname frame-accessors
 #' @export
-observations <- function(x, ...) UseMethod("observations")
+observations <- function(x, resolve = FALSE, ...) UseMethod("observations")
 #' @export
-observations.fmri_frame <- function(x, ...) axis_data(observation_axis(x))
+observations.fmri_frame <- function(x, resolve = FALSE, ...) {
+  resolve <- .validate_resolve_flag(resolve)
+  if (resolve) .resolved_observation_data(x) else axis_data(observation_axis(x))
+}
 
 #' @export
 entities.fmri_frame <- function(x, ...) x$entities
@@ -218,9 +223,12 @@ feature_ids.fmri_frame <- function(x, ...) axis_ids(feature_axis(x))
 
 #' @rdname frame-accessors
 #' @export
-obs_blocks <- function(x, ...) UseMethod("obs_blocks")
+obs_blocks <- function(x, resolve = FALSE, ...) UseMethod("obs_blocks")
 #' @export
-obs_blocks.fmri_frame <- function(x, ...) axis_blocks(observation_axis(x))
+obs_blocks.fmri_frame <- function(x, resolve = FALSE, ...) {
+  resolve <- .validate_resolve_flag(resolve)
+  if (resolve) .resolved_observation_blocks(x) else axis_blocks(observation_axis(x))
+}
 
 #' @rdname frame-accessors
 #' @export

@@ -4,13 +4,15 @@
 \alias{filter_obs}
 \title{Filter frame observations using scalar metadata}
 \usage{
-filter_obs(x, predicate)
+filter_obs(x, predicate, resolve = TRUE)
 }
 \arguments{
 \item{x}{An \code{fmri_frame} or view.}
 
 \item{predicate}{A metadata expression returning one logical value per
 observation.}
+
+\item{resolve}{Whether the predicate may use namespaced entity metadata.}
 }
 \value{
 An \code{fmri_view}.

@@ -94,7 +94,10 @@ feature_axis.fmri_view <- function(data, space = NULL, blocks = list(), metadata
   out
 }
 #' @export
-observations.fmri_view <- function(x, ...) axis_data(observation_axis(x))
+observations.fmri_view <- function(x, resolve = FALSE, ...) {
+  resolve <- .validate_resolve_flag(resolve)
+  if (resolve) .resolved_observation_data(x) else axis_data(observation_axis(x))
+}
 #' @export
 entities.fmri_view <- function(x, ...) entities(x$base)
 #' @export
@@ -116,7 +119,10 @@ observation_ids.fmri_view <- function(x, ...) observation_ids(x$base)[x$observat
 #' @export
 feature_ids.fmri_view <- function(x, ...) feature_ids(x$base)[x$feature_index]
 #' @export
-obs_blocks.fmri_view <- function(x, ...) axis_blocks(observation_axis(x))
+obs_blocks.fmri_view <- function(x, resolve = FALSE, ...) {
+  resolve <- .validate_resolve_flag(resolve)
+  if (resolve) .resolved_observation_blocks(x) else axis_blocks(observation_axis(x))
+}
 #' @export
 feature_blocks.fmri_view <- function(x, ...) axis_blocks(feature_axis(x))
 #' @export
@@ -134,10 +140,15 @@ print.fmri_view <- function(x, ...) {
 #' @param x An `fmri_frame` or view.
 #' @param predicate A metadata expression returning one logical value per
 #'   observation.
+#' @param resolve Whether the predicate may use namespaced entity metadata.
 #' @return An `fmri_view`.
 #' @export
-filter_obs <- function(x, predicate) {
-  keep <- rlang::eval_tidy(rlang::enquo(predicate), data = observations(x))
+filter_obs <- function(x, predicate, resolve = TRUE) {
+  resolve <- .validate_resolve_flag(resolve)
+  keep <- rlang::eval_tidy(
+    rlang::enquo(predicate),
+    data = observations(x, resolve = resolve)
+  )
   if (!is.logical(keep) || length(keep) != nrow(x) || anyNA(keep)) {
     .frame_abort("Observation predicate must return non-missing logical values.", "fmridataset_error_alignment")
   }

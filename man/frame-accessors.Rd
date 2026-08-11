@@ -27,13 +27,13 @@ active_assay(x, ...)
 
 observation_axis(x, ...)
 
-observations(x, ...)
+observations(x, resolve = FALSE, ...)
 
 features(x, ...)
 
 observation_ids(x, ...)
 
-obs_blocks(x, ...)
+obs_blocks(x, resolve = FALSE, ...)
 
 feature_blocks(x, ...)
 
@@ -55,6 +55,9 @@ ncol.fmri_view(x)
 \item{...}{Additional method arguments.}
 
 \item{name}{Assay name.}
+
+\item{resolve}{Whether to append reachable, namespaced entity annotations or
+lazily lifted entity blocks.}
 }
 \description{
 Frame accessors
