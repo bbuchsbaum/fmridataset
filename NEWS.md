@@ -23,6 +23,10 @@
 * Added manifest-backed `row_sharded_source()` descriptors with stable shard
   IDs, inspectable global-to-local row routing, exact touched-shard pushdown,
   immutable shard append, and a compatible `row_bound_source()` constructor.
+* Added an experimental serializable `zarr_array_source()` for two-dimensional
+  observation-by-feature stores, including explicit physical-axis order,
+  metadata freshness checks, consecutive-range pushdown, optional runtime
+  discovery, deterministic handle cleanup, and direct `delarr` compatibility.
 * Added serializable balanced, imagewise, and featurewise block planners with
   explicit byte ceilings, chunk-aware block shapes, stale-plan detection, and
   bounded execution over frame views.
