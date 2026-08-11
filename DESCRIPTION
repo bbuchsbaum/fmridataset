@@ -1,16 +1,16 @@
 Package: fmridataset
 Type: Package
-Title: Unified Container for fMRI Datasets
-Version: 0.8.9
+Title: Spatially Typed Annotated fMRI Datasets
+Version: 0.10.0.9000
 Authors@R: person("Bradley", "Buchsbaum", 
                   email = "bbuchsbaum@gmail.com", 
                   role = c("aut", "cre"),
                   comment = c(ORCID = "0000-0001-5800-9890"))
-Description: Provides a unified S3 class 'fmri_dataset' for representing 
-    functional magnetic resonance imaging (fMRI) data from various sources 
-    including raw NIfTI files, BIDS projects, pre-loaded NeuroVec objects, 
-    and in-memory matrices. Features lazy loading, flexible data access 
-    patterns, and integration with neuroimaging analysis workflows.
+Description: Provides spatially typed, annotated observation-by-feature
+    containers for functional magnetic resonance imaging (fMRI) data. The
+    package aligns lazy numerical assays with observation metadata, feature
+    metadata, experimental entities, and explicit neuroimaging spaces while
+    retaining compatibility with NIfTI, HDF5, BIDS, and in-memory sources.
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -22,6 +22,7 @@ Imports:
     cachem,
     deflist,
     delarr,
+    digest,
     fmrihrf,
     fs,
     lifecycle,
@@ -30,8 +31,10 @@ Imports:
     methods,
     neuroim2,
     purrr,
+    rlang,
     tibble,
-    utils
+    utils,
+    uuid
 Suggests:
     albersdown,
     arrow,

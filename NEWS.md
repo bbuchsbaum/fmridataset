@@ -1,4 +1,15 @@
-# fmridataset 0.9.0 (Development)
+# fmridataset 0.10.0 (Development)
+
+## Architecture
+
+* Began the 1.0 migration around a canonical observation-by-feature
+  `fmri_frame`, with spatially typed features and serializable array sources.
+* Recorded package ownership and compatibility policy in
+  `inst/architecture/ADR-001-canonical-data-model.md`.
+* The historical `v0.9.0` tag is preserved; development continues from the
+  current main line without retagging it.
+
+# fmridataset 0.9.0
 
 ## New features
 

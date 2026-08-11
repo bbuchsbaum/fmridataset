@@ -1,97 +1,35 @@
-# Requirements: fmridataset
+# Requirements: fmridataset 1.0
 
-**Defined:** 2026-01-23
-**Core Value:** Backend-agnostic fMRI data access: one API works across all storage formats
+## Semantic correctness
 
-## v0.9.1 Requirements
+- All assays align to exact observation and feature IDs.
+- Scalar and multivariate axis annotations slice synchronously.
+- Nesting, crossing, entities, and relations have distinct validated forms.
+- Spatial compatibility is never inferred from dimensions.
+- Missing observations are absent rows; missing coverage is explicit validity.
 
-Requirements for documentation quality milestone.
+## Execution and storage
 
-### Vignette Quality
+- Canonical sources and plans serialize without open handles or closures.
+- Printing, explaining, filtering, and feature selection read zero assay bytes.
+- Full realization is rejected before reading when it exceeds its memory budget.
+- HDF5 sources push selections down and close handles on every failure path.
+- Append publishes new shards without rewriting prior shards.
+- Failed writes publish no partial dataset.
 
-- [ ] **VIG-01**: fmridataset-intro.Rmd has executable examples
-- [ ] **VIG-02**: fmridataset-intro.Rmd content matches current API
-- [ ] **VIG-03**: fmridataset-intro.Rmd has clear user-centric explanations
-- [ ] **VIG-04**: architecture-overview.Rmd has executable examples
-- [ ] **VIG-05**: architecture-overview.Rmd content matches current API
-- [ ] **VIG-06**: architecture-overview.Rmd has clear explanations
-- [ ] **VIG-07**: backend-development-basics.Rmd has executable examples
-- [ ] **VIG-08**: backend-development-basics.Rmd content matches current API
-- [ ] **VIG-09**: backend-development-basics.Rmd has clear explanations
-- [ ] **VIG-10**: backend-registry.Rmd has executable examples
-- [ ] **VIG-11**: backend-registry.Rmd content matches current API
-- [ ] **VIG-12**: backend-registry.Rmd has clear explanations
-- [ ] **VIG-13**: extending-backends.Rmd has executable examples
-- [ ] **VIG-14**: extending-backends.Rmd content matches current API
-- [ ] **VIG-15**: extending-backends.Rmd has clear explanations
-- [ ] **VIG-16**: h5-backend-usage.Rmd has executable examples
-- [ ] **VIG-17**: h5-backend-usage.Rmd content matches current API
-- [ ] **VIG-18**: h5-backend-usage.Rmd has clear explanations
-- [ ] **VIG-19**: study-level-analysis.Rmd has executable examples
-- [ ] **VIG-20**: study-level-analysis.Rmd content matches current API
-- [ ] **VIG-21**: study-level-analysis.Rmd has clear explanations
+## Analysis
 
-### pkgdown Site
+- Compiled designs preserve factors, contrasts, components, grouping, and term
+  provenance.
+- Blockwise results agree with trusted dense references under method-specific
+  tolerances.
+- Results are invariant to supported block sizes, sharding, and worker counts.
+- Group methods preserve the distinction between effect-only, z/p-combination,
+  and beta-plus-variance analyses.
 
-- [ ] **PKG-01**: _pkgdown.yml has complete site configuration
-- [ ] **PKG-02**: pkgdown site builds without errors
-- [ ] **PKG-03**: Reference documentation renders correctly
-- [ ] **PKG-04**: Vignette articles render correctly
-- [ ] **PKG-05**: Site is deployed/ready for deployment
+## Release
 
-### Roxygen2 Documentation
-
-- [ ] **ROX-01**: All exported functions have complete documentation
-- [ ] **ROX-02**: Function examples execute without errors
-- [ ] **ROX-03**: Documentation builds without warnings
-
-## Out of Scope
-
-| Feature | Reason |
-|---------|--------|
-| New vignettes | Focus on quality of existing 7 vignettes |
-| Video tutorials | Beyond scope of package documentation |
-| Translated docs | English only for v0.9.1 |
-
-## Traceability
-
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| VIG-01 | Phase 6 | Pending |
-| VIG-02 | Phase 6 | Pending |
-| VIG-03 | Phase 6 | Pending |
-| VIG-04 | Phase 6 | Pending |
-| VIG-05 | Phase 6 | Pending |
-| VIG-06 | Phase 6 | Pending |
-| VIG-07 | Phase 7 | Pending |
-| VIG-08 | Phase 7 | Pending |
-| VIG-09 | Phase 7 | Pending |
-| VIG-10 | Phase 7 | Pending |
-| VIG-11 | Phase 7 | Pending |
-| VIG-12 | Phase 7 | Pending |
-| VIG-13 | Phase 7 | Pending |
-| VIG-14 | Phase 7 | Pending |
-| VIG-15 | Phase 7 | Pending |
-| VIG-16 | Phase 6 | Pending |
-| VIG-17 | Phase 6 | Pending |
-| VIG-18 | Phase 6 | Pending |
-| VIG-19 | Phase 6 | Pending |
-| VIG-20 | Phase 6 | Pending |
-| VIG-21 | Phase 6 | Pending |
-| PKG-01 | Phase 8 | Pending |
-| PKG-02 | Phase 8 | Pending |
-| PKG-03 | Phase 8 | Pending |
-| PKG-04 | Phase 8 | Pending |
-| PKG-05 | Phase 8 | Pending |
-| ROX-01 | Phase 8 | Pending |
-| ROX-02 | Phase 8 | Pending |
-| ROX-03 | Phase 8 | Pending |
-
-**Coverage:**
-- v0.9.1 requirements: 29 total
-- Mapped to phases: 29
-- Unmapped: 0
-
----
-*Requirements defined: 2026-01-23*
-*Last updated: 2026-01-23 after roadmap creation*
+- 0.10 provides an end-to-end memory/HDF5 walking skeleton.
+- HDF5 is the only persistent backend required for 1.0 certification.
+- The full 40 GB reference workload runs on controlled nightly infrastructure.
+- Legacy top-level constructors and classes are absent from the 1.0 API.

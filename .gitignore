@@ -13,3 +13,9 @@ vignettes/*.html
 *.bak
 CLAUDE.md.bak
 fmridataset_*.tar.gz
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.mote/

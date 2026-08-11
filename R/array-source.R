@@ -1,0 +1,473 @@
+.source_counter_registry <- new.env(parent = emptyenv())
+
+#' Serializable numerical array sources
+#'
+#' @param x An array source or object coercible to one.
+#' @param observations Optional observation positions.
+#' @param features Optional feature positions.
+#' @param ... Additional method arguments.
+#' @name array-source
+NULL
+
+#' @rdname array-source
+#' @export
+as_array_source <- function(x, ...) UseMethod("as_array_source")
+
+#' @export
+as_array_source.array_source <- function(x, ...) x
+
+#' @export
+as_array_source.matrix <- function(x, ...) memory_source(x, ...)
+
+#' @export
+as_array_source.array <- function(x, ...) memory_source(x, ...)
+
+#' @rdname array-source
+#' @export
+source_shape <- function(x, ...) UseMethod("source_shape")
+
+#' @rdname array-source
+#' @export
+source_dtype <- function(x, ...) UseMethod("source_dtype")
+
+#' @rdname array-source
+#' @export
+source_chunks <- function(x, ...) UseMethod("source_chunks")
+
+#' @rdname array-source
+#' @export
+source_capabilities <- function(x, ...) UseMethod("source_capabilities")
+
+#' @rdname array-source
+#' @export
+source_fingerprint <- function(x, ...) UseMethod("source_fingerprint")
+
+#' @rdname array-source
+#' @export
+source_open <- function(x, ...) UseMethod("source_open")
+
+#' @rdname array-source
+#' @export
+source_read <- function(x, observations = NULL, features = NULL, ...) {
+  UseMethod("source_read")
+}
+
+#' @rdname array-source
+#' @export
+source_read_native <- function(x, observations = NULL, ...) {
+  UseMethod("source_read_native")
+}
+
+#' @rdname array-source
+#' @export
+source_close <- function(x, ...) UseMethod("source_close")
+
+.source_dtype_from_data <- function(x) {
+  if (is.raw(x)) "uint8" else if (is.logical(x)) "logical" else if (is.numeric(x)) "float64" else typeof(x)
+}
+
+.dtype_bytes <- function(dtype) {
+  switch(
+    dtype,
+    logical = 1,
+    uint8 = 1,
+    int8 = 1,
+    uint16 = 2,
+    int16 = 2,
+    float32 = 4,
+    int32 = 4,
+    float64 = 8,
+    int64 = 8,
+    8
+  )
+}
+
+.normalize_source_index <- function(index, n) {
+  if (is.null(index)) return(seq_len(n))
+  if (is.logical(index)) {
+    if (length(index) != n || anyNA(index)) {
+      .frame_abort("Logical source selectors must match the axis length and contain no NA.", "fmridataset_error_alignment")
+    }
+    return(which(index))
+  }
+  index <- as.integer(index)
+  if (anyNA(index) || any(index < 1L | index > n)) {
+    .frame_abort("Source selector is out of bounds.", "fmridataset_error_alignment")
+  }
+  index
+}
+
+#' Construct an in-memory array source
+#'
+#' @param data A two-dimensional matrix or array.
+#' @param dtype Logical storage dtype. Numeric R matrices default to
+#'   `"float64"`.
+#' @param chunks Optional logical chunk shape.
+#' @return A serializable `memory_source`.
+#' @export
+memory_source <- function(data, dtype = NULL, chunks = NULL) {
+  d <- dim(data)
+  if (is.null(d) || length(d) != 2L) {
+    .frame_abort("A frame ArraySource must be two dimensional.", "fmridataset_error_alignment")
+  }
+  d <- as.integer(d)
+  chunks <- as.integer(chunks %||% pmax(1L, d))
+  if (length(chunks) != 2L || any(chunks <= 0L)) {
+    .frame_abort("Source chunks must contain two positive integers.", "fmridataset_error_alignment")
+  }
+  structure(
+    list(
+      data = data,
+      shape = d,
+      dtype = dtype %||% .source_dtype_from_data(data),
+      chunks = pmin(chunks, pmax(1L, d)),
+      schema_version = 1L
+    ),
+    class = c("memory_source", "array_source")
+  )
+}
+
+#' @export
+source_shape.memory_source <- function(x, ...) x$shape
+#' @export
+source_dtype.memory_source <- function(x, ...) x$dtype
+#' @export
+source_chunks.memory_source <- function(x, ...) x$chunks
+#' @export
+source_capabilities.memory_source <- function(x, ...) {
+  c("row_slice", "column_slice", "block_slice", "serializable")
+}
+#' @export
+source_fingerprint.memory_source <- function(x, ...) {
+  .canonical_digest(list(type = "memory", shape = x$shape, dtype = x$dtype, data = x$data))
+}
+#' @export
+source_open.memory_source <- function(x, ...) {
+  structure(list(source = x), class = c("memory_source_handle", "array_source_handle"))
+}
+#' @export
+source_read.memory_source <- function(x, observations = NULL, features = NULL, ...) {
+  observations <- .normalize_source_index(observations, x$shape[1L])
+  features <- .normalize_source_index(features, x$shape[2L])
+  x$data[observations, features, drop = FALSE]
+}
+#' @export
+source_read_native.memory_source <- function(x, observations = NULL, ...) {
+  .frame_abort(
+    "memory_source has no native spatial read path.",
+    "fmridataset_error_backend_io",
+    operation = "native_read"
+  )
+}
+#' @export
+source_close.memory_source <- function(x, ...) invisible(TRUE)
+
+#' @export
+source_shape.array_source_handle <- function(x, ...) source_shape(x$source)
+#' @export
+source_dtype.array_source_handle <- function(x, ...) source_dtype(x$source)
+#' @export
+source_chunks.array_source_handle <- function(x, ...) source_chunks(x$source)
+#' @export
+source_capabilities.array_source_handle <- function(x, ...) source_capabilities(x$source)
+#' @export
+source_fingerprint.array_source_handle <- function(x, ...) source_fingerprint(x$source)
+#' @export
+source_read.array_source_handle <- function(x, observations = NULL, features = NULL, ...) {
+  source_read(x$source, observations = observations, features = features, ...)
+}
+#' @export
+source_read_native.array_source_handle <- function(x, observations = NULL, ...) {
+  source_read_native(x$source, observations = observations, ...)
+}
+#' @export
+source_close.array_source_handle <- function(x, ...) invisible(TRUE)
+
+#' Construct a lazy view over an array source
+#'
+#' @param source An `array_source`.
+#' @param observations Stored observation selector.
+#' @param features Stored feature selector.
+#' @return A serializable source view.
+#' @export
+source_view <- function(source, observations = NULL, features = NULL) {
+  source <- as_array_source(source)
+  shape <- source_shape(source)
+  observations <- .normalize_source_index(observations, shape[1L])
+  features <- .normalize_source_index(features, shape[2L])
+  structure(
+    list(source = source, observations = observations, features = features),
+    class = c("source_view", "array_source")
+  )
+}
+
+#' @export
+source_shape.source_view <- function(x, ...) c(length(x$observations), length(x$features))
+#' @export
+source_dtype.source_view <- function(x, ...) source_dtype(x$source)
+#' @export
+source_chunks.source_view <- function(x, ...) pmin(source_chunks(x$source), pmax(1L, source_shape(x)))
+#' @export
+source_capabilities.source_view <- function(x, ...) source_capabilities(x$source)
+#' @export
+source_fingerprint.source_view <- function(x, ...) {
+  .canonical_digest(list(
+    source = source_fingerprint(x$source),
+    observations = x$observations,
+    features = x$features
+  ))
+}
+#' @export
+source_open.source_view <- function(x, ...) {
+  structure(list(source = x), class = c("source_view_handle", "array_source_handle"))
+}
+#' @export
+source_read.source_view <- function(x, observations = NULL, features = NULL, ...) {
+  observations <- .normalize_source_index(observations, length(x$observations))
+  features <- .normalize_source_index(features, length(x$features))
+  source_read(
+    x$source,
+    observations = x$observations[observations],
+    features = x$features[features],
+    ...
+  )
+}
+#' @export
+source_read_native.source_view <- function(x, observations = NULL, ...) {
+  observations <- .normalize_source_index(observations, length(x$observations))
+  source_read_native(x$source, observations = x$observations[observations], ...)
+}
+#' @export
+source_close.source_view <- function(x, ...) invisible(TRUE)
+
+#' Instrument an array source
+#'
+#' `counting_source()` records numerical reads without placing a mutable
+#' environment inside the source descriptor.
+#'
+#' @param source An array source.
+#' @return A serializable instrumented source.
+#' @export
+counting_source <- function(source) {
+  id <- uuid::UUIDgenerate()
+  .source_counter_registry[[id]] <- list(reads = 0, values = 0, bytes = 0, opens = 0, closes = 0)
+  structure(
+    list(source = as_array_source(source), counter_id = id),
+    class = c("counting_source", "array_source")
+  )
+}
+
+.source_counter <- function(x) {
+  value <- .source_counter_registry[[x$counter_id]]
+  if (is.null(value)) {
+    value <- list(reads = 0, values = 0, bytes = 0, opens = 0, closes = 0)
+    .source_counter_registry[[x$counter_id]] <- value
+  }
+  value
+}
+
+.set_source_counter <- function(x, value) {
+  .source_counter_registry[[x$counter_id]] <- value
+  invisible(x)
+}
+
+#' @param x A counting source.
+#' @rdname counting_source
+#' @export
+source_counts <- function(x) .source_counter(x)
+
+#' @rdname counting_source
+#' @export
+reset_source_counts <- function(x) {
+  .set_source_counter(x, list(reads = 0, values = 0, bytes = 0, opens = 0, closes = 0))
+}
+
+#' @export
+source_shape.counting_source <- function(x, ...) source_shape(x$source)
+#' @export
+source_dtype.counting_source <- function(x, ...) source_dtype(x$source)
+#' @export
+source_chunks.counting_source <- function(x, ...) source_chunks(x$source)
+#' @export
+source_capabilities.counting_source <- function(x, ...) source_capabilities(x$source)
+#' @export
+source_fingerprint.counting_source <- function(x, ...) source_fingerprint(x$source)
+#' @export
+source_open.counting_source <- function(x, ...) {
+  count <- .source_counter(x)
+  count$opens <- count$opens + 1
+  .set_source_counter(x, count)
+  structure(list(source = x), class = c("counting_source_handle", "array_source_handle"))
+}
+#' @export
+source_read.counting_source <- function(x, observations = NULL, features = NULL, ...) {
+  shape <- source_shape(x)
+  observations <- .normalize_source_index(observations, shape[1L])
+  features <- .normalize_source_index(features, shape[2L])
+  count <- .source_counter(x)
+  n <- length(observations) * length(features)
+  count$reads <- count$reads + 1
+  count$values <- count$values + n
+  count$bytes <- count$bytes + n * .dtype_bytes(source_dtype(x))
+  .set_source_counter(x, count)
+  source_read(x$source, observations = observations, features = features, ...)
+}
+#' @export
+source_read_native.counting_source <- function(x, observations = NULL, ...) {
+  source_read_native(x$source, observations = observations, ...)
+}
+#' @export
+source_close.counting_source <- function(x, ...) {
+  count <- .source_counter(x)
+  count$closes <- count$closes + 1
+  .set_source_counter(x, count)
+  invisible(TRUE)
+}
+
+#' Inject deterministic source failures
+#'
+#' @param source An array source.
+#' @param stage One of `"open"`, `"read"`, `"native_read"`, or `"close"`.
+#' @param message Failure message.
+#' @return A serializable fault-injecting source.
+#' @export
+fault_source <- function(source, stage = c("read", "open", "native_read", "close"),
+                         message = NULL) {
+  stage <- match.arg(stage)
+  structure(
+    list(source = as_array_source(source), stage = stage, message = message %||% paste("Injected", stage, "failure")),
+    class = c("fault_source", "array_source")
+  )
+}
+
+.fault_maybe <- function(x, stage) {
+  if (identical(x$stage, stage)) {
+    .frame_abort(
+      x$message,
+      "fmridataset_error_backend_io",
+      operation = stage,
+      injected = TRUE
+    )
+  }
+}
+
+#' @export
+source_shape.fault_source <- function(x, ...) source_shape(x$source)
+#' @export
+source_dtype.fault_source <- function(x, ...) source_dtype(x$source)
+#' @export
+source_chunks.fault_source <- function(x, ...) source_chunks(x$source)
+#' @export
+source_capabilities.fault_source <- function(x, ...) source_capabilities(x$source)
+#' @export
+source_fingerprint.fault_source <- function(x, ...) source_fingerprint(x$source)
+#' @export
+source_open.fault_source <- function(x, ...) {
+  .fault_maybe(x, "open")
+  source_open(x$source, ...)
+}
+#' @export
+source_read.fault_source <- function(x, observations = NULL, features = NULL, ...) {
+  .fault_maybe(x, "read")
+  source_read(x$source, observations = observations, features = features, ...)
+}
+#' @export
+source_read_native.fault_source <- function(x, observations = NULL, ...) {
+  .fault_maybe(x, "native_read")
+  source_read_native(x$source, observations = observations, ...)
+}
+#' @export
+source_close.fault_source <- function(x, ...) {
+  .fault_maybe(x, "close")
+  source_close(x$source, ...)
+}
+
+#' Bind compatible sources along observations
+#'
+#' @param sources A non-empty list of two-dimensional array sources.
+#' @return A serializable row-bound source.
+#' @export
+row_bound_source <- function(sources) {
+  sources <- lapply(sources, as_array_source)
+  if (!length(sources)) {
+    .frame_abort("At least one source is required.", "fmridataset_error_alignment")
+  }
+  shapes <- lapply(sources, source_shape)
+  n_feature <- vapply(shapes, `[[`, integer(1), 2L)
+  if (length(unique(n_feature)) != 1L) {
+    .frame_abort("Row-bound sources must have the same feature count.", "fmridataset_error_alignment")
+  }
+  dtypes <- vapply(sources, source_dtype, character(1))
+  if (length(unique(dtypes)) != 1L) {
+    .frame_abort("Row-bound sources must have the same dtype.", "fmridataset_error_alignment")
+  }
+  rows <- vapply(shapes, `[[`, integer(1), 1L)
+  structure(
+    list(
+      sources = sources,
+      rows = rows,
+      boundaries = c(0L, cumsum(rows)),
+      shape = c(sum(rows), n_feature[1L]),
+      dtype = dtypes[1L]
+    ),
+    class = c("row_bound_source", "array_source")
+  )
+}
+
+#' @export
+source_shape.row_bound_source <- function(x, ...) x$shape
+#' @export
+source_dtype.row_bound_source <- function(x, ...) x$dtype
+#' @export
+source_chunks.row_bound_source <- function(x, ...) {
+  chunks <- lapply(x$sources, source_chunks)
+  c(max(1L, min(vapply(chunks, `[[`, integer(1), 1L))), max(1L, min(vapply(chunks, `[[`, integer(1), 2L))))
+}
+#' @export
+source_capabilities.row_bound_source <- function(x, ...) {
+  Reduce(intersect, lapply(x$sources, source_capabilities))
+}
+#' @export
+source_fingerprint.row_bound_source <- function(x, ...) {
+  .canonical_digest(lapply(x$sources, source_fingerprint))
+}
+#' @export
+source_open.row_bound_source <- function(x, ...) {
+  structure(list(source = x), class = c("row_bound_source_handle", "array_source_handle"))
+}
+#' @export
+source_read.row_bound_source <- function(x, observations = NULL, features = NULL, ...) {
+  observations <- .normalize_source_index(observations, x$shape[1L])
+  features <- .normalize_source_index(features, x$shape[2L])
+  if (!length(observations) || !length(features)) {
+    return(matrix(numeric(), nrow = length(observations), ncol = length(features)))
+  }
+  subject <- findInterval(observations - 1L, x$boundaries[-length(x$boundaries)])
+  out <- matrix(NA_real_, nrow = length(observations), ncol = length(features))
+  for (s in unique(subject)) {
+    at <- which(subject == s)
+    local <- observations[at] - x$boundaries[s]
+    out[at, ] <- source_read(x$sources[[s]], observations = local, features = features, ...)
+  }
+  out
+}
+#' @export
+source_read_native.row_bound_source <- function(x, observations = NULL, ...) {
+  .frame_abort("Native reads must target one child source.", "fmridataset_error_backend_io")
+}
+#' @export
+source_close.row_bound_source <- function(x, ...) invisible(TRUE)
+
+#' @export
+as_delarr.array_source <- function(backend, ...) {
+  .ensure_delarr()
+  shape <- source_shape(backend)
+  delarr::delarr_backend(
+    nrow = shape[1L],
+    ncol = shape[2L],
+    pull = function(rows = NULL, cols = NULL) {
+      source_read(backend, observations = rows, features = cols)
+    },
+    chunk_hint = source_chunks(backend)
+  )
+}
