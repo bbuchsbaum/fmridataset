@@ -29,6 +29,9 @@
 * Added explicit matrix-versus-spatial execution dispatch. Complete feature
   domains use native source reads when available; restricted domains safely
   reconstruct through their feature space, with bounded streaming helpers.
+* Froze the backend-neutral FDS logical manifest at version 1, including a
+  named-axis array registry, source-free assay and block declarations, strict
+  validation, semantic digests, physical binding, and frame reconstruction.
 * The historical `v0.9.0` tag is preserved; development continues from the
   current main line without retagging it.
 

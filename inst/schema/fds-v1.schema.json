@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "org.fmridataset.fds/v1",
+  "title": "FDS logical manifest version 1",
+  "type": "object",
+  "required": [
+    "schema",
+    "object_type",
+    "shape",
+    "axes",
+    "arrays",
+    "assays",
+    "entities",
+    "relations",
+    "tables",
+    "active_assay",
+    "metadata",
+    "provenance",
+    "extensions"
+  ],
+  "properties": {
+    "schema": {
+      "type": "object",
+      "required": ["id", "version", "object_types"],
+      "properties": {
+        "id": {"const": "org.fmridataset.fds/v1"},
+        "version": {"const": 1},
+        "object_types": {"const": "fmri_frame"}
+      },
+      "additionalProperties": false
+    },
+    "object_type": {"const": "fmri_frame"},
+    "shape": {
+      "type": "array",
+      "prefixItems": [
+        {"type": "integer", "minimum": 0},
+        {"type": "integer", "minimum": 0}
+      ],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "axes": {
+      "type": "object",
+      "required": ["observation", "feature"],
+      "properties": {
+        "observation": {"$ref": "#/$defs/axis"},
+        "feature": {"$ref": "#/$defs/featureAxis"}
+      }
+    },
+    "arrays": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/array"}
+    },
+    "assays": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/assay"}
+    },
+    "entities": {"type": "object"},
+    "relations": {"type": "object"},
+    "tables": {"type": "object"},
+    "active_assay": {"type": "string", "minLength": 1},
+    "metadata": {"type": "object"},
+    "provenance": {},
+    "extensions": {"type": "object"}
+  },
+  "$defs": {
+    "axis": {
+      "type": "object",
+      "required": ["ids", "id_column", "data", "blocks", "metadata"],
+      "properties": {
+        "ids": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "id_column": {"type": "string", "minLength": 1},
+        "data": {},
+        "blocks": {"type": "object"},
+        "metadata": {"type": "object"}
+      }
+    },
+    "array": {
+      "type": "object",
+      "required": ["key", "axes", "shape", "dtype"],
+      "properties": {
+        "key": {"type": "string", "minLength": 1},
+        "axes": {"type": "array", "minItems": 2, "items": {"type": "string", "minLength": 1}},
+        "shape": {"type": "array", "minItems": 2, "items": {"type": "integer", "minimum": 0}},
+        "dtype": {"type": "string", "minLength": 1}
+      }
+    },
+    "featureAxis": {
+      "allOf": [
+        {"$ref": "#/$defs/axis"},
+        {"type": "object", "required": ["space"], "properties": {"space": {}}}
+      ]
+    },
+    "assay": {
+      "type": "object",
+      "required": ["name", "array", "dtype", "shape", "observation_digest", "feature_digest", "role", "units", "metadata"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "array": {"type": "string", "minLength": 1},
+        "dtype": {"type": "string", "minLength": 1},
+        "shape": {"type": "array", "minItems": 2, "maxItems": 2},
+        "observation_digest": {"type": "string", "minLength": 1},
+        "feature_digest": {"type": "string", "minLength": 1},
+        "role": {},
+        "units": {},
+        "metadata": {"type": "object"}
+      },
+      "not": {
+        "anyOf": [
+          {"required": ["source"]},
+          {"required": ["uri"]},
+          {"required": ["dataset"]},
+          {"required": ["chunks"]}
+        ]
+      }
+    }
+  }
+}
