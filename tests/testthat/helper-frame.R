@@ -165,6 +165,9 @@ make_walking_skeleton_fixture <- function(instrument = FALSE) {
       space = feature_space
     ),
     entities = list(stimulus = stimulus),
+    relations = list(
+      observation_stimulus = key_relation("stimulus_id", target = "stimulus")
+    ),
     active_assay = "beta"
   )
 

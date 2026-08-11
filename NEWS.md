@@ -30,6 +30,10 @@
 * Added canonical `entity_frame` and `entity_registry` contracts with stable
   primary keys, scalar metadata, aligned multivariate blocks, synchronized
   subsetting, frame/view accessors, and source-free FDS entity-block arrays.
+* Added validated `key_relation`, `sparse_relation`, and `relation_registry`
+  contracts with explicit observation, feature, and entity domains,
+  referential-integrity checks, view restriction, row-bind merging, and FDS
+  persistence.
 * Added serializable balanced, imagewise, and featurewise block planners with
   explicit byte ceilings, chunk-aware block shapes, stale-plan detection, and
   bounded execution over frame views.

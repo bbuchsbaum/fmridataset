@@ -199,7 +199,7 @@ fds_frame_manifest <- function(x) {
     arrays = arrays,
     assays = assay_manifest,
     entities = entity_manifest,
-    relations = x$relations,
+    relations = relations(x),
     tables = x$tables,
     active_assay = active_assay(x),
     metadata = x$metadata,
@@ -278,6 +278,63 @@ fds_frame_manifest <- function(x) {
       }
     }
   }
+  invisible(TRUE)
+}
+
+.manifest_entity_registry <- function(values) {
+  out <- lapply(values, function(value) {
+    entity_frame(
+      data = value$data,
+      key = value$key,
+      blocks = list(),
+      entity_type = value$entity_type,
+      metadata = value$metadata
+    )
+  })
+  names(out) <- names(values)
+  entity_registry(out)
+}
+
+.validate_manifest_relations <- function(manifest) {
+  values <- manifest$relations
+  if (is.list(values) && !length(values) && !inherits(values, "relation_registry")) {
+    values <- relation_registry()
+  }
+  if (!inherits(values, "relation_registry")) {
+    .fds_schema_abort("Manifest relations must be a relation_registry.", "relations")
+  }
+  tryCatch(
+    {
+      observation <- manifest$axes$observation
+      feature <- manifest$axes$feature
+      resolved <- .resolve_relation_registry(
+        values,
+        axis_frame(
+          observation$data,
+          id = observation$ids,
+          axis = "observation",
+          id_col = observation$id_column,
+          metadata = observation$metadata
+        ),
+        feature_axis(
+          feature$data,
+          space = feature$space,
+          metadata = feature$metadata
+        ),
+        .manifest_entity_registry(manifest$entities)
+      )
+      if (!identical(resolved, values)) {
+        .fds_schema_abort("Manifest relations must use normalized domain names.", "relations")
+      }
+    },
+    fmridataset_error_schema = function(error) stop(error),
+    error = function(error) {
+      .fds_schema_abort(
+        paste0("Manifest relation validation failed: ", conditionMessage(error)),
+        "relations"
+      )
+    }
+  )
   invisible(TRUE)
 }
 
@@ -407,6 +464,7 @@ validate_fds_manifest <- function(manifest) {
   .validate_manifest_axis(manifest$axes$observation, shape[[1L]], "observation", manifest$arrays)
   .validate_manifest_axis(manifest$axes$feature, shape[[2L]], "feature", manifest$arrays, require_space = TRUE)
   .validate_manifest_entities(manifest$entities, manifest$arrays)
+  .validate_manifest_relations(manifest)
 
   assay_names <- names(manifest$assays)
   if (!is.list(manifest$assays) || !length(manifest$assays) ||

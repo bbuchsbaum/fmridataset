@@ -100,6 +100,16 @@ entities.fmri_view <- function(x, ...) entities(x$base)
 #' @export
 entity.fmri_view <- function(x, name, ...) entity(entities(x), name)
 #' @export
+relations.fmri_view <- function(x, ...) {
+  .restrict_relation_registry(
+    relations(x$base),
+    observation_ids = observation_ids(x),
+    feature_ids = feature_ids(x)
+  )
+}
+#' @export
+relation.fmri_view <- function(x, name, ...) relation(relations(x), name)
+#' @export
 features.fmri_view <- function(x, ...) axis_data(feature_axis(x))
 #' @export
 observation_ids.fmri_view <- function(x, ...) observation_ids(x$base)[x$observation_index]

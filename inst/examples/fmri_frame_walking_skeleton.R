@@ -59,6 +59,12 @@ frame <- fmridataset::fmri_frame(
     space = space
   ),
   entities = list(stimulus = stimulus),
+  relations = list(
+    observation_stimulus = fmridataset::key_relation(
+      "stimulus_id",
+      target = "stimulus"
+    )
+  ),
   active_assay = "beta"
 )
 

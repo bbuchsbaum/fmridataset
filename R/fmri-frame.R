@@ -121,6 +121,12 @@ fmri_frame <- function(assays, observations, features = NULL, space = NULL,
     .frame_abort("active_assay is not present in assays.", "fmridataset_error_alignment")
   }
   entities <- entity_registry(entities)
+  relations <- .resolve_relation_registry(
+    relation_registry(relations),
+    observations,
+    feature_axis_value,
+    entities
+  )
 
   structure(
     list(
@@ -188,6 +194,12 @@ entities.fmri_frame <- function(x, ...) x$entities
 
 #' @export
 entity.fmri_frame <- function(x, name, ...) entity(entities(x), name)
+
+#' @export
+relations.fmri_frame <- function(x, ...) x$relations
+
+#' @export
+relation.fmri_frame <- function(x, name, ...) relation(relations(x), name)
 
 #' @rdname frame-accessors
 #' @export
@@ -390,6 +402,7 @@ bind_observations <- function(...) {
       )
     }
   }
+  relation_values <- .bind_relation_registries(lapply(xs, relations))
   obs <- .bind_axis_frames(lapply(xs, observation_axis))
   if (anyDuplicated(axis_ids(obs))) {
     .frame_abort("Observation IDs collide across frames.", "fmridataset_error_alignment")
@@ -403,7 +416,7 @@ bind_observations <- function(...) {
     observations = obs,
     features = feature_axis(first),
     entities = entities(first),
-    relations = first$relations,
+    relations = relation_values,
     tables = first$tables,
     active_assay = active_assay(first),
     metadata = first$metadata,
