@@ -47,6 +47,7 @@ Suggests:
     devtools,
     dplyr,
     fmrilatent,
+    fmrigds,
     fmristore,
     foreach,
     ggplot2,
@@ -56,6 +57,7 @@ Suggests:
     knitr,
     microbenchmark,
     mockery,
+    multidesign,
     pryr,
     rmarkdown,
     testthat (>= 3.0.0),
@@ -63,7 +65,8 @@ Suggests:
     yaml,
     zarr
 VignetteBuilder: knitr
-Remotes: bbuchsbaum/delarr, bbuchsbaum/albersdown
+Remotes: bbuchsbaum/delarr, bbuchsbaum/albersdown, bbuchsbaum/fmrigds,
+    bbuchsbaum/multidesign
 Additional_repositories: https://bbuchsbaum.r-universe.dev
 URL: https://github.com/bbuchsbaum/fmridataset, https://bbuchsbaum.github.io/fmridataset/
 BugReports: https://github.com/bbuchsbaum/fmridataset/issues
