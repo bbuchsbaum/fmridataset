@@ -1,17 +1,32 @@
 expect_array_source_conformance <- function(source, reference) {
   expect_s3_class(source, "array_source")
+  expect_invisible(validate_array_source(source))
   expect_identical(source_shape(source), as.integer(dim(reference)))
-  expect_length(source_dtype(source), 1)
+  descriptor <- source_descriptor(source)
+  expect_identical(descriptor$shape, source_shape(source))
+  expect_length(descriptor$dtype, 1)
   expect_length(source_chunks(source), 2)
   expect_true(all(source_chunks(source) > 0))
+  expect_true(all(source_chunks(source) <= pmax(1L, source_shape(source))))
   expect_true("block_slice" %in% source_capabilities(source))
+  expect_true("serializable" %in% source_capabilities(source))
+  expect_equal(anyDuplicated(source_capabilities(source)), 0L)
   expect_true(nzchar(source_fingerprint(source)))
+  expect_identical(
+    source_fingerprint(unserialize(serialize(source, NULL))),
+    source_fingerprint(source)
+  )
+  expect_false(contains_runtime_state(source))
 
   rows <- unique(c(nrow(reference), 1L))
   cols <- unique(c(ncol(reference), 1L))
   expect_equal(
     source_read(source, rows, cols),
     reference[rows, cols, drop = FALSE]
+  )
+  expect_equal(
+    source_read(source, rev(rows), rev(cols)),
+    reference[rev(rows), rev(cols), drop = FALSE]
   )
   expect_identical(dim(source_read(source, integer(), cols)), c(0L, length(cols)))
   expect_identical(dim(source_read(source, rows, integer())), c(length(rows), 0L))

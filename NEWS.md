@@ -12,6 +12,9 @@
 * Certified the first complete frame-native analysis path: metadata-only
   filtering, stimulus-block design compilation, bounded variance-aware group
   fitting, spatial-map reconstruction, and exact memory/HDF5 round trips.
+* Added executable `ArraySource` contract validation for supported dtypes,
+  bounded chunk grids, capabilities, stable fingerprints, and freedom from
+  unserializable runtime state.
 * The historical `v0.9.0` tag is preserved; development continues from the
   current main line without retagging it.
 

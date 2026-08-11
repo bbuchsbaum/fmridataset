@@ -66,20 +66,142 @@ source_close <- function(x, ...) UseMethod("source_close")
   if (is.raw(x)) "uint8" else if (is.logical(x)) "logical" else if (is.numeric(x)) "float64" else typeof(x)
 }
 
+.supported_source_dtypes <- c(
+  "logical", "uint8", "int8", "uint16", "int16", "float16", "bfloat16",
+  "uint32", "int32", "float32", "uint64", "int64", "float64",
+  "complex64", "complex128"
+)
+
 .dtype_bytes <- function(dtype) {
-  switch(
-    dtype,
-    logical = 1,
-    uint8 = 1,
-    int8 = 1,
-    uint16 = 2,
-    int16 = 2,
-    float32 = 4,
-    int32 = 4,
-    float64 = 8,
-    int64 = 8,
-    8
+  sizes <- c(
+    logical = 1, uint8 = 1, int8 = 1,
+    uint16 = 2, int16 = 2, float16 = 2, bfloat16 = 2,
+    uint32 = 4, int32 = 4, float32 = 4,
+    uint64 = 8, int64 = 8, float64 = 8, complex64 = 8,
+    complex128 = 16
   )
+  if (!is.character(dtype) || length(dtype) != 1L || is.na(dtype) ||
+    !dtype %in% names(sizes)) {
+    .frame_abort(
+      sprintf("Unsupported source dtype '%s'.", dtype),
+      "fmridataset_error_source_contract",
+      field = "dtype",
+      actual = dtype,
+      supported = names(sizes)
+    )
+  }
+  unname(sizes[[dtype]])
+}
+
+.source_contains_runtime_state <- function(x) {
+  if (is.environment(x) || is.function(x) || typeof(x) == "externalptr") {
+    return(TRUE)
+  }
+  if (is.pairlist(x)) {
+    return(any(vapply(as.list(x), .source_contains_runtime_state, logical(1))))
+  }
+  if (is.list(x)) {
+    return(any(vapply(unclass(x), .source_contains_runtime_state, logical(1))))
+  }
+  FALSE
+}
+
+#' Inspect and validate an array-source contract
+#'
+#' A valid canonical source is two-dimensional, has an explicit supported
+#' dtype and chunk grid, advertises serializable block slicing, provides a
+#' stable non-empty fingerprint, and contains no runtime handles or closures.
+#'
+#' @param x An `array_source` descriptor.
+#' @return `source_descriptor()` returns a plain serializable contract list.
+#'   `validate_array_source()` invisibly returns `x` or raises a structured
+#'   source-contract error.
+#' @export
+source_descriptor <- function(x) {
+  if (!inherits(x, "array_source")) {
+    .frame_abort(
+      "Object does not inherit from array_source.",
+      "fmridataset_error_source_contract",
+      field = "class"
+    )
+  }
+  list(
+    shape = source_shape(x),
+    dtype = source_dtype(x),
+    chunks = source_chunks(x),
+    capabilities = source_capabilities(x),
+    fingerprint = source_fingerprint(x)
+  )
+}
+
+#' @rdname source_descriptor
+#' @export
+validate_array_source <- function(x) {
+  descriptor <- source_descriptor(x)
+  shape <- descriptor$shape
+  if (!is.numeric(shape) || length(shape) != 2L || anyNA(shape) ||
+    any(shape < 0) || any(shape != as.integer(shape))) {
+    .frame_abort(
+      "Source shape must contain two non-negative integers.",
+      "fmridataset_error_source_contract",
+      field = "shape",
+      actual = shape
+    )
+  }
+  dtype <- descriptor$dtype
+  if (!is.character(dtype) || length(dtype) != 1L || is.na(dtype) ||
+    !dtype %in% .supported_source_dtypes) {
+    .frame_abort(
+      "Source dtype is missing or unsupported.",
+      "fmridataset_error_source_contract",
+      field = "dtype",
+      actual = dtype,
+      supported = .supported_source_dtypes
+    )
+  }
+  chunks <- descriptor$chunks
+  if (!is.numeric(chunks) || length(chunks) != 2L || anyNA(chunks) ||
+    any(chunks <= 0) || any(chunks != as.integer(chunks)) ||
+    any(chunks > pmax(1L, as.integer(shape)))) {
+    .frame_abort(
+      "Source chunks must be two positive integers bounded by the source shape.",
+      "fmridataset_error_source_contract",
+      field = "chunks",
+      actual = chunks,
+      shape = shape
+    )
+  }
+  capabilities <- descriptor$capabilities
+  required <- c("block_slice", "serializable")
+  if (!is.character(capabilities) || anyNA(capabilities) ||
+    any(!nzchar(capabilities)) || anyDuplicated(capabilities) ||
+    !all(required %in% capabilities)) {
+    .frame_abort(
+      "Source capabilities must be unique strings including block_slice and serializable.",
+      "fmridataset_error_source_contract",
+      field = "capabilities",
+      actual = capabilities,
+      required = required
+    )
+  }
+  fingerprint <- descriptor$fingerprint
+  if (!is.character(fingerprint) || length(fingerprint) != 1L ||
+    is.na(fingerprint) || !nzchar(fingerprint)) {
+    .frame_abort(
+      "Source fingerprint must be one non-empty string.",
+      "fmridataset_error_source_contract",
+      field = "fingerprint",
+      actual = fingerprint
+    )
+  }
+  if (.source_contains_runtime_state(x)) {
+    .frame_abort(
+      "Canonical source descriptors cannot contain functions, environments, or external pointers.",
+      "fmridataset_error_source_contract",
+      field = "runtime_state"
+    )
+  }
+  invisible(x)
 }
 
 .normalize_source_index <- function(index, n) {
@@ -115,16 +237,29 @@ memory_source <- function(data, dtype = NULL, chunks = NULL) {
   if (length(chunks) != 2L || any(chunks <= 0L)) {
     .frame_abort("Source chunks must contain two positive integers.", "fmridataset_error_alignment")
   }
-  structure(
+  dtype <- dtype %||% .source_dtype_from_data(data)
+  .dtype_bytes(dtype)
+  out <- structure(
     list(
       data = data,
       shape = d,
-      dtype = dtype %||% .source_dtype_from_data(data),
+      dtype = dtype,
       chunks = pmin(chunks, pmax(1L, d)),
+      capabilities = c("row_slice", "column_slice", "block_slice", "serializable"),
       schema_version = 1L
     ),
     class = c("memory_source", "array_source")
   )
+  out$fingerprint <- .canonical_digest(list(
+    type = "memory",
+    schema_version = out$schema_version,
+    shape = out$shape,
+    dtype = out$dtype,
+    chunks = out$chunks,
+    data = out$data
+  ))
+  validate_array_source(out)
+  out
 }
 
 #' @export
@@ -135,11 +270,11 @@ source_dtype.memory_source <- function(x, ...) x$dtype
 source_chunks.memory_source <- function(x, ...) x$chunks
 #' @export
 source_capabilities.memory_source <- function(x, ...) {
-  c("row_slice", "column_slice", "block_slice", "serializable")
+  x$capabilities
 }
 #' @export
 source_fingerprint.memory_source <- function(x, ...) {
-  .canonical_digest(list(type = "memory", shape = x$shape, dtype = x$dtype, data = x$data))
+  x$fingerprint
 }
 #' @export
 source_open.memory_source <- function(x, ...) {
@@ -195,10 +330,12 @@ source_view <- function(source, observations = NULL, features = NULL) {
   shape <- source_shape(source)
   observations <- .normalize_source_index(observations, shape[1L])
   features <- .normalize_source_index(features, shape[2L])
-  structure(
+  out <- structure(
     list(source = source, observations = observations, features = features),
     class = c("source_view", "array_source")
   )
+  validate_array_source(out)
+  out
 }
 
 #' @export
@@ -208,7 +345,13 @@ source_dtype.source_view <- function(x, ...) source_dtype(x$source)
 #' @export
 source_chunks.source_view <- function(x, ...) pmin(source_chunks(x$source), pmax(1L, source_shape(x)))
 #' @export
-source_capabilities.source_view <- function(x, ...) source_capabilities(x$source)
+source_capabilities.source_view <- function(x, ...) {
+  capabilities <- source_capabilities(x$source)
+  if (!identical(x$features, seq_len(source_shape(x$source)[2L]))) {
+    capabilities <- setdiff(capabilities, "native_read")
+  }
+  capabilities
+}
 #' @export
 source_fingerprint.source_view <- function(x, ...) {
   .canonical_digest(list(
@@ -234,6 +377,13 @@ source_read.source_view <- function(x, observations = NULL, features = NULL, ...
 }
 #' @export
 source_read_native.source_view <- function(x, observations = NULL, ...) {
+  if (!"native_read" %in% source_capabilities(x)) {
+    .frame_abort(
+      "A feature-restricted source view has no valid native spatial read path.",
+      "fmridataset_error_backend_io",
+      operation = "native_read"
+    )
+  }
   observations <- .normalize_source_index(observations, length(x$observations))
   source_read_native(x$source, observations = x$observations[observations], ...)
 }
@@ -251,10 +401,12 @@ source_close.source_view <- function(x, ...) invisible(TRUE)
 counting_source <- function(source) {
   id <- uuid::UUIDgenerate()
   .source_counter_registry[[id]] <- list(reads = 0, values = 0, bytes = 0, opens = 0, closes = 0)
-  structure(
+  out <- structure(
     list(source = as_array_source(source), counter_id = id),
     class = c("counting_source", "array_source")
   )
+  validate_array_source(out)
+  out
 }
 
 .source_counter <- function(x) {
@@ -314,7 +466,13 @@ source_read.counting_source <- function(x, observations = NULL, features = NULL,
 }
 #' @export
 source_read_native.counting_source <- function(x, observations = NULL, ...) {
-  source_read_native(x$source, observations = observations, ...)
+  value <- source_read_native(x$source, observations = observations, ...)
+  count <- .source_counter(x)
+  count$reads <- count$reads + 1
+  count$values <- count$values + length(value)
+  count$bytes <- count$bytes + length(value) * .dtype_bytes(source_dtype(x))
+  .set_source_counter(x, count)
+  value
 }
 #' @export
 source_close.counting_source <- function(x, ...) {
@@ -334,10 +492,12 @@ source_close.counting_source <- function(x, ...) {
 fault_source <- function(source, stage = c("read", "open", "native_read", "close"),
                          message = NULL) {
   stage <- match.arg(stage)
-  structure(
+  out <- structure(
     list(source = as_array_source(source), stage = stage, message = message %||% paste("Injected", stage, "failure")),
     class = c("fault_source", "array_source")
   )
+  validate_array_source(out)
+  out
 }
 
 .fault_maybe <- function(x, stage) {
@@ -360,7 +520,14 @@ source_chunks.fault_source <- function(x, ...) source_chunks(x$source)
 #' @export
 source_capabilities.fault_source <- function(x, ...) source_capabilities(x$source)
 #' @export
-source_fingerprint.fault_source <- function(x, ...) source_fingerprint(x$source)
+source_fingerprint.fault_source <- function(x, ...) {
+  .canonical_digest(list(
+    type = "fault_source",
+    source = source_fingerprint(x$source),
+    stage = x$stage,
+    message = x$message
+  ))
+}
 #' @export
 source_open.fault_source <- function(x, ...) {
   .fault_maybe(x, "open")
@@ -402,7 +569,7 @@ row_bound_source <- function(sources) {
     .frame_abort("Row-bound sources must have the same dtype.", "fmridataset_error_alignment")
   }
   rows <- vapply(shapes, `[[`, integer(1), 1L)
-  structure(
+  out <- structure(
     list(
       sources = sources,
       rows = rows,
@@ -412,6 +579,8 @@ row_bound_source <- function(sources) {
     ),
     class = c("row_bound_source", "array_source")
   )
+  validate_array_source(out)
+  out
 }
 
 #' @export
@@ -425,11 +594,17 @@ source_chunks.row_bound_source <- function(x, ...) {
 }
 #' @export
 source_capabilities.row_bound_source <- function(x, ...) {
-  Reduce(intersect, lapply(x$sources, source_capabilities))
+  setdiff(Reduce(intersect, lapply(x$sources, source_capabilities)), "native_read")
 }
 #' @export
 source_fingerprint.row_bound_source <- function(x, ...) {
-  .canonical_digest(lapply(x$sources, source_fingerprint))
+  .canonical_digest(list(
+    type = "row_bound_source",
+    shape = x$shape,
+    dtype = x$dtype,
+    boundaries = x$boundaries,
+    sources = lapply(x$sources, source_fingerprint)
+  ))
 }
 #' @export
 source_open.row_bound_source <- function(x, ...) {

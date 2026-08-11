@@ -20,6 +20,7 @@ aligned_assay_set <- function(assays, observations, features) {
   out <- lapply(names(assays), function(nm) {
     value <- assays[[nm]]
     source <- if (inherits(value, "aligned_assay")) value$source else as_array_source(value)
+    validate_array_source(source)
     annotation <- if (is.list(value) && !inherits(value, "array_source")) value else list()
     if (!identical(as.integer(source_shape(source)), as.integer(expected))) {
       .frame_abort(
