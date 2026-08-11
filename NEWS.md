@@ -34,6 +34,11 @@
   contracts with explicit observation, feature, and entity domains,
   referential-integrity checks, view restriction, row-bind merging, and FDS
   persistence.
+
+* Added assay-free `hierarchy_index()` derivation for explicit root-to-leaf
+  containment paths, with entity-order-stable grouping codes, crossed-relation
+  exclusion, ambiguity checks, missing-ancestry propagation, and lazy-view
+  invariance.
 * Added serializable balanced, imagewise, and featurewise block planners with
   explicit byte ceilings, chunk-aware block shapes, stale-plan detection, and
   bounded execution over frame views.
