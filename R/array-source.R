@@ -633,16 +633,44 @@ source_read_native.row_bound_source <- function(x, observations = NULL, ...) {
 #' @export
 source_close.row_bound_source <- function(x, ...) invisible(TRUE)
 
+#' @importFrom delarr delarr_provider_pull
+#' @export
+delarr_provider_pull.array_source <- function(provider, indices, ...) {
+  if (length(indices) != 2L) {
+    .frame_abort(
+      "An fmridataset ArraySource provider requires two selectors.",
+      "fmridataset_error_backend_io",
+      operation = "provider_read"
+    )
+  }
+  source_read(
+    provider,
+    observations = indices[[1L]],
+    features = indices[[2L]],
+    ...
+  )
+}
+
 #' @export
 as_delarr.array_source <- function(backend, ...) {
   .ensure_delarr()
+  if (!"delarr_provider" %in% getNamespaceExports("delarr")) {
+    .frame_abort(
+      "The installed delarr lacks reconstructible provider seeds.",
+      "fmridataset_error_backend_io",
+      operation = "as_delarr"
+    )
+  }
   shape <- source_shape(backend)
-  delarr::delarr_backend(
-    nrow = shape[1L],
-    ncol = shape[2L],
-    pull = function(rows = NULL, cols = NULL) {
-      source_read(backend, observations = rows, features = cols)
-    },
-    chunk_hint = source_chunks(backend)
+  chunks <- source_chunks(backend)
+  delarr::delarr_provider(
+    provider = backend,
+    dims = shape,
+    chunk_hint = list(
+      axis1 = chunks[[1L]],
+      axis2 = chunks[[2L]],
+      rows = chunks[[1L]],
+      cols = chunks[[2L]]
+    )
   )
 }

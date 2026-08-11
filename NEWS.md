@@ -15,6 +15,8 @@
 * Added executable `ArraySource` contract validation for supported dtypes,
   bounded chunk grids, capabilities, stable fingerprints, and freedom from
   unserializable runtime state.
+* Array sources now become reconstructible `delarr` provider seeds; serialized
+  plans retain descriptors and selectors rather than pull closures or handles.
 * The historical `v0.9.0` tag is preserved; development continues from the
   current main line without retagging it.
 

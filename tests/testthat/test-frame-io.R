@@ -25,6 +25,14 @@ test_that("public frame I/O delegates to lazy HDF5 storage", {
   expect_identical(feature_ids(reopened), feature_ids(frame))
   expect_identical(space_digest(space(reopened)), space_digest(space(frame)))
   expect_equal(collect_assay(reopened, "beta"), collect_assay(frame, "beta"))
+
+  plan <- as_delarr(assay(reopened, "beta")$source)
+  expect_s3_class(plan$seed, "delarr_provider_seed")
+  restored_plan <- unserialize(serialize(plan, NULL))
+  expect_equal(
+    delarr::collect(restored_plan[c(7L, 1L), c(6L, 2L)]),
+    collect_assay(frame, "beta")[c(7L, 1L), c(6L, 2L), drop = FALSE]
+  )
 })
 
 test_that("public frame writer preserves atomic failure semantics", {

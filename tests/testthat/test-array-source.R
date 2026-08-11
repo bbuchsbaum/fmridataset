@@ -100,5 +100,12 @@ test_that("fault_source fails at the configured lifecycle stage", {
 test_that("array sources construct runtime delarr plans", {
   m <- matrix(seq_len(12), 3, 4)
   x <- as_delarr(memory_source(m))
+  expect_s3_class(x$seed, "delarr_provider_seed")
+  expect_false(contains_runtime_state(x$seed))
   expect_equal(delarr::collect(x[3:1, c(4, 2)]), m[3:1, c(4, 2), drop = FALSE])
+  restored <- unserialize(serialize(x, NULL))
+  expect_equal(
+    delarr::collect(restored[3:1, c(4, 2)]),
+    m[3:1, c(4, 2), drop = FALSE]
+  )
 })
