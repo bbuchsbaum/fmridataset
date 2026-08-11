@@ -45,6 +45,11 @@
   `obs_blocks(..., resolve = TRUE)` provides lazy observation-aligned views of
   entity blocks without duplicating their stored rows. `filter_obs()` resolves
   entity annotations by default and still performs no assay reads.
+
+* Added `fmri_collection` for named, semantically equivalent frames that must
+  retain separate feature spaces, including participant-native data. Collection
+  validation compares assay, axis, block, entity, and relation schemas without
+  inferring spatial equality from dimensions, and inspection remains zero-read.
 * Added serializable balanced, imagewise, and featurewise block planners with
   explicit byte ceilings, chunk-aware block shapes, stale-plan detection, and
   bounded execution over frame views.
