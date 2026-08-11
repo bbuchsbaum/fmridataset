@@ -19,7 +19,12 @@ test_that("FDS v1 frame manifests are explicit and backend-neutral", {
   )
   expect_identical(
     names(manifest$arrays),
-    c("assays/beta", "assays/variance", "axis/observation/blocks/motion")
+    c(
+      "assays/beta",
+      "assays/variance",
+      "axis/observation/blocks/motion",
+      "entities/stimulus/blocks/visual_pca"
+    )
   )
   expect_false(any(vapply(
     manifest$assays,
@@ -101,7 +106,20 @@ test_that("FDS manifests rebuild frames from separately bound sources", {
   expect_identical(feature_ids(rebuilt), feature_ids(fx$frame))
   expect_identical(space_digest(space(rebuilt)), space_digest(space(fx$frame)))
   expect_identical(names(obs_blocks(rebuilt)), names(obs_blocks(fx$frame)))
-  expect_identical(rebuilt$entities, fx$frame$entities)
+  expect_identical(entity_names(rebuilt), entity_names(fx$frame))
+  expect_identical(
+    entity_data(entity(rebuilt, "stimulus")),
+    entity_data(entity(fx$frame, "stimulus"))
+  )
+  expect_equal(
+    source_read(as_array_source(axis_block_data(
+      entity_blocks(entity(rebuilt, "stimulus"))$visual_pca
+    ))),
+    source_read(as_array_source(axis_block_data(
+      entity_blocks(entity(fx$frame, "stimulus"))$visual_pca
+    ))),
+    tolerance = 0
+  )
   expect_identical(rebuilt$relations, fx$frame$relations)
   expect_identical(rebuilt$tables, fx$frame$tables)
   expect_identical(active_assay(rebuilt), active_assay(fx$frame))

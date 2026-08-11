@@ -26,8 +26,8 @@ fmri_frame(
 
 \item{space}{Feature space used when \code{features} is not already spatial.}
 
-\item{entities}{Named entity registry. Full validation is supplied by the
-study layer; values must remain serializable.}
+\item{entities}{A named \code{entity_registry} or entries normalizable by
+\code{entity_registry()}.}
 
 \item{relations}{Named relation registry.}
 

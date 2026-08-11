@@ -69,8 +69,8 @@ aligned_assay_set <- function(assays, observations, features) {
 #' @param observations Observation metadata or an observation `axis_frame`.
 #' @param features Feature metadata or a spatial feature axis.
 #' @param space Feature space used when `features` is not already spatial.
-#' @param entities Named entity registry. Full validation is supplied by the
-#'   study layer; values must remain serializable.
+#' @param entities A named `entity_registry` or entries normalizable by
+#'   `entity_registry()`.
 #' @param relations Named relation registry.
 #' @param tables Named auxiliary tables.
 #' @param active_assay Active assay name.
@@ -120,6 +120,7 @@ fmri_frame <- function(assays, observations, features = NULL, space = NULL,
   if (!active_assay %in% names(assay_values)) {
     .frame_abort("active_assay is not present in assays.", "fmridataset_error_alignment")
   }
+  entities <- entity_registry(entities)
 
   structure(
     list(
@@ -181,6 +182,12 @@ observation_axis.fmri_frame <- function(x, ...) x$observations
 observations <- function(x, ...) UseMethod("observations")
 #' @export
 observations.fmri_frame <- function(x, ...) axis_data(observation_axis(x))
+
+#' @export
+entities.fmri_frame <- function(x, ...) x$entities
+
+#' @export
+entity.fmri_frame <- function(x, name, ...) entity(entities(x), name)
 
 #' @rdname frame-accessors
 #' @export
@@ -376,6 +383,12 @@ bind_observations <- function(...) {
     if (!identical(feature_ids(first), feature_ids(x)) || !identical(names(assays(first)), names(assays(x)))) {
       .frame_abort("Frames have incompatible feature or assay identities.", "fmridataset_error_alignment")
     }
+    if (!identical(entity_registry_digest(first), entity_registry_digest(x))) {
+      .entity_abort(
+        "Frames have incompatible entity registries.",
+        operation = "bind_observations"
+      )
+    }
   }
   obs <- .bind_axis_frames(lapply(xs, observation_axis))
   if (anyDuplicated(axis_ids(obs))) {
@@ -389,7 +402,7 @@ bind_observations <- function(...) {
     assays = assay_sources,
     observations = obs,
     features = feature_axis(first),
-    entities = first$entities,
+    entities = entities(first),
     relations = first$relations,
     tables = first$tables,
     active_assay = active_assay(first),

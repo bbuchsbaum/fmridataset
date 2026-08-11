@@ -96,6 +96,10 @@ feature_axis.fmri_view <- function(data, space = NULL, blocks = list(), metadata
 #' @export
 observations.fmri_view <- function(x, ...) axis_data(observation_axis(x))
 #' @export
+entities.fmri_view <- function(x, ...) entities(x$base)
+#' @export
+entity.fmri_view <- function(x, name, ...) entity(entities(x), name)
+#' @export
 features.fmri_view <- function(x, ...) axis_data(feature_axis(x))
 #' @export
 observation_ids.fmri_view <- function(x, ...) observation_ids(x$base)[x$observation_index]

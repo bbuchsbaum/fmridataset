@@ -28,7 +28,7 @@ observations <- data.frame(
 
 set.seed(20260811)
 visual_pca <- matrix(stats::rnorm(8L * 3L), nrow = 8L, ncol = 3L)
-stimulus <- list(
+stimulus <- fmridataset::entity_frame(
   key = "stimulus_id",
   data = data.frame(stimulus_id = paste0("stim-", seq_len(8L))),
   blocks = list(

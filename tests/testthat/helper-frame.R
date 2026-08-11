@@ -17,11 +17,12 @@ make_frame_fixture <- function(instrument = FALSE) {
     role = "confound"
   )
 
-  stimulus <- list(
+  stimulus <- entity_frame(
     data = tibble::tibble(
       stimulus_id = c("stim-1", "stim-2", "stim-3"),
       category = c("face", "scene", "object")
     ),
+    key = "stimulus_id",
     blocks = list(
       visual_pca = axis_block(
         matrix(c(.2, .8, .5, .1, .6, .9, .7, .4, .3), nrow = 3),
@@ -100,7 +101,7 @@ make_walking_skeleton_fixture <- function(instrument = FALSE) {
     .component_id = c("PC01", "PC02", "PC03"),
     explained_variance = c(.41, .23, .14)
   )
-  stimulus <- list(
+  stimulus <- entity_frame(
     key = "stimulus_id",
     data = tibble::tibble(stimulus_id = paste0("stim-", seq_len(8L))),
     blocks = list(

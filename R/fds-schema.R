@@ -56,11 +56,11 @@ fds_schema_version <- function() .fds_schema$version
   )
 }
 
-.fds_block_manifests <- function(blocks, axis) {
+.fds_block_manifests <- function(blocks, axis, prefix = paste0("axis/", axis)) {
   if (!length(blocks)) return(list())
   out <- lapply(names(blocks), function(name) {
     block <- blocks[[name]]
-    key <- paste0("axis/", axis, "/blocks/", name)
+    key <- paste0(prefix, "/blocks/", name)
     list(
       name = name,
       array = key,
@@ -72,6 +72,22 @@ fds_schema_version <- function() .fds_schema$version
   })
   names(out) <- names(blocks)
   out
+}
+
+.fds_entity_manifest <- function(x, name) {
+  list(
+    name = name,
+    key = entity_key(x),
+    ids = entity_ids(x),
+    data = entity_data(x),
+    blocks = .fds_block_manifests(
+      entity_blocks(x),
+      paste0("entity:", name),
+      prefix = paste0("entities/", name)
+    ),
+    entity_type = x$entity_type,
+    metadata = x$metadata
+  )
 }
 
 .fds_axis_manifest <- function(x, axis, include_space = FALSE) {
@@ -145,6 +161,33 @@ fds_frame_manifest <- function(x) {
       )
     }
   }
+  entity_values <- entities(x)
+  for (entity_name in names(entity_values)) {
+    entity_value <- entity_values[[entity_name]]
+    for (block_name in names(entity_blocks(entity_value))) {
+      key <- paste0("entities/", entity_name, "/blocks/", block_name)
+      block_data <- axis_block_data(entity_blocks(entity_value)[[block_name]])
+      block_shape <- if (inherits(block_data, "array_source")) {
+        source_shape(block_data)
+      } else {
+        dim(block_data)
+      }
+      extra_axes <- if (length(block_shape) > 2L) {
+        paste0("dimension:", key, ":", seq.int(3L, length(block_shape)))
+      } else {
+        character()
+      }
+      arrays[[key]] <- .fds_array_descriptor(
+        key,
+        c(paste0("entity:", entity_name), paste0("component:", key), extra_axes),
+        block_data
+      )
+    }
+  }
+  entity_manifest <- lapply(names(entity_values), function(name) {
+    .fds_entity_manifest(entity_values[[name]], name)
+  })
+  names(entity_manifest) <- names(entity_values)
   manifest <- list(
     schema = fds_schema(),
     object_type = "fmri_frame",
@@ -155,7 +198,7 @@ fds_frame_manifest <- function(x) {
     ),
     arrays = arrays,
     assays = assay_manifest,
-    entities = x$entities,
+    entities = entity_manifest,
     relations = x$relations,
     tables = x$tables,
     active_assay = active_assay(x),
@@ -165,6 +208,77 @@ fds_frame_manifest <- function(x) {
   )
   validate_fds_manifest(manifest)
   manifest
+}
+
+.validate_manifest_entities <- function(values, arrays) {
+  if (!is.list(values)) {
+    .fds_schema_abort("Manifest entities must be a named list.", "entities")
+  }
+  if (!length(values)) return(invisible(TRUE))
+  names_value <- names(values)
+  if (is.null(names_value) || anyNA(names_value) || any(!nzchar(names_value)) ||
+      anyDuplicated(names_value)) {
+    .fds_schema_abort("Manifest entities must have unique, non-empty names.", "entities")
+  }
+  required <- c("name", "key", "ids", "data", "blocks", "entity_type", "metadata")
+  for (name in names_value) {
+    value <- values[[name]]
+    field <- paste0("entities.", name)
+    if (!is.list(value) || !all(required %in% names(value)) ||
+        !identical(value$name, name)) {
+      .fds_schema_abort(
+        sprintf("Entity '%s' is missing required fields.", name),
+        field
+      )
+    }
+    .validate_manifest_ids(value$ids, length(value$ids), paste0("entity:", name))
+    if (!is.character(value$key) || length(value$key) != 1L ||
+        is.na(value$key) || !nzchar(value$key) ||
+        !is.data.frame(value$data) || nrow(value$data) != length(value$ids) ||
+        !value$key %in% names(value$data) ||
+        !identical(as.character(value$data[[value$key]]), value$ids)) {
+      .fds_schema_abort(
+        sprintf("Entity '%s' has invalid or misaligned scalar keys.", name),
+        paste0(field, ".key")
+      )
+    }
+    if (!is.null(value$entity_type) &&
+        (!is.character(value$entity_type) || length(value$entity_type) != 1L ||
+         is.na(value$entity_type) || !nzchar(value$entity_type))) {
+      .fds_schema_abort("Entity type must be NULL or one non-empty string.", paste0(field, ".entity_type"))
+    }
+    if (!is.list(value$blocks) ||
+        (length(value$blocks) &&
+         (is.null(names(value$blocks)) || any(!nzchar(names(value$blocks))) ||
+          anyDuplicated(names(value$blocks))))) {
+      .fds_schema_abort("Entity blocks must be a uniquely named list.", paste0(field, ".blocks"))
+    }
+    for (block_name in names(value$blocks)) {
+      block <- value$blocks[[block_name]]
+      block_required <- c("name", "array", "components", "role", "units", "metadata")
+      if (!is.list(block) || !all(block_required %in% names(block)) ||
+          !identical(block$name, block_name) || !is.character(block$array) ||
+          length(block$array) != 1L || !block$array %in% names(arrays)) {
+        .fds_schema_abort(
+          sprintf("Entity block '%s.%s' has an invalid array reference.", name, block_name),
+          paste0(field, ".blocks.", block_name)
+        )
+      }
+      array <- arrays[[block$array]]
+      expected_axis <- paste0("entity:", name)
+      if (!identical(array$axes[[1L]], expected_axis) ||
+          array$shape[[1L]] != length(value$ids) ||
+          !is.data.frame(block$components) ||
+          nrow(block$components) != array$shape[[2L]] ||
+          !".component_id" %in% names(block$components)) {
+        .fds_schema_abort(
+          sprintf("Entity block '%s.%s' is not aligned with its keys or components.", name, block_name),
+          paste0(field, ".blocks.", block_name)
+        )
+      }
+    }
+  }
+  invisible(TRUE)
 }
 
 .validate_manifest_ids <- function(ids, expected_n, axis) {
@@ -292,6 +406,7 @@ validate_fds_manifest <- function(manifest) {
   }
   .validate_manifest_axis(manifest$axes$observation, shape[[1L]], "observation", manifest$arrays)
   .validate_manifest_axis(manifest$axes$feature, shape[[2L]], "feature", manifest$arrays, require_space = TRUE)
+  .validate_manifest_entities(manifest$entities, manifest$arrays)
 
   assay_names <- names(manifest$assays)
   if (!is.list(manifest$assays) || !length(manifest$assays) ||
@@ -363,6 +478,19 @@ fds_frame_bindings <- function(x) {
     for (block_name in names(axis_value$blocks)) {
       key <- paste0("axis/", axis_name, "/blocks/", block_name)
       data <- axis_value$blocks[[block_name]]$data
+      out[[key]] <- if (inherits(data, "array_source") || length(dim(data)) != 2L) {
+        data
+      } else {
+        tryCatch(as_array_source(data), error = function(error) data)
+      }
+    }
+  }
+  entity_values <- entities(x)
+  for (entity_name in names(entity_values)) {
+    entity_value <- entity_values[[entity_name]]
+    for (block_name in names(entity_blocks(entity_value))) {
+      key <- paste0("entities/", entity_name, "/blocks/", block_name)
+      data <- axis_block_data(entity_blocks(entity_value)[[block_name]])
       out[[key]] <- if (inherits(data, "array_source") || length(dim(data)) != 2L) {
         data
       } else {
@@ -450,6 +578,29 @@ frame_from_fds_manifest <- function(manifest, bindings) {
     names(out) <- names(axis_manifest$blocks)
     out
   }
+  rebuild_entities <- function(entity_manifests) {
+    out <- lapply(entity_manifests, function(value) {
+      blocks <- lapply(value$blocks, function(block) {
+        axis_block(
+          bindings[[block$array]],
+          components = block$components,
+          role = block$role,
+          units = block$units,
+          metadata = block$metadata
+        )
+      })
+      names(blocks) <- names(value$blocks)
+      entity_frame(
+        data = value$data,
+        key = value$key,
+        blocks = blocks,
+        entity_type = value$entity_type,
+        metadata = value$metadata
+      )
+    })
+    names(out) <- names(entity_manifests)
+    entity_registry(out)
+  }
   fmri_frame(
     assays = annotated,
     observations = axis_frame(
@@ -466,7 +617,7 @@ frame_from_fds_manifest <- function(manifest, bindings) {
       blocks = rebuild_blocks(feature),
       metadata = feature$metadata
     ),
-    entities = manifest$entities,
+    entities = rebuild_entities(manifest$entities),
     relations = manifest$relations,
     tables = manifest$tables,
     active_assay = manifest$active_assay,

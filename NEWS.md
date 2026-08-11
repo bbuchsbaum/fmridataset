@@ -27,6 +27,9 @@
   observation-by-feature stores, including explicit physical-axis order,
   metadata freshness checks, consecutive-range pushdown, optional runtime
   discovery, deterministic handle cleanup, and direct `delarr` compatibility.
+* Added canonical `entity_frame` and `entity_registry` contracts with stable
+  primary keys, scalar metadata, aligned multivariate blocks, synchronized
+  subsetting, frame/view accessors, and source-free FDS entity-block arrays.
 * Added serializable balanced, imagewise, and featurewise block planners with
   explicit byte ceilings, chunk-aware block shapes, stale-plan detection, and
   bounded execution over frame views.
