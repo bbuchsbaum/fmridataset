@@ -23,6 +23,9 @@
 * Added manifest-backed `row_sharded_source()` descriptors with stable shard
   IDs, inspectable global-to-local row routing, exact touched-shard pushdown,
   immutable shard append, and a compatible `row_bound_source()` constructor.
+* Added serializable balanced, imagewise, and featurewise block planners with
+  explicit byte ceilings, chunk-aware block shapes, stale-plan detection, and
+  bounded execution over frame views.
 * The historical `v0.9.0` tag is preserved; development continues from the
   current main line without retagging it.
 
