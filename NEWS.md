@@ -26,6 +26,9 @@
 * Added serializable balanced, imagewise, and featurewise block planners with
   explicit byte ceilings, chunk-aware block shapes, stale-plan detection, and
   bounded execution over frame views.
+* Added explicit matrix-versus-spatial execution dispatch. Complete feature
+  domains use native source reads when available; restricted domains safely
+  reconstruct through their feature space, with bounded streaming helpers.
 * The historical `v0.9.0` tag is preserved; development continues from the
   current main line without retagging it.
 

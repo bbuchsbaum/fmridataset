@@ -300,7 +300,7 @@ spatial_map <- function(x, observation, assay = active_assay(x)) {
   if (length(index) != 1L) {
     .frame_abort("spatial_map requires one observation.", "fmridataset_error_alignment")
   }
-  reconstruct_space(space(x), as.numeric(collect_assay(x[index, ], assay = assay)))
+  collect_spatial_maps(x, observations = index, assay = assay)[[1L]]
 }
 
 #' Explain a frame without reading assay values
