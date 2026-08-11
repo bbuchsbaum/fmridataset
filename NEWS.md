@@ -50,6 +50,11 @@
   retain separate feature spaces, including participant-native data. Collection
   validation compares assay, axis, block, entity, and relation schemas without
   inferring spatial equality from dimensions, and inspection remains zero-read.
+
+* Added `fmri_study`, typed `frame_link` descriptors, keyed `event_table`
+  objects, shared entity contextualization, and lazy `filter_entities()` study
+  views. Entity filters propagate through frames and native-space collections,
+  and restrict linked axis maps and event rows without reading assay data.
 * Added serializable balanced, imagewise, and featurewise block planners with
   explicit byte ceilings, chunk-aware block shapes, stale-plan detection, and
   bounded execution over frame views.
