@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "org.fmridataset.fds-study/v1",
+  "title": "FDS study logical manifest version 1",
+  "type": "object",
+  "required": [
+    "schema",
+    "object_type",
+    "representations",
+    "arrays",
+    "entities",
+    "links",
+    "tables",
+    "metadata",
+    "provenance",
+    "extensions"
+  ],
+  "properties": {
+    "schema": {
+      "type": "object",
+      "required": ["id", "version"],
+      "properties": {
+        "id": {"const": "org.fmridataset.fds-study/v1"},
+        "version": {"const": 1}
+      },
+      "additionalProperties": false
+    },
+    "object_type": {"const": "fmri_study"},
+    "representations": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/representation"}
+    },
+    "arrays": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/array"}
+    },
+    "entities": {"type": "object"},
+    "links": {"type": "object"},
+    "tables": {"type": "object"},
+    "metadata": {"type": "object"},
+    "provenance": {},
+    "extensions": {"type": "object"}
+  },
+  "$defs": {
+    "array": {
+      "type": "object",
+      "required": ["key", "axes", "shape", "dtype"],
+      "properties": {
+        "key": {"type": "string", "minLength": 1},
+        "axes": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "shape": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"type": "integer", "minimum": 0}
+        },
+        "dtype": {"type": "string", "minLength": 1}
+      }
+    },
+    "representation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type", "manifest"],
+          "properties": {
+            "type": {"const": "fmri_frame"},
+            "manifest": {"type": "object"}
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "members", "metadata", "provenance"],
+          "properties": {
+            "type": {"const": "fmri_collection"},
+            "members": {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": {"type": "object"}
+            },
+            "metadata": {"type": "object"},
+            "provenance": {}
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}
