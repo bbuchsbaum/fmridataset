@@ -130,3 +130,20 @@ test_that("frame binding rejects shape-only spatial matches", {
 
   expect_error(bind_observations(x, y), class = "fmridataset_error_space_mismatch")
 })
+
+test_that("frame binding preserves lazy selectors from frame views", {
+  fx <- make_frame_fixture()
+  first <- fx$frame[c(7L, 2L), ]
+  second <- fx$frame[c(4L, 5L), ]
+  bound <- bind_observations(first, second)
+
+  expect_identical(
+    observation_ids(bound),
+    c(observation_ids(first), observation_ids(second))
+  )
+  expect_s3_class(assay(bound, "beta")$source, "row_sharded_source")
+  expect_equal(
+    collect_assay(bound, "beta"),
+    rbind(collect_assay(first, "beta"), collect_assay(second, "beta"))
+  )
+})

@@ -109,6 +109,27 @@ test_that("FDS manifests rebuild frames from separately bound sources", {
   expect_equal(collect_assay(rebuilt, "variance"), fx$variance)
 })
 
+test_that("FDS manifests and bindings preserve lazy frame-view selectors", {
+  fx <- make_frame_fixture()
+  view <- fx$frame[c(7L, 2L, 4L), c(6L, 1L, 3L)]
+  manifest <- fds_frame_manifest(view)
+  bindings <- fds_frame_bindings(view)
+
+  expect_identical(manifest$shape, c(3L, 3L))
+  expect_identical(manifest$arrays[["assays/beta"]]$shape, c(3L, 3L))
+  expect_s3_class(bindings[["assays/beta"]], "source_view")
+  expect_identical(source_shape(bindings[["assays/beta"]]), c(3L, 3L))
+
+  rebuilt <- frame_from_fds_manifest(manifest, bindings)
+  expect_identical(observation_ids(rebuilt), observation_ids(view))
+  expect_identical(feature_ids(rebuilt), feature_ids(view))
+  expect_equal(collect_assay(rebuilt, "beta"), collect_assay(view, "beta"))
+  expect_equal(
+    source_read(as_array_source(axis_block_data(obs_blocks(rebuilt)$motion))),
+    source_read(as_array_source(axis_block_data(obs_blocks(view)$motion)))
+  )
+})
+
 test_that("FDS v1 validation rejects semantic drift", {
   manifest <- fds_frame_manifest(make_frame_fixture()$frame)
 

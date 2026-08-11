@@ -1,5 +1,18 @@
 .axis_digest <- function(x) .canonical_digest(axis_ids(x))
 
+.frame_assay_source <- function(x, name) {
+  source <- assay(x, name)$source
+  if (inherits(x, "fmri_view")) {
+    source_view(
+      source,
+      observations = x$observation_index,
+      features = x$feature_index
+    )
+  } else {
+    source
+  }
+}
+
 #' Construct a strictly aligned assay set
 #'
 #' @param assays Named matrices or `ArraySource` descriptors.
@@ -369,7 +382,7 @@ bind_observations <- function(...) {
     .frame_abort("Observation IDs collide across frames.", "fmridataset_error_alignment")
   }
   assay_sources <- lapply(names(assays(first)), function(nm) {
-    row_bound_source(lapply(xs, function(x) assay(x, nm)$source))
+    row_bound_source(lapply(xs, function(x) .frame_assay_source(x, nm)))
   })
   names(assay_sources) <- names(assays(first))
   fmri_frame(

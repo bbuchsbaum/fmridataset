@@ -101,25 +101,26 @@ fds_frame_manifest <- function(x) {
   }
   observation <- observation_axis(x)
   feature <- feature_axis(x)
+  observation_digest <- .axis_digest(observation)
+  feature_digest <- .axis_digest(feature)
   assay_manifest <- lapply(assays(x), function(value) {
     list(
       name = value$name,
       array = paste0("assays/", value$name),
       dtype = value$dtype,
       shape = as.integer(dim(x)),
-      observation_digest = value$observation_digest,
-      feature_digest = value$feature_digest,
+      observation_digest = observation_digest,
+      feature_digest = feature_digest,
       role = value$role,
       units = value$units,
       metadata = value$metadata
     )
   })
   arrays <- lapply(names(assays(x)), function(name) {
-    value <- assay(x, name)
     .fds_array_descriptor(
       paste0("assays/", name),
       c("observation", "feature"),
-      value$source
+      .frame_assay_source(x, name)
     )
   })
   names(arrays) <- paste0("assays/", names(assays(x)))
@@ -355,7 +356,7 @@ validate_fds_manifest <- function(manifest) {
 #' @export
 fds_frame_bindings <- function(x) {
   manifest <- fds_frame_manifest(x)
-  out <- lapply(names(assays(x)), function(name) assay(x, name)$source)
+  out <- lapply(names(assays(x)), function(name) .frame_assay_source(x, name))
   names(out) <- paste0("assays/", names(assays(x)))
   for (axis_name in c("observation", "feature")) {
     axis_value <- if (axis_name == "observation") observation_axis(x) else feature_axis(x)
