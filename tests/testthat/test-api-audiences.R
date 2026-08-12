@@ -4,8 +4,10 @@
 
 .api_extension_exports <- c(
   "aligned_assay_set", "as_array_source", "as_delarr", "assert_compatible_space",
+  "assert_same_space", "canonicalization_contract", "identity_descriptor",
   "axis_block_data", "axis_blocks", "axis_data", "axis_ids", "block_component_ids",
   "block_components", "block_manifest", "collection_digest", "compatible_space",
+  "same_space",
   "entity_registry_digest", "execute_block_plan", "execution_path",
   "fds_frame_bindings", "fds_frame_manifest", "fds_manifest_digest", "fds_schema",
   "fds_schema_version", "fds_study_bindings", "fds_study_manifest",

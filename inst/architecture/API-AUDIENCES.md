@@ -37,7 +37,10 @@ The stable extension groups are:
   `validate_array_source()`, and the `source_*()` lifecycle generics;
 - spatial protocol: `n_features()`, `feature_ids()`, `native_shape()`,
   `restrict_space()`, `vectorize_space()`, `reconstruct_space()`,
-  `adjacency()`, `compatible_space()`, and `space_digest()`;
+  `adjacency()`, exact `same_space()`, the migration alias
+  `compatible_space()`, and `space_digest()`;
+- typed `identity_descriptor()` results and the versioned R-only
+  `canonicalization_contract()`;
 - mapping and provenance: `feature_map*()`, `provenance_*()`, and their
   validators and digests;
 - semantic registries: entity, relation, hierarchy, validity, and mask-bank

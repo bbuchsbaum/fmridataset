@@ -1,6 +1,28 @@
+.canonicalization_contract <- list(
+  id = "org.fmridataset.r-canonical/v1",
+  version = 1L,
+  algorithm = "sha256",
+  encoding = "R-serialize",
+  portability = "R-only"
+)
+
 .canonical_digest <- function(x) {
-  digest::digest(x, algo = "sha256", serialize = TRUE)
+  digest::digest(
+    list(canonicalization = .canonicalization_contract, value = x),
+    algo = .canonicalization_contract$algorithm,
+    serialize = TRUE
+  )
 }
+
+#' Identity and canonicalization contract
+#'
+#' Canonicalization version 1 hashes normalized R objects with SHA-256 over R
+#' serialization. It is stable for supported package operations and round trips,
+#' but is deliberately R-only rather than a cross-language wire encoding.
+#'
+#' @return A serializable canonicalization descriptor.
+#' @export
+canonicalization_contract <- function() .canonicalization_contract
 
 #' Feature-space contract
 #'
@@ -51,13 +73,14 @@ adjacency <- function(x, ...) UseMethod("adjacency")
 
 #' @rdname feature-space
 #' @export
-compatible_space <- function(x, y, ...) {
+same_space <- function(x, y, ...) {
   same_class <- identical(class(x), class(y))
   same_digest <- identical(space_digest(x), space_digest(y))
   same_ids <- identical(feature_ids(x), feature_ids(y))
   ok <- same_class && same_digest && same_ids
   structure(
     list(
+      same = ok,
       compatible = ok,
       same_class = same_class,
       same_digest = same_digest,
@@ -72,8 +95,8 @@ compatible_space <- function(x, y, ...) {
 
 #' @rdname feature-space
 #' @export
-assert_compatible_space <- function(x, y, ...) {
-  report <- compatible_space(x, y, ...)
+assert_same_space <- function(x, y, ...) {
+  report <- same_space(x, y, ...)
   if (!isTRUE(report$compatible)) {
     .frame_abort(
       report$reason,
@@ -83,6 +106,14 @@ assert_compatible_space <- function(x, y, ...) {
   }
   invisible(report)
 }
+
+#' @rdname feature-space
+#' @export
+compatible_space <- function(x, y, ...) same_space(x, y, ...)
+
+#' @rdname feature-space
+#' @export
+assert_compatible_space <- function(x, y, ...) assert_same_space(x, y, ...)
 
 #' Construct a generic indexed feature space
 #'

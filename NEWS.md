@@ -1,5 +1,11 @@
 # fmridataset 0.10.0 (Development)
 
+- Defined typed semantic, schema, space, source, provenance, and optional
+  content identities under an explicit R-only canonicalization v1 contract.
+  Added `same_space()` for exact spatial identity; the older compatibility
+  names remain exact-identity migration aliases and never infer alignment from
+  shape.
+
 - Added one zero-I/O canonical frame schema for collection compatibility,
   observation binding, bounded explanation, FDS validation, and downstream
   protocol checks, with path-specific structured mismatch diagnostics.
