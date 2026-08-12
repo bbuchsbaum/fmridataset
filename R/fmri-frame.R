@@ -63,10 +63,12 @@ aligned_assay_set <- function(assays, observations, features) {
 #' @param entities A named `entity_registry` or entries normalizable by
 #'   `entity_registry()`.
 #' @param relations Named relation registry.
-#' @param tables Named auxiliary tables.
+#' @param tables Named typed tables created by `event_table()` or
+#'   `auxiliary_table()`.
 #' @param active_assay Active assay name.
-#' @param metadata Frame metadata.
-#' @param provenance Serializable provenance records.
+#' @param metadata Unaligned frame-level record. Aligned values belong on an
+#'   axis, entity, block, assay, relation, typed table, or linked frame.
+#' @param provenance `NULL` or a validated `provenance_graph`.
 #' @return An `fmri_frame`.
 #' @export
 fmri_frame <- function(assays, observations, features = NULL, space = NULL,
@@ -112,21 +114,18 @@ fmri_frame <- function(assays, observations, features = NULL, space = NULL,
     .frame_abort("active_assay is not present in assays.", "fmridataset_error_alignment")
   }
   entities <- entity_registry(entities)
-  if (inherits(provenance, "provenance_graph")) {
-    validate_provenance_graph(provenance)
-  }
-  if (.source_contains_runtime_state(provenance)) {
-    .frame_abort(
-      "Frame provenance cannot contain runtime state.",
-      "fmridataset_error_feature_map", field = "provenance"
-    )
-  }
   relations <- .resolve_relation_registry(
     relation_registry(relations),
     observations,
     feature_axis_value,
     entities
   )
+  tables <- .validate_table_registry(tables, "Frame")
+  metadata <- .normalize_container_metadata(
+    metadata,
+    .frame_alignment_domains(observations, feature_axis_value, entities)
+  )
+  provenance <- .validate_container_provenance(provenance, "Frame")
 
   structure(
     list(
@@ -518,9 +517,9 @@ bind_observations <- function(...) {
     features = feature_axis(first),
     entities = entities(first),
     relations = relation_values,
-    tables = first$tables,
+    tables = first$tables %||% first$base$tables,
     active_assay = active_assay(first),
-    metadata = first$metadata,
-    provenance = first$provenance
+    metadata = first$metadata %||% first$base$metadata,
+    provenance = first$provenance %||% first$base$provenance
   )
 }

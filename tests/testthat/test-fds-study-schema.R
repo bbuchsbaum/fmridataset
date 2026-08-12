@@ -58,7 +58,7 @@
       onset = c(0, 2), duration = c(1, 1)
     ))),
     metadata = list(title = "FDS study fixture"),
-    provenance = list(step = "test")
+    provenance = as_provenance_graph(list(step = "test"))
   )
   list(study = study, phenotype = phenotype)
 }
@@ -110,6 +110,37 @@ test_that("FDS study manifests rebuild linked frames collections and shared bloc
     source_read(as_array_source(entity_blocks(entity(rebuilt, "subject"))$phenotype$data)),
     source_read(as_array_source(entity_blocks(entity(fixture$study, "subject"))$phenotype$data)),
     tolerance = 0
+  )
+})
+
+test_that("FDS study manifests reject legacy lineage and hidden alignment", {
+  fixture <- .make_fds_study_fixture()
+  manifest <- fds_study_manifest(fixture$study)
+
+  malformed <- manifest
+  malformed$provenance <- list(step = "legacy")
+  expect_error(
+    validate_fds_study_manifest(malformed),
+    "provenance_graph",
+    class = "fmridataset_error_schema"
+  )
+
+  malformed <- manifest
+  malformed$metadata <- unaligned_record(list(
+    per_subject = seq_len(length(entity(fixture$study, "subject")))
+  ))
+  expect_error(
+    validate_fds_study_manifest(malformed),
+    "entity:subject-aligned",
+    class = "fmridataset_error_schema"
+  )
+
+  malformed <- manifest
+  malformed$tables$raw <- data.frame(value = 1L)
+  expect_error(
+    validate_fds_study_manifest(malformed),
+    "typed table",
+    class = "fmridataset_error_schema"
   )
 })
 

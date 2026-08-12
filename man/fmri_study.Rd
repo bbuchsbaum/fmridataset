@@ -20,11 +20,11 @@ fmri_study(
 
 \item{links}{Named \code{frame_link} descriptors.}
 
-\item{tables}{Named relational tables, including \code{event_table} objects.}
+\item{tables}{Named typed relational tables.}
 
-\item{metadata}{Serializable study metadata.}
+\item{metadata}{Unaligned study-level metadata.}
 
-\item{provenance}{Serializable provenance records.}
+\item{provenance}{\code{NULL} or a validated \code{provenance_graph}.}
 }
 \value{
 An \code{fmri_study}.

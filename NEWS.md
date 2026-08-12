@@ -1,5 +1,13 @@
 # fmridataset 0.10.0 (Development)
 
+- Made container metadata, typed tables, aligned values, and lineage
+  mechanically distinct. Frame, collection, study, and FDS constructors now
+  require `unaligned_record` metadata semantics and `provenance_graph` lineage;
+  `as_provenance_graph()` is the explicit legacy migration boundary. Added
+  `auxiliary_table()` for keyed files, contrasts, transforms, and other
+  relational tables, and reject axis-length vectors, result diagnostics,
+  arrays, and raw data frames hidden in generic metadata.
+
 - Defined typed semantic, schema, space, source, provenance, and optional
   content identities under an explicit R-only canonicalization v1 contract.
   Added `same_space()` for exact spatial identity; the older compatibility

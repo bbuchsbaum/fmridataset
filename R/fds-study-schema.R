@@ -145,6 +145,31 @@ fds_study_representations <- function(x) {
     .fds_schema_abort("Collection members require unique stable names.", paste0("representations.", name, ".members"))
   }
   for (member_name in member_names) validate_fds_manifest(value$members[[member_name]])
+  tryCatch(
+    .validate_container_provenance(value$provenance, "FDS collection representation"),
+    error = function(error) {
+      .fds_schema_abort(conditionMessage(error), paste0("representations.", name, ".provenance"))
+    }
+  )
+  member_domains <- integer()
+  for (member_name in member_names) {
+    member <- value$members[[member_name]]
+    sizes <- c(
+      observation = length(member$axes$observation$ids),
+      feature = length(member$axes$feature$ids)
+    )
+    sizes <- sizes[sizes > 1L]
+    if (length(sizes)) {
+      names(sizes) <- paste0("member:", member_name, ":", names(sizes))
+      member_domains <- c(member_domains, sizes)
+    }
+  }
+  tryCatch(
+    validate_unaligned_record(value$metadata, member_domains),
+    error = function(error) {
+      .fds_schema_abort(conditionMessage(error), paste0("representations.", name, ".metadata"))
+    }
+  )
   invisible(TRUE)
 }
 
@@ -259,17 +284,12 @@ validate_fds_study_manifest <- function(manifest) {
   if (!identical(manifest$object_type, "fmri_study")) {
     .fds_schema_abort("FDS study manifests require object_type fmri_study.", "object_type")
   }
-  if (inherits(manifest$provenance, "provenance_graph")) {
-    tryCatch(
-      validate_provenance_graph(manifest$provenance),
-      error = function(error) {
-        .fds_schema_abort(
-          paste0("Invalid provenance graph: ", conditionMessage(error)),
-          "provenance"
-        )
-      }
-    )
-  }
+  tryCatch(
+    .validate_container_provenance(manifest$provenance, "FDS study manifest"),
+    error = function(error) {
+      .fds_schema_abort(conditionMessage(error), "provenance")
+    }
+  )
   representations <- manifest$representations
   representation_names <- names(representations)
   if (!is.list(representations) || !length(representations) ||
@@ -290,6 +310,48 @@ validate_fds_study_manifest <- function(manifest) {
         paste0("Study table validation failed: ", conditionMessage(error)),
         "tables"
       )
+    }
+  )
+  metadata_domains <- integer()
+  for (name in names(manifest$entities)) {
+    size <- length(manifest$entities[[name]]$ids)
+    if (size > 1L) metadata_domains[[paste0("entity:", name)]] <- size
+  }
+  for (name in representation_names) {
+    representation <- representations[[name]]
+    if (identical(representation$type, "fmri_frame")) {
+      observation_size <- length(representation$manifest$axes$observation$ids)
+      feature_size <- length(representation$manifest$axes$feature$ids)
+      if (observation_size > 1L) {
+        metadata_domains[[paste0("representation:", name, ":observation")]] <-
+          observation_size
+      }
+      if (feature_size > 1L) {
+        metadata_domains[[paste0("representation:", name, ":feature")]] <-
+          feature_size
+      }
+    } else {
+      for (member_name in names(representation$members)) {
+        member <- representation$members[[member_name]]
+        observation_size <- length(member$axes$observation$ids)
+        feature_size <- length(member$axes$feature$ids)
+        if (observation_size > 1L) {
+          metadata_domains[[paste0(
+            "representation:", name, ":member:", member_name, ":observation"
+          )]] <- observation_size
+        }
+        if (feature_size > 1L) {
+          metadata_domains[[paste0(
+            "representation:", name, ":member:", member_name, ":feature"
+          )]] <- feature_size
+        }
+      }
+    }
+  }
+  tryCatch(
+    validate_unaligned_record(manifest$metadata, metadata_domains),
+    error = function(error) {
+      .fds_schema_abort(conditionMessage(error), "metadata")
     }
   )
   if (.source_contains_runtime_state(manifest)) {

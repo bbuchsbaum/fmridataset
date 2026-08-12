@@ -250,6 +250,6 @@ test_that("collection constructor requires stable unique frame names", {
   expect_error(
     fmri_collection(list(frame = frame), metadata = list(cache = new.env())),
     "runtime",
-    class = "fmridataset_error_collection"
+    class = "fmridataset_error_metadata"
   )
 })

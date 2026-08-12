@@ -124,6 +124,20 @@ as_fmri_frame.fmri_frame <- function(x, ...) {
   ))
 }
 
+.legacy_table <- function(data, role = "legacy") {
+  if (!is.data.frame(data)) {
+    .migration_abort("Legacy table data must be a data frame.", field = "tables")
+  }
+  key <- if ("event_id" %in% names(data) &&
+             !anyNA(data$event_id) && !anyDuplicated(as.character(data$event_id))) {
+    "event_id"
+  } else {
+    NULL
+  }
+  auxiliary_table(data, key = key, role = role,
+                  metadata = list(migrated = TRUE))
+}
+
 #' @export
 as_fmri_frame.matrix_dataset <- function(x, ...) {
   values <- x$datamat
@@ -144,7 +158,9 @@ as_fmri_frame.matrix_dataset <- function(x, ...) {
     observations = .legacy_observation_data(nrow(values), run_length, TR),
     features = feature_data(spatial),
     space = spatial,
-    tables = list(events = x$event_table %||% data.frame()),
+    tables = list(events = .legacy_table(
+      x$event_table %||% data.frame(), role = "legacy_events"
+    )),
     active_assay = "signal",
     metadata = .legacy_frame_metadata("matrix_dataset")
   )
@@ -189,9 +205,13 @@ as_fmri_frame.fmri_series <- function(x, ...) {
     active_assay = "signal",
     metadata = .legacy_frame_metadata(
       "fmri_series",
+      dataset_info = x$dataset_info
+    ),
+    provenance = as_provenance_graph(list(
+      source_class = "fmri_series",
       selection_info = x$selection_info,
       dataset_info = x$dataset_info
-    )
+    ))
   )
 }
 

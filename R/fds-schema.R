@@ -200,10 +200,10 @@ fds_frame_manifest <- function(x) {
     assays = assay_manifest,
     entities = entity_manifest,
     relations = relations(x),
-    tables = x$tables,
+    tables = x$tables %||% x$base$tables,
     active_assay = active_assay(x),
-    metadata = x$metadata,
-    provenance = x$provenance,
+    metadata = x$metadata %||% x$base$metadata,
+    provenance = x$provenance %||% x$base$provenance,
     extensions = list()
   )
   validate_fds_manifest(manifest)
@@ -429,17 +429,12 @@ validate_fds_manifest <- function(manifest) {
   if (!identical(manifest$object_type, "fmri_frame")) {
     .fds_schema_abort("FDS v1 currently supports object_type fmri_frame.", "object_type")
   }
-  if (inherits(manifest$provenance, "provenance_graph")) {
-    tryCatch(
-      validate_provenance_graph(manifest$provenance),
-      error = function(error) {
-        .fds_schema_abort(
-          paste0("Invalid provenance graph: ", conditionMessage(error)),
-          "provenance"
-        )
-      }
-    )
-  }
+  tryCatch(
+    .validate_container_provenance(manifest$provenance, "FDS frame manifest"),
+    error = function(error) {
+      .fds_schema_abort(conditionMessage(error), "provenance")
+    }
+  )
   shape <- manifest$shape
   if (!is.numeric(shape) || length(shape) != 2L || anyNA(shape) ||
     any(shape < 0) || any(shape != as.integer(shape))) {
@@ -476,6 +471,31 @@ validate_fds_manifest <- function(manifest) {
   .validate_manifest_axis(manifest$axes$feature, shape[[2L]], "feature", manifest$arrays, require_space = TRUE)
   .validate_manifest_entities(manifest$entities, manifest$arrays)
   .validate_manifest_relations(manifest)
+  tryCatch(
+    .validate_table_registry(manifest$tables, "FDS frame manifest"),
+    error = function(error) {
+      .fds_schema_abort(conditionMessage(error), "tables")
+    }
+  )
+  manifest_entities <- tryCatch(
+    .manifest_entity_registry(manifest$entities),
+    error = function(error) {
+      .fds_schema_abort(conditionMessage(error), "entities")
+    }
+  )
+  tryCatch(
+    validate_unaligned_record(
+      manifest$metadata,
+      .container_alignment_domains(
+        observations = manifest$axes$observation$ids,
+        features = manifest$axes$feature$ids,
+        entities = manifest_entities
+      )
+    ),
+    error = function(error) {
+      .fds_schema_abort(conditionMessage(error), "metadata")
+    }
+  )
 
   assay_names <- names(manifest$assays)
   if (!is.list(manifest$assays) || !length(manifest$assays) ||

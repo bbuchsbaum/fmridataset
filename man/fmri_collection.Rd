@@ -9,9 +9,9 @@ fmri_collection(frames, metadata = list(), provenance = NULL)
 \arguments{
 \item{frames}{A non-empty named list of \code{fmri_frame} objects or lazy views.}
 
-\item{metadata}{Serializable collection metadata.}
+\item{metadata}{Unaligned collection-level metadata.}
 
-\item{provenance}{Serializable provenance records.}
+\item{provenance}{\code{NULL} or a validated \code{provenance_graph}.}
 }
 \value{
 An \code{fmri_collection}.

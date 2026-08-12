@@ -511,14 +511,29 @@ print.provenance_graph <- function(x, ...) {
   invisible(x)
 }
 
-.as_provenance_graph <- function(x) {
+#' Explicitly migrate legacy lineage to a provenance graph
+#'
+#' Canonical containers accept only `NULL` or a validated `provenance_graph`.
+#' This function is the explicit migration boundary for older serializable
+#' lineage lists: the complete legacy value is retained in one
+#' `legacy_provenance` record.
+#'
+#' @param x `NULL`, a `provenance_graph`, or a serializable legacy value.
+#' @return A validated `provenance_graph`.
+#' @export
+as_provenance_graph <- function(x) {
   if (is.null(x)) return(provenance_graph())
   if (inherits(x, "provenance_graph")) return(provenance_graph(x))
+  if (.source_contains_runtime_state(x)) {
+    .provenance_abort("Legacy provenance cannot contain runtime state.")
+  }
   provenance_graph(provenance_record(
     "legacy_provenance", inputs = list(value = x),
     metadata = list(migrated = TRUE)
   ))
 }
+
+.as_provenance_graph <- as_provenance_graph
 
 .relations_without_feature_domain <- function(x) {
   keep <- vapply(x, function(value) {

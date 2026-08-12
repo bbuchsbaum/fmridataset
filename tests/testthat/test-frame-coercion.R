@@ -76,7 +76,8 @@ test_that("matrix_dataset migration preserves values and temporal structure", {
   expect_identical(observations(frame)$run_timepoint, c(1L, 2L, 1L, 2L, 3L, 4L))
   expect_equal(observations(frame)$time, c(0, 1.5, 0, 1.5, 3, 4.5))
   expect_identical(frame$metadata$migration$source_class, "matrix_dataset")
-  expect_identical(frame$tables$events, legacy$event_table)
+  expect_s3_class(frame$tables$events, "fmri_auxiliary_table")
+  expect_identical(table_data(frame$tables$events), tibble::as_tibble(legacy$event_table))
 
   again <- as_fmri_frame(legacy)
   expect_identical(observation_ids(again), observation_ids(frame))
@@ -103,7 +104,8 @@ test_that("in-memory fmri_series migration preserves aligned metadata", {
   expect_equal(collect_assay(frame), series$data)
   expect_identical(observations(frame)$run_id, series$temporal_info$run_id)
   expect_identical(features(frame)$voxel, series$voxel_info$voxel)
-  expect_identical(frame$metadata$migration$selection_info, series$selection_info)
+  migrated <- provenance_records(frame$provenance)[[1L]]$inputs$value
+  expect_identical(migrated$selection_info, series$selection_info)
 })
 
 test_that("legacy golden inputs have explicit migration outcomes", {

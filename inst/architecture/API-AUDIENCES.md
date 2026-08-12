@@ -8,6 +8,8 @@ This classification is normative for 1.0 review and generated namespace tests.
 The ordinary user surface covers:
 
 - frame, collection, and study construction;
+- typed unaligned metadata records, typed event/auxiliary tables, and explicit
+  legacy-lineage migration with `as_provenance_graph()`;
 - observation, feature, entity, relation, assay, and space inspection;
 - lazy filtering, feature mapping, binding, and validity policies;
 - bounded numerical and spatial realization;
@@ -41,8 +43,11 @@ The stable extension groups are:
   `compatible_space()`, and `space_digest()`;
 - typed `identity_descriptor()` results and the versioned R-only
   `canonicalization_contract()`;
-- mapping and provenance: `feature_map*()`, `provenance_*()`, and their
-  validators and digests;
+- mapping and provenance: `feature_map*()`, `provenance_*()`, the explicit
+  `as_provenance_graph()` migration boundary, and their validators and digests;
+- container semantics: `unaligned_record()`, `event_table()`, and
+  `auxiliary_table()` keep unaligned records, relational rows, aligned arrays,
+  and lineage mechanically distinct;
 - semantic registries: entity, relation, hierarchy, validity, and mask-bank
   constructors, validators, and digests;
 - storage protocol: FDS manifests, bindings, validation, reconstruction, and

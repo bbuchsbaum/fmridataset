@@ -17,17 +17,15 @@
 #' @return An `fmri_event_table`.
 #' @export
 event_table <- function(data, key = "event_id", metadata = list()) {
-  if (!is.data.frame(data)) .event_abort("Event data must be a data frame.")
-  data <- tibble::as_tibble(data)
+  data <- tryCatch(
+    .validate_scalar_table_data(data, "Event table"),
+    fmridataset_error_table = function(error) {
+      .event_abort(conditionMessage(error), field = error$field %||% "data")
+    }
+  )
   if (!is.character(key) || length(key) != 1L || is.na(key) || !nzchar(key) ||
       !key %in% names(data)) {
     .event_abort("Event key must name one scalar data column.", field = "key")
-  }
-  non_scalar <- vapply(data, function(value) {
-    is.list(value) || !is.null(dim(value)) || length(value) != nrow(data)
-  }, logical(1))
-  if (any(non_scalar)) {
-    .event_abort("Event columns must contain scalar values.", columns = names(data)[non_scalar])
   }
   ids <- as.character(data[[key]])
   if (anyNA(ids) || any(!nzchar(ids)) || anyDuplicated(ids)) {
@@ -44,6 +42,7 @@ event_table <- function(data, key = "event_id", metadata = list()) {
        any(!is.finite(data$duration)) || any(data$duration < 0))) {
     .event_abort("Event duration values must be finite and non-negative.", field = "duration")
   }
+  metadata <- unaligned_record(metadata)
   out <- structure(
     list(data = data, key = key, metadata = metadata, schema_version = 1L),
     class = "fmri_event_table"
@@ -337,16 +336,14 @@ frame_link <- function(from, to,
 }
 
 .validate_study_tables <- function(tables, entities_value) {
-  if (!is.list(tables)) .study_abort("tables must be a named list.", field = "tables")
+  tables <- tryCatch(
+    .validate_table_registry(tables, "Study"),
+    fmridataset_error_table = function(error) {
+      .study_abort(conditionMessage(error), field = error$field %||% "tables")
+    }
+  )
   if (length(tables)) {
     ids <- names(tables)
-    if (is.null(ids) || anyNA(ids) || any(!nzchar(ids)) || anyDuplicated(ids)) {
-      .study_abort("Study tables require unique non-empty names.", field = "tables")
-    }
-    valid <- vapply(tables, function(value) {
-      inherits(value, "fmri_event_table") || is.data.frame(value)
-    }, logical(1))
-    if (!all(valid)) .study_abort("Study tables must be data frames or event tables.")
     for (table_name in ids[vapply(tables, inherits, logical(1), "fmri_event_table")]) {
       validate_event_table(tables[[table_name]])
       data <- event_data(tables[[table_name]])
@@ -366,7 +363,6 @@ frame_link <- function(from, to,
       }
     }
   }
-  if (.source_contains_runtime_state(tables)) .study_abort("Study tables cannot contain runtime state.")
   tables
 }
 
@@ -375,9 +371,9 @@ frame_link <- function(from, to,
 #' @param frames Named `fmri_frame` or `fmri_collection` representations.
 #' @param entities Shared authoritative entity registry.
 #' @param links Named `frame_link` descriptors.
-#' @param tables Named relational tables, including `event_table` objects.
-#' @param metadata Serializable study metadata.
-#' @param provenance Serializable provenance records.
+#' @param tables Named typed relational tables.
+#' @param metadata Unaligned study-level metadata.
+#' @param provenance `NULL` or a validated `provenance_graph`.
 #' @return An `fmri_study`.
 #' @export
 fmri_study <- function(frames, entities = list(), links = list(), tables = list(),
@@ -402,9 +398,10 @@ fmri_study <- function(frames, entities = list(), links = list(), tables = list(
   }
   links <- .validate_study_links(links, frames)
   tables <- .validate_study_tables(tables, entities_value)
-  if (inherits(provenance, "provenance_graph")) {
-    validate_provenance_graph(provenance)
-  }
+  metadata <- .normalize_container_metadata(
+    metadata, .study_alignment_domains(frames, entities_value)
+  )
+  provenance <- .validate_container_provenance(provenance, "Study")
   out <- structure(
     list(
       frames = frames, entities = entities_value, links = links, tables = tables,
