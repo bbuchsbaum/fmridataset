@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-# Script to generate golden test data for fmridataset package
+# Archived script to generate final-0.x golden test data
 # Run this script from the package root directory
 
 # Check if we're in the package root

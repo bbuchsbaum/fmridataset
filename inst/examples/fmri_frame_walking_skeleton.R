@@ -94,18 +94,22 @@ map <- fmridataset::spatial_map(
 stopifnot(methods::is(map, "NeuroVol"))
 
 path <- tempfile(fileext = ".fds.h5")
-on.exit(unlink(path), add = TRUE)
-fmridataset::write_frame(fit$result, path)
-reopened <- fmridataset::open_frame(path)
-stopifnot(
-  identical(fmridataset::feature_ids(reopened), fmridataset::feature_ids(fit$result)),
-  identical(
-    fmridataset::space_digest(fmridataset::space(reopened)),
-    fmridataset::space_digest(fmridataset::space(fit$result))
-  ),
-  isTRUE(all.equal(
-    fmridataset::collect_assay(reopened, "estimate"),
-    fmridataset::collect_assay(fit$result, "estimate"),
-    tolerance = 0
-  ))
+tryCatch(
+  {
+    fmridataset::write_frame(fit$result, path)
+    reopened <- fmridataset::open_frame(path)
+    stopifnot(
+      identical(fmridataset::feature_ids(reopened), fmridataset::feature_ids(fit$result)),
+      identical(
+        fmridataset::space_digest(fmridataset::space(reopened)),
+        fmridataset::space_digest(fmridataset::space(fit$result))
+      ),
+      isTRUE(all.equal(
+        fmridataset::collect_assay(reopened, "estimate"),
+        fmridataset::collect_assay(fit$result, "estimate"),
+        tolerance = 0
+      ))
+    )
+  },
+  finally = unlink(path)
 )

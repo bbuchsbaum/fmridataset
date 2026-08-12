@@ -165,18 +165,11 @@ print_dataset_info <- function(dataset, title = NULL) {
 
   cat("Dataset class:", paste(class(dataset), collapse = ", "), "\n")
 
-  if (!is.null(dataset$sampling_frame)) {
-    cat("TR:", get_TR(dataset), "seconds\n")
-    cat("Number of runs:", n_runs(dataset), "\n")
-    cat("Run lengths:", get_run_lengths(dataset$sampling_frame), "\n")
-    cat("Total timepoints:", n_timepoints(dataset), "\n")
-  }
-
-  if (!is.null(dataset$event_table) && nrow(dataset$event_table) > 0) {
-    cat(
-      "Events:", nrow(dataset$event_table), "events across",
-      length(unique(dataset$event_table$run)), "runs\n"
-    )
+  if (inherits(dataset, "fmri_frame")) {
+    cat("Observations:", nrow(dataset), "\n")
+    cat("Features:", ncol(dataset), "\n")
+    cat("Assays:", paste(names(assays(dataset)), collapse = ", "), "\n")
+    cat("Space:", class(space(dataset))[1L], "\n")
   }
 
   invisible(dataset)

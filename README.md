@@ -16,8 +16,9 @@ steps and storage systems.
 
 > **Status:** The `0.10.0` development line is an active migration toward 1.0
 > and requires R 4.3 or newer. `fmri_frame()` is the canonical entry point;
-> older dataset constructors remain available as transitional 0.x adapters.
-> APIs may still change before 1.0.
+> older dataset constructors are frozen outside the 1.0 package surface.
+> `upgrade_dataset()` retains narrowly scoped readers for supported serialized
+> 0.x objects. APIs may still change before 1.0.
 
 ## Installation
 
@@ -108,9 +109,10 @@ the logical FDS schema. Companion packages own adjacent responsibilities:
   by the optional BIDS-to-HDF5 workflow.
 
 HDF5 is the certified persistence direction for 1.0. Zarr support remains
-experimental, and `DelayedArray` is optional interoperability rather than the
-internal execution model. Legacy `fmri_dataset()`, `matrix_dataset()`, backend,
-and sampling-frame workflows remain available during the 0.x migration.
+experimental. The historical dataset/backend/sampling-frame architecture is
+frozen in [`legacy-0x/`](legacy-0x/) at the final 0.x boundary and is not part
+of the 1.0 namespace. Use `upgrade_dataset()` for supported self-contained 0.x
+objects; ambiguous file-backed datasets require an explicit source and space.
 
 ## Documentation
 

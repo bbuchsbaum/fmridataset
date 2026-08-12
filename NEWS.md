@@ -1,5 +1,10 @@
 # fmridataset 0.10.0 (Development)
 
+- Froze the historical dataset/backend/sampling-frame architecture in
+  `legacy-0x/` and removed it from the core namespace. The canonical package
+  no longer imports `fmrihrf`; storage extensions now implement serializable
+  `ArraySource` and FDS protocols instead of the open-handle backend registry.
+
 - Detached canonical `fmri_frame` and `fmri_view` objects from legacy
   `fmri_dataset` dispatch. `upgrade_dataset()` now provides checked migration
   for provisional frames and self-contained 0.x matrix, series, and NeuroVec

@@ -152,7 +152,13 @@ as_fmri_frame.matrix_dataset <- function(x, ...) {
 
 #' @export
 as_fmri_frame.fmri_series <- function(x, ...) {
-  values <- as.matrix(x)
+  if (!is.matrix(x$data)) {
+    .migration_abort(
+      "Only self-contained in-memory fmri_series objects can be upgraded; realize and persist an explicit assay source first.",
+      field = "data"
+    )
+  }
+  values <- x$data
   observation <- as.data.frame(x$temporal_info, stringsAsFactors = FALSE)
   observation$.obs_id <- sprintf("legacy-series-observation-%06d", seq_len(nrow(values)))
   observation <- observation[c(".obs_id", setdiff(names(observation), ".obs_id"))]
@@ -253,12 +259,15 @@ as_fmri_frame.default <- function(x, ...) {
 }
 
 .upgrade_series_envelope <- function(x) {
-  series <- new_fmri_series(
-    data = x$data,
-    voxel_info = data.frame(voxel = seq_len(ncol(x$data))),
-    temporal_info = data.frame(timepoint = seq_len(nrow(x$data))),
-    selection_info = list(source = "legacy_serialized_envelope"),
-    dataset_info = list(serialized_class = x$class)
+  series <- structure(
+    list(
+      data = x$data,
+      voxel_info = data.frame(voxel = seq_len(ncol(x$data))),
+      temporal_info = data.frame(timepoint = seq_len(nrow(x$data))),
+      selection_info = list(source = "legacy_serialized_envelope"),
+      dataset_info = list(serialized_class = x$class)
+    ),
+    class = "fmri_series"
   )
   as_fmri_frame(series)
 }

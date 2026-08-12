@@ -381,7 +381,7 @@ provenance_record <- function(operation, parents = character(), inputs = list(),
 
 .provenance_is_acyclic <- function(records) {
   if (!length(records)) return(TRUE)
-  state <- setNames(integer(length(records)), names(records))
+  state <- stats::setNames(integer(length(records)), names(records))
   visit <- function(id) {
     if (state[[id]] == 1L) return(FALSE)
     if (state[[id]] == 2L) return(TRUE)

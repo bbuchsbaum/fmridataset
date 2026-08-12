@@ -657,8 +657,8 @@ shard_manifest <- function(x) {
   }
   core <- data.frame(
     .shard_id = x$shard_ids,
-    .start = head(x$boundaries, -1L) + 1L,
-    .end = tail(x$boundaries, -1L),
+    .start = utils::head(x$boundaries, -1L) + 1L,
+    .end = utils::tail(x$boundaries, -1L),
     .n_observation = x$rows,
     .source_fingerprint = vapply(x$sources, source_fingerprint, character(1)),
     stringsAsFactors = FALSE,

@@ -1680,7 +1680,7 @@ adjacency.composite_space <- function(x, ...) {
   canonical <- Matrix::bdiag(graphs)
   if (!n_features(x)) return(canonical)
   sizes <- vapply(x$parts, n_features, integer(1))
-  offsets <- c(0L, head(cumsum(sizes), -1L))
+  offsets <- c(0L, utils::head(cumsum(sizes), -1L))
   names(offsets) <- names(x$parts)
   canonical_index <- unname(offsets[x$route$part]) + x$route$part_index
   canonical[canonical_index, canonical_index, drop = FALSE]

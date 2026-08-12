@@ -2,32 +2,23 @@
 % Please edit documentation in R/as_delarr.R
 \name{as_delarr}
 \alias{as_delarr}
-\alias{as_delarr.matrix_backend}
-\alias{as_delarr.nifti_backend}
-\alias{as_delarr.study_backend}
 \alias{as_delarr.default}
-\title{Convert backend to a delarr lazy matrix}
+\title{Convert a serializable array source to a delarr plan}
 \usage{
 as_delarr(backend, ...)
-
-\method{as_delarr}{matrix_backend}(backend, ...)
-
-\method{as_delarr}{nifti_backend}(backend, ...)
-
-\method{as_delarr}{study_backend}(backend, ...)
 
 \method{as_delarr}{default}(backend, ...)
 }
 \arguments{
-\item{backend}{A storage backend object}
+\item{backend}{An \code{array_source} descriptor.}
 
-\item{...}{Passed to methods}
+\item{...}{Method-specific arguments.}
 }
 \value{
-A \code{delarr} lazy matrix
+A reconstructible \code{delarr} plan.
 }
 \description{
-Provides a lightweight S3 interface that defers materialization of backend
-data. The returned object is compatible with \code{delarr::collect()} as well as
-base \code{as.matrix()} for realization.
+The 1.0 core delegates lazy numerical execution to \code{delarr}. Backends with
+open handles belonged to the 0.x architecture; canonical callers pass an
+\code{ArraySource} descriptor, normally obtained from \code{assay(frame)$source}.
 }

@@ -27,8 +27,9 @@ test_that("canonical frames and views cannot fall through legacy dispatch", {
   expect_false(inherits(frame, "fmri_dataset"))
   expect_false(inherits(view, "fmri_dataset"))
   expect_identical(class(view), c("fmri_view", "fmri_frame"))
-  expect_error(get_TR(frame), "no applicable method")
-  expect_error(fmri_series(frame), "no applicable method")
+  namespace <- asNamespace("fmridataset")
+  expect_false(exists("get_TR", envir = namespace, inherits = FALSE))
+  expect_false(exists("fmri_series", envir = namespace, inherits = FALSE))
 })
 
 test_that("provisional canonical frames migrate without assay reads", {
@@ -65,7 +66,7 @@ test_that("provisional canonical frames migrate without assay reads", {
 
 test_that("matrix_dataset migration preserves values and temporal structure", {
   values <- matrix(seq_len(24), nrow = 6L, ncol = 4L)
-  legacy <- matrix_dataset(values, TR = 1.5, run_length = c(2L, 4L))
+  legacy <- legacy_matrix_dataset(values, TR = 1.5, run_length = c(2L, 4L))
 
   expect_warning(frame <- upgrade_dataset(legacy), "matrix_dataset")
   expect_identical(class(frame), "fmri_frame")
@@ -81,22 +82,25 @@ test_that("matrix_dataset migration preserves values and temporal structure", {
   expect_identical(observation_ids(again), observation_ids(frame))
   expect_identical(feature_ids(again), feature_ids(frame))
 
-  same_shape <- matrix_dataset(values + 1, TR = 1.5, run_length = c(2L, 4L))
+  same_shape <- legacy_matrix_dataset(values + 1, TR = 1.5, run_length = c(2L, 4L))
   expect_false(compatible_space(space(frame), space(as_fmri_frame(same_shape)))$compatible)
 })
 
 test_that("in-memory fmri_series migration preserves aligned metadata", {
-  series <- new_fmri_series(
-    data = matrix(seq_len(9), nrow = 3L),
-    voxel_info = data.frame(voxel = c(8L, 3L, 1L)),
-    temporal_info = data.frame(run_id = c(1L, 1L, 2L), timepoint = 1:3),
-    selection_info = list(selector = c(8L, 3L, 1L)),
-    dataset_info = list(backend_type = "fixture")
+  series <- structure(
+    list(
+      data = matrix(seq_len(9), nrow = 3L),
+      voxel_info = data.frame(voxel = c(8L, 3L, 1L)),
+      temporal_info = data.frame(run_id = c(1L, 1L, 2L), timepoint = 1:3),
+      selection_info = list(selector = c(8L, 3L, 1L)),
+      dataset_info = list(backend_type = "fixture")
+    ),
+    class = "fmri_series"
   )
 
   frame <- as_fmri_frame(series)
   expect_identical(class(frame), "fmri_frame")
-  expect_equal(collect_assay(frame), as.matrix(series))
+  expect_equal(collect_assay(frame), series$data)
   expect_identical(observations(frame)$run_id, series$temporal_info$run_id)
   expect_identical(features(frame)$voxel, series$voxel_info$voxel)
   expect_identical(frame$metadata$migration$selection_info, series$selection_info)
