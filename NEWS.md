@@ -1,5 +1,9 @@
 # fmridataset 0.10.0 (Development)
 
+- Frame views now expose assay descriptors for their visible rectangle:
+  sources, shapes, and axis digests remain synchronized through reordered,
+  composed, ID-selected, and empty views without reading numerical data.
+
 - Added the canonical `as_fmri_frame()` coercion generic so companion packages
   can provide explicit legacy adapters without owning a competing frame type.
 

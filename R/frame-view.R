@@ -79,9 +79,30 @@ nrow.fmri_view <- function(x) length(x$observation_index)
 #' @export
 ncol.fmri_view <- function(x) length(x$feature_index)
 #' @export
-assays.fmri_view <- function(x, ...) assays(x$base)
+assays.fmri_view <- function(x, ...) {
+  observation_digest <- .axis_digest(observation_axis(x))
+  feature_digest <- .axis_digest(feature_axis(x))
+  out <- lapply(assays(x$base), function(value) {
+    value$source <- source_view(
+      value$source,
+      observations = x$observation_index,
+      features = x$feature_index
+    )
+    value$observation_digest <- observation_digest
+    value$feature_digest <- feature_digest
+    value
+  })
+  class(out) <- c("aligned_assay_set", "list")
+  out
+}
 #' @export
-assay.fmri_view <- function(x, name = active_assay(x), ...) assay(x$base, name)
+assay.fmri_view <- function(x, name = active_assay(x), ...) {
+  value <- assays(x)[[name]]
+  if (is.null(value)) {
+    .frame_abort(sprintf("Unknown assay '%s'.", name), "fmridataset_error_alignment")
+  }
+  value
+}
 #' @export
 active_assay.fmri_view <- function(x, ...) active_assay(x$base)
 #' @export

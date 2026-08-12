@@ -1,16 +1,7 @@
 .axis_digest <- function(x) .canonical_digest(axis_ids(x))
 
 .frame_assay_source <- function(x, name) {
-  source <- assay(x, name)$source
-  if (inherits(x, "fmri_view")) {
-    source_view(
-      source,
-      observations = x$observation_index,
-      features = x$feature_index
-    )
-  } else {
-    source
-  }
+  assay(x, name)$source
 }
 
 #' Construct a strictly aligned assay set
@@ -279,11 +270,11 @@ print.fmri_frame <- function(x, ...) {
 }
 
 .frame_selection <- function(x) {
-  if (inherits(x, "fmri_view")) {
-    list(base = x$base, observations = x$observation_index, features = x$feature_index)
-  } else {
-    list(base = x, observations = seq_len(nrow(x)), features = seq_len(ncol(x)))
-  }
+  list(
+    base = x,
+    observations = seq_len(nrow(x)),
+    features = seq_len(ncol(x))
+  )
 }
 
 #' Collect one frame assay under an explicit memory budget
