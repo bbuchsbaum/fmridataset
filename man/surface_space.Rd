@@ -13,6 +13,7 @@ surface_space(
   medial_wall = NULL,
   template = NULL,
   units = "mm",
+  surf_to_world = diag(4),
   metadata = list()
 )
 }
@@ -35,6 +36,9 @@ vertices are active.}
 \item{template}{Optional template identity such as \code{"fsLR-32k"}.}
 
 \item{units}{Coordinate units.}
+
+\item{surf_to_world}{A finite 4 by 4 surface-to-world transform, following
+the \code{neurosurf::SurfaceGeometry} convention.}
 
 \item{metadata}{Additional serializable metadata.}
 }

@@ -67,7 +67,14 @@
 * Added `surface_space` with stable full-mesh vertex and hemisphere identity,
   packed active/medial-wall support, content-addressed topology and geometry,
   induced sparse adjacency, surface-map reconstruction, restriction, spatial
-  compatibility, and source-free FDS persistence.
+  compatibility, and source-free FDS persistence. Surface identity now follows
+  `neurosurf`'s surface-to-world transform convention, with an explicit adapter
+  to and native reconstruction path for `neurosurf::SurfaceGeometry`.
+* Added parent-linked `parcel_space` with sparse membership, explicit mean/sum
+  aggregation and reconstruction operators, induced parcel adjacency, stable
+  atlas-namespaced feature IDs, restriction, and FDS persistence. The optional
+  `neuroatlas` adapter delegates atlas metadata and atlas-specific surface label
+  coding to `neuroatlas::as_parcel_data()` and `neuroatlas::get_roi()`.
 * The historical `v0.9.0` tag is preserved; development continues from the
   current main line without retagging it.
 

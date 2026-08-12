@@ -58,6 +58,8 @@ Suggests:
     microbenchmark,
     mockery,
     multidesign,
+    neuroatlas,
+    neurosurf,
     pryr,
     rmarkdown,
     testthat (>= 3.0.0),
@@ -66,7 +68,7 @@ Suggests:
     zarr (>= 0.4.2)
 VignetteBuilder: knitr
 Remotes: bbuchsbaum/delarr, bbuchsbaum/albersdown, bbuchsbaum/fmrigds,
-    bbuchsbaum/multidesign
+    bbuchsbaum/multidesign, bbuchsbaum/neuroatlas, bbuchsbaum/neurosurf
 Additional_repositories: https://bbuchsbaum.r-universe.dev
 URL: https://github.com/bbuchsbaum/fmridataset, https://bbuchsbaum.github.io/fmridataset/
 BugReports: https://github.com/bbuchsbaum/fmridataset/issues

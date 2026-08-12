@@ -13,6 +13,7 @@
 \alias{adjacency}
 \alias{compatible_space}
 \alias{assert_compatible_space}
+\alias{reconstruct_space.surface_space}
 \title{Feature-space contract}
 \usage{
 n_features(x, ...)
@@ -36,6 +37,8 @@ adjacency(x, ...)
 compatible_space(x, y, ...)
 
 assert_compatible_space(x, y, ...)
+
+\method{reconstruct_space}{surface_space}(x, vector, format = c("surface_map", "neurosurf"), ...)
 }
 \arguments{
 \item{x}{A feature-space object.}
@@ -49,6 +52,10 @@ assert_compatible_space(x, y, ...)
 \item{vector}{A feature vector to reconstruct.}
 
 \item{y}{A second feature-space object.}
+
+\item{format}{Surface reconstruction format. The backend-neutral default is
+\code{"surface_map"}; \code{"neurosurf"} returns a \code{neurosurf::NeuroSurface} when
+embedded unilateral geometry is available.}
 }
 \description{
 Feature-space contract
