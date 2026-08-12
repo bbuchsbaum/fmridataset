@@ -390,11 +390,15 @@ source_read_native.source_view <- function(x, observations = NULL, ...) {
 #' @export
 source_close.source_view <- function(x, ...) invisible(TRUE)
 
-#' Instrument an array source
+#' Developer tool: instrument an array source
 #'
 #' `counting_source()` records numerical reads without placing a mutable
-#' environment inside the source descriptor.
+#' environment inside the source descriptor. It is exported for backend and
+#' downstream conformance suites, not as an application data source.
 #'
+#' This is developer-only test instrumentation. The counter registry is
+#' process-local, is not persisted with the descriptor, and must not be used as
+#' provenance or as an execution receipt.
 #' @param source An array source.
 #' @return A serializable instrumented source.
 #' @export
@@ -482,8 +486,13 @@ source_close.counting_source <- function(x, ...) {
   invisible(TRUE)
 }
 
-#' Inject deterministic source failures
+#' Developer tool: inject deterministic source failures
 #'
+#' This source is exported solely for deterministic backend, codec, cleanup,
+#' and recovery conformance tests.
+#'
+#' This is developer-only test instrumentation. Never persist a `fault_source`
+#' as study data or use one in an analysis plan.
 #' @param source An array source.
 #' @param stage One of `"open"`, `"read"`, `"native_read"`, or `"close"`.
 #' @param message Failure message.

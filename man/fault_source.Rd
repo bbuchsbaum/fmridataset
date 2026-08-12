@@ -2,7 +2,7 @@
 % Please edit documentation in R/array-source.R
 \name{fault_source}
 \alias{fault_source}
-\title{Inject deterministic source failures}
+\title{Developer tool: inject deterministic source failures}
 \usage{
 fault_source(
   source,
@@ -21,5 +21,10 @@ fault_source(
 A serializable fault-injecting source.
 }
 \description{
-Inject deterministic source failures
+This source is exported solely for deterministic backend, codec, cleanup,
+and recovery conformance tests.
+}
+\details{
+This is developer-only test instrumentation. Never persist a \code{fault_source}
+as study data or use one in an analysis plan.
 }

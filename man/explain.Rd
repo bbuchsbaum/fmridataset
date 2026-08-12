@@ -2,16 +2,29 @@
 % Please edit documentation in R/fmri-frame.R
 \name{explain}
 \alias{explain}
-\title{Explain a frame without reading assay values}
+\title{Explain a frame without reading numerical values}
 \usage{
-explain(x)
+explain(x, ids = c("sample", "none", "complete"), sample_size = 3L)
 }
 \arguments{
 \item{x}{An \code{fmri_frame} or view.}
+
+\item{ids}{One of \code{"sample"}, \code{"none"}, or \code{"complete"}.}
+
+\item{sample_size}{Number of IDs sampled from each end of each axis.}
 }
 \value{
-A serializable execution summary.
+A bounded serializable execution summary. No assay or aligned-block
+values are read.
 }
 \description{
-Explain a frame without reading assay values
+\code{explain()} returns a bounded, serializable summary of the visible frame.
+Axis IDs are sampled by default so inspecting a large study does not create
+another large object. Set \code{ids = "complete"} only when every visible ID is
+required.
+}
+\details{
+The schema digest describes column, block, assay, relation, entity, table,
+and space contracts. The semantic digest covers the complete source-free FDS
+manifest. Physical source fingerprints are reported separately.
 }

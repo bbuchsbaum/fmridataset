@@ -92,6 +92,18 @@ test_that("counting_source records requested assay bytes", {
   expect_gt(source_counts(x)$bytes, 0)
 })
 
+test_that("instrumentation descriptors remain serializable developer tools", {
+  counted <- counting_source(memory_source(matrix(1:4, 2L)))
+  faulted <- fault_source(memory_source(matrix(1:4, 2L)), stage = "read")
+
+  expect_false(contains_runtime_state(counted))
+  expect_false(contains_runtime_state(faulted))
+  expect_identical(source_counts(counted)$bytes, 0)
+  expect_identical(source_fingerprint(unserialize(serialize(counted, NULL))),
+                   source_fingerprint(counted))
+  expect_error(source_read(faulted, 1L, 1L), class = "fmridataset_error_backend_io")
+})
+
 test_that("fault_source fails at the configured lifecycle stage", {
   x <- fault_source(memory_source(matrix(1:4, 2)), stage = "read")
   expect_error(source_read(x, 1, 1), class = "fmridataset_error_backend_io")

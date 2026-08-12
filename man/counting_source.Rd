@@ -4,7 +4,7 @@
 \alias{counting_source}
 \alias{source_counts}
 \alias{reset_source_counts}
-\title{Instrument an array source}
+\title{Developer tool: instrument an array source}
 \usage{
 counting_source(source)
 
@@ -22,5 +22,11 @@ A serializable instrumented source.
 }
 \description{
 \code{counting_source()} records numerical reads without placing a mutable
-environment inside the source descriptor.
+environment inside the source descriptor. It is exported for backend and
+downstream conformance suites, not as an application data source.
+}
+\details{
+This is developer-only test instrumentation. The counter registry is
+process-local, is not persisted with the descriptor, and must not be used as
+provenance or as an execution receipt.
 }

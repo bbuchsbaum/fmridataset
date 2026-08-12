@@ -343,24 +343,167 @@ spatial_map <- function(x, observation, assay = active_assay(x)) {
   collect_spatial_maps(x, observations = index, assay = assay)[[1L]]
 }
 
-#' Explain a frame without reading assay values
+.explain_column_schema <- function(data) {
+  lapply(data, function(value) {
+    out <- list(class = class(value), type = typeof(value))
+    if (is.factor(value)) {
+      out$levels <- levels(value)
+      out$ordered <- is.ordered(value)
+    }
+    out
+  })
+}
+
+.explain_block_schema <- function(blocks) {
+  lapply(blocks, function(block) {
+    value <- axis_block_data(block)
+    shape <- if (inherits(value, "array_source")) source_shape(value) else dim(value)
+    list(
+      shape = as.integer(shape),
+      role = block$role,
+      units = block$units,
+      components = .explain_column_schema(block$components)
+    )
+  })
+}
+
+.explain_frame_schema <- function(x) {
+  observation <- observation_axis(x)
+  feature <- feature_axis(x)
+  entity_values <- entities(x)
+  relation_values <- relations(x)
+  list(
+    fds = fds_schema(),
+    assays = lapply(assays(x), function(value) {
+      list(dtype = value$dtype, role = value$role, units = value$units)
+    }),
+    observation = list(
+      columns = .explain_column_schema(axis_data(observation)),
+      blocks = .explain_block_schema(axis_blocks(observation))
+    ),
+    feature = list(
+      columns = .explain_column_schema(axis_data(feature)),
+      blocks = .explain_block_schema(axis_blocks(feature)),
+      space_type = class(space(x))[1L]
+    ),
+    entities = lapply(entity_values, function(value) {
+      list(
+        key = entity_key(value),
+        type = value$entity_type,
+        columns = .explain_column_schema(entity_data(value)),
+        blocks = .explain_block_schema(entity_blocks(value))
+      )
+    }),
+    relations = lapply(relation_values, function(value) class(value)[1L]),
+    tables = lapply(x$tables, .explain_column_schema),
+    active_assay = active_assay(x)
+  )
+}
+
+.explain_ids <- function(values, mode, sample_size) {
+  if (identical(mode, "complete")) {
+    return(list(mode = mode, values = values))
+  }
+  if (identical(mode, "none") || !length(values) || sample_size == 0L) {
+    return(list(mode = mode, values = values[integer()]))
+  }
+  leading <- seq_len(min(sample_size, length(values)))
+  trailing <- seq.int(max(1L, length(values) - sample_size + 1L), length(values))
+  list(mode = mode, values = values[unique(c(leading, trailing))])
+}
+
+.explain_source_type <- function(source) {
+  while (inherits(source, "counting_source") || inherits(source, "fault_source")) {
+    source <- source$source
+  }
+  class(source)[1L]
+}
+
+#' Explain a frame without reading numerical values
+#'
+#' `explain()` returns a bounded, serializable summary of the visible frame.
+#' Axis IDs are sampled by default so inspecting a large study does not create
+#' another large object. Set `ids = "complete"` only when every visible ID is
+#' required.
+#'
+#' The schema digest describes column, block, assay, relation, entity, table,
+#' and space contracts. The semantic digest covers the complete source-free FDS
+#' manifest. Physical source fingerprints are reported separately.
 #'
 #' @param x An `fmri_frame` or view.
-#' @return A serializable execution summary.
+#' @param ids One of `"sample"`, `"none"`, or `"complete"`.
+#' @param sample_size Number of IDs sampled from each end of each axis.
+#' @return A bounded serializable execution summary. No assay or aligned-block
+#'   values are read.
 #' @export
-explain <- function(x) {
+explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) {
+  if (!inherits(x, "fmri_frame")) {
+    .frame_abort("x must be an fmri_frame or view.", "fmridataset_error_alignment")
+  }
+  ids <- match.arg(ids)
+  sample_size <- as.integer(sample_size)
+  if (length(sample_size) != 1L || is.na(sample_size) || sample_size < 0L) {
+    .frame_abort("sample_size must be one non-negative integer.", "fmridataset_error_alignment")
+  }
+  assay_values <- assays(x)
+  assay_summary <- lapply(assay_values, function(value) {
+    source <- value$source
+    shape <- source_shape(source)
+    list(
+      source_type = .explain_source_type(source),
+      shape = shape,
+      dtype = value$dtype,
+      chunks = source_chunks(source),
+      capabilities = source_capabilities(source),
+      fingerprint = source_fingerprint(source),
+      realization_bytes = prod(as.double(shape)) * .dtype_bytes(value$dtype)
+    )
+  })
+  observation_values <- observation_ids(x)
+  feature_values <- feature_ids(x)
+  manifest <- fds_frame_manifest(x)
+  spatial <- space(x)
   list(
     class = class(x)[1L],
-    shape = dim(x),
-    assays = lapply(assays(x), function(a) list(
-      dtype = a$dtype,
-      chunks = source_chunks(a$source),
-      capabilities = source_capabilities(a$source),
-      fingerprint = source_fingerprint(a$source)
-    )),
-    observation_ids = observation_ids(x),
-    feature_ids = feature_ids(x),
-    space_digest = space_digest(space(x))
+    schema_version = x$schema_version %||% x$base$schema_version,
+    shape = stats::setNames(as.integer(dim(x)), c("observation", "feature")),
+    active_assay = active_assay(x),
+    counts = list(
+      assays = length(assay_values),
+      observation_blocks = length(obs_blocks(x)),
+      feature_blocks = length(feature_blocks(x)),
+      entities = length(entities(x)),
+      relations = length(relations(x)),
+      tables = length(x$tables %||% x$base$tables)
+    ),
+    digests = list(
+      schema = .canonical_digest(.explain_frame_schema(x)),
+      semantic = fds_manifest_digest(manifest),
+      observation = .canonical_digest(observation_values),
+      feature = .canonical_digest(feature_values)
+    ),
+    axes = list(
+      observation = list(
+        count = length(observation_values),
+        ids = .explain_ids(observation_values, ids, sample_size)
+      ),
+      feature = list(
+        count = length(feature_values),
+        ids = .explain_ids(feature_values, ids, sample_size)
+      )
+    ),
+    space = list(
+      type = class(spatial)[1L],
+      features = n_features(spatial),
+      digest = space_digest(spatial)
+    ),
+    assays = assay_summary,
+    realization = list(
+      active_assay_bytes = assay_summary[[active_assay(x)]]$realization_bytes,
+      all_assays_bytes = sum(vapply(
+        assay_summary, function(value) value$realization_bytes, numeric(1)
+      ))
+    )
   )
 }
 
