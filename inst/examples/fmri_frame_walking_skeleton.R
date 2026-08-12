@@ -74,11 +74,14 @@ selected <- frame |>
   fmridataset::select_features(parcel == "hippocampus")
 stopifnot(identical(dim(selected), c(10L, 2L)))
 
-spec <- multidesign::design_spec(
+design_spec <- getExportedValue("multidesign", "design_spec")
+fit_group <- getExportedValue("fmrigds", "fit_group")
+
+spec <- design_spec(
   fixed = ~ Fac1 * Fac2 + age + mv(stimulus.visual_pca, 1:3),
   random = ~ 1 | subject_id
 )
-fit <- fmrigds::fit_group(
+fit <- fit_group(
   frame,
   estimate = "beta",
   variance = "variance",

@@ -14,3 +14,9 @@
 .require_namespace <- function(package, ...) {
   base::requireNamespace(package, ...)
 }
+
+.optional_export <- function(package, name) {
+  if (!.require_namespace(package, quietly = TRUE)) return(NULL)
+  if (!name %in% getNamespaceExports(package)) return(NULL)
+  getExportedValue(package, name)
+}

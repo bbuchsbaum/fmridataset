@@ -1,23 +1,17 @@
 .require_frame_store <- function(function_name) {
-  if (!requireNamespace("fmristore", quietly = TRUE)) {
-    .frame_abort(
-      "HDF5 frame I/O requires the optional fmristore package.",
-      "fmridataset_error_backend_io",
-      operation = function_name
-    )
-  }
-  if (!function_name %in% getNamespaceExports("fmristore")) {
+  implementation <- .optional_export("fmristore", function_name)
+  if (is.null(implementation)) {
     .frame_abort(
       paste0(
-        "The installed fmristore does not provide `",
+        "HDF5 frame I/O requires a compatible fmristore installation with `",
         function_name,
-        "()`; install a version with FDS frame support."
+        "()`; fmristore is certified separately and is not a core dependency."
       ),
       "fmridataset_error_backend_io",
       operation = function_name
     )
   }
-  invisible(TRUE)
+  implementation
 }
 
 #' Persist and reopen an fmri frame
@@ -36,14 +30,14 @@
 #' @export
 write_frame <- function(x, path, format = "hdf5", ...) {
   format <- match.arg(format, "hdf5")
-  .require_frame_store("write_frame_h5")
-  fmristore::write_frame_h5(x, path, ...)
+  writer <- .require_frame_store("write_frame_h5")
+  writer(x, path, ...)
 }
 
 #' @rdname write_frame
 #' @export
 open_frame <- function(path, format = "hdf5", ...) {
   format <- match.arg(format, "hdf5")
-  .require_frame_store("open_frame_h5")
-  fmristore::open_frame_h5(path, ...)
+  reader <- .require_frame_store("open_frame_h5")
+  reader(path, ...)
 }

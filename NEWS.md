@@ -1,5 +1,10 @@
 # fmridataset 0.10.0 (Development)
 
+- Reduced the hard dependency surface to nine demonstrated runtime packages,
+  added minimum versions and immutable commit pins for custom dependencies,
+  and removed companion consumers from `Suggests` and `Remotes`. Companion
+  integration remains available through separately certified runtime discovery.
+
 - Classified the 1.0 namespace into user, extension, and developer-only
   audiences. Removed synthetic vignette helpers and `%||%` from the public
   surface; retained counting and fault sources only as documented conformance

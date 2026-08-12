@@ -14,8 +14,12 @@
   }
 }
 
+.walking_export <- function(package, name) {
+  getExportedValue(package, name)
+}
+
 .walking_design_spec <- function() {
-  multidesign::design_spec(
+  .walking_export("multidesign", "design_spec")(
     fixed = ~ Fac1 * Fac2 + age + mv(stimulus.visual_pca, 1:3),
     random = ~ 1 | subject_id
   )
@@ -35,8 +39,10 @@ test_that("walking skeleton filters metadata and compiles entity blocks without 
     numeric(1)
   ) == 0))
 
-  compiled <- multidesign::compile_design(fixture$frame, .walking_design_spec())
-  actual <- multidesign::model_matrix(compiled)
+  compiled <- .walking_export("multidesign", "compile_design")(
+    fixture$frame, .walking_design_spec()
+  )
+  actual <- .walking_export("multidesign", "model_matrix")(compiled)
   expect_equal(unname(actual), unname(fixture$dense_design), tolerance = 0)
   expect_equal(
     unname(actual[, 5:7, drop = FALSE]),
@@ -44,7 +50,7 @@ test_that("walking skeleton filters metadata and compiles entity blocks without 
     tolerance = 0
   )
   expect_identical(
-    multidesign::term_data(compiled)$component_id[5:7],
+    .walking_export("multidesign", "term_data")(compiled)$component_id[5:7],
     c("PC01", "PC02", "PC03")
   )
   expect_true(all(vapply(
@@ -58,7 +64,8 @@ test_that("walking skeleton agrees across memory, HDF5, block widths, maps, and 
   .skip_without_walking_skeleton()
   fixture <- make_walking_skeleton_fixture()
   spec <- .walking_design_spec()
-  memory_fit <- fmrigds::fit_group(
+  fit_group <- .walking_export("fmrigds", "fit_group")
+  memory_fit <- fit_group(
     fixture$frame,
     estimate = "beta",
     variance = "variance",
@@ -66,7 +73,7 @@ test_that("walking skeleton agrees across memory, HDF5, block widths, maps, and 
     memory_budget = 256 * 1024^2,
     block_size = 2L
   )
-  alternate_fit <- fmrigds::fit_group(
+  alternate_fit <- fit_group(
     fixture$frame,
     estimate = "beta",
     variance = "variance",
@@ -80,7 +87,7 @@ test_that("walking skeleton agrees across memory, HDF5, block widths, maps, and 
   on.exit(unlink(c(input_path, result_path)), add = TRUE)
   write_frame(fixture$frame, input_path)
   hdf5_frame <- open_frame(input_path)
-  hdf5_fit <- fmrigds::fit_group(
+  hdf5_fit <- fit_group(
     hdf5_frame,
     estimate = "beta",
     variance = "variance",

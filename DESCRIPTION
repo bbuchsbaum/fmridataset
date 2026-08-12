@@ -18,47 +18,31 @@ RoxygenNote: 7.3.3
 Depends: 
     R (>= 4.3.0)
 Imports:
-    delarr,
+    delarr (>= 0.1.0),
     digest,
     Matrix,
     methods,
-    neuroim2,
+    neuroim2 (>= 0.19.0),
     rlang,
     tibble,
     utils,
     uuid
 Suggests:
-    albersdown,
-    arrow,
-    bench,
-    bidser,
     blosc,
-    crayon,
-    DelayedArray,
-    DelayedMatrixStats,
-    devtools,
     dplyr,
     fmrilatent,
-    fmrigds,
-    fmristore,
-    ggplot2,
-    hdf5r,
     jsonlite,
-    knitr,
-    microbenchmark,
-    mockery,
-    multidesign,
     neuroatlas,
     neurosurf,
-    pryr,
-    rmarkdown,
     testthat (>= 3.0.0),
     withr,
-    yaml,
     zarr (>= 0.4.2)
-Remotes: bbuchsbaum/delarr, bbuchsbaum/albersdown, bbuchsbaum/fmrigds,
-    bbuchsbaum/multidesign, bbuchsbaum/neuroatlas, bbuchsbaum/neurosurf
+Remotes:
+    bbuchsbaum/delarr@95f3c3453cc258a144a2349d7b7299850d5cd8f2,
+    bbuchsbaum/neuroim2@77b1ddb41a30d251e7751dee84bc81eb93efa07f,
+    bbuchsbaum/neuroatlas@ca403f15c4e10fed2150a10005237c428b466439,
+    bbuchsbaum/neurosurf@dc0633370c4f6b1326820c2e49742bae2ca097b1
 Additional_repositories: https://bbuchsbaum.r-universe.dev
 URL: https://github.com/bbuchsbaum/fmridataset, https://bbuchsbaum.github.io/fmridataset/
 BugReports: https://github.com/bbuchsbaum/fmridataset/issues
-Config/Needs/website: albersdown
+Config/Needs/website: bbuchsbaum/albersdown
