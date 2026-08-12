@@ -4,6 +4,7 @@
 ^docs$
 ^pkgdown$
 ^\.github$
+^\.git$
 ^DOCUMENTATION_FIXES_SUMMARY\.md$
 ^fmridataset_0\.1\.0\.tar\.gz$
 ^REFACTORING_SUMMARY\.md$

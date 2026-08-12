@@ -1,5 +1,8 @@
 # fmridataset 0.10.0 (Development)
 
+- Added the canonical `as_fmri_frame()` coercion generic so companion packages
+  can provide explicit legacy adapters without owning a competing frame type.
+
 ## Architecture
 
 * Began the 1.0 migration around a canonical observation-by-feature
