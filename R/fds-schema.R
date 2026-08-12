@@ -526,7 +526,54 @@ validate_fds_manifest <- function(manifest) {
       "runtime_state"
     )
   }
+  .frame_schema_from_manifest(manifest)
   invisible(manifest)
+}
+
+.frame_schema_from_manifest <- function(manifest) {
+  block_schema <- function(blocks) {
+    out <- lapply(blocks, function(block) {
+      array <- manifest$arrays[[block$array]]
+      list(
+        trailing_shape = as.integer(array$shape[-1L]),
+        component_ids = as.character(block$components$.component_id),
+        components = .schema_columns(block$components),
+        role = block$role, units = block$units, metadata = block$metadata
+      )
+    })
+    names(out) <- names(blocks)
+    out
+  }
+  axis_schema <- function(value, name) list(
+    count = length(value$ids), id_column = value$id_column,
+    columns = .schema_columns(value$data), blocks = block_schema(value$blocks),
+    metadata = value$metadata
+  )
+  out <- list(
+    schema = list(id = "org.fmridataset.frame-schema/v1", version = .frame_schema_version),
+    assays = lapply(manifest$assays, function(value) list(
+      dtype = value$dtype, role = value$role, units = value$units,
+      metadata = value$metadata
+    )),
+    observation = axis_schema(manifest$axes$observation, "observation"),
+    feature = axis_schema(manifest$axes$feature, "feature"),
+    entities = lapply(manifest$entities, function(value) list(
+      key = value$key, entity_type = value$entity_type,
+      columns = .schema_columns(value$data), blocks = block_schema(value$blocks),
+      metadata = value$metadata
+    )),
+    relations = .schema_relations(manifest$relations),
+    tables = .schema_tables(manifest$tables),
+    active_assay = list(policy = "named", name = manifest$active_assay)
+  )
+  out$feature$space <- list(
+    type = class(manifest$axes$feature$space)[1L],
+    digest = space_digest(manifest$axes$feature$space),
+    feature_ids = feature_ids(manifest$axes$feature$space)
+  )
+  class(out) <- c("fmri_frame_schema", "list")
+  validate_frame_schema(out)
+  out
 }
 
 #' Extract physical array bindings from a frame

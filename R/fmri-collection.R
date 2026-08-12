@@ -2,125 +2,19 @@
   .frame_abort(message, "fmridataset_error_collection", ...)
 }
 
-.collection_column_schema <- function(data) {
-  lapply(data, function(value) {
-    list(
-      class = class(value),
-      typeof = typeof(value),
-      levels = if (is.factor(value)) levels(value) else NULL,
-      ordered = is.ordered(value)
-    )
-  })
-}
-
-.collection_data_shape <- function(data) {
-  if (inherits(data, "array_source")) return(source_shape(data))
-  shape <- dim(data)
-  if (is.null(shape)) c(length(data), 1L) else as.integer(shape)
-}
-
-.collection_block_signature <- function(blocks) {
-  lapply(blocks, function(block) {
-    shape <- .collection_data_shape(axis_block_data(block))
-    list(
-      trailing_shape = if (length(shape) > 1L) shape[-1L] else 1L,
-      components = block_components(block),
-      role = block$role,
-      units = block$units,
-      metadata = block$metadata
-    )
-  })
-}
-
-.collection_entity_signature <- function(registry) {
-  lapply(registry, function(value) {
-    list(
-      key = entity_key(value),
-      entity_type = value$entity_type,
-      data = .collection_column_schema(entity_data(value)),
-      blocks = .collection_block_signature(entity_blocks(value))
-    )
-  })
-}
-
-.collection_relation_signature <- function(registry) {
-  lapply(registry, function(value) {
-    if (inherits(value, "key_relation")) {
-      return(list(
-        type = "key",
-        key = value$key,
-        source = value$source,
-        target = value$target,
-        allow_missing = value$allow_missing,
-        metadata = value$metadata
-      ))
-    }
-    list(
-      type = "sparse",
-      from = value$from,
-      to = value$to,
-      from_col = value$from_col,
-      to_col = value$to_col,
-      weight = value$weight,
-      directed = value$directed,
-      data = .collection_column_schema(value$data),
-      metadata = value$metadata
-    )
-  })
-}
-
-.collection_assay_signature <- function(frame) {
-  list(
-    names = names(assays(frame)),
-    active = active_assay(frame),
-    annotations = lapply(assays(frame), function(value) {
-      list(role = value$role, units = value$units, metadata = value$metadata)
-    })
-  )
-}
-
-.collection_frame_signature <- function(frame) {
-  list(
-    assays = .collection_assay_signature(frame),
-    observation = .collection_column_schema(observations(frame)),
-    observation_blocks = .collection_block_signature(obs_blocks(frame)),
-    feature_space_type = class(space(frame))[[1L]],
-    feature = .collection_column_schema(features(frame)),
-    feature_blocks = .collection_block_signature(feature_blocks(frame)),
-    entities = .collection_entity_signature(entities(frame)),
-    relations = .collection_relation_signature(relations(frame))
-  )
-}
-
 .assert_collection_semantics <- function(reference, candidate, frame_id) {
-  labels <- c(
-    assays = "assay",
-    observation = "observation",
-    observation_blocks = "observation block",
-    feature_space_type = "feature space",
-    feature = "feature annotation",
-    feature_blocks = "feature block",
-    entities = "entity",
-    relations = "relation"
+  report <- compare_frame_schema(candidate, reference, mode = "collection")
+  if (!report$compatible) .collection_abort(
+    sprintf("Frame '%s' has an incompatible schema at '%s'.", frame_id, report$path),
+    frame = frame_id, field = report$path,
+    expected = report$expected, actual = report$actual
   )
-  for (field in names(labels)) {
-    if (!identical(reference[[field]], candidate[[field]])) {
-      .collection_abort(
-        sprintf(
-          "Frame '%s' has an incompatible %s schema.",
-          frame_id, labels[[field]]
-        ),
-        frame = frame_id,
-        field = field
-      )
-    }
-  }
   invisible(TRUE)
 }
 
 .collection_frame_descriptor <- function(frame) {
   list(
-    signature = .collection_frame_signature(frame),
+    signature = frame_schema(frame),
     observation_ids = observation_ids(frame),
     feature_ids = feature_ids(frame),
     observation_data = observations(frame),
@@ -164,10 +58,9 @@ fmri_collection <- function(frames, metadata = list(), provenance = NULL) {
       frames = ids[!valid]
     )
   }
-  signatures <- lapply(frames, .collection_frame_signature)
-  if (length(signatures) > 1L) {
-    for (i in 2:length(signatures)) {
-      .assert_collection_semantics(signatures[[1L]], signatures[[i]], ids[[i]])
+  if (length(frames) > 1L) {
+    for (i in 2:length(frames)) {
+      .assert_collection_semantics(frames[[1L]], frames[[i]], ids[[i]])
     }
   }
   if (inherits(provenance, "provenance_graph")) {

@@ -10,6 +10,7 @@
   "fds_frame_bindings", "fds_frame_manifest", "fds_manifest_digest", "fds_schema",
   "fds_schema_version", "fds_study_bindings", "fds_study_manifest",
   "fds_study_manifest_digest", "fds_study_representations", "feature_map_digest",
+  "frame_schema", "frame_schema_digest", "compare_frame_schema",
   "feature_map_operator", "feature_map_source_space", "feature_map_target_space",
   "feature_mapped_source", "frame_from_fds_manifest", "hierarchy_complete",
   "hierarchy_digest", "hierarchy_groups", "hierarchy_ids", "hierarchy_levels",
@@ -21,6 +22,7 @@
   "study_digest", "study_from_fds_manifest", "validate_array_source",
   "validate_entity_feature_validity", "validate_entity_registry", "validate_event_table",
   "validate_fds_manifest", "validate_fds_study_manifest", "validate_feature_map",
+  "validate_frame_schema", "validate_against_schema",
   "validate_fmri_collection", "validate_fmri_study", "validate_mask_bank",
   "validate_provenance_graph", "validate_relation_registry", "validity_masked_source"
 )

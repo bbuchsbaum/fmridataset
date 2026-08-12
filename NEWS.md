@@ -1,5 +1,9 @@
 # fmridataset 0.10.0 (Development)
 
+- Added one zero-I/O canonical frame schema for collection compatibility,
+  observation binding, bounded explanation, FDS validation, and downstream
+  protocol checks, with path-specific structured mismatch diagnostics.
+
 - Reduced the hard dependency surface to nine demonstrated runtime packages,
   added minimum versions and immutable commit pins for custom dependencies,
   and removed companion consumers from `Suggests` and `Remotes`. Companion

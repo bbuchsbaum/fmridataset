@@ -20,6 +20,8 @@ Backend, spatial, mapping, relation, and codec implementers may rely on:
 
 - `ArraySource` generics, descriptors, validators, and lifecycle rules;
 - `FeatureSpace` generics and compatibility laws;
+- the metadata-only `frame_schema()` contract and mode-specific schema
+  validation used by collections, binding, FDS codecs, and consumers;
 - feature-map, provenance, entity, relation, validity, and hierarchy contracts;
 - FDS manifests, bindings, validators, digests, and reconstruction helpers;
 - block planning and source composition required by storage implementations.

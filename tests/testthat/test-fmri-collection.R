@@ -193,7 +193,7 @@ test_that("collection rejects incompatible assay and axis semantics", {
   )
   expect_error(
     fmri_collection(list(a = reference, b = bad_block)),
-    "observation block",
+    "schema.observation.blocks.motion.component_ids",
     class = "fmridataset_error_collection"
   )
 })
@@ -216,12 +216,12 @@ test_that("collection validates entity, relation, and feature-domain schemas", {
 
   expect_error(
     fmri_collection(list(a = reference, b = bad_entity)),
-    "entity",
+    "schema.entities.subject.columns",
     class = "fmridataset_error_collection"
   )
   expect_error(
     fmri_collection(list(a = reference, b = bad_space_type)),
-    "feature space",
+    "schema.feature.columns",
     class = "fmridataset_error_collection"
   )
   expect_error(

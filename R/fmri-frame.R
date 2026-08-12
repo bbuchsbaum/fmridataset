@@ -343,63 +343,6 @@ spatial_map <- function(x, observation, assay = active_assay(x)) {
   collect_spatial_maps(x, observations = index, assay = assay)[[1L]]
 }
 
-.explain_column_schema <- function(data) {
-  lapply(data, function(value) {
-    out <- list(class = class(value), type = typeof(value))
-    if (is.factor(value)) {
-      out$levels <- levels(value)
-      out$ordered <- is.ordered(value)
-    }
-    out
-  })
-}
-
-.explain_block_schema <- function(blocks) {
-  lapply(blocks, function(block) {
-    value <- axis_block_data(block)
-    shape <- if (inherits(value, "array_source")) source_shape(value) else dim(value)
-    list(
-      shape = as.integer(shape),
-      role = block$role,
-      units = block$units,
-      components = .explain_column_schema(block$components)
-    )
-  })
-}
-
-.explain_frame_schema <- function(x) {
-  observation <- observation_axis(x)
-  feature <- feature_axis(x)
-  entity_values <- entities(x)
-  relation_values <- relations(x)
-  list(
-    fds = fds_schema(),
-    assays = lapply(assays(x), function(value) {
-      list(dtype = value$dtype, role = value$role, units = value$units)
-    }),
-    observation = list(
-      columns = .explain_column_schema(axis_data(observation)),
-      blocks = .explain_block_schema(axis_blocks(observation))
-    ),
-    feature = list(
-      columns = .explain_column_schema(axis_data(feature)),
-      blocks = .explain_block_schema(axis_blocks(feature)),
-      space_type = class(space(x))[1L]
-    ),
-    entities = lapply(entity_values, function(value) {
-      list(
-        key = entity_key(value),
-        type = value$entity_type,
-        columns = .explain_column_schema(entity_data(value)),
-        blocks = .explain_block_schema(entity_blocks(value))
-      )
-    }),
-    relations = lapply(relation_values, function(value) class(value)[1L]),
-    tables = lapply(x$tables, .explain_column_schema),
-    active_assay = active_assay(x)
-  )
-}
-
 .explain_ids <- function(values, mode, sample_size) {
   if (identical(mode, "complete")) {
     return(list(mode = mode, values = values))
@@ -477,7 +420,7 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
       tables = length(x$tables %||% x$base$tables)
     ),
     digests = list(
-      schema = .canonical_digest(.explain_frame_schema(x)),
+      schema = frame_schema_digest(x),
       semantic = fds_manifest_digest(manifest),
       observation = .canonical_digest(observation_values),
       feature = .canonical_digest(feature_values)
@@ -543,15 +486,13 @@ bind_observations <- function(...) {
   first <- xs[[1L]]
   for (x in xs[-1L]) {
     assert_compatible_space(space(first), space(x))
-    if (!identical(feature_ids(first), feature_ids(x)) || !identical(names(assays(first)), names(assays(x)))) {
-      .frame_abort("Frames have incompatible feature or assay identities.", "fmridataset_error_alignment")
-    }
     if (!identical(entity_registry_digest(first), entity_registry_digest(x))) {
       .entity_abort(
         "Frames have incompatible entity registries.",
         operation = "bind_observations"
       )
     }
+    validate_against_schema(x, first, mode = "bind")
   }
   relation_values <- .bind_relation_registries(lapply(xs, relations))
   obs <- .bind_axis_frames(lapply(xs, observation_axis))
@@ -559,7 +500,16 @@ bind_observations <- function(...) {
     .frame_abort("Observation IDs collide across frames.", "fmridataset_error_alignment")
   }
   assay_sources <- lapply(names(assays(first)), function(nm) {
-    row_bound_source(lapply(xs, function(x) .frame_assay_source(x, nm)))
+    prototype <- assay(first, nm)
+    structure(
+      list(
+        source = row_bound_source(lapply(xs, function(x) .frame_assay_source(x, nm))),
+        role = prototype$role,
+        units = prototype$units,
+        metadata = prototype$metadata
+      ),
+      class = "aligned_assay"
+    )
   })
   names(assay_sources) <- names(assays(first))
   fmri_frame(
