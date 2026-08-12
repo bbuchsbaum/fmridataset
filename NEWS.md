@@ -91,6 +91,11 @@
   weight propagation for independent variances, canonical parcel and basis
   maps, typed study-link validation, and content-addressed acyclic derivation
   provenance.
+* Added bit-packed, deduplicated `mask_bank` storage and typed
+  `entity_feature_validity` relations. Validity follows feature views, resolves
+  lazily to observations, reports policy-free coverage, persists through FDS,
+  and can mask selected assays with `NA` without conflating absent coverage
+  with numerical zero.
 * The historical `v0.9.0` tag is preserved; development continues from the
   current main line without retagging it.
 

@@ -171,7 +171,7 @@ relation_registry <- function(relations = list(), ...) {
     valid <- vapply(relations, inherits, logical(1), "fmri_relation")
     if (!all(valid)) {
       .relation_abort(
-        "Every registry entry must be a key_relation or sparse_relation.",
+        "Every registry entry must be a supported fmri_relation.",
         field = "relations",
         relations = names_value[!valid]
       )
@@ -220,6 +220,10 @@ relation_registry <- function(relations = list(), ...) {
       directed = value$directed,
       metadata = value$metadata
     )
+    return(invisible(TRUE))
+  }
+  if (inherits(value, "entity_feature_validity")) {
+    validate_entity_feature_validity(value)
     return(invisible(TRUE))
   }
   .relation_abort(sprintf("Relation '%s' has an unknown descriptor type.", name), relation = name)
@@ -330,6 +334,24 @@ relation_registry <- function(relations = list(), ...) {
     value <- x[[name]]
     if (inherits(value, "key_relation")) {
       .resolve_key_relation(value, observations, features, entities, name)
+    } else if (inherits(value, "entity_feature_validity")) {
+      domain <- paste0("entity:", value$entity)
+      if (!value$entity %in% entity_names(entities)) {
+        .relation_abort(
+          sprintf("Validity relation '%s' references an unknown entity.", name),
+          relation = name, entity = value$entity
+        )
+      }
+      expected_ids <- entity_ids(entity(entities, value$entity))
+      if (!identical(value$entity_ids, expected_ids)) {
+        .relation_abort(
+          sprintf("Validity relation '%s' entity IDs do not match '%s'.",
+                  name, value$entity),
+          relation = name, domain = domain
+        )
+      }
+      assert_compatible_space(value$bank$space, space(features))
+      value
     } else {
       .resolve_sparse_relation(value, observations, features, entities, name)
     }
@@ -430,6 +452,9 @@ relation_registry_digest <- function(x) {
 
 .restrict_relation_registry <- function(x, observation_ids, feature_ids) {
   out <- lapply(x, function(value) {
+    if (inherits(value, "entity_feature_validity")) {
+      return(.restrict_entity_feature_validity(value, feature_ids))
+    }
     if (!inherits(value, "sparse_relation")) return(value)
     keep <- rep(TRUE, nrow(value$data))
     if (identical(value$from, "observation")) {
@@ -458,6 +483,15 @@ relation_registry_digest <- function(x) {
   out <- lapply(names(first), function(name) {
     values <- lapply(xs, `[[`, name)
     prototype <- values[[1L]]
+    if (inherits(prototype, "entity_feature_validity")) {
+      if (!all(vapply(values, identical, logical(1), prototype))) {
+        .relation_abort(
+          sprintf("Validity relation '%s' differs across bound frames.", name),
+          relation = name
+        )
+      }
+      return(prototype)
+    }
     if (inherits(prototype, "key_relation")) {
       if (!all(vapply(values, identical, logical(1), prototype))) {
         .relation_abort(sprintf("Key relation '%s' differs across bound frames.", name), relation = name)

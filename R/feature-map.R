@@ -522,6 +522,7 @@ print.provenance_graph <- function(x, ...) {
 
 .relations_without_feature_domain <- function(x) {
   keep <- vapply(x, function(value) {
+    if (inherits(value, "entity_feature_validity")) return(FALSE)
     if (inherits(value, "key_relation")) {
       return(!identical(value$source, "feature"))
     }
