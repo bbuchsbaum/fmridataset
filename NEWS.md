@@ -81,6 +81,11 @@
   backend-neutral in-memory identity, and FDS/HDF5 persistence. An optional
   `fmrilatent` adapter treats spatial loadings as the synthesis dictionary while
   leaving model fitting, temporal scores, handles, and offsets in `fmrilatent`.
+* Added ordered heterogeneous `composite_space` domains for mixed surface,
+  volume, parcel, and representational parts. Part-qualified feature IDs,
+  explicit routing, arbitrary-order restriction, block-diagonal adjacency,
+  named native reconstruction, and FDS/HDF5 persistence support
+  grayordinate-like data without duplicating child-space geometry classes.
 * The historical `v0.9.0` tag is preserved; development continues from the
   current main line without retagging it.
 

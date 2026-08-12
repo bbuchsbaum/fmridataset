@@ -630,3 +630,249 @@ test_that("fmrilatent loadings adapt without stealing model ownership", {
     tolerance = 1e-10
   )
 })
+
+test_that("composite_space owns ordered part-qualified feature identity", {
+  x <- make_composite_space_fixture()
+
+  expect_s3_class(x, "composite_space")
+  expect_identical(composite_part_names(x),
+                   c("left_cortex", "right_cortex", "subcortical"))
+  expect_length(composite_parts(x), 3L)
+  expect_s3_class(composite_part(x, "left_cortex"), "surface_space")
+  expect_identical(n_features(x), 8L)
+  expect_identical(
+    feature_ids(x),
+    c(
+      paste0("left_cortex::L-", 1:3),
+      paste0("right_cortex::R-", 1:3),
+      paste0("subcortical::voxel-", 1:2)
+    )
+  )
+  expect_identical(
+    native_shape(x),
+    list(
+      left_cortex = c(vertex = 3L),
+      right_cortex = c(vertex = 3L),
+      subcortical = c(2L, 1L, 1L)
+    )
+  )
+  fd <- feature_data(x)
+  expect_identical(fd$.feature_id, feature_ids(x))
+  expect_identical(fd$.part,
+                   rep(c("left_cortex", "right_cortex", "subcortical"),
+                       c(3L, 3L, 2L)))
+  expect_identical(fd$.part_index, c(1:3, 1:3, 1:2))
+  expect_identical(fd$.part_feature_id,
+                   c(paste0("L-", 1:3), paste0("R-", 1:3),
+                     paste0("voxel-", 1:2)))
+})
+
+test_that("composite vectorization and reconstruction route native parts", {
+  x <- make_composite_space_fixture()
+  native <- list(
+    subcortical = array(c(70, 80), dim = c(2, 1, 1)),
+    right_cortex = c(40, 50, 60),
+    left_cortex = c(10, 20, 30)
+  )
+
+  packed <- vectorize_space(x, native)
+  expect_identical(packed, seq(10, 80, by = 10))
+  restored <- reconstruct_space(x, packed)
+  expect_s3_class(restored, "composite_map")
+  expect_identical(names(restored$parts), composite_part_names(x))
+  expect_equal(vectorize_space(x, restored), packed, tolerance = 0)
+  expect_s3_class(restored$parts$left_cortex, "surface_map")
+  expect_true(methods::is(restored$parts$subcortical, "NeuroVol"))
+
+  expect_error(vectorize_space(x, native[-1L]), "exactly")
+  expect_error(vectorize_space(x, c(native, unexpected = list(1))), "exactly")
+})
+
+test_that("composite restriction preserves arbitrary cross-part feature order", {
+  x <- make_composite_space_fixture()
+  index <- c(8L, 2L, 5L, 7L)
+  y <- restrict_space(x, index)
+
+  expect_identical(feature_ids(y), feature_ids(x)[index])
+  expect_identical(composite_part_names(y),
+                   c("left_cortex", "right_cortex", "subcortical"))
+  expect_identical(n_features(composite_part(y, "left_cortex")), 1L)
+  expect_identical(n_features(composite_part(y, "right_cortex")), 1L)
+  expect_identical(n_features(composite_part(y, "subcortical")), 2L)
+  values <- c(8, 2, 5, 7)
+  expect_equal(
+    vectorize_space(y, reconstruct_space(y, values)),
+    values,
+    tolerance = 0
+  )
+
+  empty_part <- restrict_space(x, 4:6)
+  expect_identical(composite_part_names(empty_part), "right_cortex")
+
+  empty <- restrict_space(x, integer())
+  expect_s3_class(empty, "composite_space")
+  expect_identical(n_features(empty), 0L)
+  expect_identical(feature_ids(empty), character())
+  expect_identical(nrow(feature_data(empty)), 0L)
+  expect_identical(dim(adjacency(empty)), c(0L, 0L))
+  expect_identical(
+    vectorize_space(empty, reconstruct_space(empty, numeric())),
+    numeric()
+  )
+})
+
+test_that("composite adjacency is block diagonal in routed feature order", {
+  x <- make_composite_space_fixture()
+  graph <- adjacency(x)
+
+  expect_s4_class(graph, "sparseMatrix")
+  expect_identical(dim(graph), c(8L, 8L))
+  expect_true(all(graph == Matrix::t(graph)))
+  expect_false(any(graph[1:3, 4:8]))
+  expect_false(any(graph[4:6, c(1:3, 7:8)]))
+  expect_true(graph[7L, 8L])
+
+  index <- c(8L, 2L, 5L, 7L)
+  restricted <- adjacency(restrict_space(x, index))
+  expect_equal(as.matrix(restricted), as.matrix(graph[index, index]))
+})
+
+test_that("composite identity includes ordered part names spaces and routing", {
+  x <- make_composite_space_fixture()
+  expect_true(compatible_space(x, make_composite_space_fixture())$compatible)
+
+  reordered <- composite_space(composite_parts(x)[c(2L, 1L, 3L)],
+                               composite_type = x$composite_type)
+  expect_false(identical(space_digest(x), space_digest(reordered)))
+
+  renamed <- composite_parts(x)
+  names(renamed)[[1L]] <- "cortex_left"
+  renamed <- composite_space(renamed, composite_type = x$composite_type)
+  expect_false(identical(space_digest(x), space_digest(renamed)))
+
+  routed <- restrict_space(x, c(8L, 2L, 5L, 7L))
+  rerouted <- restrict_space(x, c(2L, 8L, 5L, 7L))
+  expect_false(identical(space_digest(routed), space_digest(rerouted)))
+})
+
+test_that("composite contracts reject ambiguous parts and metadata", {
+  x <- make_composite_space_fixture()
+  parts <- composite_parts(x)
+
+  expect_error(composite_space(list()), "at least one")
+  expect_error(composite_space(unname(parts)), "named")
+  duplicated <- parts[1:2]
+  names(duplicated) <- c("cortex", "cortex")
+  expect_error(composite_space(duplicated), "unique")
+  bad_name <- parts[1]
+  names(bad_name) <- "left::cortex"
+  expect_error(composite_space(bad_name), "part names")
+  expect_error(composite_space(list(bad = 1:3)), "feature_space")
+  expect_error(
+    composite_space(parts, metadata = list(loader = function() NULL)),
+    "serializable"
+  )
+
+  expect_error(
+    composite_space(
+      parts,
+      route = data.frame(part = "left_cortex", part_index = 1L)
+    ),
+    "every child feature"
+  )
+  bad_route <- data.frame(
+    part = rep(names(parts), vapply(parts, n_features, integer(1))),
+    part_index = unlist(lapply(parts, function(part) seq_len(n_features(part))))
+  )
+  bad_route$part_index[[1L]] <- 1.5
+  expect_error(composite_space(parts, route = bad_route), "integers")
+
+  nested <- composite_space(list(
+    cortex = composite_space(parts[1:2], composite_type = "bilateral"),
+    subcortical = parts$subcortical
+  ))
+  expect_identical(n_features(nested), n_features(x))
+  expect_match(feature_ids(nested)[[1L]], "^cortex::left_cortex::")
+  expect_true(all(c(".part", ".child.part") %in% names(feature_data(nested))))
+
+  triply_nested <- composite_space(list(all = nested))
+  expect_true(".child.child.part" %in% names(feature_data(triply_nested)))
+  expect_identical(anyDuplicated(names(feature_data(triply_nested))), 0L)
+})
+
+test_that("composite spaces survive views and FDS round trips", {
+  x <- make_composite_space_fixture()
+  source <- counting_source(memory_source(matrix(seq_len(16L), nrow = 2L)))
+  frame <- fmri_frame(
+    assays = list(signal = source),
+    observations = data.frame(.obs_id = c("o1", "o2")),
+    features = feature_axis(feature_data(x), space = x)
+  )
+  view <- frame[, c(8L, 2L, 5L, 7L)]
+  expect_s3_class(space(view), "composite_space")
+  expect_identical(feature_ids(space(view)), feature_ids(x)[c(8L, 2L, 5L, 7L)])
+  expect_equal(source_counts(source)$reads, 0)
+
+  manifest <- fds_frame_manifest(frame)
+  restored <- frame_from_fds_manifest(
+    manifest,
+    bindings = list(
+      "assays/signal" = memory_source(matrix(seq_len(16L), nrow = 2L))
+    )
+  )
+  expect_s3_class(space(restored), "composite_space")
+  expect_identical(space_digest(space(restored)), space_digest(x))
+
+  skip_if_not_installed("fmristore")
+  path <- tempfile(fileext = ".h5")
+  on.exit(unlink(path), add = TRUE)
+  write_frame(frame, path)
+  reopened <- open_frame(path)
+  expect_s3_class(space(reopened), "composite_space")
+  expect_identical(space_digest(space(reopened)), space_digest(x))
+})
+
+test_that("composite neurosurf reconstruction delegates each surface part", {
+  skip_if_not_installed("neurosurf")
+  x <- make_composite_space_fixture()
+  restored <- reconstruct_space(x, seq_len(n_features(x)), format = "neurosurf")
+
+  expect_true(methods::is(restored$parts$left_cortex, "NeuroSurface"))
+  expect_true(methods::is(restored$parts$right_cortex, "NeuroSurface"))
+  expect_true(methods::is(restored$parts$subcortical, "NeuroVol"))
+  expect_equal(vectorize_space(x, restored), seq_len(n_features(x)))
+
+  left <- restored$parts$left_cortex
+  geometry <- neurosurf::geometry(left)
+  changed_vertices <- neurosurf::vertices(geometry)
+  changed_vertices[1L, 1L] <- changed_vertices[1L, 1L] + 1
+  changed_geometry <- neurosurf::SurfaceGeometry(
+    changed_vertices,
+    neurosurf::faces(geometry) - 1L,
+    hemi = "lh",
+    surf_to_world = neurosurf::surf_to_world(geometry)
+  )
+  changed <- neurosurf::NeuroSurface(
+    changed_geometry,
+    neurosurf::indices(left),
+    neurosurf::values(left)
+  )
+  bad_map <- restored
+  bad_map$parts$left_cortex <- changed
+  expect_error(
+    vectorize_space(x, bad_map),
+    class = "fmridataset_error_space_mismatch"
+  )
+
+  named <- stats::setNames(seq_len(n_features(x)), feature_ids(x))
+  named <- rev(named)
+  expect_equal(
+    vectorize_space(x, reconstruct_space(x, named)),
+    seq_len(n_features(x))
+  )
+  expect_error(
+    reconstruct_space(x, stats::setNames(seq_len(n_features(x)),
+                                        rep("duplicate", n_features(x)))),
+    "exactly once"
+  )
+})

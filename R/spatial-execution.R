@@ -48,15 +48,27 @@ execution_path <- function(
   }
 }
 
-.spatial_output_bytes <- function(x, n_map = 1L) {
-  shape <- native_shape(space(x))
+.native_realization_values <- function(spatial) {
+  if (inherits(spatial, "composite_space")) {
+    return(sum(vapply(composite_parts(spatial),
+                      .native_realization_values, numeric(1))))
+  }
+  if (inherits(spatial, "parcel_space") ||
+      (inherits(spatial, "basis_space") && !is.null(basis_synthesis(spatial)))) {
+    return(.native_realization_values(parent_space(spatial)))
+  }
+  shape <- native_shape(spatial)
   if (!is.numeric(shape) || anyNA(shape) || any(shape < 0)) {
     .frame_abort(
       "The feature space does not expose a valid native shape.",
       "fmridataset_error_space_mismatch"
     )
   }
-  prod(as.double(shape)) * 8 * as.double(n_map)
+  prod(as.double(shape))
+}
+
+.spatial_output_bytes <- function(x, n_map = 1L) {
+  .native_realization_values(space(x)) * 8 * as.double(n_map)
 }
 
 .assert_spatial_budget <- function(x, n_map, memory_budget) {

@@ -95,3 +95,20 @@ test_that("spatial collection and streaming enforce different memory totals", {
   )
   expect_identical(unlist(streamed, use.names = FALSE), observation_ids(x)[1:2])
 })
+
+test_that("composite spatial budgets sum native part realizations", {
+  spatial <- make_composite_space_fixture()
+  x <- fmri_frame(
+    assays = list(signal = matrix(seq_len(8L), nrow = 1L)),
+    observations = data.frame(.obs_id = "map-1"),
+    space = spatial
+  )
+
+  expect_error(
+    collect_spatial_maps(x, memory_budget = 63),
+    class = "fmridataset_error_budget"
+  )
+  map <- collect_spatial_maps(x, memory_budget = 64)[[1L]]
+  expect_s3_class(map, "composite_map")
+  expect_identical(names(map$parts), composite_part_names(spatial))
+})

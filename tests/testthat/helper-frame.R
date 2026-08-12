@@ -69,6 +69,35 @@ make_frame_fixture <- function(instrument = FALSE) {
   )
 }
 
+make_composite_space_fixture <- function() {
+  left <- surface_space(
+    vertex_ids = paste0("L-", 1:3),
+    hemisphere = rep("left", 3L),
+    topology = matrix(c(1, 2, 3), nrow = 1L),
+    geometry = cbind(-seq_len(3L), c(0, 1, 0), 0),
+    template = "fsLR-toy"
+  )
+  right <- surface_space(
+    vertex_ids = paste0("R-", 1:3),
+    hemisphere = rep("right", 3L),
+    topology = matrix(c(1, 2, 3), nrow = 1L),
+    geometry = cbind(seq_len(3L), c(0, 1, 0), 0),
+    template = "fsLR-toy"
+  )
+  subcortical <- volume_space(
+    c(2, 1, 1), support = 1:2, template = "MNI-toy"
+  )
+  composite_space(
+    list(
+      left_cortex = left,
+      right_cortex = right,
+      subcortical = subcortical
+    ),
+    composite_type = "grayordinate_like",
+    metadata = list(convention = "surface-plus-volume")
+  )
+}
+
 make_walking_skeleton_fixture <- function(instrument = FALSE) {
   subject_id <- factor(rep(c("sub-01", "sub-02", "sub-03"), c(6L, 5L, 7L)))
   Fac1 <- factor(

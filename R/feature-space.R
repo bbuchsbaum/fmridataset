@@ -470,7 +470,31 @@ restrict_space.surface_space <- function(x, index, ...) {
 }
 #' @export
 vectorize_space.surface_space <- function(x, spatial_object, ...) {
-  if (inherits(spatial_object, "surface_map")) {
+  if (methods::is(spatial_object, "NeuroSurface")) {
+    if (!requireNamespace("neurosurf", quietly = TRUE)) {
+      .frame_abort("Vectorizing a NeuroSurface requires neurosurf.",
+                   "fmridataset_error_space_mismatch")
+    }
+    indices <- as.integer(neurosurf::indices(spatial_object))
+    data <- as.numeric(neurosurf::values(spatial_object))
+    if (!identical(indices, x$support) || length(data) != length(indices)) {
+      .frame_abort(
+        "NeuroSurface indices do not match the surface support.",
+        "fmridataset_error_space_mismatch"
+      )
+    }
+    candidate <- surface_space_from_neurosurf(
+      neurosurf::geometry(spatial_object),
+      vertex_ids = x$vertex_ids,
+      support = indices,
+      medial_wall = x$medial_wall,
+      template = x$template,
+      units = x$units
+    )
+    assert_compatible_space(x, candidate)
+    values <- rep(NA_real_, length(x$vertex_ids))
+    values[indices] <- data
+  } else if (inherits(spatial_object, "surface_map")) {
     if (!identical(spatial_object$vertex_ids, x$vertex_ids)) {
       .frame_abort("Surface map vertex IDs do not match the space.", "fmridataset_error_space_mismatch")
     }
@@ -1306,4 +1330,358 @@ basis_space_from_fmrilatent <- function(x, parent, component_ids = NULL,
     ),
     tolerance = tolerance
   )
+}
+
+.composite_reserved_columns <- c(
+  ".feature_id", ".part", ".part_index", ".part_feature_id"
+)
+
+.prefix_composite_child_columns <- function(names) {
+  reserved <- names %in% .composite_reserved_columns[-1L] |
+    grepl("^\\.child(?:\\.child)*\\.(?:part|part_index|part_feature_id)$",
+          names)
+  names[reserved] <- paste0(".child", names[reserved])
+  names
+}
+
+.validate_composite_parts <- function(parts) {
+  if (!is.list(parts) || !length(parts)) {
+    .frame_abort("parts must contain at least one feature space.",
+                 "fmridataset_error_space_mismatch")
+  }
+  part_names <- names(parts)
+  if (is.null(part_names) || anyNA(part_names) || any(!nzchar(part_names))) {
+    .frame_abort("Composite parts must be named.",
+                 "fmridataset_error_space_mismatch")
+  }
+  if (anyDuplicated(part_names)) {
+    .frame_abort("Composite part names must be unique.",
+                 "fmridataset_error_space_mismatch")
+  }
+  if (any(grepl("::", part_names, fixed = TRUE))) {
+    .frame_abort("Composite part names cannot contain the '::' separator.",
+                 "fmridataset_error_space_mismatch")
+  }
+  invalid <- !vapply(parts, inherits, logical(1), "feature_space")
+  if (any(invalid)) {
+    .frame_abort("Every composite part must be a feature_space.",
+                 "fmridataset_error_space_mismatch")
+  }
+  parts
+}
+
+.default_composite_route <- function(parts) {
+  do.call(
+    rbind,
+    lapply(seq_along(parts), function(part_index) {
+      data.frame(
+        part = names(parts)[[part_index]],
+        part_index = seq_len(n_features(parts[[part_index]])),
+        stringsAsFactors = FALSE
+      )
+    })
+  )
+}
+
+.validate_composite_route <- function(route, parts) {
+  route <- tibble::as_tibble(route)
+  if (!identical(names(route), c("part", "part_index"))) {
+    .frame_abort("Composite route must contain exactly part and part_index.",
+                 "fmridataset_error_space_mismatch")
+  }
+  route$part <- as.character(route$part)
+  if (!is.numeric(route$part_index) || anyNA(route$part_index) ||
+      any(route$part_index != as.integer(route$part_index))) {
+    .frame_abort("Composite route positions must be non-missing integers.",
+                 "fmridataset_error_space_mismatch")
+  }
+  route$part_index <- as.integer(route$part_index)
+  if (anyNA(route$part) || anyNA(route$part_index) ||
+      any(!route$part %in% names(parts))) {
+    .frame_abort("Composite route contains invalid part references.",
+                 "fmridataset_error_space_mismatch")
+  }
+  limits <- vapply(parts, n_features, integer(1))
+  if (any(route$part_index < 1L) ||
+      any(route$part_index > unname(limits[route$part]))) {
+    .frame_abort("Composite route contains out-of-bounds part positions.",
+                 "fmridataset_error_space_mismatch")
+  }
+  keys <- paste(route$part, route$part_index, sep = "::")
+  if (anyDuplicated(keys)) {
+    .frame_abort("Composite route cannot contain duplicate child features.",
+                 "fmridataset_error_space_mismatch")
+  }
+  expected_keys <- unlist(lapply(names(parts), function(part_name) {
+    paste(part_name, seq_len(n_features(parts[[part_name]])), sep = "::")
+  }), use.names = FALSE)
+  if (!setequal(keys, expected_keys)) {
+    .frame_abort(
+      "Composite route must contain every child feature exactly once.",
+      "fmridataset_error_space_mismatch"
+    )
+  }
+  route
+}
+
+#' Construct an ordered composite feature space
+#'
+#' A `composite_space` forms one feature axis from heterogeneous child spaces,
+#' such as left cortex, right cortex, and subcortical volume. It owns only the
+#' ordered routing between that axis and its named parts; each child remains the
+#' authority for spatial identity, vectorization, and reconstruction.
+#'
+#' @param parts A named list of non-empty `feature_space` objects.
+#' @param composite_type A stable semantic label, such as
+#'   `"grayordinate_like"`.
+#' @param metadata Additional serializable metadata.
+#' @param route Optional internal routing table with `part` and `part_index`
+#'   columns. By default, all child features are concatenated in part order.
+#' @return A `composite_space`.
+#' @export
+composite_space <- function(parts, composite_type = "composite",
+                            metadata = list(), route = NULL) {
+  parts <- .validate_composite_parts(parts)
+  if (!is.character(composite_type) || length(composite_type) != 1L ||
+      is.na(composite_type) || !nzchar(composite_type)) {
+    .frame_abort("composite_type must be one non-empty string.",
+                 "fmridataset_error_space_mismatch")
+  }
+  if (!is.list(metadata) || .source_contains_runtime_state(metadata)) {
+    .frame_abort("Composite metadata must be a serializable list.",
+                 "fmridataset_error_space_mismatch")
+  }
+  route <- .validate_composite_route(
+    route %||% .default_composite_route(parts), parts
+  )
+  structure(
+    list(
+      parts = parts,
+      route = route,
+      composite_type = composite_type,
+      metadata = metadata,
+      schema_version = 1L
+    ),
+    class = c("composite_space", "feature_space")
+  )
+}
+
+#' Inspect composite feature-space parts
+#'
+#' @param x A `composite_space`.
+#' @param name One child part name.
+#' @return `composite_parts()` returns the ordered named child spaces;
+#'   `composite_part_names()` returns their names; and `composite_part()`
+#'   returns one child space.
+#' @name composite-parts
+NULL
+
+#' @rdname composite-parts
+#' @export
+composite_parts <- function(x) {
+  if (!inherits(x, "composite_space")) {
+    stop("x must be a composite_space.", call. = FALSE)
+  }
+  x$parts
+}
+
+#' @rdname composite-parts
+#' @export
+composite_part_names <- function(x) names(composite_parts(x))
+
+#' @rdname composite-parts
+#' @export
+composite_part <- function(x, name) {
+  parts <- composite_parts(x)
+  if (!is.character(name) || length(name) != 1L || is.na(name) ||
+      !name %in% names(parts)) {
+    .frame_abort("Unknown composite part name.",
+                 "fmridataset_error_space_mismatch")
+  }
+  parts[[name]]
+}
+
+.composite_feature_ids <- function(x) {
+  vapply(seq_len(nrow(x$route)), function(i) {
+    part_name <- x$route$part[[i]]
+    paste0(
+      part_name, "::",
+      feature_ids(x$parts[[part_name]])[[x$route$part_index[[i]]]]
+    )
+  }, character(1))
+}
+
+.composite_native_parts <- function(x, spatial_object) {
+  if (inherits(spatial_object, "composite_map")) {
+    spatial_object <- spatial_object$parts
+  }
+  if (!is.list(spatial_object) || is.null(names(spatial_object)) ||
+      anyNA(names(spatial_object)) || anyDuplicated(names(spatial_object)) ||
+      !setequal(names(spatial_object), names(x$parts))) {
+    .frame_abort(
+      "A composite spatial object must name exactly the composite parts.",
+      "fmridataset_error_space_mismatch"
+    )
+  }
+  spatial_object[names(x$parts)]
+}
+
+#' @export
+n_features.composite_space <- function(x, ...) nrow(x$route)
+#' @export
+feature_ids.composite_space <- function(x, ...) .composite_feature_ids(x)
+#' @export
+native_shape.composite_space <- function(x, ...) {
+  lapply(x$parts, native_shape)
+}
+#' @export
+feature_data.composite_space <- function(x, ...) {
+  if (!nrow(x$route)) {
+    return(tibble::tibble(
+      .feature_id = character(),
+      .part = character(),
+      .part_index = integer(),
+      .part_feature_id = character()
+    ))
+  }
+  rows <- lapply(seq_len(nrow(x$route)), function(i) {
+    part_name <- x$route$part[[i]]
+    part_index <- x$route$part_index[[i]]
+    child <- feature_data(x$parts[[part_name]])[part_index, , drop = FALSE]
+    child$.feature_id <- NULL
+    names(child) <- .prefix_composite_child_columns(names(child))
+    tibble::add_column(
+      child,
+      .feature_id = feature_ids(x)[[i]],
+      .part = part_name,
+      .part_index = part_index,
+      .part_feature_id = feature_ids(x$parts[[part_name]])[[part_index]],
+      .before = 1L
+    )
+  })
+  names_union <- unique(unlist(lapply(rows, names), use.names = FALSE))
+  rows <- lapply(rows, function(row) {
+    missing <- setdiff(names_union, names(row))
+    for (name in missing) row[[name]] <- NA
+    row[names_union]
+  })
+  tibble::as_tibble(do.call(rbind, rows))
+}
+#' @export
+space_digest.composite_space <- function(x, ...) {
+  .canonical_digest(list(
+    type = "composite_space",
+    schema_version = x$schema_version,
+    composite_type = x$composite_type,
+    part_names = names(x$parts),
+    part_digests = unname(vapply(x$parts, space_digest, character(1))),
+    route = list(part = x$route$part, part_index = x$route$part_index)
+  ))
+}
+#' @export
+restrict_space.composite_space <- function(x, index, ...) {
+  index <- .normalize_source_index(index, n_features(x))
+  selected_route <- x$route[index, , drop = FALSE]
+  keep_names <- if (nrow(selected_route)) {
+    names(x$parts)[names(x$parts) %in% unique(selected_route$part)]
+  } else {
+    names(x$parts)
+  }
+  selected_parts <- lapply(keep_names, function(part_name) {
+    child_index <- unique(selected_route$part_index[selected_route$part == part_name])
+    restrict_space(x$parts[[part_name]], child_index)
+  })
+  names(selected_parts) <- keep_names
+  if (!nrow(selected_route)) {
+    return(structure(
+      list(
+        parts = selected_parts,
+        route = selected_route,
+        composite_type = x$composite_type,
+        metadata = x$metadata,
+        schema_version = x$schema_version
+      ),
+      class = c("composite_space", "feature_space")
+    ))
+  }
+  remapped_route <- selected_route
+  for (part_name in keep_names) {
+    child_index <- unique(selected_route$part_index[selected_route$part == part_name])
+    positions <- selected_route$part == part_name
+    remapped_route$part_index[positions] <- match(
+      selected_route$part_index[positions], child_index
+    )
+  }
+  composite_space(
+    parts = selected_parts,
+    composite_type = x$composite_type,
+    metadata = x$metadata,
+    route = remapped_route
+  )
+}
+#' @export
+vectorize_space.composite_space <- function(x, spatial_object, ...) {
+  native_parts <- .composite_native_parts(x, spatial_object)
+  values <- lapply(names(x$parts), function(part_name) {
+    vectorize_space(x$parts[[part_name]], native_parts[[part_name]], ...)
+  })
+  names(values) <- names(x$parts)
+  vapply(seq_len(nrow(x$route)), function(i) {
+    values[[x$route$part[[i]]]][[x$route$part_index[[i]]]]
+  }, numeric(1))
+}
+#' @export
+reconstruct_space.composite_space <- function(x, vector, ...) {
+  if (!is.null(names(vector))) {
+    if (anyNA(names(vector)) || anyDuplicated(names(vector)) ||
+        !setequal(names(vector), feature_ids(x))) {
+      .frame_abort(
+        "Named vectors must contain every composite feature ID exactly once.",
+        "fmridataset_error_space_mismatch"
+      )
+    }
+    vector <- vector[feature_ids(x)]
+  }
+  vector <- as.numeric(vector)
+  if (length(vector) != n_features(x)) {
+    .frame_abort("Vector does not match the composite feature axis.",
+                 "fmridataset_error_space_mismatch")
+  }
+  parts <- lapply(names(x$parts), function(part_name) {
+    positions <- which(x$route$part == part_name)
+    child_values <- rep(NA_real_, n_features(x$parts[[part_name]]))
+    child_values[x$route$part_index[positions]] <- vector[positions]
+    reconstruct_space(x$parts[[part_name]], child_values, ...)
+  })
+  names(parts) <- names(x$parts)
+  structure(
+    list(
+      parts = parts,
+      part_names = names(parts),
+      space_digest = space_digest(x)
+    ),
+    class = "composite_map"
+  )
+}
+#' @export
+adjacency.composite_space <- function(x, ...) {
+  graphs <- lapply(names(x$parts), function(part_name) {
+    child <- adjacency(x$parts[[part_name]], ...)
+    if (is.null(child)) {
+      child <- Matrix::Matrix(
+        FALSE,
+        nrow = n_features(x$parts[[part_name]]),
+        ncol = n_features(x$parts[[part_name]]),
+        sparse = TRUE
+      )
+    }
+    child
+  })
+  canonical <- Matrix::bdiag(graphs)
+  if (!n_features(x)) return(canonical)
+  sizes <- vapply(x$parts, n_features, integer(1))
+  offsets <- c(0L, head(cumsum(sizes), -1L))
+  names(offsets) <- names(x$parts)
+  canonical_index <- unname(offsets[x$route$part]) + x$route$part_index
+  canonical[canonical_index, canonical_index, drop = FALSE]
 }
