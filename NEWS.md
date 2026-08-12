@@ -1,5 +1,13 @@
 # fmridataset 0.10.0 (Development)
 
+- Made `bind_observations()` lossless and policy-driven. Compatible assay,
+  axis, feature, entity, relation, and validity annotations are retained;
+  frame metadata must match or be explicitly conflict-free merged; active
+  assay differences require an explicit result; keyed typed tables union with
+  conflict detection; and every bind creates a provenance node over all input
+  graphs. Nested row-bound sources flatten canonically and empty views bind
+  without forcing numerical reads.
+
 - Made container metadata, typed tables, aligned values, and lineage
   mechanically distinct. Frame, collection, study, and FDS constructors now
   require `unaligned_record` metadata semantics and `provenance_graph` lineage;

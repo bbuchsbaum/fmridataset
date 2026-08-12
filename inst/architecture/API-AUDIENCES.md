@@ -33,6 +33,12 @@ are runtime products of `source_open()` and must never become semantic state.
 Methods must preserve requested order, reject ambiguous identity, and return
 non-dropping two-dimensional blocks.
 
+Observation binding is schema-driven. It never selects container metadata,
+tables, active-assay state, or lineage from an arbitrary operand: metadata
+uses an explicit equality/merge policy, keyed tables are unioned with conflict
+detection, active-assay differences require a caller choice, and provenance
+graphs are joined under a new bind record.
+
 The stable extension groups are:
 
 - source protocol: `as_array_source()`, `source_descriptor()`,

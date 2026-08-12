@@ -471,17 +471,204 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
     blocks <- list()
   }
   data <- do.call(rbind, lapply(xs, axis_data))
-  axis_frame(data, blocks = blocks, id = data[[first$id_col]], axis = first$axis, id_col = first$id_col)
+  axis_frame(
+    data, blocks = blocks, id = data[[first$id_col]], axis = first$axis,
+    id_col = first$id_col, metadata = first$metadata
+  )
+}
+
+.frame_container_value <- function(x, name) x[[name]] %||% x$base[[name]]
+
+.merge_unaligned_records <- function(values, path = "metadata") {
+  out <- unclass(values[[1L]])
+  if (length(values) == 1L) {
+    return(structure(out, class = c("unaligned_record", "list")))
+  }
+  for (value in values[-1L]) {
+    value <- unclass(value)
+    for (name in names(value)) {
+      child_path <- paste(path, name, sep = ".")
+      if (!name %in% names(out)) {
+        out[[name]] <- value[[name]]
+      } else if (inherits(out[[name]], "unaligned_record") &&
+                 inherits(value[[name]], "unaligned_record")) {
+        out[[name]] <- .merge_unaligned_records(
+          list(out[[name]], value[[name]]), child_path
+        )
+      } else if (!identical(out[[name]], value[[name]])) {
+        .frame_abort(
+          sprintf("Cannot merge conflicting frame metadata at '%s'.", child_path),
+          "fmridataset_error_alignment", field = child_path
+        )
+      }
+    }
+  }
+  structure(out, class = c("unaligned_record", "list"))
+}
+
+.reconcile_frame_metadata <- function(xs, policy) {
+  values <- lapply(xs, .frame_container_value, name = "metadata")
+  if (identical(policy, "identical")) {
+    if (!all(vapply(values, identical, logical(1), values[[1L]]))) {
+      .frame_abort(
+        "Bound frame metadata differ; use metadata_policy = 'merge' for a conflict-free record merge.",
+        "fmridataset_error_alignment", field = "metadata"
+      )
+    }
+    return(values[[1L]])
+  }
+  .merge_unaligned_records(values)
+}
+
+.table_row_equal <- function(x, i, y, j) {
+  all(vapply(names(x), function(name) {
+    identical(x[[name]][i], y[[name]][j])
+  }, logical(1)))
+}
+
+.merge_typed_table <- function(values, name) {
+  prototype <- values[[1L]]
+  keys <- vapply(values, function(value) table_key(value) %||% NA_character_,
+                 character(1), USE.NAMES = FALSE)
+  if (anyNA(keys) || any(!nzchar(keys))) {
+    if (!all(vapply(values, identical, logical(1), prototype))) {
+      .table_abort(
+        sprintf(
+          "Bound table '%s' has no declared key and differs across operands.",
+          name
+        ),
+        paste0("tables.", name)
+      )
+    }
+    return(prototype)
+  }
+  if (any(keys != keys[[1L]])) {
+    .table_abort(
+      sprintf("Bound table '%s' declares inconsistent keys.", name),
+      paste0("tables.", name, ".key")
+    )
+  }
+  rows <- table_data(prototype)
+  key <- keys[[1L]]
+  if (length(values) > 1L) {
+    for (value in values[-1L]) {
+      incoming <- table_data(value)
+      positions <- match(as.character(incoming[[key]]), as.character(rows[[key]]))
+      overlap <- which(!is.na(positions))
+      if (length(overlap)) {
+        equal <- vapply(overlap, function(i) {
+          .table_row_equal(incoming, i, rows, positions[[i]])
+        }, logical(1))
+        if (!all(equal)) {
+          .table_abort(
+            sprintf("Bound table '%s' contains conflicting rows for declared keys.", name),
+            paste0("tables.", name),
+            keys = as.character(incoming[[key]][overlap[!equal]])
+          )
+        }
+      }
+      append <- which(is.na(positions))
+      if (length(append)) rows <- rbind(rows, incoming[append, , drop = FALSE])
+    }
+  }
+  if (inherits(prototype, "fmri_event_table")) {
+    event_table(rows, key = key, metadata = prototype$metadata)
+  } else {
+    auxiliary_table(
+      rows, key = key, role = table_role(prototype),
+      metadata = prototype$metadata
+    )
+  }
+}
+
+.merge_frame_tables <- function(xs) {
+  registries <- lapply(xs, .frame_container_value, name = "tables")
+  first_names <- names(registries[[1L]])
+  if (!all(vapply(registries, function(value) {
+    identical(names(value), first_names)
+  }, logical(1)))) {
+    .table_abort(
+      "Bound frames must have identical typed-table names.",
+      "tables"
+    )
+  }
+  out <- lapply(first_names, function(name) {
+    .merge_typed_table(lapply(registries, `[[`, name), name)
+  })
+  names(out) <- first_names
+  out
+}
+
+.merge_bind_provenance <- function(xs) {
+  graphs <- lapply(xs, .frame_container_value, name = "provenance")
+  records <- list()
+  parents <- character()
+  for (graph in graphs) {
+    if (is.null(graph)) next
+    current <- provenance_records(graph)
+    for (id in names(current)) {
+      if (!is.null(records[[id]]) && !identical(records[[id]], current[[id]])) {
+        .provenance_abort("A provenance record ID has conflicting content.")
+      }
+      records[[id]] <- current[[id]]
+    }
+    parents <- c(parents, provenance_tips(graph))
+  }
+  bind <- provenance_record(
+    "bind_observations",
+    parents = unique(parents),
+    inputs = list(observation_ids = lapply(xs, observation_ids)),
+    parameters = list(operand_count = length(xs)),
+    outputs = list(
+      observation_ids = unlist(lapply(xs, observation_ids), use.names = FALSE),
+      feature_ids = feature_ids(xs[[1L]])
+    )
+  )
+  provenance_graph(c(records, list(bind)))
+}
+
+.flatten_bound_sources <- function(sources) {
+  unlist(lapply(sources, function(source) {
+    if (inherits(source, "row_bound_source")) {
+      .flatten_bound_sources(source$sources)
+    } else {
+      list(source)
+    }
+  }), recursive = FALSE)
+}
+
+.bind_assay_sources <- function(sources) {
+  flattened <- .flatten_bound_sources(sources)
+  nonempty <- vapply(
+    flattened, function(source) source_shape(source)[[1L]] > 0L, logical(1)
+  )
+  if (!any(nonempty)) {
+    return(source_view(flattened[[1L]], observations = integer()))
+  }
+  flattened <- flattened[nonempty]
+  if (length(flattened) == 1L) flattened[[1L]] else row_bound_source(flattened)
 }
 
 #' Bind frames along observations
 #'
-#' @param ... Frames with identical feature IDs, spaces, and assay names.
+#' @param ... Frames with identical feature IDs, spaces, and assay semantics.
+#' @param metadata_policy Frame-metadata reconciliation. `"identical"`
+#'   requires exact equality; `"merge"` recursively combines non-conflicting
+#'   unaligned records.
+#' @param active_assay Optional active assay for the result. Required when
+#'   operands have different active assays.
 #' @return A lazily row-bound `fmri_frame`.
 #' @export
-bind_observations <- function(...) {
+bind_observations <- function(...,
+                              metadata_policy = c("identical", "merge"),
+                              active_assay = NULL) {
   xs <- list(...)
   if (!length(xs)) .frame_abort("At least one frame is required.", "fmridataset_error_alignment")
+  if (!all(vapply(xs, inherits, logical(1), "fmri_frame"))) {
+    .frame_abort("Every bound operand must be an fmri_frame or view.",
+                 "fmridataset_error_alignment")
+  }
+  metadata_policy <- match.arg(metadata_policy)
   first <- xs[[1L]]
   for (x in xs[-1L]) {
     assert_compatible_space(space(first), space(x))
@@ -498,11 +685,32 @@ bind_observations <- function(...) {
   if (anyDuplicated(axis_ids(obs))) {
     .frame_abort("Observation IDs collide across frames.", "fmridataset_error_alignment")
   }
+  active_values <- vapply(xs, function(value) active_assay(value), character(1))
+  if (is.null(active_assay)) {
+    if (any(active_values != active_values[[1L]])) {
+      .frame_abort(
+        "Bound frames have different active assays; supply active_assay explicitly.",
+        "fmridataset_error_alignment", field = "active_assay"
+      )
+    }
+    active_assay <- active_values[[1L]]
+  } else if (!is.character(active_assay) || length(active_assay) != 1L ||
+             is.na(active_assay) || !active_assay %in% names(assays(first))) {
+    .frame_abort(
+      "active_assay must name one assay shared by all bound frames.",
+      "fmridataset_error_alignment", field = "active_assay"
+    )
+  }
+  metadata <- .reconcile_frame_metadata(xs, metadata_policy)
+  tables <- .merge_frame_tables(xs)
+  provenance <- .merge_bind_provenance(xs)
   assay_sources <- lapply(names(assays(first)), function(nm) {
     prototype <- assay(first, nm)
     structure(
       list(
-        source = row_bound_source(lapply(xs, function(x) .frame_assay_source(x, nm))),
+        source = .bind_assay_sources(lapply(
+          xs, function(x) .frame_assay_source(x, nm)
+        )),
         role = prototype$role,
         units = prototype$units,
         metadata = prototype$metadata
@@ -517,9 +725,9 @@ bind_observations <- function(...) {
     features = feature_axis(first),
     entities = entities(first),
     relations = relation_values,
-    tables = first$tables %||% first$base$tables,
-    active_assay = active_assay(first),
-    metadata = first$metadata %||% first$base$metadata,
-    provenance = first$provenance %||% first$base$provenance
+    tables = tables,
+    active_assay = active_assay,
+    metadata = metadata,
+    provenance = provenance
   )
 }
