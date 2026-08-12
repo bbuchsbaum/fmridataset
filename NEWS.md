@@ -75,6 +75,12 @@
   atlas-namespaced feature IDs, restriction, and FDS persistence. The optional
   `neuroatlas` adapter delegates atlas metadata and atlas-specific surface label
   coding to `neuroatlas::as_parcel_data()` and `neuroatlas::get_roi()`.
+* Added parent-linked `basis_space` with stable component identities, explicit
+  analysis and synthesis operators, exact SVD-based least-squares projection
+  for non-orthonormal dictionaries, restriction, reconstruction, provenance,
+  backend-neutral in-memory identity, and FDS/HDF5 persistence. An optional
+  `fmrilatent` adapter treats spatial loadings as the synthesis dictionary while
+  leaving model fitting, temporal scores, handles, and offsets in `fmrilatent`.
 * The historical `v0.9.0` tag is preserved; development continues from the
   current main line without retagging it.
 

@@ -5,7 +5,7 @@
 \alias{parent_space}
 \alias{parcel_membership}
 \alias{parcel_aggregation}
-\title{Inspect parcel-space operators}
+\title{Inspect parent-linked feature spaces and parcel-space operators}
 \usage{
 parent_space(x)
 
@@ -14,12 +14,13 @@ parcel_membership(x)
 parcel_aggregation(x)
 }
 \arguments{
-\item{x}{A \code{parcel_space}.}
+\item{x}{A parent-linked feature space such as a \code{parcel_space} or
+\code{basis_space}.}
 }
 \value{
-\code{parent_space()} returns its parent feature space;
+\code{parent_space()} returns the parent feature space;
 \code{parcel_membership()} and \code{parcel_aggregation()} return sparse operators.
 }
 \description{
-Inspect parcel-space operators
+Inspect parent-linked feature spaces and parcel-space operators
 }

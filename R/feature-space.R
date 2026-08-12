@@ -748,10 +748,11 @@ parcel_space <- function(parent, parcel_ids, membership, data = NULL,
   )
 }
 
-#' Inspect parcel-space operators
+#' Inspect parent-linked feature spaces and parcel-space operators
 #'
-#' @param x A `parcel_space`.
-#' @return `parent_space()` returns its parent feature space;
+#' @param x A parent-linked feature space such as a `parcel_space` or
+#'   `basis_space`.
+#' @return `parent_space()` returns the parent feature space;
 #'   `parcel_membership()` and `parcel_aggregation()` return sparse operators.
 #' @name parcel-operators
 NULL
@@ -759,7 +760,9 @@ NULL
 #' @rdname parcel-operators
 #' @export
 parent_space <- function(x) {
-  if (!inherits(x, "parcel_space")) stop("x must be a parcel_space.", call. = FALSE)
+  if (!inherits(x, "feature_space") || is.null(x$parent)) {
+    stop("x must be a parent-linked feature_space.", call. = FALSE)
+  }
   x$parent
 }
 
@@ -918,5 +921,389 @@ parcel_space_from_atlas <- function(atlas, parent,
     atlas = pd$atlas,
     aggregation = match.arg(aggregation),
     metadata = metadata
+  )
+}
+
+.linear_operator_shape <- function(x) {
+  if (inherits(x, "array_source")) source_shape(x) else dim(x)
+}
+
+.validate_linear_operator <- function(x, dims, what) {
+  if (!(is.matrix(x) || methods::is(x, "Matrix") ||
+        inherits(x, "array_source"))) {
+    .frame_abort(
+      paste(what, "must be a matrix, Matrix, or array_source."),
+      "fmridataset_error_space_mismatch"
+    )
+  }
+  if (!identical(as.integer(.linear_operator_shape(x)), as.integer(dims))) {
+    .frame_abort(
+      paste(what, "dimensions do not match the component and parent axes."),
+      "fmridataset_error_space_mismatch"
+    )
+  }
+  if (inherits(x, "array_source")) {
+    validate_array_source(x)
+  } else {
+    values <- if (methods::is(x, "sparseMatrix")) Matrix::summary(x)$x else as.numeric(x)
+    if (anyNA(values) || any(!is.finite(values))) {
+      .frame_abort(paste(what, "must contain only finite values."),
+                   "fmridataset_error_space_mismatch")
+    }
+  }
+  x
+}
+
+.collect_linear_operator <- function(x) {
+  if (!inherits(x, "array_source")) return(x)
+  source_read(
+    x,
+    observations = seq_len(source_shape(x)[1L]),
+    features = seq_len(source_shape(x)[2L])
+  )
+}
+
+.linear_operator_digest <- function(x) {
+  if (is.null(x)) return(NULL)
+  if (inherits(x, "memory_source")) x <- x$data
+  if (inherits(x, "array_source")) {
+    return(list(
+      shape = source_shape(x),
+      dtype = source_dtype(x),
+      fingerprint = source_fingerprint(x)
+    ))
+  }
+  dense <- as.matrix(x)
+  nz <- which(dense != 0, arr.ind = TRUE)
+  list(
+    dim = as.integer(dim(dense)),
+    i = as.integer(nz[, 1L]),
+    j = as.integer(nz[, 2L]),
+    x = if (nrow(nz)) unname(dense[nz]) else numeric()
+  )
+}
+
+.subset_linear_operator <- function(x, observations = NULL, features = NULL) {
+  shape <- .linear_operator_shape(x)
+  observations <- observations %||% seq_len(shape[[1L]])
+  features <- features %||% seq_len(shape[[2L]])
+  if (inherits(x, "array_source")) {
+    return(source_view(x, observations = observations, features = features))
+  }
+  x[observations, features, drop = FALSE]
+}
+
+.basis_left_inverse_error <- function(encoder, decoder) {
+  product <- as.matrix(encoder %*% decoder)
+  max(abs(product - diag(nrow(product))))
+}
+
+#' Construct a linear basis feature space
+#'
+#' A `basis_space` is a representational feature axis linked to one parent
+#' spatial space. Its encoder maps parent features to component coefficients;
+#' its optional decoder maps coefficients back to the parent. Fitting and
+#' model-specific offsets remain the responsibility of packages such as
+#' `fmrilatent`.
+#'
+#' @param parent Parent `feature_space` represented by the basis.
+#' @param component_ids Stable component identifiers.
+#' @param encoder Component-by-parent analysis operator.
+#' @param decoder Optional parent-by-component synthesis operator.
+#' @param data One metadata row per component.
+#' @param basis_type Stable basis-family label.
+#' @param provenance Serializable derivation metadata.
+#' @param tolerance Maximum absolute error permitted when validating that
+#'   `encoder %*% decoder` is the component-space identity.
+#' @param metadata Additional serializable metadata.
+#' @return A `basis_space`.
+#' @export
+basis_space <- function(parent, component_ids, encoder, decoder = NULL,
+                        data = NULL, basis_type = "linear_basis",
+                        provenance = list(), tolerance = 1e-8,
+                        metadata = list()) {
+  if (!inherits(parent, "feature_space")) {
+    .frame_abort("parent must be a feature_space.",
+                 "fmridataset_error_space_mismatch")
+  }
+  component_ids <- .validate_stable_ids(
+    as.character(component_ids), "component"
+  )
+  k <- length(component_ids)
+  if (!k) {
+    .frame_abort("A basis space must contain at least one component.",
+                 "fmridataset_error_space_mismatch")
+  }
+  if (!is.character(basis_type) || length(basis_type) != 1L ||
+      is.na(basis_type) || !nzchar(basis_type)) {
+    .frame_abort("basis_type must be one non-empty string.",
+                 "fmridataset_error_space_mismatch")
+  }
+  if (!is.list(provenance) || !is.list(metadata) ||
+      .source_contains_runtime_state(provenance) ||
+      .source_contains_runtime_state(metadata)) {
+    .frame_abort("Basis provenance and metadata must be serializable lists.",
+                 "fmridataset_error_space_mismatch")
+  }
+  if (!is.numeric(tolerance) || length(tolerance) != 1L ||
+      is.na(tolerance) || !is.finite(tolerance) || tolerance < 0) {
+    .frame_abort("tolerance must be one non-negative finite number.",
+                 "fmridataset_error_space_mismatch")
+  }
+  encoder <- .validate_linear_operator(
+    encoder, c(k, n_features(parent)), "encoder"
+  )
+  if (!is.null(decoder)) {
+    decoder <- .validate_linear_operator(
+      decoder, c(n_features(parent), k), "decoder"
+    )
+  }
+  if (is.null(data)) data <- data.frame(component_id = component_ids)
+  data <- tibble::as_tibble(data)
+  if (nrow(data) != k) {
+    .frame_abort("Basis data must contain one row per component.",
+                 "fmridataset_error_space_mismatch")
+  }
+  if (".feature_id" %in% names(data) &&
+      !identical(as.character(data$.feature_id), component_ids)) {
+    .frame_abort("Basis data .feature_id values do not match component IDs.",
+                 "fmridataset_error_space_mismatch")
+  }
+  data$.feature_id <- component_ids
+  data <- data[c(".feature_id", setdiff(names(data), ".feature_id"))]
+
+  inverse_error <- NULL
+  if (!is.null(decoder)) {
+    inverse_error <- .basis_left_inverse_error(
+      .collect_linear_operator(encoder),
+      .collect_linear_operator(decoder)
+    )
+    if (!is.finite(inverse_error) || inverse_error > tolerance) {
+      .frame_abort(
+        paste0(
+          "encoder must be a left inverse of decoder within tolerance; ",
+          "maximum error is ", format(inverse_error, digits = 6), "."
+        ),
+        "fmridataset_error_space_mismatch"
+      )
+    }
+  }
+  structure(
+    list(
+      parent = parent,
+      component_ids = component_ids,
+      encoder = encoder,
+      decoder = decoder,
+      data = data,
+      basis_type = basis_type,
+      provenance = provenance,
+      projection = list(
+        left_inverse_validated = !is.null(decoder),
+        left_inverse_error = inverse_error,
+        tolerance = tolerance
+      ),
+      metadata = metadata,
+      schema_version = 1L
+    ),
+    class = c("basis_space", "feature_space")
+  )
+}
+
+#' Construct a basis space from a synthesis dictionary
+#'
+#' Computes the exact unregularized least-squares encoder
+#' `(D' D)^{-1} D'` for a full-column-rank decoder `D`.
+#'
+#' @param parent,component_ids,decoder,data,basis_type,provenance,tolerance,metadata
+#'   Passed to [basis_space()].
+#' @return A `basis_space`.
+#' @export
+basis_space_from_decoder <- function(parent, component_ids, decoder,
+                                     data = NULL,
+                                     basis_type = "linear_basis",
+                                     provenance = list(), tolerance = 1e-8,
+                                     metadata = list()) {
+  decoder <- .validate_linear_operator(
+    decoder, c(n_features(parent), length(component_ids)), "decoder"
+  )
+  dense <- as.matrix(.collect_linear_operator(decoder))
+  decomposition <- svd(dense, nu = ncol(dense), nv = ncol(dense))
+  rank_threshold <- max(dim(dense)) * max(decomposition$d) * .Machine$double.eps
+  if (!length(decomposition$d) || any(decomposition$d <= rank_threshold)) {
+    .frame_abort(
+      "decoder must have full column rank for an exact least-squares encoder.",
+      "fmridataset_error_space_mismatch"
+    )
+  }
+  encoder <- decomposition$v %*%
+    (t(decomposition$u) / decomposition$d)
+  basis_space(
+    parent = parent,
+    component_ids = component_ids,
+    encoder = encoder,
+    decoder = decoder,
+    data = data,
+    basis_type = basis_type,
+    provenance = provenance,
+    tolerance = tolerance,
+    metadata = metadata
+  )
+}
+
+#' Inspect basis-space operators
+#'
+#' @param x A `basis_space`.
+#' @return `basis_analysis()` returns the parent-to-component analysis
+#'   operator; `basis_synthesis()` returns the optional component-to-parent
+#'   synthesis operator; `basis_projection_info()` returns validation metadata.
+#'   These names deliberately avoid colliding with
+#'   `fmrilatent::basis_decoder()`, which constructs model-level decoders.
+#' @name basis-operators
+NULL
+
+#' @rdname basis-operators
+#' @export
+basis_analysis <- function(x) {
+  if (!inherits(x, "basis_space")) stop("x must be a basis_space.", call. = FALSE)
+  x$encoder
+}
+
+#' @rdname basis-operators
+#' @export
+basis_synthesis <- function(x) {
+  if (!inherits(x, "basis_space")) stop("x must be a basis_space.", call. = FALSE)
+  x$decoder
+}
+
+#' @rdname basis-operators
+#' @export
+basis_projection_info <- function(x) {
+  if (!inherits(x, "basis_space")) stop("x must be a basis_space.", call. = FALSE)
+  x$projection
+}
+
+#' @export
+n_features.basis_space <- function(x, ...) length(x$component_ids)
+#' @export
+feature_ids.basis_space <- function(x, ...) x$component_ids
+#' @export
+native_shape.basis_space <- function(x, ...) c(component = length(x$component_ids))
+#' @export
+feature_data.basis_space <- function(x, ...) x$data
+#' @export
+space_digest.basis_space <- function(x, ...) {
+  .canonical_digest(list(
+    type = "basis_space",
+    schema_version = x$schema_version,
+    parent_digest = space_digest(x$parent),
+    component_ids = x$component_ids,
+    encoder = .linear_operator_digest(x$encoder),
+    decoder = .linear_operator_digest(x$decoder),
+    basis_type = x$basis_type,
+    provenance = x$provenance
+  ))
+}
+#' @export
+restrict_space.basis_space <- function(x, index, ...) {
+  selected_decoder <- if (is.null(x$decoder)) NULL else
+    .subset_linear_operator(x$decoder, features = index)
+  selected_encoder <- .subset_linear_operator(x$encoder, observations = index)
+  if (!is.null(selected_decoder)) {
+    selected_encoder <- solve(
+      crossprod(as.matrix(.collect_linear_operator(selected_decoder))),
+      t(as.matrix(.collect_linear_operator(selected_decoder)))
+    )
+  }
+  basis_space(
+    parent = x$parent,
+    component_ids = x$component_ids[index],
+    encoder = selected_encoder,
+    decoder = selected_decoder,
+    data = x$data[index, , drop = FALSE],
+    basis_type = x$basis_type,
+    provenance = x$provenance,
+    tolerance = x$projection$tolerance,
+    metadata = x$metadata
+  )
+}
+#' @export
+vectorize_space.basis_space <- function(x, spatial_object, ...) {
+  parent_values <- vectorize_space(x$parent, spatial_object, ...)
+  encoder <- .collect_linear_operator(x$encoder)
+  as.numeric(encoder %*% parent_values)
+}
+#' @export
+reconstruct_space.basis_space <- function(x, vector, ...) {
+  if (is.null(x$decoder)) {
+    .frame_abort("This basis space has no decoder for reconstruction.",
+                 "fmridataset_error_space_mismatch")
+  }
+  if (!is.null(names(vector))) vector <- vector[feature_ids(x)]
+  vector <- as.numeric(vector)
+  if (length(vector) != n_features(x)) {
+    .frame_abort("Vector does not match the basis component axis.",
+                 "fmridataset_error_space_mismatch")
+  }
+  parent_values <- as.numeric(.collect_linear_operator(x$decoder) %*% vector)
+  reconstruct_space(x$parent, parent_values, ...)
+}
+#' @export
+adjacency.basis_space <- function(x, ...) NULL
+
+#' Adapt fmrilatent spatial loadings to a basis feature space
+#'
+#' `fmrilatent` remains the owner of latent fitting, temporal scores, handles,
+#' and offsets. This adapter extracts only its spatial synthesis dictionary and
+#' constructs the corresponding least-squares feature-space algebra.
+#'
+#' @param x An explicit `fmrilatent` object with `loadings()`.
+#' @param parent Parent feature space aligned to the loading rows.
+#' @param component_ids Optional stable component IDs.
+#' @param data Optional component metadata.
+#' @param provenance Additional serializable provenance.
+#' @param tolerance Left-inverse validation tolerance.
+#' @return A `basis_space`.
+#' @export
+basis_space_from_fmrilatent <- function(x, parent, component_ids = NULL,
+                                        data = NULL, provenance = list(),
+                                        tolerance = 1e-8) {
+  if (!requireNamespace("fmrilatent", quietly = TRUE)) {
+    .frame_abort("basis_space_from_fmrilatent() requires fmrilatent.",
+                 "fmridataset_error_space_mismatch")
+  }
+  decoder <- fmrilatent::loadings(x)
+  if (nrow(decoder) != n_features(parent)) {
+    .frame_abort("fmrilatent loadings do not align with the parent features.",
+                 "fmridataset_error_space_mismatch")
+  }
+  meta <- tryCatch(methods::slot(x, "meta"), error = function(e) list())
+  fingerprint <- substr(
+    .canonical_digest(list(
+      parent = space_digest(parent),
+      decoder = .linear_operator_digest(decoder),
+      family = meta$family %||% class(x)[[1L]]
+    )),
+    1L, 12L
+  )
+  if (is.null(component_ids)) {
+    component_ids <- sprintf(
+      "component-%s-%04d", fingerprint, seq_len(ncol(decoder))
+    )
+  }
+  basis_space_from_decoder(
+    parent = parent,
+    component_ids = component_ids,
+    decoder = decoder,
+    data = data,
+    basis_type = meta$family %||% class(x)[[1L]],
+    provenance = c(
+      list(
+        source_package = "fmrilatent",
+        source_class = class(x)[[1L]],
+        source_family = meta$family %||% NULL
+      ),
+      provenance
+    ),
+    tolerance = tolerance
   )
 }

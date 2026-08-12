@@ -379,3 +379,254 @@ test_that("neuroatlas surface coding is delegated through get_roi", {
   )
   expect_identical(feature_data(x)$hemi, c("left", "right"))
 })
+
+.basis_fixture <- function(operator_backend = c("matrix", "sparse", "source")) {
+  operator_backend <- match.arg(operator_backend)
+  parent <- volume_space(c(2, 2, 1), support = 1:4,
+                         template = "MNI152NLin6Asym")
+  decoder <- matrix(
+    c(1, 0,
+      0, 1,
+      1, 1,
+      2, -1),
+    nrow = 4L, byrow = TRUE
+  )
+  encoder <- solve(crossprod(decoder), t(decoder))
+  if (operator_backend == "sparse") {
+    decoder <- Matrix::Matrix(decoder, sparse = TRUE)
+    encoder <- Matrix::Matrix(encoder, sparse = TRUE)
+  } else if (operator_backend == "source") {
+    decoder <- memory_source(decoder, chunks = c(2L, 1L))
+    encoder <- memory_source(encoder, chunks = c(1L, 2L))
+  }
+  basis_space(
+    parent = parent,
+    component_ids = c("smooth", "contrast"),
+    encoder = encoder,
+    decoder = decoder,
+    data = data.frame(
+      component_id = c("smooth", "contrast"),
+      label = c("Smooth field", "Spatial contrast")
+    ),
+    basis_type = "toy_dictionary",
+    provenance = list(method = "analytic", version = "1")
+  )
+}
+
+test_that("basis_space owns stable component and parent identity", {
+  x <- .basis_fixture()
+
+  expect_s3_class(x, "basis_space")
+  expect_s3_class(parent_space(x), "volume_space")
+  expect_identical(n_features(x), 2L)
+  expect_identical(feature_ids(x), c("smooth", "contrast"))
+  expect_identical(native_shape(x), c(component = 2L))
+  expect_identical(feature_data(x)$component_id,
+                   c("smooth", "contrast"))
+  expect_identical(feature_data(x)$label,
+                   c("Smooth field", "Spatial contrast"))
+  expect_identical(dim(basis_analysis(x)), c(2L, 4L))
+  expect_identical(dim(basis_synthesis(x)), c(4L, 2L))
+  expect_true(basis_projection_info(x)$left_inverse_validated)
+  expect_lt(basis_projection_info(x)$left_inverse_error, 1e-12)
+})
+
+test_that("basis projection is least squares for non-orthonormal dictionaries", {
+  x <- .basis_fixture()
+  decoder <- basis_synthesis(x)
+  coefficients <- c(2.5, -1.25)
+  parent_vector <- as.numeric(decoder %*% coefficients)
+  native <- array(parent_vector, dim = c(2, 2, 1))
+
+  expect_equal(vectorize_space(x, native), coefficients, tolerance = 1e-12)
+  expect_equal(as.numeric(reconstruct_space(x, coefficients)), parent_vector,
+               tolerance = 1e-12)
+  expect_equal(
+    vectorize_space(x, reconstruct_space(x, coefficients)),
+    coefficients,
+    tolerance = 1e-12
+  )
+
+  noisy <- parent_vector + c(0.1, -0.2, 0.05, 0.15)
+  expected <- solve(crossprod(decoder), crossprod(decoder, noisy))
+  expect_equal(
+    vectorize_space(x, array(noisy, dim = c(2, 2, 1))),
+    as.numeric(expected),
+    tolerance = 1e-12
+  )
+})
+
+test_that("dense sparse and lazy basis operators are equivalent", {
+  dense <- .basis_fixture("matrix")
+  sparse <- .basis_fixture("sparse")
+  lazy <- .basis_fixture("source")
+  native <- array(c(0.3, -1.2, 2.1, 0.7), dim = c(2, 2, 1))
+  coefficients <- c(-0.5, 1.7)
+
+  expect_equal(vectorize_space(sparse, native),
+               vectorize_space(dense, native), tolerance = 1e-12)
+  expect_equal(vectorize_space(lazy, native),
+               vectorize_space(dense, native), tolerance = 1e-12)
+  expect_equal(as.numeric(reconstruct_space(sparse, coefficients)),
+               as.numeric(reconstruct_space(dense, coefficients)),
+               tolerance = 1e-12)
+  expect_equal(as.numeric(reconstruct_space(lazy, coefficients)),
+               as.numeric(reconstruct_space(dense, coefficients)),
+               tolerance = 1e-12)
+  expect_true(compatible_space(dense, sparse)$compatible)
+  expect_true(compatible_space(dense, lazy)$compatible)
+})
+
+test_that("basis restriction preserves parent and revalidates coordinates", {
+  x <- .basis_fixture()
+  y <- restrict_space(x, 2L)
+
+  expect_identical(feature_ids(y), "contrast")
+  expect_identical(feature_data(y)$component_id, "contrast")
+  expect_identical(space_digest(parent_space(y)),
+                   space_digest(parent_space(x)))
+  expect_identical(dim(basis_analysis(y)), c(1L, 4L))
+  expect_identical(dim(basis_synthesis(y)), c(4L, 1L))
+  expect_equal(
+    vectorize_space(y, reconstruct_space(y, 3.2)),
+    3.2,
+    tolerance = 1e-12
+  )
+})
+
+test_that("encode-only basis spaces fail reconstruction explicitly", {
+  full <- .basis_fixture()
+  x <- basis_space(
+    parent = parent_space(full),
+    component_ids = feature_ids(full),
+    encoder = basis_analysis(full),
+    decoder = NULL,
+    basis_type = "encode_only",
+    provenance = list(method = "external")
+  )
+  native <- array(1:4, dim = c(2, 2, 1))
+
+  expect_length(vectorize_space(x, native), 2L)
+  expect_null(basis_synthesis(x))
+  expect_error(reconstruct_space(x, c(1, 2)), "decoder")
+})
+
+test_that("basis identity includes operators ordering type and provenance", {
+  x <- .basis_fixture()
+  expect_true(compatible_space(x, .basis_fixture())$compatible)
+
+  reordered <- restrict_space(x, c(2L, 1L))
+  expect_false(identical(space_digest(x), space_digest(reordered)))
+
+  changed_type <- .basis_fixture()
+  changed_type$basis_type <- "different"
+  expect_false(identical(space_digest(x), space_digest(changed_type)))
+
+  changed_provenance <- .basis_fixture()
+  changed_provenance$provenance$version <- "2"
+  expect_false(identical(space_digest(x), space_digest(changed_provenance)))
+
+  changed_decoder <- .basis_fixture()
+  changed_decoder$decoder[1L, 1L] <- 2
+  expect_false(identical(space_digest(x), space_digest(changed_decoder)))
+})
+
+test_that("basis contracts reject ambiguous or non-identifiable maps", {
+  parent <- volume_space(c(2, 2, 1))
+  decoder <- cbind(c(1, 0, 1, 0), c(0, 1, 0, 1))
+  encoder <- solve(crossprod(decoder), t(decoder))
+
+  expect_error(
+    basis_space(parent, character(), matrix(numeric(), 0, 4)),
+    "at least one component"
+  )
+  expect_error(
+    basis_space(parent, c("a", "b"), matrix(1, 2, 3), decoder),
+    "encoder"
+  )
+  expect_error(
+    basis_space(parent, c("a", "b"), encoder, matrix(1, 3, 2)),
+    "decoder"
+  )
+  bad_encoder <- encoder
+  bad_encoder[1L, 1L] <- Inf
+  expect_error(
+    basis_space(parent, c("a", "b"), bad_encoder, decoder),
+    "finite"
+  )
+  expect_error(
+    basis_space(parent, c("a", "b"), encoder * 2, decoder),
+    "left inverse"
+  )
+  expect_error(
+    basis_space_from_decoder(
+      parent, c("a", "b"),
+      cbind(c(1, 0, 1, 0), c(2, 0, 2, 0))
+    ),
+    "full column rank"
+  )
+})
+
+test_that("basis spaces survive logical and physical FDS round trips", {
+  x <- .basis_fixture("sparse")
+  frame <- fmri_frame(
+    assays = list(scores = matrix(seq_len(6L), nrow = 3L)),
+    observations = data.frame(.obs_id = paste0("o", 1:3)),
+    features = feature_axis(feature_data(x), space = x)
+  )
+  manifest <- fds_frame_manifest(frame)
+  restored <- frame_from_fds_manifest(
+    manifest,
+    bindings = list(
+      "assays/scores" = memory_source(matrix(seq_len(6L), nrow = 3L))
+    )
+  )
+  expect_s3_class(space(restored), "basis_space")
+  expect_identical(space_digest(space(restored)), space_digest(x))
+
+  skip_if_not_installed("fmristore")
+  path <- tempfile(fileext = ".h5")
+  on.exit(unlink(path), add = TRUE)
+  write_frame(frame, path)
+  reopened <- open_frame(path)
+  expect_s3_class(space(reopened), "basis_space")
+  expect_identical(space_digest(space(reopened)), space_digest(x))
+  expect_equal(collect_assay(reopened), matrix(seq_len(6L), nrow = 3L))
+})
+
+test_that("fmrilatent loadings adapt without stealing model ownership", {
+  skip_if_not_installed("fmrilatent")
+  parent <- volume_space(c(2, 2, 1), support = 1:4,
+                         template = "toy-native")
+  decoder <- Matrix::Matrix(
+    matrix(c(1, 0, 0, 1, 1, 1, 2, -1), nrow = 4L, byrow = TRUE),
+    sparse = TRUE
+  )
+  scores <- Matrix::Matrix(matrix(c(1, 0, 0, 1, 2, -1), nrow = 3L,
+                                  byrow = TRUE))
+  mask_array <- array(TRUE, dim = c(2, 2, 1))
+  mask <- neuroim2::LogicalNeuroVol(
+    mask_array, neuroim2::NeuroSpace(c(2, 2, 1))
+  )
+  latent <- fmrilatent::LatentNeuroVec(
+    basis = scores,
+    loadings = decoder,
+    space = neuroim2::NeuroSpace(c(2, 2, 1, 3)),
+    mask = mask,
+    offset = rep(10, 4),
+    meta = list(family = "toy_pca")
+  )
+  x <- basis_space_from_fmrilatent(latent, parent = parent)
+
+  expect_s3_class(x, "basis_space")
+  expect_identical(x$basis_type, "toy_pca")
+  expect_identical(dim(basis_synthesis(x)), c(4L, 2L))
+  expect_match(feature_ids(x), "^component-[0-9a-f]{12}-")
+  expect_identical(x$provenance$source_class, "LatentNeuroVec")
+  expect_false("offset" %in% names(x))
+  expect_equal(
+    vectorize_space(x, reconstruct_space(x, c(1.5, -0.25))),
+    c(1.5, -0.25),
+    tolerance = 1e-10
+  )
+})
