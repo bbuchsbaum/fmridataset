@@ -101,13 +101,17 @@ event_key <- function(x) {
 #' @param from_axis Axis addressed by `.from_id`.
 #' @param to_axis Axis addressed by `.to_id`.
 #' @param metadata Serializable link metadata.
+#' @param feature_map Optional typed feature map. This is valid only for a
+#'   feature-to-feature `"mapped_from"` link and is persisted in the link's
+#'   metadata without changing the v1 descriptor shape.
 #' @return A `frame_link` descriptor.
 #' @export
 frame_link <- function(from, to,
                        type = c("derived_from", "mapped_from", "corresponds_to", "aligned_from"),
                        map = NULL,
                        from_axis = c("observation", "feature"),
-                       to_axis = c("observation", "feature"), metadata = list()) {
+                       to_axis = c("observation", "feature"),
+                       metadata = list(), feature_map = NULL) {
   scalar_string <- function(value, field) {
     if (!is.character(value) || length(value) != 1L || is.na(value) || !nzchar(value)) {
       .study_abort(sprintf("%s must be one non-empty string.", field), field = field)
@@ -124,6 +128,30 @@ frame_link <- function(from, to,
   }
   from_axis <- match.arg(from_axis)
   to_axis <- match.arg(to_axis)
+  if (!is.list(metadata) || .source_contains_runtime_state(metadata)) {
+    .study_abort("Frame-link metadata must be a serializable list.",
+                 field = "metadata")
+  }
+  if (!is.null(feature_map)) {
+    validate_feature_map(feature_map)
+    if (!identical(type, "mapped_from") ||
+        !identical(from_axis, "feature") ||
+        !identical(to_axis, "feature")) {
+      .study_abort(
+        "feature_map is valid only for a feature-to-feature mapped_from link.",
+        field = "feature_map"
+      )
+    }
+    if (!is.null(metadata$feature_map)) {
+      .study_abort(
+        "Supply feature_map directly, not both feature_map and metadata$feature_map.",
+        field = "feature_map"
+      )
+    }
+    metadata$feature_map <- feature_map
+  } else if (!is.null(metadata$feature_map)) {
+    validate_feature_map(metadata$feature_map)
+  }
   if (!is.null(map)) {
     if (!is.data.frame(map)) .study_abort("Link map must be a data frame.", field = "map")
     map <- tibble::as_tibble(map)
@@ -276,6 +304,33 @@ frame_link <- function(from, to,
           .study_abort(sprintf("Study link '%s' map contains unknown axis IDs.", id), link = id)
         }
       }
+      typed_map <- value$metadata$feature_map
+      if (!is.null(typed_map)) {
+        validate_feature_map(typed_map)
+        if (!identical(value$type, "mapped_from") ||
+            !identical(value$from_axis, "feature") ||
+            !identical(value$to_axis, "feature")) {
+          .study_abort(
+            sprintf("Study link '%s' uses a feature_map outside a feature mapped_from link.", id),
+            link = id
+          )
+        }
+        from_frame <- frames[[value$from]]
+        to_frame <- frames[[value$to]]
+        if (inherits(from_frame, "fmri_collection") ||
+            inherits(to_frame, "fmri_collection")) {
+          .study_abort(
+            sprintf("Study link '%s' feature_map endpoints must be single frames.", id),
+            link = id
+          )
+        }
+        # A mapped_from link points from the derived representation back to
+        # its source, whereas the operator itself maps source to target.
+        assert_compatible_space(feature_map_source_space(typed_map),
+                                space(to_frame))
+        assert_compatible_space(feature_map_target_space(typed_map),
+                                space(from_frame))
+      }
     }
   }
   links
@@ -347,6 +402,9 @@ fmri_study <- function(frames, entities = list(), links = list(), tables = list(
   }
   links <- .validate_study_links(links, frames)
   tables <- .validate_study_tables(tables, entities_value)
+  if (inherits(provenance, "provenance_graph")) {
+    validate_provenance_graph(provenance)
+  }
   out <- structure(
     list(
       frames = frames, entities = entities_value, links = links, tables = tables,

@@ -121,6 +121,15 @@ fmri_frame <- function(assays, observations, features = NULL, space = NULL,
     .frame_abort("active_assay is not present in assays.", "fmridataset_error_alignment")
   }
   entities <- entity_registry(entities)
+  if (inherits(provenance, "provenance_graph")) {
+    validate_provenance_graph(provenance)
+  }
+  if (.source_contains_runtime_state(provenance)) {
+    .frame_abort(
+      "Frame provenance cannot contain runtime state.",
+      "fmridataset_error_feature_map", field = "provenance"
+    )
+  }
   relations <- .resolve_relation_registry(
     relation_registry(relations),
     observations,

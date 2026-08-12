@@ -200,6 +200,45 @@ fds_study_representations <- function(x) {
         )
       }
     }
+    typed_map <- value$metadata$feature_map
+    if (!is.null(typed_map)) {
+      tryCatch(
+        {
+          validate_feature_map(typed_map)
+          if (!identical(value$type, "mapped_from") ||
+              !identical(value$from_axis, "feature") ||
+              !identical(value$to_axis, "feature")) {
+            .fds_schema_abort(
+              sprintf("Study link '%s' uses a feature_map outside a feature mapped_from link.", name),
+              paste0("links.", name, ".metadata.feature_map")
+            )
+          }
+          from_representation <- representations[[value$from]]
+          to_representation <- representations[[value$to]]
+          if (identical(from_representation$type, "fmri_collection") ||
+              identical(to_representation$type, "fmri_collection")) {
+            .fds_schema_abort(
+              sprintf("Study link '%s' feature_map endpoints must be single frames.", name),
+              paste0("links.", name, ".metadata.feature_map")
+            )
+          }
+          assert_compatible_space(
+            feature_map_source_space(typed_map),
+            to_representation$manifest$axes$feature$space
+          )
+          assert_compatible_space(
+            feature_map_target_space(typed_map),
+            from_representation$manifest$axes$feature$space
+          )
+        },
+        error = function(error) {
+          .fds_schema_abort(
+            paste0("Invalid study feature map: ", conditionMessage(error)),
+            paste0("links.", name, ".metadata.feature_map")
+          )
+        }
+      )
+    }
   }
   invisible(TRUE)
 }
@@ -219,6 +258,17 @@ validate_fds_study_manifest <- function(manifest) {
   }
   if (!identical(manifest$object_type, "fmri_study")) {
     .fds_schema_abort("FDS study manifests require object_type fmri_study.", "object_type")
+  }
+  if (inherits(manifest$provenance, "provenance_graph")) {
+    tryCatch(
+      validate_provenance_graph(manifest$provenance),
+      error = function(error) {
+        .fds_schema_abort(
+          paste0("Invalid provenance graph: ", conditionMessage(error)),
+          "provenance"
+        )
+      }
+    )
   }
   representations <- manifest$representations
   representation_names <- names(representations)

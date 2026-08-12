@@ -11,7 +11,8 @@ frame_link(
   map = NULL,
   from_axis = c("observation", "feature"),
   to_axis = c("observation", "feature"),
-  metadata = list()
+  metadata = list(),
+  feature_map = NULL
 )
 }
 \arguments{
@@ -29,6 +30,10 @@ alignment.}
 \item{to_axis}{Axis addressed by \code{.to_id}.}
 
 \item{metadata}{Serializable link metadata.}
+
+\item{feature_map}{Optional typed feature map. This is valid only for a
+feature-to-feature \code{"mapped_from"} link and is persisted in the link's
+metadata without changing the v1 descriptor shape.}
 }
 \value{
 A \code{frame_link} descriptor.

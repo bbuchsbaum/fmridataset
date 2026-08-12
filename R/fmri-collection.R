@@ -170,6 +170,9 @@ fmri_collection <- function(frames, metadata = list(), provenance = NULL) {
       .assert_collection_semantics(signatures[[1L]], signatures[[i]], ids[[i]])
     }
   }
+  if (inherits(provenance, "provenance_graph")) {
+    validate_provenance_graph(provenance)
+  }
   out <- structure(
     list(
       frames = frames,

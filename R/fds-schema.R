@@ -429,6 +429,17 @@ validate_fds_manifest <- function(manifest) {
   if (!identical(manifest$object_type, "fmri_frame")) {
     .fds_schema_abort("FDS v1 currently supports object_type fmri_frame.", "object_type")
   }
+  if (inherits(manifest$provenance, "provenance_graph")) {
+    tryCatch(
+      validate_provenance_graph(manifest$provenance),
+      error = function(error) {
+        .fds_schema_abort(
+          paste0("Invalid provenance graph: ", conditionMessage(error)),
+          "provenance"
+        )
+      }
+    )
+  }
   shape <- manifest$shape
   if (!is.numeric(shape) || length(shape) != 2L || anyNA(shape) ||
     any(shape < 0) || any(shape != as.integer(shape))) {

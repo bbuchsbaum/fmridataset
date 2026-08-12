@@ -86,6 +86,11 @@
   explicit routing, arbitrary-order restriction, block-diagonal adjacency,
   named native reconstruction, and FDS/HDF5 persistence support
   grayordinate-like data without duplicating child-space geometry classes.
+* Added serializable `feature_map` descriptors with exact source and target
+  space identity, lazy target-by-source assay transformation, explicit squared
+  weight propagation for independent variances, canonical parcel and basis
+  maps, typed study-link validation, and content-addressed acyclic derivation
+  provenance.
 * The historical `v0.9.0` tag is preserved; development continues from the
   current main line without retagging it.
 
