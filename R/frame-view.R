@@ -45,7 +45,7 @@
       observation_index = as.integer(observation_index),
       feature_index = as.integer(feature_index)
     ),
-    class = c("fmri_view", "fmri_frame", "fmri_dataset")
+    class = c("fmri_view", "fmri_frame")
   )
 }
 

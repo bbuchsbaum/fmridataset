@@ -1,5 +1,10 @@
 # fmridataset 0.10.0 (Development)
 
+- Detached canonical `fmri_frame` and `fmri_view` objects from legacy
+  `fmri_dataset` dispatch. `upgrade_dataset()` now provides checked migration
+  for provisional frames and self-contained 0.x matrix, series, and NeuroVec
+  inputs while rejecting ambiguous backend datasets without numerical reads.
+
 - Frame views now expose assay descriptors for their visible rectangle:
   sources, shapes, and axis digests remain synchronized through reordered,
   composed, ID-selected, and empty views without reading numerical data.

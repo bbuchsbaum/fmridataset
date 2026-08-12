@@ -2,20 +2,32 @@
 % Please edit documentation in R/frame-coercion.R
 \name{as_fmri_frame}
 \alias{as_fmri_frame}
+\alias{upgrade_dataset}
 \title{Coerce an object to the canonical frame protocol}
 \usage{
 as_fmri_frame(x, ...)
+
+upgrade_dataset(x, ..., warn = TRUE)
 }
 \arguments{
 \item{x}{An object convertible to an \code{fmri_frame}.}
 
 \item{...}{Method-specific arguments.}
+
+\item{warn}{Whether \code{upgrade_dataset()} should report the legacy boundary.}
 }
 \value{
 An \code{fmri_frame}.
 }
 \description{
-Companion packages implement methods for legacy or domain-specific objects.
-The generic is owned by \code{fmridataset} so conversions have one canonical
-destination and do not introduce competing frame classes.
+\code{as_fmri_frame()} is the non-warning conversion protocol used by companion
+packages. \code{upgrade_dataset()} is the user-facing migration entry point for
+supported 0.x objects and emits a migration warning by default.
+}
+\details{
+Supported self-contained inputs are canonical or provisional \code{fmri_frame}
+objects, \code{matrix_dataset}, in-memory \code{fmri_series}, and \code{NeuroVec} objects.
+File/backend datasets are deliberately rejected: their spatial identity and
+serializable source descriptor must be supplied by a backend-specific
+adapter rather than inferred from dimensions.
 }

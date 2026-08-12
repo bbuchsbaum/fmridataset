@@ -43,6 +43,10 @@ register methods rather than redefining the concepts.
   rewritten.
 - Legacy constructors and classes remain migration adapters throughout the
   0.x transition and are removed from the 1.0 public API.
+- Canonical frames and views never inherit from the legacy `fmri_dataset`
+  class. `upgrade_dataset()` is the explicit boundary for supported,
+  self-contained 0.x objects; backend-specific datasets require an explicit
+  serializable source and feature-space adapter.
 - HDF5 is the certified 1.0 persistent backend. Zarr remains experimental
   until it independently passes the same conformance gates.
 - `DelayedArray` is optional interoperability, not an internal execution path.

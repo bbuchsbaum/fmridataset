@@ -9,6 +9,8 @@ test_that("fmri_frame aligns assays and annotated axes", {
   expect_identical(levels(observations(x)$Fac1), c("A", "B"))
   expect_identical(features(x)$parcel[1:2], c("hippocampus", "hippocampus"))
   expect_identical(feature_ids(x), feature_ids(fx$feature_space))
+  expect_identical(class(x), "fmri_frame")
+  expect_false(inherits(x, "fmri_dataset"))
 })
 
 test_that("fmri_frame rejects assay and feature mismatches", {
