@@ -3,7 +3,6 @@
 #' If x is NULL, return y; otherwise return x
 #' @name grapes-or-or-grapes
 #' @keywords internal
-#' @export
 `%||%` <- function(x, y) {
   if (is.null(x)) y else x
 }

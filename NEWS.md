@@ -1,5 +1,10 @@
 # fmridataset 0.10.0 (Development)
 
+- Classified the 1.0 namespace into user, extension, and developer-only
+  audiences. Removed synthetic vignette helpers and `%||%` from the public
+  surface; retained counting and fault sources only as documented conformance
+  tools for companion packages.
+
 - Made `explain()` bounded for large axes: it now reports counts, source
   contracts, realization estimates, semantic/schema digests, and sampled IDs
   without numerical reads. Complete IDs require `ids = "complete"`; counting
