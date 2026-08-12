@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "org.fmridataset.fds-study/v2",
+  "title": "FDS study logical manifest version 2",
+  "type": "object",
+  "required": [
+    "schema",
+    "object_type",
+    "representations",
+    "arrays",
+    "entities",
+    "links",
+    "tables",
+    "metadata",
+    "provenance",
+    "extensions"
+  ],
+  "properties": {
+    "schema": {
+      "type": "object",
+      "required": ["id", "version"],
+      "properties": {
+        "id": {"const": "org.fmridataset.fds-study/v2"},
+        "version": {"const": 2}
+      },
+      "additionalProperties": false
+    },
+    "object_type": {"const": "fmri_study"},
+    "representations": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/representation"}
+    },
+    "arrays": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/array"}
+    },
+    "entities": {"type": "object"},
+    "links": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/link"}
+    },
+    "tables": {"type": "object"},
+    "metadata": {"type": "object"},
+    "provenance": {},
+    "extensions": {"type": "object"}
+  },
+  "$defs": {
+    "array": {
+      "type": "object",
+      "required": ["key", "axes", "shape", "dtype"],
+      "properties": {
+        "key": {"type": "string", "minLength": 1},
+        "axes": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "shape": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"type": "integer", "minimum": 0}
+        },
+        "dtype": {"type": "string", "minLength": 1}
+      }
+    },
+    "link": {
+      "type": "object",
+      "required": [
+        "source", "target", "type", "map", "source_axis", "target_axis",
+        "operator", "metadata", "schema_version"
+      ],
+      "properties": {
+        "source": {"type": "string", "minLength": 1},
+        "target": {"type": "string", "minLength": 1},
+        "type": {
+          "enum": ["derivation", "mapping", "correspondence", "alignment"]
+        },
+        "source_axis": {"enum": ["observation", "feature"]},
+        "target_axis": {"enum": ["observation", "feature"]},
+        "schema_version": {"const": 2}
+      },
+      "additionalProperties": false
+    },
+    "representation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type", "manifest"],
+          "properties": {
+            "type": {"const": "fmri_frame"},
+            "manifest": {"type": "object"}
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "members", "metadata", "provenance"],
+          "properties": {
+            "type": {"const": "fmri_collection"},
+            "members": {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": {"type": "object"}
+            },
+            "metadata": {"type": "object"},
+            "provenance": {}
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

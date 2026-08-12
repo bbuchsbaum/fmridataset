@@ -46,10 +46,10 @@
     frames = list(bold = bold, beta = beta, native = native),
     entities = entities_value,
     links = list(beta_from_bold = frame_link(
-      "beta", "bold", "derived_from",
+      "bold", "beta", "derivation",
       map = tibble::tibble(
-        .from_id = observation_ids(beta),
-        .to_id = observation_ids(bold)
+        .source_id = observation_ids(bold),
+        .target_id = observation_ids(beta)
       )
     )),
     tables = list(events = event_table(tibble::tibble(
@@ -68,8 +68,8 @@ test_that("FDS study manifests separate semantic state from numerical bindings",
   manifest <- fds_study_manifest(fixture$study)
   bindings <- fds_study_bindings(fixture$study)
 
-  expect_identical(manifest$schema$id, "org.fmridataset.fds-study/v1")
-  expect_identical(manifest$schema$version, 1L)
+  expect_identical(manifest$schema$id, "org.fmridataset.fds-study/v2")
+  expect_identical(manifest$schema$version, 2L)
   expect_identical(manifest$object_type, "fmri_study")
   expect_identical(names(manifest$representations), c("bold", "beta", "native"))
   expect_identical(manifest$representations$bold$type, "fmri_frame")
@@ -151,11 +151,11 @@ test_that("FDS study validation rejects drift in representations links and bindi
   bindings <- fds_study_bindings(fixture$study)
 
   future <- manifest
-  future$schema$version <- 2L
+  future$schema$version <- 3L
   expect_error(validate_fds_study_manifest(future), "version", class = "fmridataset_error_schema")
 
   missing_endpoint <- manifest
-  missing_endpoint$links$beta_from_bold$to <- "missing"
+  missing_endpoint$links$beta_from_bold$target <- "missing"
   expect_error(validate_fds_study_manifest(missing_endpoint), "endpoint")
 
   wrong_member <- representations
@@ -184,18 +184,41 @@ test_that("filtered studies persist their visible semantic view", {
   expect_identical(nrow(study_frame(rebuilt, "bold")), 1L)
   expect_identical(nrow(event_data(events(rebuilt))), 1L)
   expect_identical(nrow(study_link(rebuilt, "beta_from_bold")$map), 1L)
+  expect_false(any(c("base", "entity_selections") %in% names(unclass(study))))
+})
+
+test_that("provisional FDS v1 study manifests migrate explicitly", {
+  manifest <- fds_study_manifest(.make_fds_study_fixture()$study)
+  link <- manifest$links$beta_from_bold
+  manifest$schema <- list(id = "org.fmridataset.fds-study/v1", version = 1L)
+  manifest$links$beta_from_bold <- structure(list(
+    from = link$target, to = link$source, type = "derived_from",
+    map = tibble::tibble(
+      .from_id = link$map$.target_id,
+      .to_id = link$map$.source_id
+    ),
+    from_axis = link$target_axis, to_axis = link$source_axis,
+    metadata = list(), schema_version = 1L
+  ), class = "frame_link")
+
+  expect_error(validate_fds_study_manifest(manifest), "Unsupported")
+  migrated <- upgrade_fds_study_manifest(manifest)
+  expect_invisible(validate_fds_study_manifest(migrated))
+  expect_identical(migrated$links$beta_from_bold$source, "bold")
+  expect_identical(migrated$links$beta_from_bold$target, "beta")
+  expect_identical(upgrade_fds_study_manifest(migrated), migrated)
 })
 
 test_that("the installed FDS study schema envelope is machine readable", {
   skip_if_not_installed("jsonlite")
-  path <- system.file("schema", "fds-study-v1.schema.json", package = "fmridataset")
+  path <- system.file("schema", "fds-study-v2.schema.json", package = "fmridataset")
   expect_true(file.exists(path))
   schema <- jsonlite::read_json(path, simplifyVector = TRUE)
 
-  expect_identical(schema[["$id"]], "org.fmridataset.fds-study/v1")
+  expect_identical(schema[["$id"]], "org.fmridataset.fds-study/v2")
   expect_true(all(c(
     "schema", "object_type", "representations", "arrays", "entities",
     "links", "tables", "metadata", "provenance", "extensions"
   ) %in% schema$required))
-  expect_identical(schema$properties$schema$properties$version$const, 1L)
+  expect_identical(schema$properties$schema$properties$version$const, 2L)
 })

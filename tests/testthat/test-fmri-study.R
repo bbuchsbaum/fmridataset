@@ -153,18 +153,18 @@
   ))
   links <- list(
     betas_from_bold = frame_link(
-      from = "betas",
-      to = "bold",
-      type = "derived_from",
+      source = "bold",
+      target = "betas",
+      type = "derivation",
       map = tibble::tibble(
-        .from_id = paste0("beta-", 1:3),
-        .to_id = c("bold-1", "bold-3", "bold-4")
+        .source_id = c("bold-1", "bold-3", "bold-4"),
+        .target_id = paste0("beta-", 1:3)
       )
     ),
     behavior_stimuli = frame_link(
-      from = "behavior",
-      to = "betas",
-      type = "corresponds_to"
+      source = "behavior",
+      target = "betas",
+      type = "correspondence"
     )
   )
   study <- fmri_study(
@@ -176,7 +176,16 @@
     ),
     entities = shared_entities,
     links = links,
-    tables = list(events = events_value)
+    tables = list(
+      events = events_value,
+      subject_qc = auxiliary_table(
+        tibble::tibble(
+          subject_id = c("sub-01", "sub-02"),
+          mean_fd = c(.12, .18)
+        ),
+        key = "subject_id", role = "quality_control"
+      )
+    )
   )
   list(
     study = study,
@@ -206,7 +215,9 @@ test_that("fmri_study links distinct frames through shared authoritative entitie
     "axis_block"
   )
   expect_identical(names(study_links(study)), c("betas_from_bold", "behavior_stimuli"))
-  expect_identical(study_link(study, "betas_from_bold")$type, "derived_from")
+  expect_identical(study_link(study, "betas_from_bold")$type, "derivation")
+  expect_identical(study_link(study, "betas_from_bold")$source, "bold")
+  expect_identical(study_link(study, "betas_from_bold")$target, "betas")
 })
 
 test_that("event tables remain keyed and relational rather than volume aligned", {
@@ -224,7 +235,9 @@ test_that("entity filtering propagates lazily through frames and collections", {
   fixture <- .make_study_fixture()
   older <- filter_entities(fixture$study, subject, age >= 65)
 
-  expect_s3_class(older, "fmri_study_view")
+  expect_s3_class(older, "fmri_study")
+  expect_false(inherits(older, "fmri_study_view"))
+  expect_false(any(c("base", "entity_selections") %in% names(unclass(older))))
   expect_identical(entity_ids(entity(older, "subject")), "sub-02")
   expect_identical(nrow(study_frame(older, "bold")), 2L)
   expect_identical(nrow(study_frame(older, "betas")), 2L)
@@ -236,8 +249,19 @@ test_that("entity filtering propagates lazily through frames and collections", {
     observations(study_frame(older, "bold"), resolve = TRUE)$subject.age,
     c(71, 71)
   )
+  expect_s3_class(study_frame(older, "bold"), "fmri_frame")
+  expect_false(any(c("base", "observation_selection") %in%
+                   names(unclass(study_frame(older, "bold")))))
   expect_identical(
-    study_link(older, "betas_from_bold")$map$.from_id,
+    source_shape(assays(study_frame(older, "bold"))$signal$source),
+    c(2L, 3L)
+  )
+  expect_identical(
+    table_data(study_table(older, "subject_qc"))$subject_id,
+    "sub-02"
+  )
+  expect_identical(
+    study_link(older, "betas_from_bold")$map$.target_id,
     c("beta-2", "beta-3")
   )
   for (source in fixture$sources) expect_equal(source_counts(source)$bytes, 0)
@@ -267,7 +291,7 @@ test_that("study links validate endpoints axes and optional maps", {
     fmri_study(
       frames,
       entities = entities_value,
-      links = list(bad = frame_link("missing", "bold", "derived_from"))
+      links = list(bad = frame_link("missing", "bold", "derivation"))
     ),
     "endpoint",
     class = "fmridataset_error_study"
@@ -277,8 +301,8 @@ test_that("study links validate endpoints axes and optional maps", {
       frames,
       entities = entities_value,
       links = list(bad = frame_link(
-        "betas", "bold", "derived_from",
-        map = tibble::tibble(.from_id = "unknown", .to_id = "bold-1")
+        "bold", "betas", "derivation",
+        map = tibble::tibble(.source_id = "unknown", .target_id = "beta-1")
       ))
     ),
     "unknown",
@@ -300,6 +324,15 @@ test_that("study validates shared entities and event references", {
 
   expect_error(
     fmri_study(frames, entities = entities_value, tables = list(events = bad_events)),
+    "unknown",
+    class = "fmridataset_error_study"
+  )
+  bad_qc <- auxiliary_table(
+    tibble::tibble(subject_id = "unknown", value = 1),
+    key = "subject_id", role = "quality_control"
+  )
+  expect_error(
+    fmri_study(frames, entities = entities_value, tables = list(qc = bad_qc)),
     "unknown",
     class = "fmridataset_error_study"
   )
@@ -357,7 +390,7 @@ test_that("event_table validates keys and temporal fields", {
   expect_error(validate_event_table(malformed), class = "fmridataset_error_event")
 })
 
-test_that("studies and filtered views serialize without runtime state", {
+test_that("studies and filtered studies serialize without runtime state", {
   fixture <- .make_study_fixture()
   study <- fixture$study
   view <- filter_entities(study, subject, age > 60)
@@ -374,11 +407,63 @@ test_that("studies and filtered views serialize without runtime state", {
   expect_false(contains_runtime_state(study))
   expect_false(contains_runtime_state(view))
   expect_output(print(study), "4 representations")
-  expect_output(print(view), "filtered view")
+  expect_output(print(view), "4 representations")
   expect_error(study_frame(study, character()), class = "fmridataset_error_study")
   expect_error(study_frames(study, contextual = NA), class = "fmridataset_error_study")
   malformed <- view
-  malformed$entity_selections$subject <- "unknown"
-  expect_error(validate_fmri_study(malformed), class = "fmridataset_error_study")
+  malformed$entities$subject$data$subject_id <- "unknown"
+  expect_error(validate_fmri_study(malformed), class = "fmridataset_error")
   for (source in fixture$sources) expect_equal(source_counts(source)$bytes, 0)
+})
+
+test_that("provisional frame links migrate explicitly to source-target links", {
+  source_space <- index_space(1L, ids = "voxel-1", namespace = "native")
+  target_space <- index_space(1L, ids = "parcel-1", namespace = "parcel")
+  operator <- feature_map(source_space, target_space, matrix(1, 1L, 1L))
+  legacy <- structure(list(
+    from = "parcel", to = "native", type = "mapped_from",
+    map = tibble::tibble(.from_id = "parcel-1", .to_id = "voxel-1"),
+    from_axis = "feature", to_axis = "feature",
+    metadata = list(feature_map = operator, note = "legacy"),
+    schema_version = 1L
+  ), class = "frame_link")
+
+  migrated <- upgrade_frame_link(legacy)
+  expect_identical(migrated$source, "native")
+  expect_identical(migrated$target, "parcel")
+  expect_identical(migrated$type, "mapping")
+  expect_identical(migrated$map$.source_id, "voxel-1")
+  expect_identical(migrated$map$.target_id, "parcel-1")
+  expect_s3_class(migrated$operator, "feature_map")
+  expect_null(migrated$metadata$feature_map)
+  expect_true(migrated$metadata$note == "legacy")
+  expect_identical(upgrade_frame_link(migrated), migrated)
+})
+
+test_that("frame links compose in source-to-target order", {
+  first <- frame_link(
+    "raw", "beta", "derivation",
+    map = tibble::tibble(
+      .source_id = c("raw-1", "raw-2"),
+      .target_id = c("beta-1", "beta-2")
+    )
+  )
+  second <- frame_link(
+    "beta", "contrast", "derivation",
+    map = tibble::tibble(
+      .source_id = c("beta-2", "beta-1"),
+      .target_id = c("contrast-2", "contrast-1")
+    )
+  )
+  composed <- compose_frame_links(first, second)
+
+  expect_identical(composed$source, "raw")
+  expect_identical(composed$target, "contrast")
+  expect_identical(composed$map$.source_id, c("raw-1", "raw-2"))
+  expect_identical(composed$map$.target_id, c("contrast-1", "contrast-2"))
+  expect_error(
+    compose_frame_links(second, first),
+    "intermediate endpoint",
+    class = "fmridataset_error_study"
+  )
 })

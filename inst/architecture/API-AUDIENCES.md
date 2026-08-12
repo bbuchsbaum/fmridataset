@@ -8,13 +8,15 @@ This classification is normative for 1.0 review and generated namespace tests.
 The ordinary user surface covers:
 
 - frame, collection, and study construction;
+- canonical source-to-target study links and explicit link composition;
 - typed unaligned metadata records, typed event/auxiliary tables, and explicit
   legacy-lineage migration with `as_provenance_graph()`;
 - observation, feature, entity, relation, assay, and space inspection;
 - lazy filtering, feature mapping, binding, and validity policies;
 - bounded numerical and spatial realization;
 - NIfTI, HDF5, Zarr, atlas, surface, and latent interoperability;
-- FDS inspection, persistence, and explicit legacy migration.
+- FDS inspection, persistence, and explicit legacy migration with
+  `upgrade_frame_link()` and `upgrade_fds_study_manifest()`.
 
 ## Extension API
 
@@ -38,6 +40,14 @@ tables, active-assay state, or lineage from an arbitrary operand: metadata
 uses an explicit equality/merge policy, keyed tables are unioned with conflict
 detection, active-assay differences require a caller choice, and provenance
 graphs are joined under a new bind record.
+
+Study links are source-to-target descriptors. Their maps use `.source_id` and
+`.target_id`; typed feature operators occupy the first-class `operator` field
+and map in the same direction. Provisional version-one `*_from` links and FDS
+study v1 manifests are rejected by current validators and must cross the
+explicit upgrade boundary. `filter_entities()` returns a self-contained study
+with compact entities, tables, links, and lazy source views rather than an
+object whose public fields expose hidden base state.
 
 The stable extension groups are:
 

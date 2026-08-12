@@ -270,7 +270,7 @@ test_that("mapped frames retain feature-map provenance through FDS", {
   expect_equal(collect_assay(restored), fx$values %*% t(fx$operator))
 })
 
-test_that("study mapped_from links validate their typed feature map", {
+test_that("study mapping links validate their typed feature operator", {
   fx <- .feature_map_fixture()
   source_frame <- fmri_frame(
     assays = list(signal = fx$values),
@@ -279,9 +279,9 @@ test_that("study mapped_from links validate their typed feature map", {
   )
   target_frame <- map_features(source_frame, map = fx$map)
   link <- frame_link(
-    from = "parcel", to = "native", type = "mapped_from",
-    from_axis = "feature", to_axis = "feature",
-    feature_map = fx$map
+    source = "native", target = "parcel", type = "mapping",
+    source_axis = "feature", target_axis = "feature",
+    operator = fx$map
   )
 
   expect_s3_class(
@@ -292,20 +292,20 @@ test_that("study mapped_from links validate their typed feature map", {
     "fmri_study"
   )
   expect_invisible(validate_fds_study_manifest(fds_study_manifest(study)))
-  expect_identical(feature_map_digest(link$metadata$feature_map),
+  expect_identical(feature_map_digest(link$operator),
                    feature_map_digest(fx$map))
   positional_metadata <- frame_link(
-    "parcel", "native", "corresponds_to", NULL,
+    "parcel", "native", "correspondence", NULL,
     "feature", "feature", list(legacy = TRUE)
   )
   expect_true(positional_metadata$metadata$legacy)
   expect_error(
-    frame_link("parcel", "native", "derived_from", feature_map = fx$map),
-    "feature-to-feature mapped_from"
+    frame_link("parcel", "native", "derivation", operator = fx$map),
+    "feature-to-feature mapping"
   )
 
   bad_link <- link
-  bad_link$metadata$feature_map <- feature_map(
+  bad_link$operator <- feature_map(
     fx$target_space, fx$source_space, t(fx$operator)
   )
   expect_error(
@@ -314,5 +314,37 @@ test_that("study mapped_from links validate their typed feature map", {
       links = list(parcel_from_native = bad_link)
     ),
     class = "fmridataset_error_space_mismatch"
+  )
+})
+
+test_that("mapping-link composition preserves feature-map direction", {
+  source <- index_space(2L, ids = c("v1", "v2"), namespace = "native")
+  middle <- index_space(2L, ids = c("p1", "p2"), namespace = "parcel")
+  target <- index_space(1L, ids = "c1", namespace = "component")
+  first_map <- feature_map(source, middle, matrix(c(1, 0, 0, 2), 2L))
+  second_map <- feature_map(middle, target, matrix(c(3, 4), 1L))
+  first <- frame_link(
+    "native", "parcel", "mapping", source_axis = "feature",
+    target_axis = "feature", operator = first_map
+  )
+  second <- frame_link(
+    "parcel", "latent", "mapping", source_axis = "feature",
+    target_axis = "feature", operator = second_map
+  )
+
+  composed <- compose_frame_links(first, second)
+  expect_identical(composed$source, "native")
+  expect_identical(composed$target, "latent")
+  expect_identical(
+    feature_map_operator(composed$operator),
+    feature_map_operator(second_map) %*% feature_map_operator(first_map)
+  )
+  expect_identical(
+    space_digest(feature_map_source_space(composed$operator)),
+    space_digest(source)
+  )
+  expect_identical(
+    space_digest(feature_map_target_space(composed$operator)),
+    space_digest(target)
   )
 })

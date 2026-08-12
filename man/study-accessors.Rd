@@ -14,7 +14,7 @@ study_frame(x, name, contextual = TRUE)
 study_ids(x)
 }
 \arguments{
-\item{x}{An \code{fmri_study} or filtered view.}
+\item{x}{An \code{fmri_study}.}
 
 \item{contextual}{Replace frame-local entity stubs with shared study entities.}
 

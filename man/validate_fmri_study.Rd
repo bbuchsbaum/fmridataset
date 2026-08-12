@@ -2,16 +2,16 @@
 % Please edit documentation in R/fmri-study.R
 \name{validate_fmri_study}
 \alias{validate_fmri_study}
-\title{Validate a study or filtered study view}
+\title{Validate a study}
 \usage{
 validate_fmri_study(x)
 }
 \arguments{
-\item{x}{An \code{fmri_study} or \code{fmri_study_view}.}
+\item{x}{An \code{fmri_study}.}
 }
 \value{
 \code{x}, invisibly.
 }
 \description{
-Validate a study or filtered study view
+Validate a study
 }

@@ -109,10 +109,14 @@
   validation compares assay, axis, block, entity, and relation schemas without
   inferring spatial equality from dimensions, and inspection remains zero-read.
 
-* Added `fmri_study`, typed `frame_link` descriptors, keyed `event_table`
-  objects, shared entity contextualization, and lazy `filter_entities()` study
-  views. Entity filters propagate through frames and native-space collections,
-  and restrict linked axis maps and event rows without reading assay data.
+* Added `fmri_study`, canonical source-to-target `frame_link` descriptors,
+  keyed `event_table` objects, shared entity contextualization, and
+  self-contained lazy filtered studies. Entity filters propagate through
+  frames and native-space collections and compact visible entities, linked
+  axis maps, and typed table rows without reading assay data. Feature operators
+  are first-class link fields; `compose_frame_links()`,
+  `upgrade_frame_link()`, and `upgrade_fds_study_manifest()` make direction,
+  composition, and provisional-schema migration explicit.
 * Added serializable balanced, imagewise, and featurewise block planners with
   explicit byte ceilings, chunk-aware block shapes, stale-plan detection, and
   bounded execution over frame views.

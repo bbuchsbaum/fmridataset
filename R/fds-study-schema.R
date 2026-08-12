@@ -1,6 +1,6 @@
 .fds_study_schema <- list(
-  id = "org.fmridataset.fds-study/v1",
-  version = 1L
+  id = "org.fmridataset.fds-study/v2",
+  version = 2L
 )
 
 .fds_study_representation_manifest <- function(value) {
@@ -39,14 +39,14 @@
   arrays
 }
 
-#' Construct and validate an FDS v1 study manifest
+#' Construct and validate an FDS v2 study manifest
 #'
 #' Study manifests retain shared entities, typed links, relational tables, and
 #' the semantic manifests of every frame or collection member. Numerical
 #' sources remain separate bindings so physical storage packages do not own or
 #' reinterpret study semantics.
 #'
-#' @param x An `fmri_study` or filtered study view.
+#' @param x An `fmri_study`.
 #' @param manifest An FDS study manifest.
 #' @return `fds_study_manifest()` returns a serializable source-free manifest;
 #'   `validate_fds_study_manifest()` returns `manifest` invisibly.
@@ -60,7 +60,6 @@ fds_study_manifest <- function(x) {
     .fds_entity_manifest(entity_values[[name]], name)
   })
   names(entity_manifests) <- entity_names(entity_values)
-  base <- .study_base(x)
   manifest <- list(
     schema = .fds_study_schema,
     object_type = "fmri_study",
@@ -69,8 +68,8 @@ fds_study_manifest <- function(x) {
     entities = entity_manifests,
     links = study_links(x),
     tables = study_tables(x),
-    metadata = base$metadata,
-    provenance = base$provenance,
+    metadata = x$metadata,
+    provenance = x$provenance,
     extensions = list()
   )
   validate_fds_study_manifest(manifest)
@@ -79,19 +78,12 @@ fds_study_manifest <- function(x) {
 
 #' Extract canonical study representations for persistence
 #'
-#' Filtered study views are compacted against their visible shared entities so
-#' the persisted object is a self-contained study rather than a view retaining
-#' references to filtered-out registry rows.
-#'
-#' @param x An `fmri_study` or filtered study view.
+#' @param x An `fmri_study`.
 #' @return Named frames and collections matching `fds_study_manifest(x)`.
 #' @export
 fds_study_representations <- function(x) {
   validate_fmri_study(x)
-  values <- study_frames(x, contextual = FALSE)
-  if (!inherits(x, "fmri_study_view")) return(values)
-  shared <- entities(x)
-  lapply(values, .contextualize_study_frame, shared = shared)
+  study_frames(x, contextual = FALSE)
 }
 
 .validate_study_array_declarations <- function(arrays) {
@@ -204,62 +196,62 @@ fds_study_representations <- function(x) {
         )
       }
     )
-    if (!all(c(value$from, value$to) %in% names(representations))) {
+    if (!all(c(value$source, value$target) %in% names(representations))) {
       .fds_schema_abort(
         sprintf("Study link '%s' has an unknown endpoint.", name),
         paste0("links.", name)
       )
     }
     if (!is.null(value$map)) {
-      from_ids <- .study_manifest_axis_ids(
-        representations[[value$from]], value$from_axis, value$from
+      source_ids <- .study_manifest_axis_ids(
+        representations[[value$source]], value$source_axis, value$source
       )
-      to_ids <- .study_manifest_axis_ids(
-        representations[[value$to]], value$to_axis, value$to
+      target_ids <- .study_manifest_axis_ids(
+        representations[[value$target]], value$target_axis, value$target
       )
-      if (any(!value$map$.from_id %in% from_ids) ||
-          any(!value$map$.to_id %in% to_ids)) {
+      if (any(!value$map$.source_id %in% source_ids) ||
+          any(!value$map$.target_id %in% target_ids)) {
         .fds_schema_abort(
           sprintf("Study link '%s' map contains unknown axis IDs.", name),
           paste0("links.", name, ".map")
         )
       }
     }
-    typed_map <- value$metadata$feature_map
+    typed_map <- value$operator
     if (!is.null(typed_map)) {
       tryCatch(
         {
           validate_feature_map(typed_map)
-          if (!identical(value$type, "mapped_from") ||
-              !identical(value$from_axis, "feature") ||
-              !identical(value$to_axis, "feature")) {
+          if (!value$type %in% c("mapping", "alignment") ||
+              !identical(value$source_axis, "feature") ||
+              !identical(value$target_axis, "feature")) {
             .fds_schema_abort(
-              sprintf("Study link '%s' uses a feature_map outside a feature mapped_from link.", name),
-              paste0("links.", name, ".metadata.feature_map")
+              sprintf("Study link '%s' uses an operator outside a feature mapping or alignment.", name),
+              paste0("links.", name, ".operator")
             )
           }
-          from_representation <- representations[[value$from]]
-          to_representation <- representations[[value$to]]
-          if (identical(from_representation$type, "fmri_collection") ||
-              identical(to_representation$type, "fmri_collection")) {
+          source_representation <- representations[[value$source]]
+          target_representation <- representations[[value$target]]
+          if (identical(source_representation$type, "fmri_collection") ||
+              identical(target_representation$type, "fmri_collection")) {
             .fds_schema_abort(
-              sprintf("Study link '%s' feature_map endpoints must be single frames.", name),
-              paste0("links.", name, ".metadata.feature_map")
+              sprintf("Study link '%s' operator endpoints must be single frames.", name),
+              paste0("links.", name, ".operator")
             )
           }
           assert_compatible_space(
             feature_map_source_space(typed_map),
-            to_representation$manifest$axes$feature$space
+            source_representation$manifest$axes$feature$space
           )
           assert_compatible_space(
             feature_map_target_space(typed_map),
-            from_representation$manifest$axes$feature$space
+            target_representation$manifest$axes$feature$space
           )
         },
         error = function(error) {
           .fds_schema_abort(
             paste0("Invalid study feature map: ", conditionMessage(error)),
-            paste0("links.", name, ".metadata.feature_map")
+            paste0("links.", name, ".operator")
           )
         }
       )
@@ -363,9 +355,39 @@ validate_fds_study_manifest <- function(manifest) {
   invisible(manifest)
 }
 
+#' Upgrade a provisional FDS study manifest
+#'
+#' Converts an FDS study v1 manifest, including its reverse-direction
+#' provisional frame links, to the canonical v2 schema. Canonical v2 manifests
+#' are validated and returned unchanged.
+#'
+#' @param manifest An FDS study v1 or v2 manifest.
+#' @return A validated FDS study v2 manifest.
+#' @export
+upgrade_fds_study_manifest <- function(manifest) {
+  if (!is.list(manifest) || is.null(manifest$schema)) {
+    .fds_schema_abort("The FDS study manifest has no schema descriptor.", "schema")
+  }
+  if (identical(manifest$schema, .fds_study_schema)) {
+    validate_fds_study_manifest(manifest)
+    return(manifest)
+  }
+  legacy_schema <- list(id = "org.fmridataset.fds-study/v1", version = 1L)
+  if (!identical(manifest$schema, legacy_schema)) {
+    .fds_schema_abort("Unsupported FDS study schema identity or version.", "schema")
+  }
+  if (!is.list(manifest$links)) {
+    .fds_schema_abort("Study links must be a named list.", "links")
+  }
+  manifest$links <- lapply(manifest$links, upgrade_frame_link)
+  manifest$schema <- .fds_study_schema
+  validate_fds_study_manifest(manifest)
+  manifest
+}
+
 #' Extract shared study-level physical bindings
 #'
-#' @param x An `fmri_study` or filtered study view.
+#' @param x An `fmri_study`.
 #' @return A named list of shared entity-block payloads. Representation arrays
 #'   remain owned by their individual frame bindings.
 #' @export
@@ -486,7 +508,7 @@ fds_study_bindings <- function(x) {
 
 #' Reconstruct a study from semantic and physical components
 #'
-#' @param manifest A valid FDS v1 study manifest.
+#' @param manifest A valid FDS v2 study manifest.
 #' @param representations Named lazy frames or collections matching the
 #'   representation manifests.
 #' @param bindings Named physical bindings for shared study arrays.
