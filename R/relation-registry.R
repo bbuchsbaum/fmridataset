@@ -93,7 +93,7 @@ sparse_relation <- function(data, from, to, from_col = ".from_id",
   data[[from_col]] <- as.character(data[[from_col]])
   data[[to_col]] <- as.character(data[[to_col]])
   if (anyNA(data[[from_col]]) || any(!nzchar(data[[from_col]])) ||
-      anyNA(data[[to_col]]) || any(!nzchar(data[[to_col]]))) {
+    anyNA(data[[to_col]]) || any(!nzchar(data[[to_col]]))) {
     .relation_abort("Sparse relation edge IDs must be non-missing and non-empty.", field = "data")
   }
   if (!is.logical(directed) || length(directed) != 1L || is.na(directed)) {
@@ -115,7 +115,7 @@ sparse_relation <- function(data, from, to, from_col = ".from_id",
   if (!is.null(weight)) {
     weight <- .one_relation_string(weight, "weight")
     if (!weight %in% names(data) || !is.numeric(data[[weight]]) ||
-        anyNA(data[[weight]]) || any(!is.finite(data[[weight]]))) {
+      anyNA(data[[weight]]) || any(!is.finite(data[[weight]]))) {
       .relation_abort("Sparse relation weight must name a finite numeric column.", field = "weight")
     }
   }
@@ -165,7 +165,7 @@ relation_registry <- function(relations = list(), ...) {
   if (length(relations)) {
     names_value <- names(relations)
     if (is.null(names_value) || anyNA(names_value) || any(!nzchar(names_value)) ||
-        anyDuplicated(names_value)) {
+      anyDuplicated(names_value)) {
       .relation_abort("Relation registries must be named with unique, non-empty values.", field = "names")
     }
     valid <- vapply(relations, inherits, logical(1), "fmri_relation")
@@ -189,7 +189,7 @@ relation_registry <- function(relations = list(), ...) {
       "schema_version"
     )
     if (!identical(names(value), required) || !identical(value$type, "key") ||
-        !identical(value$schema_version, 1L)) {
+      !identical(value$schema_version, 1L)) {
       .relation_abort(sprintf("Key relation '%s' has an invalid descriptor.", name), relation = name)
     }
     key_relation(
@@ -207,7 +207,7 @@ relation_registry <- function(relations = list(), ...) {
       "directed", "metadata", "schema_version"
     )
     if (!identical(names(value), required) || !identical(value$type, "sparse") ||
-        !identical(value$schema_version, 1L)) {
+      !identical(value$schema_version, 1L)) {
       .relation_abort(sprintf("Sparse relation '%s' has an invalid descriptor.", name), relation = name)
     }
     sparse_relation(
@@ -231,7 +231,9 @@ relation_registry <- function(relations = list(), ...) {
 
 .normalize_relation_domain <- function(domain, entities) {
   domain <- .one_relation_string(domain, "domain")
-  if (domain %in% c("observation", "feature")) return(domain)
+  if (domain %in% c("observation", "feature")) {
+    return(domain)
+  }
   name <- if (startsWith(domain, "entity:")) sub("^entity:", "", domain) else domain
   if (!name %in% entity_names(entities)) {
     .relation_abort(sprintf("Unknown relation domain '%s'.", domain), domain = domain)
@@ -345,8 +347,10 @@ relation_registry <- function(relations = list(), ...) {
       expected_ids <- entity_ids(entity(entities, value$entity))
       if (!identical(value$entity_ids, expected_ids)) {
         .relation_abort(
-          sprintf("Validity relation '%s' entity IDs do not match '%s'.",
-                  name, value$entity),
+          sprintf(
+            "Validity relation '%s' entity IDs do not match '%s'.",
+            name, value$entity
+          ),
           relation = name, domain = domain
         )
       }
@@ -378,7 +382,7 @@ validate_relation_registry <- function(x, observations = NULL, features = NULL,
   if (length(x)) {
     names_value <- names(x)
     if (is.null(names_value) || anyNA(names_value) || any(!nzchar(names_value)) ||
-        anyDuplicated(names_value)) {
+      anyDuplicated(names_value)) {
       .relation_abort("Relation registries must be named with unique, non-empty values.", field = "names")
     }
     valid <- vapply(x, inherits, logical(1), "fmri_relation")
@@ -393,7 +397,7 @@ validate_relation_registry <- function(x, observations = NULL, features = NULL,
   }
   if (all(context)) {
     if (!inherits(observations, "axis_frame") || !identical(observations$axis, "observation") ||
-        !inherits(features, "spatial_axis_frame")) {
+      !inherits(features, "spatial_axis_frame")) {
       .relation_abort("Relation validation received invalid frame axes.", field = "context")
     }
     validate_entity_registry(entities)
@@ -455,7 +459,9 @@ relation_registry_digest <- function(x) {
     if (inherits(value, "entity_feature_validity")) {
       return(.restrict_entity_feature_validity(value, feature_ids))
     }
-    if (!inherits(value, "sparse_relation")) return(value)
+    if (!inherits(value, "sparse_relation")) {
+      return(value)
+    }
     keep <- rep(TRUE, nrow(value$data))
     if (identical(value$from, "observation")) {
       keep <- keep & value$data[[value$from_col]] %in% observation_ids

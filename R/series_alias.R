@@ -7,7 +7,7 @@
 #' @return See [fmri_series()]
 #' @export
 series <- function(dataset, selector = NULL, timepoints = NULL,
-                   output = c("fmri_series", "DelayedMatrix"),
+                   output = c("fmri_series"),
                    event_window = NULL, ...) {
   # Force immediate warning for testing
   warning("series() was deprecated in fmridataset 0.3.0.\nPlease use fmri_series() instead.",

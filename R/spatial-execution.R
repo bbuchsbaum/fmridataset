@@ -18,10 +18,11 @@
 #' @return One of `"matrix"`, `"native"`, or `"reconstruct"`.
 #' @export
 execution_path <- function(
-    x,
-    operation = c("matrix", "spatial"),
-    assay = active_assay(x),
-    path = c("auto", "native", "reconstruct")) {
+  x,
+  operation = c("matrix", "spatial"),
+  assay = active_assay(x),
+  path = c("auto", "native", "reconstruct")
+) {
   if (!inherits(x, "fmri_frame")) {
     .frame_abort("x must be an fmri_frame or fmri_view.", "fmridataset_error_alignment")
   }
@@ -29,7 +30,9 @@ execution_path <- function(
   path <- match.arg(path)
   selection <- .frame_selection(x)
   descriptor <- assay(selection$base, assay)
-  if (operation == "matrix") return("matrix")
+  if (operation == "matrix") {
+    return("matrix")
+  }
   native_available <- "native_read" %in% source_capabilities(descriptor$source) &&
     .has_complete_feature_selection(x)
   if (path == "native" && !native_available) {
@@ -50,11 +53,13 @@ execution_path <- function(
 
 .native_realization_values <- function(spatial) {
   if (inherits(spatial, "composite_space")) {
-    return(sum(vapply(composite_parts(spatial),
-                      .native_realization_values, numeric(1))))
+    return(sum(vapply(
+      composite_parts(spatial),
+      .native_realization_values, numeric(1)
+    )))
   }
   if (inherits(spatial, "parcel_space") ||
-      (inherits(spatial, "basis_space") && !is.null(basis_synthesis(spatial)))) {
+    (inherits(spatial, "basis_space") && !is.null(basis_synthesis(spatial)))) {
     return(.native_realization_values(parent_space(spatial)))
   }
   shape <- native_shape(spatial)
@@ -138,11 +143,12 @@ execution_path <- function(
 #' @return A named list with one native spatial object per observation.
 #' @export
 collect_spatial_maps <- function(
-    x,
-    observations = NULL,
-    assay = active_assay(x),
-    path = c("auto", "native", "reconstruct"),
-    memory_budget = getOption("fmridataset.spatial_budget", 512 * 1024^2)) {
+  x,
+  observations = NULL,
+  assay = active_assay(x),
+  path = c("auto", "native", "reconstruct"),
+  memory_budget = getOption("fmridataset.spatial_budget", 512 * 1024^2)
+) {
   positions <- .normalize_frame_selector(
     observations %||% seq_len(nrow(x)),
     observation_ids(x),
@@ -174,13 +180,14 @@ collect_spatial_maps <- function(
 #' @return A list of callback results in requested observation order.
 #' @export
 execute_spatial <- function(
-    x,
-    observations = NULL,
-    FUN,
-    ...,
-    assay = active_assay(x),
-    path = c("auto", "native", "reconstruct"),
-    memory_budget = getOption("fmridataset.spatial_budget", 512 * 1024^2)) {
+  x,
+  observations = NULL,
+  FUN,
+  ...,
+  assay = active_assay(x),
+  path = c("auto", "native", "reconstruct"),
+  memory_budget = getOption("fmridataset.spatial_budget", 512 * 1024^2)
+) {
   if (!is.function(FUN)) {
     .frame_abort("FUN must be a function.", "fmridataset_error_source_contract")
   }

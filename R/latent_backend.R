@@ -34,8 +34,12 @@ NULL
 #' @keywords internal
 .materialize_basis <- function(obj) {
   b <- methods::slot(obj, "basis")
-  if (is.matrix(b)) return(b)
-  if (inherits(b, "Matrix")) return(as.matrix(b))
+  if (is.matrix(b)) {
+    return(b)
+  }
+  if (inherits(b, "Matrix")) {
+    return(as.matrix(b))
+  }
   # BasisHandle or other lazy type — try as.matrix dispatch
   tryCatch(
     as.matrix(b),
@@ -62,7 +66,9 @@ NULL
 #' @keywords internal
 .materialize_loadings <- function(obj) {
   l <- methods::slot(obj, "loadings")
-  if (is.matrix(l) || inherits(l, "Matrix")) return(l)
+  if (is.matrix(l) || inherits(l, "Matrix")) {
+    return(l)
+  }
   # LoadingsHandle or other lazy type
   tryCatch(
     as.matrix(l),

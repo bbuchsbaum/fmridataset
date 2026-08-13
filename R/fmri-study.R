@@ -20,7 +20,7 @@ event_table <- function(data, key = "event_id", metadata = list()) {
   if (!is.data.frame(data)) .event_abort("Event data must be a data frame.")
   data <- tibble::as_tibble(data)
   if (!is.character(key) || length(key) != 1L || is.na(key) || !nzchar(key) ||
-      !key %in% names(data)) {
+    !key %in% names(data)) {
     .event_abort("Event key must name one scalar data column.", field = "key")
   }
   non_scalar <- vapply(data, function(value) {
@@ -35,13 +35,13 @@ event_table <- function(data, key = "event_id", metadata = list()) {
   }
   data[[key]] <- ids
   if ("onset" %in% names(data) &&
-      (!is.numeric(data$onset) || anyNA(data$onset) ||
-       any(!is.finite(data$onset)) || any(data$onset < 0))) {
+    (!is.numeric(data$onset) || anyNA(data$onset) ||
+      any(!is.finite(data$onset)) || any(data$onset < 0))) {
     .event_abort("Event onset values must be finite and non-negative.", field = "onset")
   }
   if ("duration" %in% names(data) &&
-      (!is.numeric(data$duration) || anyNA(data$duration) ||
-       any(!is.finite(data$duration)) || any(data$duration < 0))) {
+    (!is.numeric(data$duration) || anyNA(data$duration) ||
+      any(!is.finite(data$duration)) || any(data$duration < 0))) {
     .event_abort("Event duration values must be finite and non-negative.", field = "duration")
   }
   out <- structure(
@@ -62,8 +62,8 @@ event_table <- function(data, key = "event_id", metadata = list()) {
 validate_event_table <- function(x) {
   required <- c("data", "key", "metadata", "schema_version")
   if (!inherits(x, "fmri_event_table") ||
-      !identical(names(unclass(x)), required) ||
-      !identical(x$schema_version, 1L)) {
+    !identical(names(unclass(x)), required) ||
+    !identical(x$schema_version, 1L)) {
     .event_abort("x is not a valid fmri_event_table.")
   }
   event_table(x$data, key = x$key, metadata = x$metadata)
@@ -130,13 +130,14 @@ frame_link <- function(from, to,
   to_axis <- match.arg(to_axis)
   if (!is.list(metadata) || .source_contains_runtime_state(metadata)) {
     .study_abort("Frame-link metadata must be a serializable list.",
-                 field = "metadata")
+      field = "metadata"
+    )
   }
   if (!is.null(feature_map)) {
     validate_feature_map(feature_map)
     if (!identical(type, "mapped_from") ||
-        !identical(from_axis, "feature") ||
-        !identical(to_axis, "feature")) {
+      !identical(from_axis, "feature") ||
+      !identical(to_axis, "feature")) {
       .study_abort(
         "feature_map is valid only for a feature-to-feature mapped_from link.",
         field = "feature_map"
@@ -168,8 +169,8 @@ frame_link <- function(from, to,
     map$.from_id <- as.character(map$.from_id)
     map$.to_id <- as.character(map$.to_id)
     if (anyNA(map$.from_id) || any(!nzchar(map$.from_id)) ||
-        anyNA(map$.to_id) || any(!nzchar(map$.to_id)) ||
-        anyDuplicated(map[required])) {
+      anyNA(map$.to_id) || any(!nzchar(map$.to_id)) ||
+      anyDuplicated(map[required])) {
       .study_abort("Link map IDs must be non-missing with unique pairs.", field = "map")
     }
   }
@@ -191,11 +192,12 @@ frame_link <- function(from, to,
     "schema_version"
   )
   if (!inherits(x, "frame_link") || !identical(names(unclass(x)), required) ||
-      !identical(x$schema_version, 1L)) {
+    !identical(x$schema_version, 1L)) {
     .study_abort("Invalid frame_link descriptor.", link = name)
   }
   frame_link(
-    x$from, x$to, x$type, map = x$map,
+    x$from, x$to, x$type,
+    map = x$map,
     from_axis = x$from_axis, to_axis = x$to_axis, metadata = x$metadata
   )
   invisible(x)
@@ -262,7 +264,7 @@ frame_link <- function(from, to,
       x <- local_blocks[[block_name]]
       y <- shared_blocks[[block_name]]
       if (!identical(block_components(x), block_components(y)) ||
-          !identical(x$role, y$role) || !identical(x$units, y$units)) {
+        !identical(x$role, y$role) || !identical(x$units, y$units)) {
         .study_abort(
           sprintf("Representation '%s' entity block '%s.%s' is incompatible.", representation, entity_name, block_name),
           entity = entity_name,
@@ -308,8 +310,8 @@ frame_link <- function(from, to,
       if (!is.null(typed_map)) {
         validate_feature_map(typed_map)
         if (!identical(value$type, "mapped_from") ||
-            !identical(value$from_axis, "feature") ||
-            !identical(value$to_axis, "feature")) {
+          !identical(value$from_axis, "feature") ||
+          !identical(value$to_axis, "feature")) {
           .study_abort(
             sprintf("Study link '%s' uses a feature_map outside a feature mapped_from link.", id),
             link = id
@@ -318,7 +320,7 @@ frame_link <- function(from, to,
         from_frame <- frames[[value$from]]
         to_frame <- frames[[value$to]]
         if (inherits(from_frame, "fmri_collection") ||
-            inherits(to_frame, "fmri_collection")) {
+          inherits(to_frame, "fmri_collection")) {
           .study_abort(
             sprintf("Study link '%s' feature_map endpoints must be single frames.", id),
             link = id
@@ -326,10 +328,14 @@ frame_link <- function(from, to,
         }
         # A mapped_from link points from the derived representation back to
         # its source, whereas the operator itself maps source to target.
-        assert_compatible_space(feature_map_source_space(typed_map),
-                                space(to_frame))
-        assert_compatible_space(feature_map_target_space(typed_map),
-                                space(from_frame))
+        assert_compatible_space(
+          feature_map_source_space(typed_map),
+          space(to_frame)
+        )
+        assert_compatible_space(
+          feature_map_target_space(typed_map),
+          space(from_frame)
+        )
       }
     }
   }
@@ -452,7 +458,7 @@ validate_fmri_study <- function(x) {
     }
     validate_fmri_study(x$base)
     if (!is.list(x$frames) || !identical(names(x$frames), names(x$base$frames)) ||
-        !is.list(x$entity_selections)) {
+      !is.list(x$entity_selections)) {
       .study_abort("x is not a valid fmri_study_view.")
     }
     valid_frames <- vapply(x$frames, function(value) {
@@ -479,7 +485,7 @@ validate_fmri_study <- function(x) {
   }
   required <- c("frames", "entities", "links", "tables", "metadata", "provenance", "schema_version")
   if (!inherits(x, "fmri_study") || !identical(names(unclass(x)), required) ||
-      !identical(x$schema_version, 1L)) {
+    !identical(x$schema_version, 1L)) {
     .study_abort("x is not a valid fmri_study.")
   }
   fmri_study(x$frames, x$entities, x$links, x$tables, x$metadata, x$provenance)
@@ -503,7 +509,9 @@ study_frames <- function(x, contextual = TRUE) {
     .study_abort("contextual must be TRUE or FALSE.", field = "contextual")
   }
   frames <- .study_raw_frames(x)
-  if (!isTRUE(contextual)) return(frames)
+  if (!isTRUE(contextual)) {
+    return(frames)
+  }
   shared <- entities(.study_base(x))
   lapply(frames, .contextualize_study_frame, shared = shared)
 }
@@ -553,10 +561,14 @@ NULL
 study_links <- function(x) {
   validate_fmri_study(x)
   values <- .study_base(x)$links
-  if (!inherits(x, "fmri_study_view")) return(values)
+  if (!inherits(x, "fmri_study_view")) {
+    return(values)
+  }
   frames <- .study_raw_frames(x)
   lapply(values, function(value) {
-    if (is.null(value$map)) return(value)
+    if (is.null(value$map)) {
+      return(value)
+    }
     from_ids <- .study_axis_ids(frames[[value$from]], value$from_axis, value$from)
     to_ids <- .study_axis_ids(frames[[value$to]], value$to_axis, value$to)
     keep <- value$map$.from_id %in% from_ids & value$map$.to_id %in% to_ids
@@ -588,12 +600,16 @@ study_link <- function(x, name) {
 #' @export
 study_tables <- function(x) {
   values <- .study_base(x)$tables
-  if (!inherits(x, "fmri_study_view")) return(values)
+  if (!inherits(x, "fmri_study_view")) {
+    return(values)
+  }
   shared <- entities(x$base)
   lapply(values, function(value) {
     if (inherits(value, "fmri_event_table")) {
       .filter_event_table(value, x$entity_selections, shared)
-    } else value
+    } else {
+      value
+    }
   })
 }
 #' @rdname study-registries
@@ -612,14 +628,17 @@ events <- function(x, name = "events") study_table(x, name)
 .filter_study_frame_entity <- function(value, entity_name, selected_ids, shared) {
   if (inherits(value, "fmri_collection")) {
     members <- lapply(collection_frames(value), .filter_study_frame_entity,
-                      entity_name = entity_name, selected_ids = selected_ids,
-                      shared = shared)
+      entity_name = entity_name, selected_ids = selected_ids,
+      shared = shared
+    )
     return(fmri_collection(members, metadata = value$metadata, provenance = value$provenance))
   }
   contextual <- .contextualize_study_frame(value, shared)
   maps <- .resolve_entity_maps(contextual)
   mapped <- maps[[paste0("entity:", entity_name)]]
-  if (is.null(mapped)) return(value)
+  if (is.null(mapped)) {
+    return(value)
+  }
   contextual[which(!is.na(mapped) & mapped %in% selected_ids), ]
 }
 

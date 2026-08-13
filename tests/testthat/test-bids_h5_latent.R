@@ -9,24 +9,24 @@ skip_if_not_installed("tibble")
 # ============================================================
 
 .make_latent_h5 <- function(path,
-                            n_scans      = 2L,
-                            n_time_each  = c(10L, 12L),
-                            K            = 5L,
-                            V            = 20L,
-                            tr           = 2.0,
+                            n_scans = 2L,
+                            n_time_each = c(10L, 12L),
+                            K = 5L,
+                            V = 20L,
+                            tr = 2.0,
                             encoding_family = "pca",
                             encoding_params = '{"n_components":5}') {
   h5 <- hdf5r::H5File$new(path, mode = "w")
   on.exit(if (h5$is_valid) h5$close_all(), add = TRUE)
 
   # Root attributes
-  h5$create_attr("format",           "bids_h5_study")
-  h5$create_attr("version",          "1.0")
+  h5$create_attr("format", "bids_h5_study")
+  h5$create_attr("version", "1.0")
   h5$create_attr("compression_mode", "latent")
 
   # /latent_meta/
   lm <- h5$create_group("latent_meta")
-  lm$create_dataset("n_components",    robj = as.integer(K))
+  lm$create_dataset("n_components", robj = as.integer(K))
   lm$create_dataset("encoding_family", robj = encoding_family)
   lm$create_dataset("encoding_params", robj = encoding_params)
 
@@ -35,50 +35,50 @@ skip_if_not_installed("tibble")
   sp$create_dataset("mask", robj = rep(TRUE, V))
 
   # /scan_index/ — parallel arrays
-  subjects  <- paste0("sub-0", seq_len(n_scans))
-  tasks     <- rep("rest", n_scans)
-  sessions  <- rep("", n_scans)
-  runs      <- paste0("0", seq_len(n_scans))
+  subjects <- paste0("sub-0", seq_len(n_scans))
+  tasks <- rep("rest", n_scans)
+  sessions <- rep("", n_scans)
+  runs <- paste0("0", seq_len(n_scans))
   scan_names <- paste0("sub-0", seq_len(n_scans), "_task-rest_run-0", seq_len(n_scans))
   n_time_vec <- as.integer(n_time_each)
   time_offsets <- c(0L, cumsum(n_time_vec)[-length(n_time_vec)])
 
   si <- h5$create_group("scan_index")
-  si$create_dataset("scan_name",     robj = scan_names)
-  si$create_dataset("subject",       robj = subjects)
-  si$create_dataset("task",          robj = tasks)
-  si$create_dataset("session",       robj = sessions)
-  si$create_dataset("run",           robj = runs)
-  si$create_dataset("n_time",        robj = n_time_vec)
-  si$create_dataset("time_offset",   robj = time_offsets)
-  si$create_dataset("has_events",    robj = rep(FALSE, n_scans))
+  si$create_dataset("scan_name", robj = scan_names)
+  si$create_dataset("subject", robj = subjects)
+  si$create_dataset("task", robj = tasks)
+  si$create_dataset("session", robj = sessions)
+  si$create_dataset("run", robj = runs)
+  si$create_dataset("n_time", robj = n_time_vec)
+  si$create_dataset("time_offset", robj = time_offsets)
+  si$create_dataset("has_events", robj = rep(FALSE, n_scans))
   si$create_dataset("has_confounds", robj = rep(FALSE, n_scans))
 
   # /scans/<name>/ for each scan
   scans_grp <- h5$create_group("scans")
   for (i in seq_len(n_scans)) {
     sname <- scan_names[[i]]
-    T_i   <- n_time_vec[[i]]
+    T_i <- n_time_vec[[i]]
 
     sg <- scans_grp$create_group(sname)
 
     # metadata
     md <- sg$create_group("metadata")
     md$create_dataset("subject", robj = subjects[[i]])
-    md$create_dataset("task",    robj = tasks[[i]])
-    md$create_dataset("run",     robj = runs[[i]])
-    md$create_dataset("tr",      robj = tr)
+    md$create_dataset("task", robj = tasks[[i]])
+    md$create_dataset("run", robj = runs[[i]])
+    md$create_dataset("tr", robj = tr)
 
     # data
     dg <- sg$create_group("data")
 
-    basis    <- matrix(rnorm(T_i * K), nrow = T_i, ncol = K)
-    loadings <- matrix(rnorm(V * K),   nrow = V,   ncol = K)
-    offset   <- rnorm(V)
+    basis <- matrix(rnorm(T_i * K), nrow = T_i, ncol = K)
+    loadings <- matrix(rnorm(V * K), nrow = V, ncol = K)
+    offset <- rnorm(V)
 
-    dg$create_dataset("basis",    robj = basis)
+    dg$create_dataset("basis", robj = basis)
     dg$create_dataset("loadings", robj = loadings)
-    dg$create_dataset("offset",   robj = offset)
+    dg$create_dataset("offset", robj = offset)
   }
 
   invisible(path)
@@ -89,52 +89,52 @@ skip_if_not_installed("tibble")
 # ============================================================
 
 .make_parcellated_h5 <- function(path,
-                                 n_scans     = 2L,
+                                 n_scans = 2L,
                                  n_time_each = c(10L, 12L),
-                                 K           = 5L,
-                                 tr          = 2.0) {
+                                 K = 5L,
+                                 tr = 2.0) {
   h5 <- hdf5r::H5File$new(path, mode = "w")
   on.exit(if (h5$is_valid) h5$close_all(), add = TRUE)
 
-  h5$create_attr("format",           "bids_h5_study")
-  h5$create_attr("version",          "1.0")
+  h5$create_attr("format", "bids_h5_study")
+  h5$create_attr("version", "1.0")
   h5$create_attr("compression_mode", "parcellated")
 
   # /parcellation/
   pg <- h5$create_group("parcellation")
   pg$create_dataset("cluster_ids", robj = seq_len(K))
 
-  subjects   <- paste0("sub-0", seq_len(n_scans))
-  tasks      <- rep("rest", n_scans)
-  sessions   <- rep("", n_scans)
-  runs       <- paste0("0", seq_len(n_scans))
+  subjects <- paste0("sub-0", seq_len(n_scans))
+  tasks <- rep("rest", n_scans)
+  sessions <- rep("", n_scans)
+  runs <- paste0("0", seq_len(n_scans))
   scan_names <- paste0("sub-0", seq_len(n_scans), "_task-rest_run-0", seq_len(n_scans))
   n_time_vec <- as.integer(n_time_each)
   time_offsets <- c(0L, cumsum(n_time_vec)[-length(n_time_vec)])
 
   si <- h5$create_group("scan_index")
-  si$create_dataset("scan_name",     robj = scan_names)
-  si$create_dataset("subject",       robj = subjects)
-  si$create_dataset("task",          robj = tasks)
-  si$create_dataset("session",       robj = sessions)
-  si$create_dataset("run",           robj = runs)
-  si$create_dataset("n_time",        robj = n_time_vec)
-  si$create_dataset("time_offset",   robj = time_offsets)
-  si$create_dataset("has_events",    robj = rep(FALSE, n_scans))
+  si$create_dataset("scan_name", robj = scan_names)
+  si$create_dataset("subject", robj = subjects)
+  si$create_dataset("task", robj = tasks)
+  si$create_dataset("session", robj = sessions)
+  si$create_dataset("run", robj = runs)
+  si$create_dataset("n_time", robj = n_time_vec)
+  si$create_dataset("time_offset", robj = time_offsets)
+  si$create_dataset("has_events", robj = rep(FALSE, n_scans))
   si$create_dataset("has_confounds", robj = rep(FALSE, n_scans))
 
   scans_grp <- h5$create_group("scans")
   for (i in seq_len(n_scans)) {
     sname <- scan_names[[i]]
-    T_i   <- n_time_vec[[i]]
+    T_i <- n_time_vec[[i]]
 
     sg <- scans_grp$create_group(sname)
 
     md <- sg$create_group("metadata")
     md$create_dataset("subject", robj = subjects[[i]])
-    md$create_dataset("task",    robj = tasks[[i]])
-    md$create_dataset("run",     robj = runs[[i]])
-    md$create_dataset("tr",      robj = tr)
+    md$create_dataset("task", robj = tasks[[i]])
+    md$create_dataset("run", robj = runs[[i]])
+    md$create_dataset("tr", robj = tr)
 
     dg <- sg$create_group("data")
     summary_data <- matrix(rnorm(T_i * K), nrow = T_i, ncol = K)
@@ -185,7 +185,7 @@ test_that("scan_manifest has correct rows and columns", {
   .make_latent_h5(h5_path, n_scans = 3L, n_time_each = c(8L, 9L, 10L))
 
   ds <- bids_h5_dataset(h5_path)
-  m  <- scan_manifest(ds)
+  m <- scan_manifest(ds)
   expect_equal(nrow(m), 3L)
   expect_true(all(c("scan_name", "subject", "task", "n_time") %in% names(m)))
   expect_equal(m$n_time, c(8L, 9L, 10L))
@@ -197,9 +197,9 @@ test_that("get_data_matrix() returns [T_total, K] for latent archive", {
   K <- 5L
   .make_latent_h5(h5_path, n_scans = 2L, n_time_each = c(10L, 12L), K = K, V = 20L)
 
-  ds  <- bids_h5_dataset(h5_path)
+  ds <- bids_h5_dataset(h5_path)
   mat <- get_data_matrix(ds)
-  expect_equal(nrow(mat), 22L)   # 10 and 12 timepoints
+  expect_equal(nrow(mat), 22L) # 10 and 12 timepoints
   expect_equal(ncol(mat), K)
 })
 
@@ -219,11 +219,13 @@ test_that("get_TR() returns correct TR for latent archive", {
 test_that("encoding_info() returns correct family, params and K", {
   h5_path <- tempfile(fileext = ".h5")
   on.exit(unlink(h5_path), add = TRUE)
-  .make_latent_h5(h5_path, K = 7L,
-                  encoding_family = "ica",
-                  encoding_params = '{"n_components":7,"whiten":true}')
+  .make_latent_h5(h5_path,
+    K = 7L,
+    encoding_family = "ica",
+    encoding_params = '{"n_components":7,"whiten":true}'
+  )
 
-  ds   <- bids_h5_dataset(h5_path)
+  ds <- bids_h5_dataset(h5_path)
   info <- encoding_info(ds)
 
   expect_equal(info$encoding_family, "ica")
@@ -239,9 +241,9 @@ test_that("get_loadings(study, scan_name=...) returns [V, K] matrix", {
   V <- 20L
   .make_latent_h5(h5_path, n_scans = 2L, K = K, V = V)
 
-  ds     <- bids_h5_dataset(h5_path)
-  sname  <- scan_manifest(ds)$scan_name[[1]]
-  L      <- get_loadings(ds, scan_name = sname)
+  ds <- bids_h5_dataset(h5_path)
+  sname <- scan_manifest(ds)$scan_name[[1]]
+  L <- get_loadings(ds, scan_name = sname)
 
   expect_true(is.matrix(L))
   expect_equal(nrow(L), V)
@@ -253,7 +255,7 @@ test_that("get_loadings(study) returns named list of all scans", {
   on.exit(unlink(h5_path), add = TRUE)
   .make_latent_h5(h5_path, n_scans = 2L, K = 5L, V = 20L)
 
-  ds  <- bids_h5_dataset(h5_path)
+  ds <- bids_h5_dataset(h5_path)
   lst <- get_loadings(ds)
 
   expect_type(lst, "list")
@@ -274,7 +276,7 @@ test_that("reconstruct_voxels() returns [T, V] matrix", {
   T_i <- 10L
   .make_latent_h5(h5_path, n_scans = 2L, n_time_each = c(T_i, 12L), K = K, V = V)
 
-  ds    <- bids_h5_dataset(h5_path)
+  ds <- bids_h5_dataset(h5_path)
   sname <- scan_manifest(ds)$scan_name[[1]]
   recon <- reconstruct_voxels(ds, scan_name = sname)
 
@@ -288,7 +290,7 @@ test_that("reconstruct_voxels() rows subset works", {
   on.exit(unlink(h5_path), add = TRUE)
   .make_latent_h5(h5_path, n_scans = 2L, n_time_each = c(10L, 12L), K = 5L, V = 20L)
 
-  ds    <- bids_h5_dataset(h5_path)
+  ds <- bids_h5_dataset(h5_path)
   sname <- scan_manifest(ds)$scan_name[[1]]
   recon <- reconstruct_voxels(ds, scan_name = sname, rows = 1:5)
 
@@ -301,7 +303,7 @@ test_that("reconstruct_voxels() voxels subset works", {
   on.exit(unlink(h5_path), add = TRUE)
   .make_latent_h5(h5_path, n_scans = 2L, n_time_each = c(10L, 12L), K = 5L, V = 20L)
 
-  ds    <- bids_h5_dataset(h5_path)
+  ds <- bids_h5_dataset(h5_path)
   sname <- scan_manifest(ds)$scan_name[[1]]
   recon <- reconstruct_voxels(ds, scan_name = sname, voxels = 1:8)
 
@@ -327,7 +329,7 @@ test_that("subset_bids_h5 by task works on latent archives", {
   on.exit(unlink(h5_path), add = TRUE)
   .make_latent_h5(h5_path, n_scans = 2L)
 
-  ds  <- bids_h5_dataset(h5_path)
+  ds <- bids_h5_dataset(h5_path)
   sub <- subset_bids_h5(ds, task = "rest")
 
   expect_s3_class(sub, "bids_h5_study_dataset")
@@ -339,7 +341,7 @@ test_that("subset_bids_h5 preserves compression_mode", {
   on.exit(unlink(h5_path), add = TRUE)
   .make_latent_h5(h5_path, n_scans = 2L)
 
-  ds  <- bids_h5_dataset(h5_path)
+  ds <- bids_h5_dataset(h5_path)
   sub <- subset_bids_h5(ds, subject = participants(ds)[[1]])
 
   expect_identical(sub$compression_mode, "latent")
@@ -351,13 +353,13 @@ test_that("get_data_matrix on subset returns correct dims", {
   K <- 5L
   .make_latent_h5(h5_path, n_scans = 2L, n_time_each = c(10L, 12L), K = K, V = 20L)
 
-  ds     <- bids_h5_dataset(h5_path)
-  sub_p  <- participants(ds)[[1]]
-  sub    <- subset_bids_h5(ds, subject = sub_p)
-  mat    <- get_data_matrix(sub)
+  ds <- bids_h5_dataset(h5_path)
+  sub_p <- participants(ds)[[1]]
+  sub <- subset_bids_h5(ds, subject = sub_p)
+  mat <- get_data_matrix(sub)
 
   expect_equal(ncol(mat), K)
-  expect_equal(nrow(mat), 10L)   # first subject has 10 timepoints
+  expect_equal(nrow(mat), 10L) # first subject has 10 timepoints
 })
 
 
@@ -389,8 +391,8 @@ test_that("unknown compression_mode errors on open", {
 
   # Write a file with a bogus compression_mode
   h5 <- hdf5r::H5File$new(h5_path, mode = "w")
-  h5$create_attr("format",           "bids_h5_study")
-  h5$create_attr("version",          "1.0")
+  h5$create_attr("format", "bids_h5_study")
+  h5$create_attr("version", "1.0")
   h5$create_attr("compression_mode", "bogus_mode")
   h5$close_all()
 
@@ -416,7 +418,7 @@ test_that("data_chunks() works on latent-mode study", {
   K <- 5L
   .make_latent_h5(h5_path, n_scans = 2L, n_time_each = c(10L, 12L), K = K, V = 20L)
 
-  ds     <- bids_h5_dataset(h5_path)
+  ds <- bids_h5_dataset(h5_path)
   chunks <- data_chunks(ds, nchunks = 2L)
 
   expect_false(is.null(chunks))
@@ -438,23 +440,23 @@ test_that("data_chunks() works on latent-mode study", {
 # ============================================================
 
 .make_template_h5 <- function(path,
-                              n_scans      = 2L,
-                              n_time_each  = c(10L, 12L),
-                              K            = 5L,
-                              V            = 20L,
-                              tr           = 2.0) {
+                              n_scans = 2L,
+                              n_time_each = c(10L, 12L),
+                              K = 5L,
+                              V = 20L,
+                              tr = 2.0) {
   h5 <- hdf5r::H5File$new(path, mode = "w")
   on.exit(if (h5$is_valid) h5$close_all(), add = TRUE)
 
-  h5$create_attr("format",           "bids_h5_study")
-  h5$create_attr("version",          "1.0")
+  h5$create_attr("format", "bids_h5_study")
+  h5$create_attr("version", "1.0")
   h5$create_attr("compression_mode", "latent")
 
   # /latent_meta/ with shared template
   lm <- h5$create_group("latent_meta")
-  lm$create_dataset("n_components",       robj = as.integer(K))
-  lm$create_dataset("encoding_family",    robj = "shared_template")
-  lm$create_dataset("encoding_params",    robj = "{}")
+  lm$create_dataset("n_components", robj = as.integer(K))
+  lm$create_dataset("encoding_family", robj = "shared_template")
+  lm$create_dataset("encoding_params", robj = "{}")
   lm$create_dataset("has_shared_template", robj = TRUE)
 
   # /latent_meta/template/ — shared loadings
@@ -466,9 +468,9 @@ test_that("data_chunks() works on latent-mode study", {
   # /spatial/
   sp <- h5$create_group("spatial")
   sp_hdr <- sp$create_group("header")
-  sp_hdr$create_dataset("dim",    robj = c(V, 1L, 1L))
+  sp_hdr$create_dataset("dim", robj = c(V, 1L, 1L))
   sp_hdr$create_dataset("pixdim", robj = c(2.0, 2.0, 2.0))
-  sp$create_dataset("mask",         robj = rep(1L, V))
+  sp$create_dataset("mask", robj = rep(1L, V))
   sp$create_dataset("voxel_coords", robj = matrix(seq_len(V * 3L), ncol = 3L))
 
   # /scans/ — per-scan basis only, NO loadings
@@ -486,8 +488,8 @@ test_that("data_chunks() works on latent-mode study", {
     # events
     eg <- sg$create_group("events")
     hdf5r::h5attr(eg, "n_events") <- 2L
-    eg$create_dataset("onset",      robj = c(0.0, 5.0))
-    eg$create_dataset("duration",   robj = c(1.0, 1.0))
+    eg$create_dataset("onset", robj = c(0.0, 5.0))
+    eg$create_dataset("duration", robj = c(1.0, 1.0))
     eg$create_dataset("trial_type", robj = c("A", "B"))
 
     # censor
@@ -496,21 +498,21 @@ test_that("data_chunks() works on latent-mode study", {
     # metadata
     mg <- sg$create_group("metadata")
     mg$create_dataset("subject", robj = subjects[i])
-    mg$create_dataset("task",    robj = "rest")
-    mg$create_dataset("run",     robj = "01")
-    mg$create_dataset("tr",      robj = tr)
+    mg$create_dataset("task", robj = "rest")
+    mg$create_dataset("run", robj = "01")
+    mg$create_dataset("tr", robj = tr)
   }
 
   # /scan_index/
   si <- h5$create_group("scan_index")
-  si$create_dataset("scan_name",    robj = scan_names)
-  si$create_dataset("subject",      robj = subjects)
-  si$create_dataset("task",         robj = rep("rest", n_scans))
-  si$create_dataset("session",      robj = rep("", n_scans))
-  si$create_dataset("run",          robj = rep("01", n_scans))
-  si$create_dataset("n_time",       robj = as.integer(n_time_each))
-  si$create_dataset("time_offset",  robj = c(0L, cumsum(n_time_each[-n_scans])))
-  si$create_dataset("has_events",   robj = rep(TRUE, n_scans))
+  si$create_dataset("scan_name", robj = scan_names)
+  si$create_dataset("subject", robj = subjects)
+  si$create_dataset("task", robj = rep("rest", n_scans))
+  si$create_dataset("session", robj = rep("", n_scans))
+  si$create_dataset("run", robj = rep("01", n_scans))
+  si$create_dataset("n_time", robj = as.integer(n_time_each))
+  si$create_dataset("time_offset", robj = c(0L, cumsum(n_time_each[-n_scans])))
+  si$create_dataset("has_events", robj = rep(TRUE, n_scans))
   si$create_dataset("has_confounds", robj = rep(FALSE, n_scans))
 
   invisible(list(template_loadings = template_loadings))
@@ -581,13 +583,17 @@ test_that("shared template: reconstruct_voxels works", {
   expect_equal(dim(recon), c(nt[1], V))
 
   # Subset rows
-  recon_sub <- reconstruct_voxels(study, scan_name = "sub-01_task-rest_run-01",
-                                  rows = 1:3)
+  recon_sub <- reconstruct_voxels(study,
+    scan_name = "sub-01_task-rest_run-01",
+    rows = 1:3
+  )
   expect_equal(dim(recon_sub), c(3L, V))
 
   # Subset voxels
-  recon_vox <- reconstruct_voxels(study, scan_name = "sub-01_task-rest_run-01",
-                                  voxels = c(1L, 5L, 10L))
+  recon_vox <- reconstruct_voxels(study,
+    scan_name = "sub-01_task-rest_run-01",
+    voxels = c(1L, 5L, 10L)
+  )
   expect_equal(dim(recon_vox), c(nt[1], 3L))
 })
 

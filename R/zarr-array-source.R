@@ -122,7 +122,7 @@
     )
   }
   if (length(chunks) != 2L || anyNA(chunks) || any(chunks <= 0L) ||
-      any(chunks > pmax(1L, shape))) {
+    any(chunks > pmax(1L, shape))) {
     .frame_abort(
       "Zarr chunks must be two positive integers bounded by the physical shape.",
       "fmridataset_error_source_contract",
@@ -178,7 +178,7 @@ zarr_array_source <- function(uri, array_path = "/", shape = NULL,
     )
   }
   if (!is.character(array_path) || length(array_path) != 1L ||
-      is.na(array_path) || !startsWith(array_path, "/")) {
+    is.na(array_path) || !startsWith(array_path, "/")) {
     .frame_abort(
       "array_path must be one absolute Zarr node path beginning with '/'.",
       "fmridataset_error_source_contract",
@@ -186,7 +186,7 @@ zarr_array_source <- function(uri, array_path = "/", shape = NULL,
     )
   }
   if (!is.character(physical_axes) || length(physical_axes) != 2L ||
-      !identical(sort(physical_axes), c("feature", "observation"))) {
+    !identical(sort(physical_axes), c("feature", "observation"))) {
     .frame_abort(
       "physical_axes must be a permutation of observation and feature.",
       "fmridataset_error_source_contract",
@@ -266,8 +266,8 @@ source_fingerprint.zarr_array_source <- function(x, ...) x$fingerprint
   expected_shape <- .zarr_physical_order(source$shape, source$physical_axes)
   expected_chunks <- .zarr_physical_order(source$chunks, source$physical_axes)
   if (!identical(metadata$shape, expected_shape) ||
-      !identical(metadata$chunks, expected_chunks) ||
-      !identical(metadata$dtype, source$dtype)) {
+    !identical(metadata$chunks, expected_chunks) ||
+    !identical(metadata$dtype, source$dtype)) {
     .frame_abort(
       "Zarr array metadata changed after the source descriptor was created.",
       "fmridataset_error_source_stale",
@@ -299,7 +299,9 @@ source_open.zarr_array_source <- function(x, ...) {
 
 .zarr_consecutive_runs <- function(index) {
   index <- sort(unique(as.integer(index)))
-  if (!length(index)) return(list())
+  if (!length(index)) {
+    return(list())
+  }
   split(index, cumsum(c(TRUE, diff(index) != 1L)))
 }
 

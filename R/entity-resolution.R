@@ -13,7 +13,9 @@
   if (identical(domain, "observation")) {
     return(list(ids = observation_ids(x), data = axis_data(observation_axis(x))))
   }
-  if (!startsWith(domain, "entity:")) return(NULL)
+  if (!startsWith(domain, "entity:")) {
+    return(NULL)
+  }
   name <- sub("^entity:", "", domain)
   value <- entity(x, name)
   list(ids = entity_ids(value), data = entity_data(value))
@@ -38,7 +40,9 @@
   key_names <- relation_names(registry)[vapply(
     registry, inherits, logical(1), "key_relation"
   )]
-  if (!length(key_names)) return(maps)
+  if (!length(key_names)) {
+    return(maps)
+  }
 
   max_passes <- length(key_names) + length(entity_names(x)) + 1L
   for (pass in seq_len(max_passes)) {
@@ -46,7 +50,7 @@
     for (relation_name in key_names) {
       descriptor <- registry[[relation_name]]
       if (!descriptor$source %in% names(maps) ||
-          !startsWith(descriptor$target, "entity:")) {
+        !startsWith(descriptor$target, "entity:")) {
         next
       }
       source_domain <- .resolution_domain(x, descriptor$source)
@@ -108,7 +112,7 @@
     .resolution_abort("Entity blocks must be two dimensional for lazy lifting.")
   }
   if (!is.numeric(rows) || any(!is.na(rows) & rows != as.integer(rows)) ||
-      any(!is.na(rows) & (rows < 1L | rows > shape[[1L]]))) {
+    any(!is.na(rows) & (rows < 1L | rows > shape[[1L]]))) {
     .resolution_abort("Lifted entity row indices are invalid.", field = "rows")
   }
   out <- structure(
@@ -231,11 +235,15 @@ source_read.row_index_source <- function(x, observations = NULL,
   observations <- .normalize_source_index(observations, shape[[1L]])
   features <- .normalize_source_index(features, shape[[2L]])
   out <- matrix(NA, nrow = length(observations), ncol = length(features))
-  if (!length(observations) || !length(features)) return(out)
+  if (!length(observations) || !length(features)) {
+    return(out)
+  }
 
   mapped <- x$rows[observations]
   present <- !is.na(mapped)
-  if (!any(present)) return(out)
+  if (!any(present)) {
+    return(out)
+  }
   unique_rows <- unique(mapped[present])
   values <- source_read(
     x$source,

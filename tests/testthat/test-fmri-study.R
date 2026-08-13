@@ -4,25 +4,30 @@
   if ("subject_id" %in% names(observations_data)) {
     ids <- unique(observations_data$subject_id[!is.na(observations_data$subject_id)])
     local_entities$subject <- entity_frame(
-      tibble::tibble(subject_id = ids), key = "subject_id"
+      tibble::tibble(subject_id = ids),
+      key = "subject_id"
     )
     relation_values$observation_subject <- key_relation(
-      "subject_id", target = "subject"
+      "subject_id",
+      target = "subject"
     )
   }
   if ("stimulus_id" %in% names(observations_data)) {
     ids <- unique(observations_data$stimulus_id[!is.na(observations_data$stimulus_id)])
     local_entities$stimulus <- entity_frame(
-      tibble::tibble(stimulus_id = ids), key = "stimulus_id"
+      tibble::tibble(stimulus_id = ids),
+      key = "stimulus_id"
     )
     relation_values$observation_stimulus <- key_relation(
-      "stimulus_id", target = "stimulus"
+      "stimulus_id",
+      target = "stimulus"
     )
   }
   if ("run_id" %in% names(observations_data)) {
     ids <- unique(observations_data$run_id[!is.na(observations_data$run_id)])
     local_entities$run <- entity_frame(
-      tibble::tibble(run_id = ids), key = "run_id"
+      tibble::tibble(run_id = ids),
+      key = "run_id"
     )
     relation_values$observation_run <- key_relation("run_id", target = "run")
   }
@@ -53,7 +58,8 @@
     condition = factor(c("A", "B"), levels = c("A", "B"))
   )
   entity_value <- entity_frame(
-    tibble::tibble(subject_id = subject), key = "subject_id"
+    tibble::tibble(subject_id = subject),
+    key = "subject_id"
   )
   if (variant == 1L) {
     feature_space <- volume_space(c(2L, 2L, 2L), support = 1:3, template = subject)
@@ -61,7 +67,8 @@
     feature_space <- volume_space(c(3L, 2L, 2L), support = c(1L, 2L, 4L, 5L), template = subject)
   }
   source <- counting_source(memory_source(matrix(
-    seq_len(2L * n_features(feature_space)), nrow = 2L
+    seq_len(2L * n_features(feature_space)),
+    nrow = 2L
   )))
   frame <- fmri_frame(
     assays = list(signal = source),
@@ -80,7 +87,8 @@
 
 .make_study_fixture <- function() {
   subject_scores <- counting_source(memory_source(matrix(
-    c(.2, .8, .4, .6), nrow = 2L, byrow = TRUE
+    c(.2, .8, .4, .6),
+    nrow = 2L, byrow = TRUE
   )))
   shared_entities <- list(
     subject = entity_frame(

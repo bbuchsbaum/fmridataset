@@ -636,7 +636,7 @@ fmri_study_dataset <- function(datasets, subject_ids = NULL) {
 
 #' Attach rowData metadata to a lazy matrix
 #'
-#' Helper for reattaching metadata after DelayedMatrixStats operations.
+#' Helper for reattaching metadata after lazy matrix operations.
 #'
 #' @param x A lazy matrix or matrix-like object
 #' @param rowData A data.frame of row-wise metadata

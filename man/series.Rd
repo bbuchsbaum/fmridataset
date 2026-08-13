@@ -8,7 +8,7 @@ series(
   dataset,
   selector = NULL,
   timepoints = NULL,
-  output = c("fmri_series", "DelayedMatrix"),
+  output = c("fmri_series"),
   event_window = NULL,
   ...
 )
@@ -20,7 +20,7 @@ series(
 
 \item{timepoints}{Optional temporal subset or \code{NULL} for all.}
 
-\item{output}{Return type - "FmriSeries" (default) or "DelayedMatrix".}
+\item{output}{Return type. Only "fmri_series" is supported.}
 
 \item{event_window}{Reserved for future use.}
 

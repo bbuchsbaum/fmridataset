@@ -101,10 +101,10 @@ Experimental design attaches to the dataset as a data frame in `$event_table`.
 
 ```{r event-table}
 events <- data.frame(
-  onset     = c(10, 30, 50, 70, 110, 130, 150, 170),
-  duration  = 2,
+  onset = c(10, 30, 50, 70, 110, 130, 150, 170),
+  duration = 2,
   trial_type = rep(c("faces", "houses"), 4),
-  run       = c(1, 1, 1, 1, 2, 2, 2, 2)
+  run = c(1, 1, 1, 1, 2, 2, 2, 2)
 )
 
 ds$event_table <- events
@@ -154,8 +154,8 @@ When working with NIfTI files, use `fmri_file_dataset()`. Data remains on disk u
 ```{r file-dataset, eval=FALSE}
 ds_files <- fmri_file_dataset(
   scans = c("/path/to/run1.nii.gz", "/path/to/run2.nii.gz"),
-  mask  = "/path/to/mask.nii.gz",
-  TR    = 2.0,
+  mask = "/path/to/mask.nii.gz",
+  TR = 2.0,
   run_length = c(180, 180)
 )
 

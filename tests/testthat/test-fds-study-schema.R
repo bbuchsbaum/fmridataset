@@ -14,7 +14,8 @@
     observations = observations_value,
     space = space,
     entities = list(subject = entity_frame(
-      tibble::tibble(subject_id = unique(subject_ids)), key = "subject_id"
+      tibble::tibble(subject_id = unique(subject_ids)),
+      key = "subject_id"
     )),
     relations = list(observation_subject = key_relation("subject_id", target = "subject"))
   )

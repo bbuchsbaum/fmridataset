@@ -127,7 +127,8 @@ fmri_frame <- function(assays, observations, features = NULL, space = NULL,
   if (.source_contains_runtime_state(provenance)) {
     .frame_abort(
       "Frame provenance cannot contain runtime state.",
-      "fmridataset_error_feature_map", field = "provenance"
+      "fmridataset_error_feature_map",
+      field = "provenance"
     )
   }
   relations <- .resolve_relation_registry(
@@ -330,7 +331,9 @@ block_apply <- function(x, FUN, block_size = 4096L, assay = active_assay(x), ...
     .frame_abort("block_size must be positive.", "fmridataset_error_budget")
   }
   ids <- feature_ids(x)
-  starts <- seq.int(1L, length(ids), by = block_size)
+  # An empty feature selection is a valid frame; it yields no blocks rather than
+  # tripping seq.int()'s wrong-sign error on seq.int(1L, 0L, by = block_size).
+  starts <- seq.int(1L, by = block_size, length.out = ceiling(length(ids) / block_size))
   lapply(starts, function(start) {
     idx <- start:min(length(ids), start + block_size - 1L)
     FUN(collect_assay(x[, idx], assay = assay), ids[idx], ...)
@@ -361,12 +364,14 @@ explain <- function(x) {
   list(
     class = class(x)[1L],
     shape = dim(x),
-    assays = lapply(assays(x), function(a) list(
-      dtype = a$dtype,
-      chunks = source_chunks(a$source),
-      capabilities = source_capabilities(a$source),
-      fingerprint = source_fingerprint(a$source)
-    )),
+    assays = lapply(assays(x), function(a) {
+      list(
+        dtype = a$dtype,
+        chunks = source_chunks(a$source),
+        capabilities = source_capabilities(a$source),
+        fingerprint = source_fingerprint(a$source)
+      )
+    }),
     observation_ids = observation_ids(x),
     feature_ids = feature_ids(x),
     space_digest = space_digest(space(x))

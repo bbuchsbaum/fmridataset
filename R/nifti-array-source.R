@@ -1,13 +1,21 @@
 .nifti_header_dtype <- function(header) {
   bits <- 8L * as.integer(methods::slot(header, "bytes_per_element"))
   storage <- toupper(as.character(methods::slot(header, "data_type")))
-  if (grepl("DOUBLE", storage, fixed = TRUE)) return("float64")
+  if (grepl("DOUBLE", storage, fixed = TRUE)) {
+    return("float64")
+  }
   if (grepl("FLOAT", storage, fixed = TRUE)) {
     return(if (bits <= 32L) "float32" else "float64")
   }
-  if (grepl("UINT", storage, fixed = TRUE)) return(paste0("uint", bits))
-  if (grepl("INT|SHORT|LONG|BYTE", storage)) return(paste0("int", bits))
-  if (grepl("BINARY|LOGICAL", storage)) return("logical")
+  if (grepl("UINT", storage, fixed = TRUE)) {
+    return(paste0("uint", bits))
+  }
+  if (grepl("INT|SHORT|LONG|BYTE", storage)) {
+    return(paste0("int", bits))
+  }
+  if (grepl("BINARY|LOGICAL", storage)) {
+    return("logical")
+  }
   "float64"
 }
 
@@ -277,7 +285,9 @@ source_read.nifti_array_source <- function(x, observations = NULL, features = NU
 source_read_native.nifti_array_source <- function(x, observations = NULL, ...) {
   .assert_nifti_source_fresh(x)
   observations <- .normalize_source_index(observations, x$shape[[1L]])
-  if (!length(observations)) return(list())
+  if (!length(observations)) {
+    return(list())
+  }
   volumes <- lapply(observations, function(observation) {
     file <- findInterval(
       observation - 1L,

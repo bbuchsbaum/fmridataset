@@ -4,7 +4,7 @@
 
 .validate_hierarchy_levels <- function(levels, entities_value) {
   if (!is.character(levels) || !length(levels) || anyNA(levels) ||
-      any(!nzchar(levels))) {
+    any(!nzchar(levels))) {
     .hierarchy_abort("Hierarchy levels must contain at least one non-empty entity name.")
   }
   if (anyDuplicated(levels)) {
@@ -21,11 +21,13 @@
 }
 
 .validate_hierarchy_relation_selection <- function(selection, levels) {
-  if (is.null(selection)) return(NULL)
+  if (is.null(selection)) {
+    return(NULL)
+  }
   if (!is.character(selection) || length(selection) != length(levels) ||
-      is.null(names(selection)) || anyNA(selection) || any(!nzchar(selection)) ||
-      anyNA(names(selection)) || any(!nzchar(names(selection))) ||
-      anyDuplicated(names(selection)) || !setequal(names(selection), levels)) {
+    is.null(names(selection)) || anyNA(selection) || any(!nzchar(selection)) ||
+    anyNA(names(selection)) || any(!nzchar(names(selection))) ||
+    anyDuplicated(names(selection)) || !setequal(names(selection), levels)) {
     .hierarchy_abort(
       "Explicit hierarchy relations must name every hierarchy level exactly once.",
       levels = levels
@@ -72,8 +74,8 @@
     }
     selected <- registry[[selected_name]]
     if (!inherits(selected, "key_relation") ||
-        !identical(selected$source, edge$source) ||
-        !identical(selected$target, edge$target)) {
+      !identical(selected$source, edge$source) ||
+      !identical(selected$target, edge$target)) {
       .hierarchy_abort(
         sprintf(
           "Hierarchy relation '%s' does not connect %s to %s.",
@@ -126,7 +128,7 @@
     "entity_digest", "relation_digest", "schema_version"
   )
   if (!inherits(x, "fmri_hierarchy_index") || !identical(names(x), required) ||
-      !identical(x$schema_version, 1L)) {
+    !identical(x$schema_version, 1L)) {
     .hierarchy_abort("x is not a valid fmri_hierarchy_index.")
   }
   expected_names <- c(".obs_id", x$levels)
@@ -162,8 +164,8 @@
     !is.na(x$relation_digest) &&
     grepl("^[0-9a-f]{64}$", x$relation_digest)
   if (!valid_ids || !valid_levels || !valid_tables || !valid_group_columns ||
-      !valid_id_columns || !valid_relations || !valid_complete ||
-      !valid_digests) {
+    !valid_id_columns || !valid_relations || !valid_complete ||
+    !valid_digests) {
     .hierarchy_abort("x is not a valid fmri_hierarchy_index.")
   }
   invisible(x)

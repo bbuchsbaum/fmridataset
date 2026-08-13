@@ -35,7 +35,7 @@ NULL
 
 #' Constructor for fmri_series objects
 #'
-#' @param data A lazy matrix (e.g., `delarr`), `DelayedMatrix`, or base matrix
+#' @param data A lazy matrix (e.g., `delarr`) or a base matrix
 #' @param voxel_info A data.frame containing spatial metadata for each voxel
 #' @param temporal_info A data.frame containing metadata for each timepoint
 #' @param selection_info A list describing how the data were selected
@@ -46,8 +46,8 @@ NULL
 #' @export
 new_fmri_series <- function(data, voxel_info, temporal_info, selection_info, dataset_info) {
   assert_that(
-    inherits(data, "delarr") || inherits(data, "DelayedMatrix") || is.matrix(data),
-    msg = "data must be a delarr, DelayedMatrix, or matrix"
+    inherits(data, "delarr") || is.matrix(data),
+    msg = "data must be a delarr or matrix"
   )
   assert_that(is.data.frame(voxel_info), msg = "voxel_info must be a data.frame")
   assert_that(is.data.frame(temporal_info), msg = "temporal_info must be a data.frame")

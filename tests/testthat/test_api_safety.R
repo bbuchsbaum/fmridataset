@@ -36,11 +36,11 @@ test_that("api critical symbols are exported from package namespace", {
   expect_true("backend_get_metadata" %in% exports)
 
   # Verify the h5_backend methods are registered for S3 dispatch
-  expect_true(!is.null(utils::getS3method("backend_open",        "h5_backend", optional = TRUE)))
-  expect_true(!is.null(utils::getS3method("backend_close",       "h5_backend", optional = TRUE)))
-  expect_true(!is.null(utils::getS3method("backend_get_dims",    "h5_backend", optional = TRUE)))
-  expect_true(!is.null(utils::getS3method("backend_get_mask",    "h5_backend", optional = TRUE)))
-  expect_true(!is.null(utils::getS3method("backend_get_data",    "h5_backend", optional = TRUE)))
+  expect_true(!is.null(utils::getS3method("backend_open", "h5_backend", optional = TRUE)))
+  expect_true(!is.null(utils::getS3method("backend_close", "h5_backend", optional = TRUE)))
+  expect_true(!is.null(utils::getS3method("backend_get_dims", "h5_backend", optional = TRUE)))
+  expect_true(!is.null(utils::getS3method("backend_get_mask", "h5_backend", optional = TRUE)))
+  expect_true(!is.null(utils::getS3method("backend_get_data", "h5_backend", optional = TRUE)))
   expect_true(!is.null(utils::getS3method("backend_get_metadata", "h5_backend", optional = TRUE)))
 })
 

@@ -8,7 +8,6 @@ test_that("test_as_delarr package exports are available", {
 })
 
 test_that("as_delarr wraps matrix_backend", {
-
   mat <- matrix(1:12, nrow = 3, ncol = 4)
   backend <- matrix_backend(mat, mask = rep(TRUE, 4), spatial_dims = c(2, 2, 1))
 

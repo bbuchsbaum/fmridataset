@@ -225,33 +225,6 @@ test_that("study backend lazy evaluation loads only required subjects", {
   )
 })
 
-test_that("DelayedArray conversion is efficient", {
-  skip_on_cran()
-  skip_if_not_installed("DelayedArray")
-  skip_if_not_installed("bench")
-
-  # Medium-sized dataset
-  mat <- matrix(rnorm(1000 * 500), 1000, 500)
-  dset <- matrix_dataset(mat, TR = 2, run_length = 1000)
-
-  result <- bench::mark(
-    delayed_conversion = {
-      delayed <- as_delayed_array(dset)
-    },
-    iterations = 10,
-    check = FALSE,
-    memory = TRUE
-  )
-
-  # Conversion should be fast (just wrapping, not copying)
-  expect_lt(median(result$median), 0.01) # Under 10ms
-
-  # Memory should be minimal (no data duplication)
-  # DelayedArray infrastructure has overhead - allow up to 5MB
-  # Convert bench_bytes to numeric before comparison
-  expect_lt(max(as.numeric(result$mem_alloc)), 5e6) # Less than 5MB
-})
-
 test_that("print methods perform well with large metadata", {
   skip_on_cran()
   skip_if_not_installed("bench")

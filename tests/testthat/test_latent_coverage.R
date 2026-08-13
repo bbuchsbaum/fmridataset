@@ -51,7 +51,8 @@ test_that("latent_backend constructor with valid h5 file paths creates object", 
 })
 
 test_that("backend_open.latent_backend requires fmristore", {
-  skip_if(requireNamespace("fmristore", quietly = TRUE),
+  skip_if(
+    requireNamespace("fmristore", quietly = TRUE),
     "fmristore is installed, skipping unavailable-package test"
   )
 

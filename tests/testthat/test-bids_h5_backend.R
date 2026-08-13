@@ -10,14 +10,14 @@
 
 make_mock_conn <- function(ref_count = 0L) {
   conn <- new.env(parent = emptyenv())
-  conn$file      <- "fake_study.h5"
+  conn$file <- "fake_study.h5"
   conn$ref_count <- as.integer(ref_count)
-  conn$handle    <- list(is_valid = TRUE)
-  conn$acquire   <- function() {
+  conn$handle <- list(is_valid = TRUE)
+  conn$acquire <- function() {
     conn$ref_count <- conn$ref_count + 1L
     invisible(NULL)
   }
-  conn$release   <- function() {
+  conn$release <- function() {
     conn$ref_count <- conn$ref_count - 1L
     if (conn$ref_count < 0L) conn$ref_count <- 0L
     invisible(NULL)
@@ -29,10 +29,12 @@ make_mock_conn <- function(ref_count = 0L) {
 make_scan_backend <- function(conn = make_mock_conn(),
                               path = "/scans/sub-01_task-nback_run-01",
                               n_parcels = 100L,
-                              n_time    = 200L,
-                              metadata  = list(subject = "01", task = "nback", tr = 2.0)) {
-  bids_h5_scan_backend(conn, path, n_features = n_parcels, n_time = n_time,
-                       metadata = metadata)
+                              n_time = 200L,
+                              metadata = list(subject = "01", task = "nback", tr = 2.0)) {
+  bids_h5_scan_backend(conn, path,
+    n_features = n_parcels, n_time = n_time,
+    metadata = metadata
+  )
 }
 
 # ==============================================================================
@@ -83,7 +85,7 @@ test_that("bids_h5_scan_backend stores fields correctly", {
     metadata = list(subject = "02", task = "rest", tr = 1.5)
   )
   expect_equal(b$n_features, 50L)
-  expect_equal(b$n_time,    150L)
+  expect_equal(b$n_time, 150L)
   expect_equal(b$scan_group_path, "/scans/sub-02_task-rest_run-01")
   expect_false(b$is_open)
   expect_equal(b$metadata$subject, "02")
@@ -119,15 +121,15 @@ test_that("bids_h5_scan_backend rejects n_time < 1", {
 # ==============================================================================
 
 test_that("backend_get_dims returns parcellated feature-space dims", {
-  b    <- make_scan_backend(n_parcels = 80L, n_time = 300L)
+  b <- make_scan_backend(n_parcels = 80L, n_time = 300L)
   dims <- backend_get_dims(b)
   expect_named(dims, c("spatial", "time"))
   expect_equal(dims$spatial, c(80L, 1L, 1L))
-  expect_equal(dims$time,    300L)
+  expect_equal(dims$time, 300L)
 })
 
 test_that("backend_get_dims spatial satisfies prod == K", {
-  b    <- make_scan_backend(n_parcels = 120L, n_time = 100L)
+  b <- make_scan_backend(n_parcels = 120L, n_time = 100L)
   dims <- backend_get_dims(b)
   expect_equal(prod(dims$spatial), 120L)
 })
@@ -137,7 +139,7 @@ test_that("backend_get_dims spatial satisfies prod == K", {
 # ==============================================================================
 
 test_that("backend_get_mask returns all-TRUE logical vector of length K", {
-  b    <- make_scan_backend(n_parcels = 60L)
+  b <- make_scan_backend(n_parcels = 60L)
   mask <- backend_get_mask(b)
   expect_type(mask, "logical")
   expect_length(mask, 60L)
@@ -145,7 +147,7 @@ test_that("backend_get_mask returns all-TRUE logical vector of length K", {
 })
 
 test_that("mask length matches prod(spatial dims)", {
-  b    <- make_scan_backend(n_parcels = 45L)
+  b <- make_scan_backend(n_parcels = 45L)
   dims <- backend_get_dims(b)
   mask <- backend_get_mask(b)
   expect_equal(length(mask), prod(dims$spatial))
@@ -175,24 +177,24 @@ test_that("validate_backend passes without opening (dims/mask don't require open
 
 test_that("backend_open sets is_open and increments ref_count", {
   conn <- make_mock_conn()
-  b    <- make_scan_backend(conn = conn)
-  b    <- backend_open(b)
+  b <- make_scan_backend(conn = conn)
+  b <- backend_open(b)
   expect_true(b$is_open)
   expect_equal(conn$ref_count, 1L)
 })
 
 test_that("repeated backend_open is idempotent (ref_count stays at 1)", {
   conn <- make_mock_conn()
-  b    <- make_scan_backend(conn = conn)
-  b    <- backend_open(b)
-  b    <- backend_open(b)   # should be a no-op
+  b <- make_scan_backend(conn = conn)
+  b <- backend_open(b)
+  b <- backend_open(b) # should be a no-op
   expect_equal(conn$ref_count, 1L)
 })
 
 test_that("backend_close clears is_open and decrements ref_count", {
   conn <- make_mock_conn()
-  b    <- make_scan_backend(conn = conn)
-  b    <- backend_open(b)
+  b <- make_scan_backend(conn = conn)
+  b <- backend_open(b)
   backend_close(b)
   expect_false(b$is_open)
   expect_equal(conn$ref_count, 0L)
@@ -200,17 +202,17 @@ test_that("backend_close clears is_open and decrements ref_count", {
 
 test_that("repeated backend_close is idempotent (ref_count stays at 0)", {
   conn <- make_mock_conn()
-  b    <- make_scan_backend(conn = conn)
-  b    <- backend_open(b)
+  b <- make_scan_backend(conn = conn)
+  b <- backend_open(b)
   backend_close(b)
-  backend_close(b)  # should be a no-op
+  backend_close(b) # should be a no-op
   expect_equal(conn$ref_count, 0L)
 })
 
 test_that("multiple backends share ref_count correctly", {
   conn <- make_mock_conn()
-  b1   <- make_scan_backend(conn = conn, path = "/scans/scan1", n_parcels = 50L, n_time = 100L)
-  b2   <- make_scan_backend(conn = conn, path = "/scans/scan2", n_parcels = 50L, n_time = 120L)
+  b1 <- make_scan_backend(conn = conn, path = "/scans/scan1", n_parcels = 50L, n_time = 100L)
+  b2 <- make_scan_backend(conn = conn, path = "/scans/scan2", n_parcels = 50L, n_time = 120L)
 
   b1 <- backend_open(b1)
   b2 <- backend_open(b2)
@@ -254,15 +256,15 @@ test_that("shared connection can reopen after all references are released", {
 
 test_that("backend_get_metadata returns compression_mode and scan fields", {
   meta <- list(subject = "01", task = "nback", session = "pre", run = "01", tr = 2.0)
-  b    <- make_scan_backend(metadata = meta)
-  m    <- backend_get_metadata(b)
+  b <- make_scan_backend(metadata = meta)
+  m <- backend_get_metadata(b)
 
   expect_equal(m$compression_mode, "parcellated")
-  expect_equal(m$n_features,       100L)
-  expect_equal(m$subject,          "01")
-  expect_equal(m$task,             "nback")
-  expect_equal(m$tr,               2.0)
-  expect_equal(m$format,           "bids_h5")
+  expect_equal(m$n_features, 100L)
+  expect_equal(m$subject, "01")
+  expect_equal(m$task, "nback")
+  expect_equal(m$tr, 2.0)
+  expect_equal(m$format, "bids_h5")
 })
 
 # ==============================================================================
@@ -284,15 +286,15 @@ test_that("backend_get_data reads [T, K] matrix from HDF5", {
   expected <- matrix(rnorm(n_time * K), nrow = n_time, ncol = K)
 
   scans_grp <- h5f$create_group("scans")
-  scan_grp  <- scans_grp$create_group("sub-01_task-test_run-01")
-  data_grp  <- scan_grp$create_group("data")
+  scan_grp <- scans_grp$create_group("sub-01_task-test_run-01")
+  data_grp <- scan_grp$create_group("data")
   data_grp$create_dataset("summary_data", robj = expected)
   h5f$close_all()
 
   # Now read via backend
   conn <- h5_shared_connection(tmp)
-  b    <- bids_h5_scan_backend(conn, "/scans/sub-01_task-test_run-01", K, n_time)
-  conn$acquire()  # simulate backend_open without environment mutation
+  b <- bids_h5_scan_backend(conn, "/scans/sub-01_task-test_run-01", K, n_time)
+  conn$acquire() # simulate backend_open without environment mutation
 
   mat <- backend_get_data(b)
   conn$release()
@@ -313,12 +315,12 @@ test_that("backend_get_data respects rows and cols subsetting", {
 
   h5f <- hdf5r::H5File$new(tmp, mode = "w")
   on.exit(tryCatch(h5f$close_all(), error = function(e) NULL), add = TRUE)
-  scan_grp  <- h5f$create_group("scans")$create_group("sub-01_task-test_run-01")
+  scan_grp <- h5f$create_group("scans")$create_group("sub-01_task-test_run-01")
   scan_grp$create_group("data")$create_dataset("summary_data", robj = full_mat)
   h5f$close_all()
 
   conn <- h5_shared_connection(tmp)
-  b    <- bids_h5_scan_backend(conn, "/scans/sub-01_task-test_run-01", K, n_time)
+  b <- bids_h5_scan_backend(conn, "/scans/sub-01_task-test_run-01", K, n_time)
   conn$acquire()
 
   row_idx <- c(1L, 3L, 5L)
@@ -341,13 +343,13 @@ test_that("h5_write_events and h5_read_events round-trip correctly", {
   on.exit(unlink(tmp), add = TRUE)
 
   events <- data.frame(
-    onset      = c(0.0, 10.0, 20.0),
-    duration   = c(2.0, 2.0, 2.0),
+    onset = c(0.0, 10.0, 20.0),
+    duration = c(2.0, 2.0, 2.0),
     trial_type = c("face", "house", "face"),
     stringsAsFactors = FALSE
   )
 
-  h5f      <- hdf5r::H5File$new(tmp, mode = "w")
+  h5f <- hdf5r::H5File$new(tmp, mode = "w")
   on.exit(tryCatch(h5f$close_all(), error = function(e) NULL), add = TRUE)
   scan_grp <- h5f$create_group("scans")$create_group("sub-01_task-test_run-01")
 
@@ -356,8 +358,8 @@ test_that("h5_write_events and h5_read_events round-trip correctly", {
   h5f$close_all()
 
   expect_equal(nrow(result), 3L)
-  expect_equal(result$onset,      events$onset)
-  expect_equal(result$duration,   events$duration)
+  expect_equal(result$onset, events$onset)
+  expect_equal(result$duration, events$duration)
   expect_equal(result$trial_type, events$trial_type)
 })
 
@@ -367,7 +369,7 @@ test_that("h5_read_events returns NULL when no events group exists", {
   tmp <- tempfile(fileext = ".h5")
   on.exit(unlink(tmp), add = TRUE)
 
-  h5f      <- hdf5r::H5File$new(tmp, mode = "w")
+  h5f <- hdf5r::H5File$new(tmp, mode = "w")
   on.exit(tryCatch(h5f$close_all(), error = function(e) NULL), add = TRUE)
   scan_grp <- h5f$create_group("scans")$create_group("sub-01_task-test_run-01")
 
@@ -383,7 +385,7 @@ test_that("h5_write_events handles NULL events gracefully", {
   tmp <- tempfile(fileext = ".h5")
   on.exit(unlink(tmp), add = TRUE)
 
-  h5f      <- hdf5r::H5File$new(tmp, mode = "w")
+  h5f <- hdf5r::H5File$new(tmp, mode = "w")
   on.exit(tryCatch(h5f$close_all(), error = function(e) NULL), add = TRUE)
   scan_grp <- h5f$create_group("scans")$create_group("sub-01_task-test_run-01")
 
@@ -407,7 +409,7 @@ test_that("h5_write_confounds and h5_read_confounds round-trip correctly", {
     csf      = rnorm(50)
   )
 
-  h5f      <- hdf5r::H5File$new(tmp, mode = "w")
+  h5f <- hdf5r::H5File$new(tmp, mode = "w")
   on.exit(tryCatch(h5f$close_all(), error = function(e) NULL), add = TRUE)
   scan_grp <- h5f$create_group("scans")$create_group("sub-01_task-test_run-01")
 
@@ -427,7 +429,7 @@ test_that("h5_read_confounds returns NULL when absent", {
   tmp <- tempfile(fileext = ".h5")
   on.exit(unlink(tmp), add = TRUE)
 
-  h5f      <- hdf5r::H5File$new(tmp, mode = "w")
+  h5f <- hdf5r::H5File$new(tmp, mode = "w")
   on.exit(tryCatch(h5f$close_all(), error = function(e) NULL), add = TRUE)
   scan_grp <- h5f$create_group("scans")$create_group("sub-01_task-test_run-01")
 
@@ -447,7 +449,7 @@ test_that("h5_write_censor and h5_read_censor round-trip correctly", {
 
   censor <- c(0L, 0L, 1L, 0L, 1L, 0L, 0L, 0L, 1L, 0L)
 
-  h5f      <- hdf5r::H5File$new(tmp, mode = "w")
+  h5f <- hdf5r::H5File$new(tmp, mode = "w")
   on.exit(tryCatch(h5f$close_all(), error = function(e) NULL), add = TRUE)
   scan_grp <- h5f$create_group("scans")$create_group("sub-01_task-test_run-01")
 
@@ -466,7 +468,7 @@ test_that("h5_write_censor accepts logical vectors", {
 
   censor_logical <- c(FALSE, FALSE, TRUE, FALSE, TRUE)
 
-  h5f      <- hdf5r::H5File$new(tmp, mode = "w")
+  h5f <- hdf5r::H5File$new(tmp, mode = "w")
   on.exit(tryCatch(h5f$close_all(), error = function(e) NULL), add = TRUE)
   scan_grp <- h5f$create_group("scans")$create_group("sub-01_task-test_run-01")
 
@@ -483,7 +485,7 @@ test_that("h5_read_censor returns NULL when absent", {
   tmp <- tempfile(fileext = ".h5")
   on.exit(unlink(tmp), add = TRUE)
 
-  h5f      <- hdf5r::H5File$new(tmp, mode = "w")
+  h5f <- hdf5r::H5File$new(tmp, mode = "w")
   on.exit(tryCatch(h5f$close_all(), error = function(e) NULL), add = TRUE)
   scan_grp <- h5f$create_group("scans")$create_group("sub-01_task-test_run-01")
 
@@ -503,7 +505,7 @@ test_that("h5_write_scan_metadata and h5_read_scan_metadata round-trip", {
 
   meta <- list(subject = "01", task = "nback", run = "01", tr = 2.0)
 
-  h5f      <- hdf5r::H5File$new(tmp, mode = "w")
+  h5f <- hdf5r::H5File$new(tmp, mode = "w")
   on.exit(tryCatch(h5f$close_all(), error = function(e) NULL), add = TRUE)
   scan_grp <- h5f$create_group("scans")$create_group("sub-01_task-nback_run-01")
 
@@ -512,8 +514,8 @@ test_that("h5_write_scan_metadata and h5_read_scan_metadata round-trip", {
   h5f$close_all()
 
   expect_equal(result$subject, "01")
-  expect_equal(result$task,    "nback")
-  expect_equal(result$tr,      2.0)
+  expect_equal(result$task, "nback")
+  expect_equal(result$tr, 2.0)
 })
 
 test_that("h5_write_scan_metadata skips NULL values", {
@@ -524,7 +526,7 @@ test_that("h5_write_scan_metadata skips NULL values", {
 
   meta <- list(subject = "01", session = NULL, task = "rest")
 
-  h5f      <- hdf5r::H5File$new(tmp, mode = "w")
+  h5f <- hdf5r::H5File$new(tmp, mode = "w")
   on.exit(tryCatch(h5f$close_all(), error = function(e) NULL), add = TRUE)
   scan_grp <- h5f$create_group("scans")$create_group("sub-01_task-rest_run-01")
 

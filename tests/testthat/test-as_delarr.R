@@ -76,7 +76,6 @@ test_that("as_delarr.matrix_backend handles single column", {
 })
 
 test_that("as_delarr.matrix_backend preserves data through round trip", {
-
   skip_if_not_installed("delarr")
 
   # Create matrix with varied values
@@ -133,8 +132,8 @@ test_that("as_delarr.study_backend retrieves data correctly", {
 
   # Create backends with distinct values for verification
   set.seed(100)
-  mat1 <- matrix(1:50, nrow = 5, ncol = 10)  # Subject 1: values 1-50
-  mat2 <- matrix(51:100, nrow = 5, ncol = 10)  # Subject 2: values 51-100
+  mat1 <- matrix(1:50, nrow = 5, ncol = 10) # Subject 1: values 1-50
+  mat2 <- matrix(51:100, nrow = 5, ncol = 10) # Subject 2: values 51-100
 
   backend1 <- matrix_backend(mat1)
   backend2 <- matrix_backend(mat2)
@@ -457,7 +456,7 @@ test_that("as_delarr.matrix_backend respects backend mask", {
 
   # Dimensions should reflect masked voxels
   expect_equal(nrow(darr), 10)
-  expect_equal(ncol(darr), sum(mask))  # 7 TRUE values
+  expect_equal(ncol(darr), sum(mask)) # 7 TRUE values
 })
 
 test_that("as_delarr.study_backend initializes time_dims lazily", {

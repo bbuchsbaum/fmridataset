@@ -36,21 +36,26 @@
   if (instrument) source <- counting_source(source)
   relation_values <- list(
     observation_run = key_relation(
-      "run_id", target = "run", allow_missing = missing_run
+      "run_id",
+      target = "run", allow_missing = missing_run
     ),
     run_session = key_relation(
-      "session_id", source = "run", target = "session"
+      "session_id",
+      source = "run", target = "session"
     ),
     session_subject = key_relation(
-      "subject_id", source = "session", target = "subject"
+      "subject_id",
+      source = "session", target = "subject"
     ),
     observation_stimulus = key_relation(
-      "stimulus_id", target = "stimulus"
+      "stimulus_id",
+      target = "stimulus"
     )
   )
   if (ambiguous) {
     relation_values$observation_run_alias <- key_relation(
-      "run_id", target = "run", allow_missing = missing_run
+      "run_id",
+      target = "run", allow_missing = missing_run
     )
   }
   fmri_frame(

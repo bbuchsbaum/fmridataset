@@ -5,7 +5,8 @@
 .one_map_string <- function(x, field) {
   if (!is.character(x) || length(x) != 1L || is.na(x) || !nzchar(x)) {
     .feature_map_abort(sprintf("%s must be one non-empty string.", field),
-                       field = field)
+      field = field
+    )
   }
   x
 }
@@ -43,15 +44,17 @@ feature_map <- function(from, to, operator, map_type = "linear",
                         metadata = list()) {
   if (!inherits(from, "feature_space") || !inherits(to, "feature_space")) {
     .feature_map_abort("from and to must both be feature spaces.",
-                       field = "space")
+      field = "space"
+    )
   }
   map_type <- .one_map_string(map_type, "map_type")
   traits <- .validate_serializable_list(traits, "traits")
   if (length(traits) &&
-      (is.null(names(traits)) || anyNA(names(traits)) ||
-       any(!nzchar(names(traits))) || anyDuplicated(names(traits)))) {
+    (is.null(names(traits)) || anyNA(names(traits)) ||
+      any(!nzchar(names(traits))) || anyDuplicated(names(traits)))) {
     .feature_map_abort(
-      "traits must be named with unique non-empty values.", field = "traits"
+      "traits must be named with unique non-empty values.",
+      field = "traits"
     )
   }
   provenance <- .validate_serializable_list(provenance, "provenance")
@@ -62,7 +65,8 @@ feature_map <- function(from, to, operator, map_type = "linear",
     ),
     error = function(error) {
       .feature_map_abort(
-        conditionMessage(error), field = "operator",
+        conditionMessage(error),
+        field = "operator",
         expected = c(n_features(to), n_features(from)),
         parent = error
       )
@@ -83,7 +87,8 @@ feature_map <- function(from, to, operator, map_type = "linear",
   )
   if (.source_contains_runtime_state(out)) {
     .feature_map_abort("Feature maps must be serializable.",
-                       field = "runtime_state")
+      field = "runtime_state"
+    )
   }
   out
 }
@@ -104,8 +109,8 @@ validate_feature_map <- function(x) {
     "metadata", "schema_version"
   )
   if (!inherits(x, "feature_map") ||
-      !identical(names(unclass(x)), required) ||
-      !identical(x$schema_version, 1L)) {
+    !identical(names(unclass(x)), required) ||
+    !identical(x$schema_version, 1L)) {
     .feature_map_abort("x is not a valid feature_map descriptor.")
   }
   feature_map(
@@ -158,8 +163,10 @@ feature_map_digest <- function(x) {
 #' @export
 print.feature_map <- function(x, ...) {
   validate_feature_map(x)
-  cat("<feature_map>", n_features(x$from), "source features ->",
-      n_features(x$to), "target features\n")
+  cat(
+    "<feature_map>", n_features(x$from), "source features ->",
+    n_features(x$to), "target features\n"
+  )
   cat("  type:", x$map_type, "\n")
   cat("  digest:", substr(feature_map_digest(x), 1L, 12L), "\n")
   invisible(x)
@@ -217,7 +224,9 @@ feature_map_from_target <- function(target) {
 }
 
 .operator_contributing_columns <- function(operator) {
-  if (!nrow(operator) || !ncol(operator)) return(integer())
+  if (!nrow(operator) || !ncol(operator)) {
+    return(integer())
+  }
   if (methods::is(operator, "sparseMatrix")) {
     return(which(Matrix::colSums(operator != 0) > 0))
   }
@@ -302,13 +311,15 @@ source_open.feature_mapped_source <- function(x, ...) {
 }
 #' @export
 source_read.feature_mapped_source <- function(x, observations = NULL,
-                                               features = NULL, ...) {
+                                              features = NULL, ...) {
   observations <- .normalize_source_index(observations, x$shape[1L])
   features <- .normalize_source_index(features, x$shape[2L])
   if (!length(observations) || !length(features)) {
     return(matrix(
-      vector(mode = if (grepl("^complex", x$dtype)) "complex" else "numeric",
-             length = length(observations) * length(features)),
+      vector(
+        mode = if (grepl("^complex", x$dtype)) "complex" else "numeric",
+        length = length(observations) * length(features)
+      ),
       nrow = length(observations), ncol = length(features)
     ))
   }
@@ -318,7 +329,8 @@ source_read.feature_mapped_source <- function(x, observations = NULL,
     return(matrix(0, nrow = length(observations), ncol = length(features)))
   }
   values <- source_read(
-    x$source, observations = observations, features = contributing, ...
+    x$source,
+    observations = observations, features = contributing, ...
   )
   operator <- operator[, contributing, drop = FALSE]
   if (identical(x$rule, "independent_variance")) operator <- operator^2
@@ -328,7 +340,8 @@ source_read.feature_mapped_source <- function(x, observations = NULL,
 source_read_native.feature_mapped_source <- function(x, observations = NULL, ...) {
   .frame_abort(
     "feature_mapped_source has no native spatial read path.",
-    "fmridataset_error_backend_io", operation = "native_read"
+    "fmridataset_error_backend_io",
+    operation = "native_read"
   )
 }
 #' @export
@@ -347,9 +360,10 @@ provenance_record <- function(operation, parents = character(), inputs = list(),
                               metadata = list()) {
   operation <- .one_map_string(operation, "operation")
   if (!is.character(parents) || anyNA(parents) || any(!nzchar(parents)) ||
-      anyDuplicated(parents)) {
+    anyDuplicated(parents)) {
     .feature_map_abort("parents must contain unique non-empty record IDs.",
-                       field = "parents")
+      field = "parents"
+    )
   }
   fields <- list(
     operation = operation,
@@ -362,7 +376,8 @@ provenance_record <- function(operation, parents = character(), inputs = list(),
     schema_version = 1L
   )
   structure(c(list(id = .canonical_digest(fields)), fields),
-            class = "provenance_record")
+    class = "provenance_record"
+  )
 }
 
 .validate_provenance_record_shape <- function(x) {
@@ -371,24 +386,33 @@ provenance_record <- function(operation, parents = character(), inputs = list(),
     "software", "metadata", "schema_version"
   )
   if (!inherits(x, "provenance_record") ||
-      !identical(names(unclass(x)), required) ||
-      !identical(x$schema_version, 1L)) {
+    !identical(names(unclass(x)), required) ||
+    !identical(x$schema_version, 1L)) {
     .feature_map_abort("Invalid provenance_record descriptor.",
-                       field = "record")
+      field = "record"
+    )
   }
   invisible(x)
 }
 
 .provenance_is_acyclic <- function(records) {
-  if (!length(records)) return(TRUE)
+  if (!length(records)) {
+    return(TRUE)
+  }
   state <- setNames(integer(length(records)), names(records))
   visit <- function(id) {
-    if (state[[id]] == 1L) return(FALSE)
-    if (state[[id]] == 2L) return(TRUE)
+    if (state[[id]] == 1L) {
+      return(FALSE)
+    }
+    if (state[[id]] == 2L) {
+      return(TRUE)
+    }
     state[[id]] <<- 1L
     parents <- records[[id]]$parents
     for (parent in parents[parents %in% names(records)]) {
-      if (!visit(parent)) return(FALSE)
+      if (!visit(parent)) {
+        return(FALSE)
+      }
     }
     state[[id]] <<- 2L
     TRUE
@@ -414,7 +438,7 @@ provenance_graph <- function(...) {
     return(values[[1L]])
   }
   if (length(values) == 1L && is.list(values[[1L]]) &&
-      !inherits(values[[1L]], "provenance_record")) {
+    !inherits(values[[1L]], "provenance_record")) {
     values <- values[[1L]]
   }
   if (length(values)) {
@@ -427,7 +451,8 @@ provenance_graph <- function(...) {
     unknown <- setdiff(unique(unlist(lapply(values, `[[`, "parents"))), ids)
     if (length(unknown)) {
       .feature_map_abort("Provenance parents must exist in the graph.",
-                         field = "parents", unknown = unknown)
+        field = "parents", unknown = unknown
+      )
     }
     if (!.provenance_is_acyclic(values)) {
       .feature_map_abort("Provenance graph must be acyclic.", field = "parents")
@@ -439,12 +464,14 @@ provenance_graph <- function(...) {
       )$id
       if (!identical(value$id, expected)) {
         .feature_map_abort("Provenance record ID does not match its content.",
-                           field = "id")
+          field = "id"
+        )
       }
     }
   }
   structure(list(records = values, schema_version = 1L),
-            class = "provenance_graph")
+    class = "provenance_graph"
+  )
 }
 
 #' @rdname provenance-graph
@@ -452,8 +479,8 @@ provenance_graph <- function(...) {
 validate_provenance_graph <- function(x) {
   required <- c("records", "schema_version")
   if (!inherits(x, "provenance_graph") ||
-      !identical(names(unclass(x)), required) ||
-      !identical(x$schema_version, 1L)) {
+    !identical(names(unclass(x)), required) ||
+    !identical(x$schema_version, 1L)) {
     .feature_map_abort("x is not a valid provenance_graph.")
   }
   provenance_graph(x$records)
@@ -471,7 +498,9 @@ provenance_records <- function(x) {
 #' @export
 provenance_tips <- function(x) {
   records <- provenance_records(x)
-  if (!length(records)) return(character())
+  if (!length(records)) {
+    return(character())
+  }
   parents <- unique(unlist(lapply(records, `[[`, "parents")))
   setdiff(names(records), parents)
 }
@@ -512,17 +541,24 @@ print.provenance_graph <- function(x, ...) {
 }
 
 .as_provenance_graph <- function(x) {
-  if (is.null(x)) return(provenance_graph())
-  if (inherits(x, "provenance_graph")) return(provenance_graph(x))
+  if (is.null(x)) {
+    return(provenance_graph())
+  }
+  if (inherits(x, "provenance_graph")) {
+    return(provenance_graph(x))
+  }
   provenance_graph(provenance_record(
-    "legacy_provenance", inputs = list(value = x),
+    "legacy_provenance",
+    inputs = list(value = x),
     metadata = list(migrated = TRUE)
   ))
 }
 
 .relations_without_feature_domain <- function(x) {
   keep <- vapply(x, function(value) {
-    if (inherits(value, "entity_feature_validity")) return(FALSE)
+    if (inherits(value, "entity_feature_validity")) {
+      return(FALSE)
+    }
     if (inherits(value, "key_relation")) {
       return(!identical(value$source, "feature"))
     }
@@ -576,8 +612,8 @@ map_features <- function(x, target = NULL, map = NULL,
   }
   allowed <- c("linear", "independent_variance")
   if (!is.character(assay_rules) || is.null(names(assay_rules)) ||
-      !identical(sort(names(assay_rules)), sort(assay_names)) ||
-      anyNA(assay_rules) || any(!assay_rules %in% allowed)) {
+    !identical(sort(names(assay_rules)), sort(assay_names)) ||
+    anyNA(assay_rules) || any(!assay_rules %in% allowed)) {
     .feature_map_abort(
       "assay_rules must name every assay with a supported transformation rule.",
       field = "assay_rules", allowed = allowed
@@ -589,7 +625,8 @@ map_features <- function(x, target = NULL, map = NULL,
     .mapped_aligned_assay(
       descriptor,
       feature_mapped_source(
-        .frame_assay_source(x, name), map, rule = assay_rules[[name]]
+        .frame_assay_source(x, name), map,
+        rule = assay_rules[[name]]
       )
     )
   })

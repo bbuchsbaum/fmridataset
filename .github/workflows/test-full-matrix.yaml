@@ -52,12 +52,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libhdf5-dev libudunits2-dev libgdal-dev libgeos-dev libproj-dev
       
-      # Install BiocManager for Bioconductor packages
-      - name: Install BiocManager
-        run: |
-          Rscript -e 'install.packages("BiocManager")'
-          Rscript -e 'r_version <- getRversion(); bioc_version <- if (r_version >= "4.5.0") "3.21" else if (r_version >= "4.4.0") "3.19" else "3.18"; BiocManager::install(version = bioc_version, ask = FALSE)'
-      
       # Install all dependencies including suggests
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
@@ -68,10 +62,8 @@ jobs:
           needs: check
           dependencies: '"all"'
       
-      # Install Bioconductor packages that might be missed
-      - name: Install Bioconductor packages
-        run: |
-          Rscript -e 'r_version <- getRversion(); bioc_version <- if (r_version >= "4.5.0") "3.21" else if (r_version >= "4.4.0") "3.19" else "3.18"; BiocManager::install(c("Rarr", "rhdf5", "DelayedArray", "S4Arrays"), version = bioc_version, ask = FALSE, update = FALSE)'
+      # No Bioconductor step: fmridataset builds lazy array support on delarr,
+      # which this project owns, rather than on DelayedArray.
       
       # Install GitHub packages if needed
       - name: Install GitHub packages
@@ -84,9 +76,8 @@ jobs:
       - name: Check optional packages
         run: |
           Rscript -e '
-          optional_pkgs <- c("bench", "bidser", "crayon", "arrow", "dplyr", 
-                            "fmristore", "foreach", "Rarr", "rhdf5", 
-                            "jsonlite", "yaml", "S4Arrays")
+          optional_pkgs <- c("bench", "bidser", "crayon", "arrow", "dplyr",
+                            "fmristore", "foreach", "jsonlite", "yaml")
           missing <- optional_pkgs[!sapply(optional_pkgs, requireNamespace, quietly = TRUE)]
           if (length(missing) > 0) {
             stop("Missing optional packages: ", paste(missing, collapse = ", "))
@@ -150,10 +141,14 @@ jobs:
           r-version: release
           use-public-rspm: true
       
-      # Install only required dependencies
+      # Install only required dependencies. knitr is not an optional feature
+      # here: DESCRIPTION declares VignetteBuilder: knitr, so R CMD build fails
+      # in loadVignetteBuilder() without it, even with --no-build-vignettes.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck
+          extra-packages: |
+            any::rcmdcheck
+            any::knitr
           needs: check
           dependencies: '"hard"'
       
@@ -161,7 +156,7 @@ jobs:
       - name: Check minimal setup
         run: |
           Rscript -e '
-          optional_pkgs <- c("bench", "bidser", "arrow", "fmristore", "Rarr")
+          optional_pkgs <- c("bench", "bidser", "arrow", "fmristore")
           installed <- optional_pkgs[sapply(optional_pkgs, requireNamespace, quietly = TRUE)]
           if (length(installed) > 0) {
             warning("Optional packages installed in minimal test: ", 
