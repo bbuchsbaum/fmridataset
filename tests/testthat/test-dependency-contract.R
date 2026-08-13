@@ -12,13 +12,14 @@ test_that("the hard dependency surface is minimal and versioned", {
   fields <- .description_fields()
   expected <- c(
     "delarr", "digest", "Matrix", "methods", "neuroim2",
-    "rlang", "tibble", "utils", "uuid"
+    "rlang", "stringi", "tibble", "utils", "uuid"
   )
 
   expect_setequal(.dependency_names(fields$Imports), expected)
   imports <- .dcf_one_line(fields$Imports)
   expect_match(imports, "delarr \\(>= 0\\.1\\.0\\)")
   expect_match(imports, "neuroim2 \\(>= 0\\.19\\.0\\)")
+  expect_match(imports, "stringi \\(>= 1\\.8\\.0\\)")
 })
 
 test_that("consumer packages cannot form a development dependency cycle", {

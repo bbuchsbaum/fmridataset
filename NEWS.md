@@ -18,6 +18,10 @@
 
 - Defined typed semantic, schema, space, source, provenance, and optional
   content identities under an explicit R-only canonicalization v1 contract.
+  The package-owned tagged binary encoder now publishes exact golden bytes and
+  SHA-256 vectors for numeric, Unicode, factor, dimension, sparse, and nested
+  values; `stringi` is the sole added hard dependency for platform-independent
+  UTF-8 NFC normalization.
   Added `same_space()` for exact spatial identity; the older compatibility
   names remain exact-identity migration aliases and never infer alignment from
   shape.
@@ -26,7 +30,7 @@
   observation binding, bounded explanation, FDS validation, and downstream
   protocol checks, with path-specific structured mismatch diagnostics.
 
-- Reduced the hard dependency surface to nine demonstrated runtime packages,
+- Reduced the hard dependency surface to ten demonstrated runtime packages,
   added minimum versions and immutable commit pins for custom dependencies,
   and removed companion consumers from `Suggests` and `Remotes`. Companion
   integration remains available through separately certified runtime discovery.

@@ -10,7 +10,8 @@ canonicalization_contract()
 A serializable canonicalization descriptor.
 }
 \description{
-Canonicalization version 1 hashes normalized R objects with SHA-256 over R
-serialization. It is stable for supported package operations and round trips,
-but is deliberately R-only rather than a cross-language wire encoding.
+Canonicalization version 1 hashes normalized R objects with SHA-256 over a
+package-owned tagged binary encoding. It is stable for supported package
+operations and round trips, but is deliberately R-only rather than a
+cross-language wire encoding.
 }

@@ -2,23 +2,26 @@
   id = "org.fmridataset.r-canonical/v1",
   version = 1L,
   algorithm = "sha256",
-  encoding = "R-serialize",
+  encoding = "fmridataset-tagged-binary",
+  unicode = "NFC",
+  byte_order = "big-endian",
+  named_field_order = "lexicographic",
+  sequence_order = "preserved",
+  negative_zero = "preserved",
+  nan = "canonical-payload",
   portability = "R-only"
 )
 
 .canonical_digest <- function(x) {
-  digest::digest(
-    list(canonicalization = .canonicalization_contract, value = x),
-    algo = .canonicalization_contract$algorithm,
-    serialize = TRUE
-  )
+  canonical_sha256(x)
 }
 
 #' Identity and canonicalization contract
 #'
-#' Canonicalization version 1 hashes normalized R objects with SHA-256 over R
-#' serialization. It is stable for supported package operations and round trips,
-#' but is deliberately R-only rather than a cross-language wire encoding.
+#' Canonicalization version 1 hashes normalized R objects with SHA-256 over a
+#' package-owned tagged binary encoding. It is stable for supported package
+#' operations and round trips, but is deliberately R-only rather than a
+#' cross-language wire encoding.
 #'
 #' @return A serializable canonicalization descriptor.
 #' @export

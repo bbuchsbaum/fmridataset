@@ -16,10 +16,15 @@ interchangeable.
 | Provenance | Typed derivation records, inputs, outputs, software and parameters | Runtime handles and caches | `provenance_digest()` |
 | Content | Bytes or normalized numerical values under a declared external procedure | Assumed equality from source identity | Optional backend receipt passed to `identity_descriptor()` |
 
-Canonicalization v1 is `org.fmridataset.r-canonical/v1`: SHA-256 over R
-serialization of a versioned envelope. It is R-only. Cross-language identity
-requires a future canonical wire encoding and a new canonicalization version;
-v1 digests must never be relabeled as cross-language hashes.
+Canonicalization v1 is `org.fmridataset.r-canonical/v1`: SHA-256 over a
+package-owned tagged binary encoding. Lengths and numeric payloads use
+big-endian byte order; named fields and attributes are ordered
+lexicographically; strings are UTF-8 NFC; sparse matrices use canonical
+column-major triplets; and missing, null, NA, NaN, infinities, and negative
+zero remain explicitly distinguished. It is R-only because no non-R reference
+decoder is part of v1. Cross-language identity requires a future specified
+decoder and a new canonicalization version; v1 digests must never be relabeled
+as cross-language hashes.
 
 Physical relocation changes source identity when the source descriptor changes,
 but not semantic, schema, or space identity. A storage codec may attach a
