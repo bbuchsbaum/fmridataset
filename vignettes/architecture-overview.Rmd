@@ -71,13 +71,14 @@ Zarr store.
 Every backend must implement five generic functions:
 
 ```{r backend-contract}
-backend_open(backend)            # open file handles / allocate resources
-backend_close(backend)           # release resources
-backend_get_dims(backend)        # return list(spatial = c(x,y,z), time = n)
-backend_get_data(backend,        # return matrix [time x voxels]
-                 rows   = NULL,
-                 cols   = NULL)
-validate_backend(backend)        # stop() on contract violations
+backend_open(backend) # open file handles / allocate resources
+backend_close(backend) # release resources
+backend_get_dims(backend) # return list(spatial = c(x,y,z), time = n)
+backend_get_data(backend, # return matrix [time x voxels]
+  rows   = NULL,
+  cols   = NULL
+)
+validate_backend(backend) # stop() on contract violations
 ```
 
 `rows` selects timepoints and `cols` selects voxels; both default to "all".
@@ -126,8 +127,8 @@ semantics differ.
 
 ```{r latent-dataset-example}
 ds <- latent_dataset(
-  loadings   = component_matrix,   # voxels x components
-  scores     = score_matrix,       # time   x components
+  loadings   = component_matrix, # voxels x components
+  scores     = score_matrix, # time   x components
   TR         = 2.0,
   run_length = c(100, 100)
 )
@@ -154,13 +155,13 @@ timeline.
 ```{r sampling-frame-example}
 # Constructed automatically, or explicitly:
 sf <- sampling_frame(
-  blocklens = c(150, 150),   # run lengths in TRs
+  blocklens = c(150, 150), # run lengths in TRs
   TR        = 2.0
 )
 
-get_TR(sf)              # 2.0
-get_run_lengths(sf)     # 150 and 150
-get_total_duration(sf)  # 600 seconds
+get_TR(sf) # 2.0
+get_run_lengths(sf) # 150 and 150
+get_total_duration(sf) # 600 seconds
 ```
 
 The sampling frame handles all timepoint-to-second and TR-index conversions,

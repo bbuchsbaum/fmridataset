@@ -1,4 +1,4 @@
-# Tests for R/study_backend.R, R/study_backend_seed_s3.R, R/study_dataset_access.R
+# Tests for R/study_backend.R and R/study_dataset_access.R
 
 test_that("study_backend constructs from matrix_backends", {
   mat1 <- matrix(rnorm(40), nrow = 10, ncol = 4)
@@ -163,30 +163,6 @@ test_that(".collect_study_backend_block handles empty rows", {
   )
 
   expect_equal(dim(result), c(0, 4))
-})
-
-# --- study_backend_seed_s3 standalone functions ---
-
-test_that("find_subjects_for_rows identifies correct subjects", {
-  boundaries <- c(0L, 10L, 20L, 30L)
-
-  result <- fmridataset:::find_subjects_for_rows(c(5L, 15L), boundaries)
-  expect_equal(sort(result), c(1, 2))
-
-  result2 <- fmridataset:::find_subjects_for_rows(c(25L), boundaries)
-  expect_equal(result2, 3)
-
-  result3 <- fmridataset:::find_subjects_for_rows(c(1L, 10L, 11L, 30L), boundaries)
-  expect_equal(sort(result3), c(1, 2, 3))
-})
-
-test_that("study_seed_is_sparse returns FALSE", {
-  expect_false(fmridataset:::study_seed_is_sparse(NULL))
-})
-
-test_that("create_study_cache creates environment", {
-  cache <- fmridataset:::create_study_cache()
-  expect_true(is.environment(cache))
 })
 
 # --- study_backend coercion from matrix_dataset ---

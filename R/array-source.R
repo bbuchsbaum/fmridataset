@@ -205,7 +205,9 @@ validate_array_source <- function(x) {
 }
 
 .normalize_source_index <- function(index, n) {
-  if (is.null(index)) return(seq_len(n))
+  if (is.null(index)) {
+    return(seq_len(n))
+  }
   if (is.logical(index)) {
     if (length(index) != n || anyNA(index)) {
       .frame_abort("Logical source selectors must match the axis length and contain no NA.", "fmridataset_error_alignment")

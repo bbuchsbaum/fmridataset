@@ -14,7 +14,9 @@
 }
 
 .collection_data_shape <- function(data) {
-  if (inherits(data, "array_source")) return(source_shape(data))
+  if (inherits(data, "array_source")) {
+    return(source_shape(data))
+  }
   shape <- dim(data)
   if (is.null(shape)) c(length(data), 1L) else as.integer(shape)
 }
@@ -198,8 +200,8 @@ fmri_collection <- function(frames, metadata = list(), provenance = NULL) {
 validate_fmri_collection <- function(x) {
   required <- c("frames", "metadata", "provenance", "schema_version")
   if (!inherits(x, "fmri_collection") ||
-      !identical(names(unclass(x)), required) ||
-      !identical(x$schema_version, 1L)) {
+    !identical(names(unclass(x)), required) ||
+    !identical(x$schema_version, 1L)) {
     .collection_abort("x is not a valid fmri_collection.")
   }
   fmri_collection(x$frames, metadata = x$metadata, provenance = x$provenance)
@@ -226,7 +228,7 @@ collection_frames <- function(x) {
 collection_frame <- function(x, id) {
   validate_fmri_collection(x)
   if (!is.character(id) || length(id) != 1L || is.na(id) ||
-      !id %in% names(x$frames)) {
+    !id %in% names(x$frames)) {
     label <- if (length(id)) as.character(id)[[1L]] else ""
     .collection_abort(sprintf("Unknown collection frame '%s'.", label), frame = id)
   }
@@ -272,7 +274,9 @@ names.fmri_collection <- function(x) names(x$frames)
 #' @export
 `[.fmri_collection` <- function(x, i, ...) {
   validate_fmri_collection(x)
-  if (missing(i)) return(x)
+  if (missing(i)) {
+    return(x)
+  }
   i <- .normalize_collection_selector(i, names(x$frames))
   if (!length(i)) {
     .collection_abort("An fmri_collection cannot be empty after subsetting.")
@@ -287,7 +291,9 @@ names.fmri_collection <- function(x) names(x$frames)
 #' @export
 `[[.fmri_collection` <- function(x, i, ...) {
   validate_fmri_collection(x)
-  if (is.character(i)) return(collection_frame(x, i))
+  if (is.character(i)) {
+    return(collection_frame(x, i))
+  }
   position <- .normalize_collection_selector(i, names(x$frames))
   if (length(position) != 1L) {
     .collection_abort("Double-bracket collection selection requires one frame.")
@@ -325,7 +331,9 @@ collection_space_data <- function(x) {
 #' @export
 collection_common_space <- function(x) {
   validate_fmri_collection(x)
-  if (length(x$frames) == 1L) return(TRUE)
+  if (length(x$frames) == 1L) {
+    return(TRUE)
+  }
   reference <- space(x$frames[[1L]])
   all(vapply(x$frames[-1L], function(frame) {
     isTRUE(compatible_space(reference, space(frame))$compatible)

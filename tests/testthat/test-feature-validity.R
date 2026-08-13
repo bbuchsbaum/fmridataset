@@ -3,7 +3,8 @@
   source <- memory_source(values, chunks = c(2L, 3L))
   if (instrument) source <- counting_source(source)
   space_value <- index_space(
-    6L, ids = paste0("feature-", 1:6), namespace = "validity-fixture"
+    6L,
+    ids = paste0("feature-", 1:6), namespace = "validity-fixture"
   )
   subjects <- entity_frame(
     data.frame(subject_id = c("sub-1", "sub-2", "sub-3")),
@@ -132,21 +133,29 @@ test_that("frame and view validity access reads zero assay bytes", {
   expect_equal(source_counts(fx$source)$bytes, 0)
 
   empty <- frame[1L, integer()]
-  expect_identical(dim(validity_matrix(empty, "subject_feature_validity")),
-                   c(3L, 0L))
-  expect_identical(dim(observation_validity(empty, "subject_feature_validity")),
-                   c(1L, 0L))
-  expect_identical(validity_coverage(empty, "subject_feature_validity"),
-                   setNames(numeric(), character()))
+  expect_identical(
+    dim(validity_matrix(empty, "subject_feature_validity")),
+    c(3L, 0L)
+  )
+  expect_identical(
+    dim(observation_validity(empty, "subject_feature_validity")),
+    c(1L, 0L)
+  )
+  expect_identical(
+    validity_coverage(empty, "subject_feature_validity"),
+    setNames(numeric(), character())
+  )
 })
 
 test_that("coverage summaries stay policy-free and exact", {
   fx <- .validity_fixture()
   entity_coverage <- validity_coverage(
-    fx$frame, "subject_feature_validity", domain = "entity"
+    fx$frame, "subject_feature_validity",
+    domain = "entity"
   )
   observation_coverage <- validity_coverage(
-    fx$frame, "subject_feature_validity", domain = "observation"
+    fx$frame, "subject_feature_validity",
+    domain = "observation"
   )
 
   expect_equal(unname(entity_coverage), colMeans(fx$masks))
@@ -176,8 +185,10 @@ test_that("validity_masked_source lazily returns NA outside coverage", {
   )
   expect_identical(source_counts(fx$source)$values, 4)
 
-  all_invalid <- mask_bank(matrix(FALSE, nrow = 1L, ncol = 6L),
-                           space(fx$frame))
+  all_invalid <- mask_bank(
+    matrix(FALSE, nrow = 1L, ncol = 6L),
+    space(fx$frame)
+  )
   invalid_source <- validity_masked_source(
     memory_source(fx$values),
     rep(all_invalid$mask_ids, nrow(fx$values)), all_invalid
@@ -194,8 +205,10 @@ test_that("apply_feature_validity masks selected assays and records provenance",
   expect_s3_class(masked, "fmri_frame")
   expect_identical(observation_ids(masked), observation_ids(fx$frame))
   expect_identical(feature_ids(masked), feature_ids(fx$frame))
-  expect_identical(relation_registry_digest(masked),
-                   relation_registry_digest(fx$frame))
+  expect_identical(
+    relation_registry_digest(masked),
+    relation_registry_digest(fx$frame)
+  )
   expect_equal(collect_assay(masked), expected)
   record <- tail(provenance_records(masked$provenance), 1L)[[1L]]
   expect_identical(record$operation, "apply_feature_validity")
@@ -206,8 +219,10 @@ test_that("validity relations survive FDS and HDF5 round trips", {
   manifest <- fds_frame_manifest(fx$frame)
   rebuilt <- frame_from_fds_manifest(manifest, fds_frame_bindings(fx$frame))
 
-  expect_s3_class(relation(rebuilt, "subject_feature_validity"),
-                  "entity_feature_validity")
+  expect_s3_class(
+    relation(rebuilt, "subject_feature_validity"),
+    "entity_feature_validity"
+  )
   expect_identical(validity_matrix(rebuilt, "subject_feature_validity"), fx$masks)
 
   invalid <- manifest
@@ -215,6 +230,7 @@ test_that("validity relations survive FDS and HDF5 round trips", {
   expect_error(validate_fds_manifest(invalid), class = "fmridataset_error_schema")
 
   skip_if_not_installed("fmristore")
+  skip_if_not("write_frame_h5" %in% getNamespaceExports("fmristore"))
   path <- tempfile(fileext = ".fds.h5")
   on.exit(unlink(path), add = TRUE)
   write_frame(fx$frame, path)
@@ -224,12 +240,16 @@ test_that("validity relations survive FDS and HDF5 round trips", {
 
 test_that("feature mapping drops source-domain validity explicitly", {
   fx <- .validity_fixture()
-  target <- index_space(2L, ids = c("target-1", "target-2"),
-                        namespace = "validity-target")
+  target <- index_space(2L,
+    ids = c("target-1", "target-2"),
+    namespace = "validity-target"
+  )
   map <- feature_map(
     space(fx$frame), target,
-    matrix(c(1, 0, 0, 0, 0, 0,
-             0, 0, 0, 0, 0, 1), nrow = 2L, byrow = TRUE)
+    matrix(c(
+      1, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 1
+    ), nrow = 2L, byrow = TRUE)
   )
   mapped <- map_features(fx$frame, map = map)
 

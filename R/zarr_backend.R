@@ -100,7 +100,7 @@ backend_open.zarr_backend <- function(backend) {
         ignore.case = TRUE
       )
       if (!is_remote_source &&
-            !file.exists(backend$source)) {
+        !file.exists(backend$source)) {
         stop_fmridataset(
           fmridataset_error_backend_io,
           sprintf("Zarr store not found: %s", backend$source),

@@ -1,10 +1,14 @@
 .feature_map_fixture <- function(operator_backend = c("matrix", "sparse", "source"),
                                  instrument = FALSE) {
   operator_backend <- match.arg(operator_backend)
-  source_space <- index_space(4L, ids = paste0("voxel-", 1:4),
-                              namespace = "map-source")
-  target_space <- index_space(3L, ids = paste0("parcel-", 1:3),
-                              namespace = "map-target")
+  source_space <- index_space(4L,
+    ids = paste0("voxel-", 1:4),
+    namespace = "map-source"
+  )
+  target_space <- index_space(3L,
+    ids = paste0("parcel-", 1:3),
+    namespace = "map-target"
+  )
   operator <- matrix(
     c(
       0.5, 0.5, 0, 0,
@@ -13,8 +17,7 @@
     ),
     nrow = 3L, byrow = TRUE
   )
-  stored_operator <- switch(
-    operator_backend,
+  stored_operator <- switch(operator_backend,
     matrix = operator,
     sparse = Matrix::Matrix(operator, sparse = TRUE),
     source = memory_source(operator, chunks = c(2L, 2L))
@@ -42,10 +45,14 @@ test_that("feature_map has stable typed spatial identity", {
 
   expect_s3_class(x, "feature_map")
   expect_invisible(validate_feature_map(x))
-  expect_identical(space_digest(feature_map_source_space(x)),
-                   space_digest(fx$source_space))
-  expect_identical(space_digest(feature_map_target_space(x)),
-                   space_digest(fx$target_space))
+  expect_identical(
+    space_digest(feature_map_source_space(x)),
+    space_digest(fx$source_space)
+  )
+  expect_identical(
+    space_digest(feature_map_target_space(x)),
+    space_digest(fx$target_space)
+  )
   expect_identical(dim(feature_map_operator(x)), c(3L, 4L))
   expect_match(feature_map_digest(x), "^[0-9a-f]{64}$")
   expect_identical(
@@ -74,12 +81,14 @@ test_that("feature_map rejects ambiguous or unserializable mappings", {
   )
   expect_error(
     feature_map(fx$source_space, fx$target_space, fx$operator,
-                metadata = list(loader = function() NULL)),
+      metadata = list(loader = function() NULL)
+    ),
     "serializable"
   )
   expect_error(
     feature_map(fx$source_space, fx$target_space, fx$operator,
-                traits = list(TRUE)),
+      traits = list(TRUE)
+    ),
     "named"
   )
 })
@@ -165,8 +174,10 @@ test_that("map_features changes only the feature domain and declared assay rules
     key = "subject_id"
   )
   old_feature_relation <- sparse_relation(
-    data.frame(.from_id = feature_ids(fx$source_space),
-               .to_id = rep("sub-1", 4L)),
+    data.frame(
+      .from_id = feature_ids(fx$source_space),
+      .to_id = rep("sub-1", 4L)
+    ),
     from = "feature", to = "subject"
   )
   frame <- fmri_frame(
@@ -185,7 +196,8 @@ test_that("map_features changes only the feature domain and declared assay rules
   )
 
   wrong_space <- index_space(
-    4L, ids = feature_ids(fx$source_space), namespace = "wrong-space"
+    4L,
+    ids = feature_ids(fx$source_space), namespace = "wrong-space"
   )
   wrong_map <- feature_map(wrong_space, fx$target_space, fx$operator)
   expect_error(
@@ -211,8 +223,10 @@ test_that("map_features changes only the feature domain and declared assay rules
   expect_equal(source_counts(fx$source)$reads, 1)
   records <- provenance_records(mapped$provenance)
   expect_identical(records[[length(records)]]$operation, "map_features")
-  expect_identical(records[[length(records)]]$inputs$feature_map,
-                   feature_map_digest(fx$map))
+  expect_identical(
+    records[[length(records)]]$inputs$feature_map,
+    feature_map_digest(fx$map)
+  )
 })
 
 test_that("map_features derives canonical maps for parcel and basis spaces", {
@@ -264,8 +278,10 @@ test_that("mapped frames retain feature-map provenance through FDS", {
     ))
   )
 
-  expect_identical(provenance_digest(restored$provenance),
-                   provenance_digest(mapped$provenance))
+  expect_identical(
+    provenance_digest(restored$provenance),
+    provenance_digest(mapped$provenance)
+  )
   expect_identical(space_digest(space(restored)), space_digest(fx$target_space))
   expect_equal(collect_assay(restored), fx$values %*% t(fx$operator))
 })
@@ -292,8 +308,10 @@ test_that("study mapped_from links validate their typed feature map", {
     "fmri_study"
   )
   expect_invisible(validate_fds_study_manifest(fds_study_manifest(study)))
-  expect_identical(feature_map_digest(link$metadata$feature_map),
-                   feature_map_digest(fx$map))
+  expect_identical(
+    feature_map_digest(link$metadata$feature_map),
+    feature_map_digest(fx$map)
+  )
   positional_metadata <- frame_link(
     "parcel", "native", "corresponds_to", NULL,
     "feature", "feature", list(legacy = TRUE)

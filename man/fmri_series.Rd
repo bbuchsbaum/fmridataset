@@ -8,7 +8,7 @@ fmri_series(
   dataset,
   selector = NULL,
   timepoints = NULL,
-  output = c("fmri_series", "DelayedMatrix"),
+  output = c("fmri_series"),
   event_window = NULL,
   ...
 )
@@ -20,7 +20,7 @@ fmri_series(
 
 \item{timepoints}{Optional temporal subset or \code{NULL} for all.}
 
-\item{output}{Return type - "FmriSeries" (default) or "DelayedMatrix".}
+\item{output}{Return type. Only "fmri_series" is supported.}
 
 \item{event_window}{Reserved for future use.}
 
@@ -29,8 +29,7 @@ fmri_series(
 \value{
 An object of class \code{fmri_series}
 
-An \code{fmri_series} (with a \code{delarr} lazy matrix payload) or a
-\code{DelayedMatrix} when \code{output = "DelayedMatrix"}.
+An \code{fmri_series} with a \code{delarr} lazy matrix payload.
 }
 \description{
 An S3 class representing lazily accessed fMRI time series data. The

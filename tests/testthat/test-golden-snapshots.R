@@ -42,32 +42,6 @@ test_that("fmri_dataset print snapshots", {
   })
 })
 
-test_that("FmriSeries show method snapshots", {
-  skip_if_not_installed("DelayedArray")
-  testthat::local_edition(3)
-
-  ref_data <- generate_reference_data()
-
-  dset <- matrix_dataset(
-    ref_data$matrix_data,
-    TR = ref_data$metadata$TR,
-    run_length = ref_data$metadata$run_lengths
-  )
-
-  fmri_series <- as_delayed_array(dset)
-
-  expect_snapshot({
-    show(fmri_series)
-  })
-
-  # Subset version
-  subset_series <- fmri_series[1:10, 1:20]
-
-  expect_snapshot({
-    show(subset_series)
-  })
-})
-
 test_that("backend print snapshots", {
   testthat::local_edition(3)
 

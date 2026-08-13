@@ -81,8 +81,8 @@
 #' library(neuroim2)
 #' library(fmristore)
 #'
-#' bids_dir  <- system.file("extdata", "ds001", package = "bidser")
-#' atlas     <- fmristore::get_schaefer_atlas(100)   # example atlas
+#' bids_dir <- system.file("extdata", "ds001", package = "bidser")
+#' atlas <- fmristore::get_schaefer_atlas(100) # example atlas
 #'
 #' # Parcellated mode
 #' study <- compress_bids_study(
@@ -107,20 +107,20 @@
 compress_bids_study <- function(
   x,
   file,
-  mode         = c("parcellated", "latent"),
-  clusters     = NULL,
-  summary_fun  = mean,
-  encoding     = NULL,
+  mode = c("parcellated", "latent"),
+  clusters = NULL,
+  summary_fun = mean,
+  encoding = NULL,
   n_components = NULL,
   template = NULL,
-  mask         = NULL,
-  space        = "MNI152NLin2009cAsym",
-  tasks        = NULL,
-  subjects     = NULL,
-  sessions     = NULL,
-  confounds    = NULL,
-  compression  = 4L,
-  verbose      = TRUE
+  mask = NULL,
+  space = "MNI152NLin2009cAsym",
+  tasks = NULL,
+  subjects = NULL,
+  sessions = NULL,
+  confounds = NULL,
+  compression = 4L,
+  verbose = TRUE
 ) {
   # ---------------------------------------------------------------
   # 1. Dependency checks
@@ -153,11 +153,11 @@ compress_bids_study <- function(
   derived <- .compress_bids_study_resolve_mode(
     mode, clusters, mask, template, encoding, n_components
   )
-  mask              <- derived$mask
-  encoding          <- derived$encoding
+  mask <- derived$mask
+  encoding <- derived$encoding
   template_loadings <- derived$template_loadings
-  cluster_ids       <- derived$cluster_ids
-  K                 <- derived$K
+  cluster_ids <- derived$cluster_ids
+  K <- derived$K
 
   # ---------------------------------------------------------------
   # 6. Build scan names for manifest
@@ -174,19 +174,22 @@ compress_bids_study <- function(
 
   if (verbose) message("Creating HDF5 file: ", file)
   h5 <- hdf5r::H5File$new(file, mode = "w")
-  on.exit({
-    if (h5$is_valid) {
-      tryCatch(h5$close_all(), error = function(e) invisible(NULL))
-    }
-  }, add = TRUE)
+  on.exit(
+    {
+      if (h5$is_valid) {
+        tryCatch(h5$close_all(), error = function(e) invisible(NULL))
+      }
+    },
+    add = TRUE
+  )
 
   # ---------------------------------------------------------------
   # 8. Root attributes
   # ---------------------------------------------------------------
-  h5$create_attr("format",           "bids_h5_study")
-  h5$create_attr("version",          "1.0")
+  h5$create_attr("format", "bids_h5_study")
+  h5$create_attr("version", "1.0")
   h5$create_attr("compression_mode", mode)
-  h5$create_attr("writer_version",   as.character(utils::packageVersion("fmridataset")))
+  h5$create_attr("writer_version", as.character(utils::packageVersion("fmridataset")))
 
   # ---------------------------------------------------------------
   # 9. Write /bids/ group
@@ -217,12 +220,12 @@ compress_bids_study <- function(
     template, template_loadings, encoding, K, TR_value, confounds,
     compression, verbose
   )
-  K                 <- scan_loop$K
-  n_time_vec        <- scan_loop$n_time_vec
-  n_features_vec    <- scan_loop$n_features_vec
-  has_events_vec    <- scan_loop$has_events_vec
+  K <- scan_loop$K
+  n_time_vec <- scan_loop$n_time_vec
+  n_features_vec <- scan_loop$n_features_vec
+  has_events_vec <- scan_loop$has_events_vec
   has_confounds_vec <- scan_loop$has_confounds_vec
-  n_scans           <- scan_loop$n_scans
+  n_scans <- scan_loop$n_scans
 
   # ---------------------------------------------------------------
   # 13. Write /latent_meta/ (latent mode only)
@@ -266,26 +269,30 @@ compress_bids_study <- function(
 
 # Phase 1: dependency checks for compress_bids_study()
 .compress_bids_study_check_deps <- function(mode) {
-  if (!requireNamespace("bidser",  quietly = TRUE)) {
+  if (!requireNamespace("bidser", quietly = TRUE)) {
     stop("Package 'bidser' is required for compress_bids_study() but is not installed.\n",
-         "Install it with: install.packages('bidser') or remotes::install_github('bbuchsbaum/bidser')",
-         call. = FALSE)
+      "Install it with: install.packages('bidser') or remotes::install_github('bbuchsbaum/bidser')",
+      call. = FALSE
+    )
   }
-  if (!requireNamespace("hdf5r",   quietly = TRUE)) {
+  if (!requireNamespace("hdf5r", quietly = TRUE)) {
     stop("Package 'hdf5r' is required for compress_bids_study() but is not installed.\n",
-         "Install it with: install.packages('hdf5r')",
-         call. = FALSE)
+      "Install it with: install.packages('hdf5r')",
+      call. = FALSE
+    )
   }
 
   if (mode == "parcellated" && !requireNamespace("fmristore", quietly = TRUE)) {
     stop("Package 'fmristore' is required for mode='parcellated' but is not installed.\n",
-         "Install it with: remotes::install_github('bbuchsbaum/fmristore')",
-         call. = FALSE)
+      "Install it with: remotes::install_github('bbuchsbaum/fmristore')",
+      call. = FALSE
+    )
   }
   if (mode == "latent" && !requireNamespace("fmrilatent", quietly = TRUE)) {
     stop("Package 'fmrilatent' is required for mode='latent' but is not installed.\n",
-         "Install it with: remotes::install_github('bbuchsbaum/fmrilatent')",
-         call. = FALSE)
+      "Install it with: remotes::install_github('bbuchsbaum/fmrilatent')",
+      call. = FALSE
+    )
   }
 
   invisible(NULL)
@@ -303,7 +310,8 @@ compress_bids_study <- function(
   }
   if (!inherits(x, "bids_project")) {
     stop("'x' must be a bidser::bids_project object or a path to a BIDS directory.",
-         call. = FALSE)
+      call. = FALSE
+    )
   }
   x
 }
@@ -316,7 +324,9 @@ compress_bids_study <- function(
 
   if (is.null(scans_df) || nrow(scans_df) == 0L) {
     stop("No preprocessed scans found in BIDS project. ",
-         "Ensure fMRIPrep outputs are present.", call. = FALSE)
+      "Ensure fMRIPrep outputs are present.",
+      call. = FALSE
+    )
   }
 
   # Apply filters
@@ -370,7 +380,8 @@ compress_bids_study <- function(
 .compress_bids_study_resolve_parcellated <- function(clusters, mask) {
   if (is.null(clusters) || !inherits(clusters, "ClusteredNeuroVol")) {
     stop("'clusters' must be a neuroim2::ClusteredNeuroVol object for mode='parcellated'.",
-         call. = FALSE)
+      call. = FALSE
+    )
   }
 
   if (is.null(mask)) {
@@ -388,7 +399,8 @@ compress_bids_study <- function(
 
   if (K == 0L) {
     stop("No parcels found in 'clusters'. Check that the ClusteredNeuroVol is valid.",
-         call. = FALSE)
+      call. = FALSE
+    )
   }
 
   list(
@@ -405,7 +417,8 @@ compress_bids_study <- function(
 .compress_bids_study_resolve_latent <- function(mask, template, encoding, n_components) {
   if (is.null(mask)) {
     stop("'mask' is required for mode='latent' (no clusters to derive mask from).",
-         call. = FALSE)
+      call. = FALSE
+    )
   }
   if (!inherits(mask, "LogicalNeuroVol")) {
     stop("'mask' must be a neuroim2::LogicalNeuroVol object.", call. = FALSE)
@@ -414,17 +427,19 @@ compress_bids_study <- function(
   if (!is.null(template)) {
     # Template mode: shared loadings, per-scan coefficients only
     if (!inherits(template, "parcel_basis_template") &&
-          !inherits(template, "HierarchicalBasisTemplate") &&
-          !is.list(template)) {
+      !inherits(template, "HierarchicalBasisTemplate") &&
+      !is.list(template)) {
       stop("'template' must be a fmrilatent template object (parcel_basis_template or HierarchicalBasisTemplate).",
-           call. = FALSE)
+        call. = FALSE
+      )
     }
     # Extract template loadings
     template_loadings <- tryCatch(
       as.matrix(fmrilatent::template_loadings(template)),
       error = function(e) {
         stop(sprintf("Failed to extract loadings from template: %s", e$message),
-             call. = FALSE)
+          call. = FALSE
+        )
       }
     )
     K <- ncol(template_loadings)
@@ -437,7 +452,8 @@ compress_bids_study <- function(
     if (is.null(encoding)) {
       if (is.null(n_components)) {
         stop("For mode='latent', either 'encoding', 'n_components', or 'template' must be provided.",
-             call. = FALSE)
+          call. = FALSE
+        )
       }
       encoding <- fmrilatent::spec_space_pca(k = as.integer(n_components))
     }
@@ -466,14 +482,14 @@ compress_bids_study <- function(
   h5$create_group("scans")
   scans_grp <- h5[["scans"]]
 
-  n_scans  <- nrow(scans_df)
-  n_time_vec        <- integer(n_scans)
-  n_features_vec    <- integer(n_scans)
-  has_events_vec    <- logical(n_scans)
+  n_scans <- nrow(scans_df)
+  n_time_vec <- integer(n_scans)
+  n_features_vec <- integer(n_scans)
+  has_events_vec <- logical(n_scans)
   has_confounds_vec <- logical(n_scans)
 
   for (i in seq_len(n_scans)) {
-    scan_row  <- scans_df[i, , drop = FALSE]
+    scan_row <- scans_df[i, , drop = FALSE]
     scan_name <- scan_row$scan_name
     scan_path <- .get_scan_path(scan_row)
 
@@ -486,7 +502,8 @@ compress_bids_study <- function(
       neuroim2::read_vec(scan_path, mask = mask),
       error = function(e) {
         stop(sprintf("Failed to read scan '%s': %s", scan_path, e$message),
-             call. = FALSE)
+          call. = FALSE
+        )
       }
     )
 
@@ -575,22 +592,22 @@ compress_bids_study <- function(
                                              template_loadings, encoding,
                                              n_time, K, compression) {
   mask_indices <- which(as.logical(mask))
-  mat <- neuroim2::series(nvec, mask_indices)  # [T, V]
+  mat <- neuroim2::series(nvec, mask_indices) # [T, V]
 
   if (!is.null(template_loadings)) {
     # -- Template mode: project onto the shared template and honor the
     # template's own offset semantics for round-trip reconstruction.
     tpl_proj <- .project_template_with_offset(template, mat, template_loadings)
-    basis_mat    <- tpl_proj$basis
+    basis_mat <- tpl_proj$basis
     loadings_mat <- NULL
-    offset_vec   <- tpl_proj$offset
+    offset_vec <- tpl_proj$offset
     rm(tpl_proj)
   } else {
     # -- Independent encoding mode
     lvec <- fmrilatent::encode(mat, encoding, mask = mask)
-    basis_mat    <- as.matrix(fmrilatent::basis(lvec))     # [T, K]
-    loadings_mat <- as.matrix(fmrilatent::loadings(lvec))  # [V, K]
-    offset_vec   <- fmrilatent::offset(lvec)               # [V] or numeric(0)
+    basis_mat <- as.matrix(fmrilatent::basis(lvec)) # [T, K]
+    loadings_mat <- as.matrix(fmrilatent::loadings(lvec)) # [V, K]
+    offset_vec <- fmrilatent::offset(lvec) # [V] or numeric(0)
   }
 
   # Determine K from first scan
@@ -720,9 +737,9 @@ compress_bids_study <- function(
     "{}"
   }
 
-  lm_grp$create_dataset("encoding_family",  robj = encoding_family)
-  lm_grp$create_dataset("encoding_params",  robj = as.character(encoding_params))
-  lm_grp$create_dataset("n_components",     robj = as.integer(K))
+  lm_grp$create_dataset("encoding_family", robj = encoding_family)
+  lm_grp$create_dataset("encoding_params", robj = as.character(encoding_params))
+  lm_grp$create_dataset("n_components", robj = as.integer(K))
 
   # Write shared template if provided
   has_template <- !is.null(template_loadings)
@@ -769,15 +786,15 @@ compress_bids_study <- function(
 
   has_session_col <- "session" %in% names(scans_df)
 
-  si$create_dataset("scan_name",      robj = scans_df$scan_name,           gzip_level = compression)
-  si$create_dataset("subject",        robj = as.character(scans_df$subid), gzip_level = compression)
-  si$create_dataset("task",           robj = as.character(scans_df$task),  gzip_level = compression)
-  si$create_dataset("run",            robj = as.character(scans_df$run),   gzip_level = compression)
-  si$create_dataset("n_time",         robj = n_time_vec,                   gzip_level = compression)
-  si$create_dataset("n_features",     robj = n_features_vec,               gzip_level = compression)
-  si$create_dataset("time_offset",    robj = time_offset,                  gzip_level = compression)
-  si$create_dataset("has_events",     robj = as.integer(has_events_vec),   gzip_level = compression)
-  si$create_dataset("has_confounds",  robj = as.integer(has_confounds_vec), gzip_level = compression)
+  si$create_dataset("scan_name", robj = scans_df$scan_name, gzip_level = compression)
+  si$create_dataset("subject", robj = as.character(scans_df$subid), gzip_level = compression)
+  si$create_dataset("task", robj = as.character(scans_df$task), gzip_level = compression)
+  si$create_dataset("run", robj = as.character(scans_df$run), gzip_level = compression)
+  si$create_dataset("n_time", robj = n_time_vec, gzip_level = compression)
+  si$create_dataset("n_features", robj = n_features_vec, gzip_level = compression)
+  si$create_dataset("time_offset", robj = time_offset, gzip_level = compression)
+  si$create_dataset("has_events", robj = as.integer(has_events_vec), gzip_level = compression)
+  si$create_dataset("has_confounds", robj = as.integer(has_confounds_vec), gzip_level = compression)
 
   if (has_session_col) {
     session_vals <- ifelse(is.na(scans_df$session), "", as.character(scans_df$session))
@@ -861,8 +878,9 @@ compress_bids_study <- function(
   path_col <- intersect(c("path", "full_path", "filename", "file"), names(scan_row))
   if (length(path_col) == 0L) {
     stop("Cannot determine scan file path from manifest row. ",
-         "Expected column 'path', 'full_path', 'filename', or 'file'.",
-         call. = FALSE)
+      "Expected column 'path', 'full_path', 'filename', or 'file'.",
+      call. = FALSE
+    )
   }
   as.character(scan_row[[path_col[[1]]]])
 }
@@ -969,7 +987,7 @@ compress_bids_study <- function(
   # Manual fallback: extract masked matrix [T, N_voxels] then aggregate by cluster
   # neuroim2::series() returns [N_voxels, T]; we need [T, K]
   mask_logical <- as.logical(clusters > 0)
-  vox_mat <- neuroim2::series(nvec, which(mask_logical))  # [T, N_voxels]
+  vox_mat <- neuroim2::series(nvec, which(mask_logical)) # [T, N_voxels]
 
   cluster_vec <- as.integer(clusters)[mask_logical]
 
@@ -998,18 +1016,21 @@ compress_bids_study <- function(
 
   # Study name: use root directory basename
   bids_root <- tryCatch(bids_proj$path, error = function(e) "unknown")
-  bg$create_dataset("name",  robj = basename(bids_root))
+  bg$create_dataset("name", robj = basename(bids_root))
   bg$create_dataset("space", robj = space)
 
   # Pipeline: try to detect from derivative path
-  pipeline <- tryCatch({
-    deriv_path <- bids_proj$derivative_path
-    if (!is.null(deriv_path)) basename(deriv_path) else "unknown"
-  }, error = function(e) "unknown")
+  pipeline <- tryCatch(
+    {
+      deriv_path <- bids_proj$derivative_path
+      if (!is.null(deriv_path)) basename(deriv_path) else "unknown"
+    },
+    error = function(e) "unknown"
+  )
   bg$create_dataset("pipeline", robj = pipeline)
 
   # Tasks and sessions
-  unique_tasks    <- sort(unique(as.character(scans_df$task)))
+  unique_tasks <- sort(unique(as.character(scans_df$task)))
   bg$create_dataset("tasks", robj = unique_tasks, gzip_level = compression)
 
   if ("session" %in% names(scans_df)) {
@@ -1020,8 +1041,10 @@ compress_bids_study <- function(
   }
 
   # Dataset description JSON
-  desc_path <- file.path(tryCatch(bids_proj$path, error = function(e) ""),
-                         "dataset_description.json")
+  desc_path <- file.path(
+    tryCatch(bids_proj$path, error = function(e) ""),
+    "dataset_description.json"
+  )
   if (file.exists(desc_path) && requireNamespace("jsonlite", quietly = TRUE)) {
     desc_json <- tryCatch(
       paste(readLines(desc_path, warn = FALSE), collapse = "\n"),
@@ -1099,7 +1122,7 @@ compress_bids_study <- function(
   sp <- neuroim2::space(mask)
   dims_3d <- dim(mask)
 
-  hg$create_dataset("dim",    robj = as.integer(dims_3d))
+  hg$create_dataset("dim", robj = as.integer(dims_3d))
   hg$create_dataset("pixdim", robj = as.numeric(neuroim2::spacing(sp)))
 
   # Store the qform affine transform
@@ -1116,17 +1139,20 @@ compress_bids_study <- function(
   )
 
   # Voxel coordinates: [N_voxels, 3] int32
-  mask_idx  <- which(as.logical(mask))
-  vox_coords <- tryCatch({
-    neuroim2::index_to_grid(sp, mask_idx)
-  }, error = function(e) {
-    # Fallback: convert linear indices to 3D coords manually
-    d <- dims_3d
-    k <- ((mask_idx - 1L) %/% (d[[1]] * d[[2]])) + 1L
-    j <- (((mask_idx - 1L) %% (d[[1]] * d[[2]])) %/% d[[1]]) + 1L
-    i <- ((mask_idx - 1L) %% d[[1]]) + 1L
-    cbind(i, j, k)
-  })
+  mask_idx <- which(as.logical(mask))
+  vox_coords <- tryCatch(
+    {
+      neuroim2::index_to_grid(sp, mask_idx)
+    },
+    error = function(e) {
+      # Fallback: convert linear indices to 3D coords manually
+      d <- dims_3d
+      k <- ((mask_idx - 1L) %/% (d[[1]] * d[[2]])) + 1L
+      j <- (((mask_idx - 1L) %% (d[[1]] * d[[2]])) %/% d[[1]]) + 1L
+      i <- ((mask_idx - 1L) %% d[[1]]) + 1L
+      cbind(i, j, k)
+    }
+  )
 
   spg$create_dataset(
     "voxel_coords",
@@ -1161,10 +1187,13 @@ compress_bids_study <- function(
   )
 
   # Optional cluster metadata (labels etc.)
-  has_labels <- tryCatch({
-    labs <- neuroim2::labels(clusters)
-    !is.null(labs) && length(labs) > 0L
-  }, error = function(e) FALSE)
+  has_labels <- tryCatch(
+    {
+      labs <- neuroim2::labels(clusters)
+      !is.null(labs) && length(labs) > 0L
+    },
+    error = function(e) FALSE
+  )
 
   if (has_labels) {
     pg$create_group("cluster_meta")
@@ -1209,7 +1238,7 @@ compress_bids_study <- function(
     args$run <- as.character(scan_row$run)
   }
   if ("session" %in% names(scan_row) && !is.na(scan_row$session) &&
-        nchar(as.character(scan_row$session)) > 0L) {
+    nchar(as.character(scan_row$session)) > 0L) {
     args$session <- as.character(scan_row$session)
   }
   args
@@ -1258,7 +1287,7 @@ compress_bids_study <- function(
     args$run <- as.character(scan_row$run)
   }
   if ("session" %in% names(scan_row) && !is.na(scan_row$session) &&
-        nchar(as.character(scan_row$session)) > 0L) {
+    nchar(as.character(scan_row$session)) > 0L) {
     args$session <- as.character(scan_row$session)
   }
   if (!is.null(confounds_spec)) {
@@ -1286,8 +1315,10 @@ compress_bids_study <- function(
 # Drop BIDS metadata identifier columns from a confounds data.frame
 .read_scan_confounds_drop_meta <- function(result) {
   meta_cols <- intersect(
-    c("participant_id", "subject", "subid", ".subid",
-      "task", ".task", "run", ".run", "session", ".session"),
+    c(
+      "participant_id", "subject", "subid", ".subid",
+      "task", ".task", "run", ".run", "session", ".session"
+    ),
     names(result)
   )
   if (length(meta_cols) > 0L) {

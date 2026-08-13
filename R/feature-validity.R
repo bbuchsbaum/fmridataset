@@ -17,7 +17,9 @@
 .pack_mask_rows <- function(x) {
   bytes <- as.integer(ceiling(ncol(x) / 8))
   packed <- lapply(seq_len(nrow(x)), function(i) {
-    if (!bytes) return(raw())
+    if (!bytes) {
+      return(raw())
+    }
     padded <- c(as.raw(x[i, ]), raw(bytes * 8L - ncol(x)))
     packBits(padded, type = "raw")
   })
@@ -25,7 +27,9 @@
 }
 
 .unpack_mask_rows <- function(bits, n_mask, n_feature, bytes) {
-  if (!n_mask) return(matrix(logical(), nrow = 0L, ncol = n_feature))
+  if (!n_mask) {
+    return(matrix(logical(), nrow = 0L, ncol = n_feature))
+  }
   out <- matrix(FALSE, nrow = n_mask, ncol = n_feature)
   for (i in seq_len(n_mask)) {
     at <- (i - 1L) * bytes + seq_len(bytes)
@@ -57,7 +61,8 @@ mask_bank <- function(masks, space, metadata = list()) {
     }
     padded <- c(as.raw(row), raw(bytes * 8L - length(row)))
     digest::digest(packBits(padded, type = "raw"),
-                   algo = "sha256", serialize = TRUE)
+      algo = "sha256", serialize = TRUE
+    )
   }, character(1))
   unique_at <- match(unique(keys), keys)
   unique_masks <- masks[unique_at, , drop = FALSE]
@@ -98,17 +103,17 @@ validate_mask_bank <- function(x) {
     "assignment", "metadata", "schema_version"
   )
   if (!inherits(x, "mask_bank") || !identical(names(unclass(x)), required) ||
-      !identical(x$schema_version, 1L) ||
-      !inherits(x$space, "feature_space") ||
-      !identical(x$n_features, as.integer(n_features(x$space))) ||
-      !identical(x$bytes_per_mask, as.integer(ceiling(x$n_features / 8))) ||
-      !is.raw(x$bits) ||
-      length(x$bits) != length(x$mask_ids) * x$bytes_per_mask ||
-      anyNA(x$mask_ids) || any(!nzchar(x$mask_ids)) ||
-      anyDuplicated(x$mask_ids) ||
-      !is.integer(x$assignment) ||
-      any(x$assignment < 1L | x$assignment > length(x$mask_ids)) ||
-      !is.list(x$metadata) || .source_contains_runtime_state(x)) {
+    !identical(x$schema_version, 1L) ||
+    !inherits(x$space, "feature_space") ||
+    !identical(x$n_features, as.integer(n_features(x$space))) ||
+    !identical(x$bytes_per_mask, as.integer(ceiling(x$n_features / 8))) ||
+    !is.raw(x$bits) ||
+    length(x$bits) != length(x$mask_ids) * x$bytes_per_mask ||
+    anyNA(x$mask_ids) || any(!nzchar(x$mask_ids)) ||
+    anyDuplicated(x$mask_ids) ||
+    !is.integer(x$assignment) ||
+    any(x$assignment < 1L | x$assignment > length(x$mask_ids)) ||
+    !is.list(x$metadata) || .source_contains_runtime_state(x)) {
     .validity_abort("x is not a valid mask_bank descriptor.")
   }
   invisible(x)
@@ -128,7 +133,9 @@ mask_values <- function(x, mask = NULL) {
   values <- .unpack_mask_rows(
     x$bits, length(x$mask_ids), x$n_features, x$bytes_per_mask
   )
-  if (is.null(mask)) return(values)
+  if (is.null(mask)) {
+    return(values)
+  }
   index <- if (is.character(mask)) match(mask, x$mask_ids) else as.integer(mask)
   if (anyNA(index) || any(index < 1L | index > nrow(values))) {
     .validity_abort("Unknown mask selector.", field = "mask")
@@ -171,7 +178,8 @@ entity_feature_validity <- function(entity, entity_ids, masks, space,
   }
   if (length(bank$assignment) != length(entity_ids)) {
     .validity_abort("Validity masks require one assignment per entity.",
-                    field = "assignment")
+      field = "assignment"
+    )
   }
   out <- structure(
     list(
@@ -206,24 +214,26 @@ validate_entity_feature_validity <- function(x) {
     "schema_version"
   )
   if (!inherits(x, "entity_feature_validity") ||
-      !identical(names(unclass(x)), required) ||
-      !identical(x$type, "entity_feature_validity") ||
-      !identical(x$schema_version, 1L)) {
+    !identical(names(unclass(x)), required) ||
+    !identical(x$type, "entity_feature_validity") ||
+    !identical(x$schema_version, 1L)) {
     .validity_abort("x is not a valid entity_feature_validity descriptor.")
   }
   .one_relation_string(x$entity, "entity")
   .validate_stable_ids(x$entity_ids, "validity entity")
   validate_mask_bank(x$bank)
   if (length(x$mask_id) != length(x$entity_ids) || anyNA(x$mask_id) ||
-      any(!x$mask_id %in% x$bank$mask_ids) || !is.list(x$metadata) ||
-      .source_contains_runtime_state(x)) {
+    any(!x$mask_id %in% x$bank$mask_ids) || !is.list(x$metadata) ||
+    .source_contains_runtime_state(x)) {
     .validity_abort("Validity assignments are malformed.", field = "mask_id")
   }
   invisible(x)
 }
 
 .validity_relation <- function(x, name = NULL) {
-  if (inherits(x, "entity_feature_validity")) return(x)
+  if (inherits(x, "entity_feature_validity")) {
+    return(x)
+  }
   if (!inherits(x, "fmri_frame")) {
     .validity_abort("x must be a validity descriptor, frame, or view.")
   }
@@ -337,9 +347,9 @@ validity_masked_source <- function(source, observation_mask_id, bank) {
   validate_array_source(source)
   validate_mask_bank(bank)
   if (source_shape(source)[2L] != bank$n_features ||
-      length(observation_mask_id) != source_shape(source)[1L] ||
-      anyNA(observation_mask_id) ||
-      any(!observation_mask_id %in% bank$mask_ids)) {
+    length(observation_mask_id) != source_shape(source)[1L] ||
+    anyNA(observation_mask_id) ||
+    any(!observation_mask_id %in% bank$mask_ids)) {
     .validity_abort("Source, mask assignments, and bank are not aligned.")
   }
   out <- structure(
@@ -380,18 +390,22 @@ source_fingerprint.validity_masked_source <- function(x, ...) {
 #' @export
 source_open.validity_masked_source <- function(x, ...) {
   structure(list(source = x),
-            class = c("validity_masked_source_handle", "array_source_handle"))
+    class = c("validity_masked_source_handle", "array_source_handle")
+  )
 }
 #' @export
 source_read.validity_masked_source <- function(x, observations = NULL,
-                                                features = NULL, ...) {
+                                               features = NULL, ...) {
   observations <- .normalize_source_index(observations, x$shape[1L])
   features <- .normalize_source_index(features, x$shape[2L])
   values <- source_read(x$source, observations, features, ...)
-  if (!length(observations) || !length(features)) return(values)
+  if (!length(observations) || !length(features)) {
+    return(values)
+  }
   masks <- mask_values(x$bank)[
     match(x$observation_mask_id[observations], x$bank$mask_ids),
-    features, drop = FALSE
+    features,
+    drop = FALSE
   ]
   values[!masks] <- NA
   values
@@ -400,7 +414,8 @@ source_read.validity_masked_source <- function(x, observations = NULL,
 source_read_native.validity_masked_source <- function(x, observations = NULL, ...) {
   .frame_abort(
     "validity_masked_source has no native spatial read path.",
-    "fmridataset_error_backend_io", operation = "native_read"
+    "fmridataset_error_backend_io",
+    operation = "native_read"
   )
 }
 #' @export
@@ -417,7 +432,7 @@ apply_feature_validity <- function(x, name = NULL, assays = NULL) {
   value <- .validity_relation(x, name)
   if (is.null(assays)) assays <- names(fmridataset::assays(x))
   if (!is.character(assays) || anyNA(assays) || anyDuplicated(assays) ||
-      any(!assays %in% names(fmridataset::assays(x)))) {
+    any(!assays %in% names(fmridataset::assays(x)))) {
     .validity_abort("assays contains unknown or duplicate names.", field = "assays")
   }
   observed <- observation_validity(x, name)
@@ -434,7 +449,8 @@ apply_feature_validity <- function(x, name = NULL, assays = NULL) {
   names(values) <- names(fmridataset::assays(x))
   graph <- .as_provenance_graph(x$provenance %||% x$base$provenance)
   graph <- append_provenance(graph, provenance_record(
-    "apply_feature_validity", parents = provenance_tips(graph),
+    "apply_feature_validity",
+    parents = provenance_tips(graph),
     inputs = list(
       relation = name %||% relation_names(x)[vapply(
         relations(x), inherits, logical(1), "entity_feature_validity"

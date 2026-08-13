@@ -23,7 +23,9 @@
 }
 
 .plan_block_shape <- function(shape, chunks, layout, capacity) {
-  if (any(shape == 0L)) return(c(0L, 0L))
+  if (any(shape == 0L)) {
+    return(c(0L, 0L))
+  }
   n_observation <- shape[[1L]]
   n_feature <- shape[[2L]]
   if (layout == "imagewise") {
@@ -122,11 +124,12 @@
 #' @return A serializable `frame_block_plan`.
 #' @export
 plan_blocks <- function(
-    x,
-    assay = active_assay(x),
-    layout = c("balanced", "imagewise", "featurewise"),
-    memory_budget = getOption("fmridataset.block_budget", 512 * 1024^2),
-    target_block_bytes = getOption("fmridataset.target_block_bytes", 4 * 1024^2)) {
+  x,
+  assay = active_assay(x),
+  layout = c("balanced", "imagewise", "featurewise"),
+  memory_budget = getOption("fmridataset.block_budget", 512 * 1024^2),
+  target_block_bytes = getOption("fmridataset.target_block_bytes", 4 * 1024^2)
+) {
   if (!inherits(x, "fmri_frame")) {
     .frame_abort("x must be an fmri_frame or fmri_view.", "fmridataset_error_alignment")
   }

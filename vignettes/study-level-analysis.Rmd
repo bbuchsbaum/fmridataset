@@ -40,13 +40,13 @@ set.seed(42)
 make_subject <- function(id, n_voxels = 500) {
   set.seed(as.integer(chartr("0123456789", "0123456789", gsub("\\D", "", id))))
   matrix_dataset(
-    datamat   = matrix(rnorm(200 * n_voxels), nrow = 200, ncol = n_voxels),
-    TR        = 2.0,
+    datamat = matrix(rnorm(200 * n_voxels), nrow = 200, ncol = n_voxels),
+    TR = 2.0,
     run_length = c(100, 100)
   )
 }
-subject_ids   <- c("sub-01", "sub-02", "sub-03", "sub-04", "sub-05")
-subject_list  <- setNames(lapply(subject_ids, make_subject), subject_ids)
+subject_ids <- c("sub-01", "sub-02", "sub-03", "sub-04", "sub-05")
+subject_list <- setNames(lapply(subject_ids, make_subject), subject_ids)
 ```
 
 Multi-subject fMRI studies require a unified interface that scales from a
@@ -94,12 +94,12 @@ Retrieve the full concatenated matrix, or pull one subject at a time.
 
 ```{r access-all}
 all_data <- get_data_matrix(study)
-dim(all_data)   # (total timepoints) x (voxels)
+dim(all_data) # (total timepoints) x (voxels)
 ```
 
 ```{r access-one}
 s01 <- get_data_matrix(study, subject_id = "sub-01")
-dim(s01)        # timepoints for sub-01 x voxels
+dim(s01) # timepoints for sub-01 x voxels
 ```
 
 Subject-specific access is the most memory-efficient pattern for large
@@ -130,8 +130,8 @@ participant-level metadata.
 
 ```{r fmri-group}
 subject_table <- data.frame(
-  sub     = subject_ids,
-  age     = c(24, 28, 31, 25, 29),
+  sub = subject_ids,
+  age = c(24, 28, 31, 25, 29),
   dataset = I(lapply(subject_ids, function(id) list(subject_list[[id]]))),
   stringsAsFactors = FALSE
 )

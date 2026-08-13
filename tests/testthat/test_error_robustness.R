@@ -119,20 +119,6 @@ test_that("recovery from partial failures works correctly", {
   expect_s3_class(datasets[[2]], "fmri_dataset")
 })
 
-test_that("graceful degradation when optional features unavailable", {
-  old_opt <- options(fmridataset.disable_delayedarray = TRUE)
-  on.exit(options(old_opt), add = TRUE)
-
-  mat <- matrix(rnorm(100 * 50), 100, 50)
-  dset <- matrix_dataset(mat, TR = 2, run_length = 100)
-
-  # Should error gracefully
-  expect_error(
-    as_delayed_array(dset),
-    "DelayedArray"
-  )
-})
-
 test_that("errors during chunking are handled properly", {
   # Create a backend that fails partway through
   failing_backend <- structure(

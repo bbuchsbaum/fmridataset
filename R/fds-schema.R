@@ -57,7 +57,9 @@ fds_schema_version <- function() .fds_schema$version
 }
 
 .fds_block_manifests <- function(blocks, axis, prefix = paste0("axis/", axis)) {
-  if (!length(blocks)) return(list())
+  if (!length(blocks)) {
+    return(list())
+  }
   out <- lapply(names(blocks), function(name) {
     block <- blocks[[name]]
     key <- paste0(prefix, "/blocks/", name)
@@ -214,10 +216,12 @@ fds_frame_manifest <- function(x) {
   if (!is.list(values)) {
     .fds_schema_abort("Manifest entities must be a named list.", "entities")
   }
-  if (!length(values)) return(invisible(TRUE))
+  if (!length(values)) {
+    return(invisible(TRUE))
+  }
   names_value <- names(values)
   if (is.null(names_value) || anyNA(names_value) || any(!nzchar(names_value)) ||
-      anyDuplicated(names_value)) {
+    anyDuplicated(names_value)) {
     .fds_schema_abort("Manifest entities must have unique, non-empty names.", "entities")
   }
   required <- c("name", "key", "ids", "data", "blocks", "entity_type", "metadata")
@@ -225,7 +229,7 @@ fds_frame_manifest <- function(x) {
     value <- values[[name]]
     field <- paste0("entities.", name)
     if (!is.list(value) || !all(required %in% names(value)) ||
-        !identical(value$name, name)) {
+      !identical(value$name, name)) {
       .fds_schema_abort(
         sprintf("Entity '%s' is missing required fields.", name),
         field
@@ -233,23 +237,23 @@ fds_frame_manifest <- function(x) {
     }
     .validate_manifest_ids(value$ids, length(value$ids), paste0("entity:", name))
     if (!is.character(value$key) || length(value$key) != 1L ||
-        is.na(value$key) || !nzchar(value$key) ||
-        !is.data.frame(value$data) || nrow(value$data) != length(value$ids) ||
-        !value$key %in% names(value$data) ||
-        !identical(as.character(value$data[[value$key]]), value$ids)) {
+      is.na(value$key) || !nzchar(value$key) ||
+      !is.data.frame(value$data) || nrow(value$data) != length(value$ids) ||
+      !value$key %in% names(value$data) ||
+      !identical(as.character(value$data[[value$key]]), value$ids)) {
       .fds_schema_abort(
         sprintf("Entity '%s' has invalid or misaligned scalar keys.", name),
         paste0(field, ".key")
       )
     }
     if (!is.null(value$entity_type) &&
-        (!is.character(value$entity_type) || length(value$entity_type) != 1L ||
-         is.na(value$entity_type) || !nzchar(value$entity_type))) {
+      (!is.character(value$entity_type) || length(value$entity_type) != 1L ||
+        is.na(value$entity_type) || !nzchar(value$entity_type))) {
       .fds_schema_abort("Entity type must be NULL or one non-empty string.", paste0(field, ".entity_type"))
     }
     if (!is.list(value$blocks) ||
-        (length(value$blocks) &&
-         (is.null(names(value$blocks)) || any(!nzchar(names(value$blocks))) ||
+      (length(value$blocks) &&
+        (is.null(names(value$blocks)) || any(!nzchar(names(value$blocks))) ||
           anyDuplicated(names(value$blocks))))) {
       .fds_schema_abort("Entity blocks must be a uniquely named list.", paste0(field, ".blocks"))
     }
@@ -257,8 +261,8 @@ fds_frame_manifest <- function(x) {
       block <- value$blocks[[block_name]]
       block_required <- c("name", "array", "components", "role", "units", "metadata")
       if (!is.list(block) || !all(block_required %in% names(block)) ||
-          !identical(block$name, block_name) || !is.character(block$array) ||
-          length(block$array) != 1L || !block$array %in% names(arrays)) {
+        !identical(block$name, block_name) || !is.character(block$array) ||
+        length(block$array) != 1L || !block$array %in% names(arrays)) {
         .fds_schema_abort(
           sprintf("Entity block '%s.%s' has an invalid array reference.", name, block_name),
           paste0(field, ".blocks.", block_name)
@@ -267,10 +271,10 @@ fds_frame_manifest <- function(x) {
       array <- arrays[[block$array]]
       expected_axis <- paste0("entity:", name)
       if (!identical(array$axes[[1L]], expected_axis) ||
-          array$shape[[1L]] != length(value$ids) ||
-          !is.data.frame(block$components) ||
-          nrow(block$components) != array$shape[[2L]] ||
-          !".component_id" %in% names(block$components)) {
+        array$shape[[1L]] != length(value$ids) ||
+        !is.data.frame(block$components) ||
+        nrow(block$components) != array$shape[[2L]] ||
+        !".component_id" %in% names(block$components)) {
         .fds_schema_abort(
           sprintf("Entity block '%s.%s' is not aligned with its keys or components.", name, block_name),
           paste0(field, ".blocks.", block_name)

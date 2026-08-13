@@ -126,7 +126,9 @@ test_that("group_map with on_error='stop' stops on error", {
 test_that("group_map with NULL returns are skipped", {
   gd <- make_test_group(3)
   results <- group_map(gd, function(row) {
-    if (row$age == 30) return(NULL)
+    if (row$age == 30) {
+      return(NULL)
+    }
     row$subject_id
   })
   expect_length(results, 2)

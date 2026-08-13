@@ -48,8 +48,8 @@ entity_frame <- function(data, key, blocks = list(), entity_type = NULL,
   data <- tibble::as_tibble(data)
   .validate_entity_scalar_data(data, key)
   if (!is.null(entity_type) &&
-      (!is.character(entity_type) || length(entity_type) != 1L ||
-       is.na(entity_type) || !nzchar(entity_type))) {
+    (!is.character(entity_type) || length(entity_type) != 1L ||
+      is.na(entity_type) || !nzchar(entity_type))) {
     .entity_abort("entity_type must be NULL or one non-empty string.", field = "entity_type")
   }
   out <- axis_frame(
@@ -129,7 +129,9 @@ print.entity_frame <- function(x, ...) {
 }
 
 .coerce_entity_registry_entry <- function(value, name) {
-  if (inherits(value, "entity_frame")) return(value)
+  if (inherits(value, "entity_frame")) {
+    return(value)
+  }
   if (!is.list(value) || is.null(value$data)) {
     .entity_abort(
       sprintf("Registry entry '%s' must be an entity_frame.", name),
@@ -183,7 +185,7 @@ entity_registry <- function(entities = list(), ...) {
   if (length(entities)) {
     names_value <- names(entities)
     if (is.null(names_value) || anyNA(names_value) || any(!nzchar(names_value)) ||
-        anyDuplicated(names_value)) {
+      anyDuplicated(names_value)) {
       .entity_abort("Entity registries must be named with unique, non-empty values.", field = "names")
     }
     entities <- lapply(names_value, function(name) {
@@ -206,7 +208,7 @@ validate_entity_registry <- function(x) {
   if (length(x)) {
     names_value <- names(x)
     if (is.null(names_value) || anyNA(names_value) || any(!nzchar(names_value)) ||
-        anyDuplicated(names_value)) {
+      anyDuplicated(names_value)) {
       .entity_abort("Entity registries must be named with unique, non-empty values.", field = "names")
     }
     valid <- vapply(x, inherits, logical(1), "entity_frame")
@@ -237,7 +239,7 @@ validate_entity_registry <- function(x) {
       }
       blocks <- entity_blocks(value)
       if (length(blocks) &&
-          (is.null(names(blocks)) || any(!nzchar(names(blocks))) || anyDuplicated(names(blocks)))) {
+        (is.null(names(blocks)) || any(!nzchar(names(blocks))) || anyDuplicated(names(blocks)))) {
         .entity_abort(
           sprintf("Entity registry entry '%s' has unnamed or duplicate blocks.", name),
           entity = name,
@@ -247,7 +249,7 @@ validate_entity_registry <- function(x) {
       for (block_name in names(blocks)) {
         block <- blocks[[block_name]]
         if (!inherits(block, "axis_block") ||
-            .data_leading_dim(axis_block_data(block)) != nrow(value$data)) {
+          .data_leading_dim(axis_block_data(block)) != nrow(value$data)) {
           .entity_abort(
             sprintf("Entity block '%s.%s' is not aligned with its entity keys.", name, block_name),
             entity = name,

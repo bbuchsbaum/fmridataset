@@ -33,11 +33,13 @@ test_that("Zarr sources discover physical metadata without retaining handles", {
 
   with_mocked_bindings(
     .zarr_provider_open = function(uri, array_path) runtime,
-    .zarr_provider_metadata = function(handle) list(
-      shape = handle$shape,
-      chunks = handle$chunks,
-      dtype = handle$dtype
-    ),
+    .zarr_provider_metadata = function(handle) {
+      list(
+        shape = handle$shape,
+        chunks = handle$chunks,
+        dtype = handle$dtype
+      )
+    },
     .zarr_provider_close = function(handle) handle$closed <- TRUE,
     .package = "fmridataset",
     {
@@ -63,11 +65,13 @@ test_that("Zarr source reads preserve arbitrary order and duplicates", {
 
   with_mocked_bindings(
     .zarr_provider_open = function(uri, array_path) runtime,
-    .zarr_provider_metadata = function(handle) list(
-      shape = handle$shape,
-      chunks = handle$chunks,
-      dtype = handle$dtype
-    ),
+    .zarr_provider_metadata = function(handle) {
+      list(
+        shape = handle$shape,
+        chunks = handle$chunks,
+        dtype = handle$dtype
+      )
+    },
     .zarr_provider_read = function(handle, selection) {
       handle$reads[[length(handle$reads) + 1L]] <- selection
       handle$data[
@@ -109,11 +113,13 @@ test_that("Zarr source translates feature-first physical arrays", {
 
   with_mocked_bindings(
     .zarr_provider_open = function(uri, array_path) runtime,
-    .zarr_provider_metadata = function(handle) list(
-      shape = handle$shape,
-      chunks = handle$chunks,
-      dtype = handle$dtype
-    ),
+    .zarr_provider_metadata = function(handle) {
+      list(
+        shape = handle$shape,
+        chunks = handle$chunks,
+        dtype = handle$dtype
+      )
+    },
     .zarr_provider_read = function(handle, selection) {
       handle$data[
         seq.int(selection[[1L]][[1L]], selection[[1L]][[2L]]),
@@ -145,11 +151,13 @@ test_that("Zarr handles close and reject changed physical metadata", {
 
   with_mocked_bindings(
     .zarr_provider_open = function(uri, array_path) runtime,
-    .zarr_provider_metadata = function(handle) list(
-      shape = handle$shape,
-      chunks = handle$chunks,
-      dtype = handle$dtype
-    ),
+    .zarr_provider_metadata = function(handle) {
+      list(
+        shape = handle$shape,
+        chunks = handle$chunks,
+        dtype = handle$dtype
+      )
+    },
     .zarr_provider_close = function(handle) handle$closed <- TRUE,
     .package = "fmridataset",
     {
@@ -165,11 +173,13 @@ test_that("Zarr handles close and reject changed physical metadata", {
   runtime$shape <- c(4L, 4L)
   with_mocked_bindings(
     .zarr_provider_open = function(uri, array_path) runtime,
-    .zarr_provider_metadata = function(handle) list(
-      shape = handle$shape,
-      chunks = handle$chunks,
-      dtype = handle$dtype
-    ),
+    .zarr_provider_metadata = function(handle) {
+      list(
+        shape = handle$shape,
+        chunks = handle$chunks,
+        dtype = handle$dtype
+      )
+    },
     .zarr_provider_close = function(handle) handle$closed <- TRUE,
     .package = "fmridataset",
     {
@@ -186,14 +196,16 @@ test_that("Zarr source validates contracts before runtime access", {
   )
   expect_error(
     zarr_array_source(
-      "fixture.zarr", shape = c(2, 3), dtype = "float64",
+      "fixture.zarr",
+      shape = c(2, 3), dtype = "float64",
       chunks = c(2, 3), physical_axes = c("observation", "observation")
     ),
     class = "fmridataset_error_source_contract"
   )
   expect_error(
     zarr_array_source(
-      "fixture.zarr", shape = c(2, 3), dtype = "string",
+      "fixture.zarr",
+      shape = c(2, 3), dtype = "string",
       chunks = c(2, 3)
     ),
     class = "fmridataset_error_source_contract"
@@ -210,7 +222,8 @@ test_that("Zarr source validates contracts before runtime access", {
       expect_error(
         source_read(
           zarr_array_source(
-            "fixture.zarr", shape = c(2, 3), dtype = "float64",
+            "fixture.zarr",
+            shape = c(2, 3), dtype = "float64",
             chunks = c(2, 3)
           ),
           1L, 1L
@@ -233,11 +246,13 @@ test_that("Zarr source is a reconstructible delarr provider", {
 
   with_mocked_bindings(
     .zarr_provider_open = function(uri, array_path) runtime,
-    .zarr_provider_metadata = function(handle) list(
-      shape = handle$shape,
-      chunks = handle$chunks,
-      dtype = handle$dtype
-    ),
+    .zarr_provider_metadata = function(handle) {
+      list(
+        shape = handle$shape,
+        chunks = handle$chunks,
+        dtype = handle$dtype
+      )
+    },
     .zarr_provider_read = function(handle, selection) {
       handle$data[
         seq.int(selection[[1L]][[1L]], selection[[1L]][[2L]]),

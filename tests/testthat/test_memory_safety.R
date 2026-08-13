@@ -125,39 +125,6 @@ test_that("temporary files are properly cleaned up", {
   expect_length(new_files, 0)
 })
 
-test_that("DelayedArray operations are memory efficient", {
-  skip_if_not_installed("DelayedArray")
-  skip_if_not_installed("DelayedMatrixStats")
-  skip_on_cran()
-
-  # Create dataset
-  mat <- matrix(rnorm(2000 * 500), 2000, 500)
-  dset <- matrix_dataset(mat, TR = 2, run_length = 2000)
-
-  # Convert to DelayedArray
-  gc()
-  mem_before <- sum(gc()[, 2])
-
-  delayed <- as_delayed_array(dset)
-
-  gc()
-  mem_after_conversion <- sum(gc()[, 2])
-
-  # Conversion should use minimal memory
-  conversion_mem <- mem_after_conversion - mem_before
-  expect_lt(conversion_mem, object.size(mat) * 0.1) # Less than 10% of data size
-
-  # Operations should also be memory efficient
-  row_means <- DelayedMatrixStats::rowMeans2(delayed)
-
-  gc()
-  mem_after_operation <- sum(gc()[, 2])
-
-  # Operation should not load full matrix
-  operation_mem <- mem_after_operation - mem_after_conversion
-  expect_lt(operation_mem, object.size(mat) * 0.2)
-})
-
 test_that("study backend lazy evaluation prevents memory explosion", {
   skip_on_cran()
 
