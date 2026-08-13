@@ -75,6 +75,29 @@ volume space all retain the requested order. For large assays,
 `collect_assay()` enforces an explicit memory budget; block execution and lazy
 array sources avoid requiring full materialization.
 
+### Load one BIDS subject
+
+With `bidser` 0.5.0 or newer, a subject's fMRIPrep BOLD runs can be opened as
+one lazy frame:
+
+```r
+bold <- read_bids_bold(
+  "/data/my-study",
+  subject = "01",
+  task = "memory",
+  space = "MNI152NLin2009cAsym"
+)
+
+run_1 <- filter_obs(bold, run_id == "run-1")
+map <- spatial_map(bold, observation = 1)
+```
+
+Construction reads BOLD headers and the matching run masks, but not BOLD
+values. By default the frame uses the intersection of the run masks. No
+resampling or cross-space alignment is performed implicitly; ambiguous spaces,
+masks, or multi-echo selections produce an error requiring an explicit choice.
+Events remain a keyed auxiliary table rather than being copied onto volumes.
+
 ## What it covers
 
 - **Aligned assays:** keep one or more numerical assays tied to the same
@@ -105,7 +128,7 @@ the logical FDS schema. Companion packages own adjacent responsibilities:
   [`fmrigds`](https://github.com/bbuchsbaum/fmrigds) own design compilation and
   statistical execution.
 - [`bidser`](https://github.com/bbuchsbaum/bidser) provides BIDS discovery used
-  by the optional BIDS-to-HDF5 workflow.
+  by `read_bids_bold()` and the optional BIDS-to-HDF5 workflow.
 
 HDF5 is the certified persistence direction for 1.0. Zarr support remains
 experimental, and `DelayedArray` is optional interoperability rather than the

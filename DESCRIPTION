@@ -39,7 +39,7 @@ Suggests:
     albersdown,
     arrow,
     bench,
-    bidser,
+    bidser (>= 0.5.0),
     blosc,
     crayon,
     devtools,

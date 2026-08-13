@@ -2,6 +2,10 @@
 
 - Added the canonical `as_fmri_frame()` coercion generic so companion packages
   can provide explicit legacy adapters without owning a competing frame type.
+- Added `read_bids_bold()` as a narrow one-subject fMRIPrep on-ramp to a lazy
+  `fmri_frame`, with deterministic relative-path volume IDs, exact selectors,
+  explicit spatial ambiguity failures, common run-mask intersection, keyed
+  events, and non-mutating metadata-only discovery.
 
 ## Architecture
 
