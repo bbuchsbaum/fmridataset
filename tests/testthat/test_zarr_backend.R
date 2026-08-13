@@ -123,6 +123,41 @@ test_that("zarr_backend validates array dimensions", {
   )
 })
 
+test_that(".zarr_resolve_source translates file:// URIs to native paths", {
+  # POSIX form
+  expect_identical(
+    fmridataset:::.zarr_resolve_source("file:///var/data/x.zarr"),
+    "/var/data/x.zarr"
+  )
+  # Windows drive-letter forms, well-formed and tempfile()-built
+  expect_identical(
+    fmridataset:::.zarr_resolve_source("file:///C:/Temp/x.zarr"),
+    "C:/Temp/x.zarr"
+  )
+  expect_identical(
+    fmridataset:::.zarr_resolve_source("file://C:\\Temp\\x.zarr"),
+    "C:\\Temp\\x.zarr"
+  )
+  # localhost authority and percent-encoding
+  expect_identical(
+    fmridataset:::.zarr_resolve_source("file://localhost/var/x.zarr"),
+    "/var/x.zarr"
+  )
+  expect_identical(
+    fmridataset:::.zarr_resolve_source("file:///var/my%20data.zarr"),
+    "/var/my data.zarr"
+  )
+  # Non-file schemes pass through untouched
+  expect_identical(
+    fmridataset:::.zarr_resolve_source("s3://bucket/x.zarr"),
+    "s3://bucket/x.zarr"
+  )
+  expect_identical(
+    fmridataset:::.zarr_resolve_source("/plain/local/path"),
+    "/plain/local/path"
+  )
+})
+
 test_that("zarr_backend handles remote URLs", {
   skip_if_not_installed("zarr")
 
@@ -134,11 +169,16 @@ test_that("zarr_backend handles remote URLs", {
   backend <- zarr_backend("https://example.com/data.zarr")
   expect_equal(backend$source, "https://example.com/data.zarr")
 
-  # file:// URL should be treated as a passthrough URI
+  # file:// URLs resolve to native local paths before opening
   tmp_dir <- tempfile()
   on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
   create_test_zarr(path = tmp_dir, dims = c(2, 2, 2, 5))
-  backend <- zarr_backend(paste0("file://", tmp_dir))
+  tmp_path <- normalizePath(tmp_dir, winslash = "/", mustWork = TRUE)
+  if (!startsWith(tmp_path, "/")) {
+    # Windows drive-letter paths need a leading slash in file:/// URIs
+    tmp_path <- paste0("/", tmp_path)
+  }
+  backend <- zarr_backend(paste0("file://", tmp_path))
   expect_silent(backend <- backend_open(backend))
   expect_equal(backend$dims$time, 5)
 })
