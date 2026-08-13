@@ -82,6 +82,25 @@ zarr_backend <- function(source,
   backend
 }
 
+#' Resolve a zarr source to the location handed to the store opener
+#'
+#' `file://` URIs are translated to native filesystem paths so that Windows
+#' drive-letter paths (`file://C:\...` or `file:///C:/...`) do not reach
+#' `zarr::open_zarr()` as malformed URIs with an empty path component.
+#' @keywords internal
+#' @noRd
+.zarr_resolve_source <- function(source) {
+  if (!grepl("^file://", source, ignore.case = TRUE)) {
+    return(source)
+  }
+  path <- sub("^file://", "", source, ignore.case = TRUE)
+  path <- sub("^localhost/", "/", path)
+  if (grepl("^/[A-Za-z]:", path)) {
+    path <- sub("^/", "", path)
+  }
+  utils::URLdecode(path)
+}
+
 #' @rdname backend_open
 #' @method backend_open zarr_backend
 #' @export
@@ -93,14 +112,15 @@ backend_open.zarr_backend <- function(backend) {
   # Open Zarr store
   tryCatch(
     {
-      # For local paths, ensure they exist
+      # file:// sources resolve to local paths; only true remote schemes
+      # skip the existence check.
+      source_location <- .zarr_resolve_source(backend$source)
       is_remote_source <- grepl(
-        "^(https?://|s3://|gs://|file://)",
-        backend$source,
+        "^(https?://|s3://|gs://)",
+        source_location,
         ignore.case = TRUE
       )
-      if (!is_remote_source &&
-        !file.exists(backend$source)) {
+      if (!is_remote_source && !file.exists(source_location)) {
         stop_fmridataset(
           fmridataset_error_backend_io,
           sprintf("Zarr store not found: %s", backend$source),
@@ -110,7 +130,7 @@ backend_open.zarr_backend <- function(backend) {
       }
 
       # Open the Zarr store using CRAN zarr package
-      zarr_store <- zarr::open_zarr(backend$source)
+      zarr_store <- zarr::open_zarr(source_location)
 
       # Access the root array (single-array stores have data at root)
       backend$zarr_array <- zarr_store$root
@@ -145,7 +165,7 @@ backend_open.zarr_backend <- function(backend) {
     error = function(e) {
       stop_fmridataset(
         fmridataset_error_backend_io,
-        sprintf("Failed to open Zarr store: %s", e$message),
+        sprintf("Failed to open Zarr store '%s': %s", backend$source, e$message),
         file = backend$source,
         operation = "open"
       )

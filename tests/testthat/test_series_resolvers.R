@@ -1,7 +1,5 @@
 library(testthat)
 
-context("series resolver helpers")
-
 create_test_dataset <- function() {
   mat <- matrix(1:40, nrow = 5, ncol = 8)
   backend <- matrix_backend(mat, mask = rep(TRUE, 8), spatial_dims = c(2, 2, 2))
