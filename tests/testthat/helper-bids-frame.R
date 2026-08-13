@@ -33,8 +33,10 @@
 
   spatial <- c(2L, 2L, 2L)
   for (i in seq_along(bold)) {
-    values <- array(seq_len(prod(c(spatial, 3L))) + 100L * (i - 1L),
-                    c(spatial, 3L))
+    values <- array(
+      seq_len(prod(c(spatial, 3L))) + 100L * (i - 1L),
+      c(spatial, 3L)
+    )
     neuroim2::write_vec(
       neuroim2::NeuroVec(values, neuroim2::NeuroSpace(c(spatial, 3L))),
       bold[[i]]
@@ -89,7 +91,8 @@
         duration = 1,
         trial_type = c("old", "new")[[i]]
       ),
-      event_paths[[i]], sep = "\t", row.names = FALSE, quote = FALSE
+      event_paths[[i]],
+      sep = "\t", row.names = FALSE, quote = FALSE
     )
   }
 

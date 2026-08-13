@@ -108,7 +108,9 @@
 }
 
 .bids_scalar <- function(value, field) {
-  if (is.null(value)) return(NULL)
+  if (is.null(value)) {
+    return(NULL)
+  }
   if (length(value) != 1L || is.na(value) || !nzchar(as.character(value))) {
     .bids_abort(sprintf("%s must be one non-empty value or NULL.", field), field = field)
   }
@@ -116,7 +118,9 @@
 }
 
 .bids_entity_value <- function(data, name, default = NA_character_) {
-  if (!name %in% names(data)) return(rep(default, nrow(data)))
+  if (!name %in% names(data)) {
+    return(rep(default, nrow(data)))
+  }
   as.character(data[[name]])
 }
 
@@ -125,7 +129,8 @@
   existing <- file.exists(paths)
   absolute <- fs::path_abs(paths)
   absolute[existing] <- normalizePath(
-    paths[existing], winslash = "/", mustWork = TRUE
+    paths[existing],
+    winslash = "/", mustWork = TRUE
   )
   values <- fs::path_rel(absolute, start = root)
   outside <- values == ".." | startsWith(values, paste0("..", .Platform$file.sep))
@@ -141,8 +146,12 @@
 .bids_domain_label <- function(value, missing = "native") {
   absent <- is.na(value) | !nzchar(value)
   present <- unique(value[!absent])
-  if (all(absent)) return(missing)
-  if (any(absent)) return(c(present, missing))
+  if (all(absent)) {
+    return(missing)
+  }
+  if (any(absent)) {
+    return(c(present, missing))
+  }
   present
 }
 
@@ -191,8 +200,10 @@
   spaces <- .bids_domain_label(.bids_entity_value(parsed, "space"))
   if (length(spaces) != 1L) {
     .bids_abort(
-      paste0("Selection contains multiple spaces: ", paste(spaces, collapse = ", "),
-             ". Supply space = to select one."),
+      paste0(
+        "Selection contains multiple spaces: ", paste(spaces, collapse = ", "),
+        ". Supply space = to select one."
+      ),
       spaces = spaces
     )
   }
@@ -211,16 +222,18 @@
   resolutions <- .bids_domain_label(.bids_entity_value(parsed, "res"), missing = "unspecified")
   if (length(resolutions) != 1L) {
     .bids_abort(
-      paste0("Selection contains multiple resolutions: ",
-             paste(resolutions, collapse = ", "),
-             ". Select one resolution before import."),
+      paste0(
+        "Selection contains multiple resolutions: ",
+        paste(resolutions, collapse = ", "),
+        ". Select one resolution before import."
+      ),
       resolutions = resolutions
     )
   }
 
   parsed$n_volume <- as.integer(unname(.bids_n_volumes(paths)))
   if (length(parsed$n_volume) != nrow(parsed) || anyNA(parsed$n_volume) ||
-      any(parsed$n_volume <= 0L)) {
+    any(parsed$n_volume <= 0L)) {
     .bids_abort("Every selected BOLD file must have a positive volume count.")
   }
   parsed$TR <- vapply(paths, function(path) as.numeric(.bids_infer_tr(path))[[1L]], numeric(1))
@@ -265,7 +278,8 @@
     positions <- which(matched$keep)
     if (!length(positions)) {
       .bids_abort("No compatible fMRIPrep mask was found for a selected BOLD run.",
-                  scan_id = manifest$scan_id[[i]])
+        scan_id = manifest$scan_id[[i]]
+      )
     }
     best <- positions[matched$score[positions] == max(matched$score[positions])]
     if (length(best) != 1L) {
@@ -284,12 +298,15 @@
   affines <- lapply(headers, .nifti_header_affine)
   compatible <- vapply(seq_along(paths), function(i) {
     identical(dims[[i]], expected_dim) &&
-      isTRUE(all.equal(affines[[i]], expected_affine, tolerance = 1e-7,
-                       check.attributes = FALSE))
+      isTRUE(all.equal(affines[[i]], expected_affine,
+        tolerance = 1e-7,
+        check.attributes = FALSE
+      ))
   }, logical(1))
   if (any(!compatible)) {
     .bids_abort("One or more masks are not spatially compatible with the selected BOLD grid.",
-                masks = paths[!compatible])
+      masks = paths[!compatible]
+    )
   }
   invisible(TRUE)
 }
@@ -302,8 +319,10 @@
 
   if (inherits(mask, "volume_space")) {
     if (!identical(as.integer(mask$dim), expected_dim) ||
-        !isTRUE(all.equal(mask$affine, expected_affine, tolerance = 1e-7,
-                         check.attributes = FALSE))) {
+      !isTRUE(all.equal(mask$affine, expected_affine,
+        tolerance = 1e-7,
+        check.attributes = FALSE
+      ))) {
       .bids_abort("The supplied volume_space mask is incompatible with the BOLD grid.")
     }
     if (!is.null(mask$template) && !identical(mask$template, selected_space)) {
@@ -323,7 +342,7 @@
     return(list(space = resolved_space, mask_paths = character(), policy = "explicit-space"))
   }
   if (is.character(mask) && length(mask) == 1L && !is.na(mask) &&
-      nzchar(mask) && !identical(mask, "intersection")) {
+    nzchar(mask) && !identical(mask, "intersection")) {
     if (!file.exists(mask)) {
       .bids_abort("The explicit mask path does not exist.", mask = mask)
     }
@@ -332,8 +351,10 @@
     support <- which(as.logical(as.vector(suppressWarnings(neuroim2::read_vol(path)))))
     if (!length(support)) .bids_abort("The explicit mask contains no active features.")
     return(list(
-      space = volume_space(expected_dim, affine = expected_affine, support = support,
-                           template = selected_space),
+      space = volume_space(expected_dim,
+        affine = expected_affine, support = support,
+        template = selected_space
+      ),
       mask_paths = path,
       policy = "explicit-path"
     ))
@@ -362,8 +383,8 @@
   is_brain <- description %in% c("brain", "brainmask") |
     kind %in% c("brainmask") |
     (grepl("_(brain_)?mask\\.nii(\\.gz)?$", candidate_names, ignore.case = TRUE) &
-       no_description &
-       (is.na(label) | !nzchar(label)))
+      no_description &
+      (is.na(label) | !nzchar(label)))
   candidates <- candidates[is_brain, , drop = FALSE]
   if (!nrow(candidates)) {
     .bids_abort("No brain masks were found among the matching fMRIPrep masks; supply mask = explicitly.")
@@ -417,12 +438,15 @@
     run = .bids_entity_value(events, ".run")
   )
   vapply(seq_len(nrow(events)), function(i) {
-    matched <- .bids_entity_match(event_entities[i, , drop = FALSE], manifest,
-                                  c("subid", "session", "task", "run"))
+    matched <- .bids_entity_match(
+      event_entities[i, , drop = FALSE], manifest,
+      c("subid", "session", "task", "run")
+    )
     positions <- which(matched$keep)
     if (length(positions) != 1L) {
       .bids_abort("An event row could not be associated with exactly one selected BOLD run.",
-                  event_row = i)
+        event_row = i
+      )
     }
     manifest$scan_id[[positions]]
   }, character(1))
@@ -430,7 +454,9 @@
 
 .bids_event_table <- function(project, root, manifest, subject, task, session, run) {
   events <- tibble::as_tibble(.bids_read_events(project, subject, task, session, run))
-  if (!nrow(events)) return(NULL)
+  if (!nrow(events)) {
+    return(NULL)
+  }
   events$scan_id <- .bids_event_scan_ids(events, manifest)
   file_column <- if ("file" %in% names(events)) "file" else if (".file" %in% names(events)) ".file" else NULL
   if (is.null(file_column)) {
@@ -488,7 +514,7 @@ read_bids_bold <- function(path, subject, task = NULL, session = NULL,
                            chunks = NULL) {
   .bids_require()
   if (!is.character(path) || length(path) != 1L || is.na(path) ||
-      !nzchar(path) || !dir.exists(path)) {
+    !nzchar(path) || !dir.exists(path)) {
     .bids_abort("path must name an existing BIDS directory.", field = "path")
   }
   path <- normalizePath(path, winslash = "/", mustWork = TRUE)
@@ -532,8 +558,10 @@ read_bids_bold <- function(path, subject, task = NULL, session = NULL,
       run = run, space = selected_space, derivative = derivative,
       mask_policy = resolved$policy, events = events
     ),
-    outputs = list(n_observation = nrow(observation_data),
-                   n_feature = n_features(resolved$space)),
+    outputs = list(
+      n_observation = nrow(observation_data),
+      n_feature = n_features(resolved$space)
+    ),
     software = list(
       fmridataset = as.character(utils::packageVersion("fmridataset")),
       bidser = as.character(utils::packageVersion("bidser"))

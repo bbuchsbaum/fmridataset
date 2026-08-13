@@ -15,9 +15,13 @@ test_that("read_bids_bold constructs a deterministic lazy frame", {
   expect_identical(dim(frame), c(6L, 3L))
   expect_identical(
     observation_ids(frame),
-    unlist(lapply(sub("\\.nii$", "", fs::path_rel(fixture$bold, fixture$root)),
-                  function(scan) sprintf("%s::volume-%06d", scan, 0:2)),
-           use.names = FALSE)
+    unlist(
+      lapply(
+        sub("\\.nii$", "", fs::path_rel(fixture$bold, fixture$root)),
+        function(scan) sprintf("%s::volume-%06d", scan, 0:2)
+      ),
+      use.names = FALSE
+    )
   )
   expect_identical(features(frame)$.feature_id, paste0("voxel-", fixture$support))
   expect_identical(entity_names(entities(frame)), c("subject", "run"))
@@ -25,12 +29,16 @@ test_that("read_bids_bold constructs a deterministic lazy frame", {
   expect_identical(nrow(entity_data(entity(entities(frame), "run"))), 2L)
   expect_identical(names(relations(frame)), c("observation_run", "run_subject"))
   expect_s3_class(frame$tables$events, "fmri_event_table")
-  expect_identical(event_data(frame$tables$events)$scan_id,
-                   entity_ids(entity(entities(frame), "run")))
+  expect_identical(
+    event_data(frame$tables$events)$scan_id,
+    entity_ids(entity(entities(frame), "run"))
+  )
   expect_false(any(grepl(fixture$root, event_data(frame$tables$events)$file,
-                         fixed = TRUE)))
+    fixed = TRUE
+  )))
   expect_false(any(grepl(fixture$root, space(frame)$metadata$mask_files,
-                         fixed = TRUE)))
+    fixed = TRUE
+  )))
   expect_false(contains_runtime_state(frame))
 })
 
@@ -39,13 +47,21 @@ test_that("BIDS import is invariant to discovery order and dataset relocation", 
   second <- .make_bids_frame_fixture()
   on.exit(unlink(c(first$root, second$root), recursive = TRUE), add = TRUE)
 
-  frame_a <- .with_bids_frame_bindings(first, {
-    read_bids_bold(first$root, subject = "01", task = "memory",
-                   space = "MNI152NLin6Asym", events = FALSE)
-  }, paths = rev(first$bold), masks = rev(first$masks))
+  frame_a <- .with_bids_frame_bindings(first,
+    {
+      read_bids_bold(first$root,
+        subject = "01", task = "memory",
+        space = "MNI152NLin6Asym", events = FALSE
+      )
+    },
+    paths = rev(first$bold),
+    masks = rev(first$masks)
+  )
   frame_b <- .with_bids_frame_bindings(second, {
-    read_bids_bold(second$root, subject = "01", task = "memory",
-                   space = "MNI152NLin6Asym", events = FALSE)
+    read_bids_bold(second$root,
+      subject = "01", task = "memory",
+      space = "MNI152NLin6Asym", events = FALSE
+    )
   })
 
   expect_identical(observation_ids(frame_a), observation_ids(frame_b))
@@ -66,8 +82,10 @@ test_that("metadata inspection does not read BOLD values", {
     },
     .package = "fmridataset",
     .with_bids_frame_bindings(fixture, {
-      read_bids_bold(fixture$root, subject = "01", task = "memory",
-                     space = "MNI152NLin6Asym", events = FALSE)
+      read_bids_bold(fixture$root,
+        subject = "01", task = "memory",
+        space = "MNI152NLin6Asym", events = FALSE
+      )
     })
   )
 
@@ -83,8 +101,10 @@ test_that("BIDS import reads only selected values on collection", {
   on.exit(unlink(fixture$root, recursive = TRUE), add = TRUE)
 
   frame <- .with_bids_frame_bindings(fixture, {
-    read_bids_bold(fixture$root, subject = "01", task = "memory",
-                   space = "MNI152NLin6Asym", events = FALSE)
+    read_bids_bold(fixture$root,
+      subject = "01", task = "memory",
+      space = "MNI152NLin6Asym", events = FALSE
+    )
   })
   selected <- collect_assay(frame[c(1L, 4L), c(1L, 3L)])
 
@@ -103,9 +123,12 @@ test_that("BIDS import rejects ambiguous or unsupported domains", {
     value
   }
   expect_error(
-    .with_bids_frame_bindings(fixture, {
-      read_bids_bold(fixture$root, subject = "01", events = FALSE)
-    }, entities = mixed_space_entities),
+    .with_bids_frame_bindings(fixture,
+      {
+        read_bids_bold(fixture$root, subject = "01", events = FALSE)
+      },
+      entities = mixed_space_entities
+    ),
     "multiple spaces",
     class = "fmridataset_error_bids_import"
   )
@@ -116,9 +139,12 @@ test_that("BIDS import rejects ambiguous or unsupported domains", {
     value
   }
   expect_error(
-    .with_bids_frame_bindings(fixture, {
-      read_bids_bold(fixture$root, subject = "01", events = FALSE)
-    }, entities = echo_entities),
+    .with_bids_frame_bindings(fixture,
+      {
+        read_bids_bold(fixture$root, subject = "01", events = FALSE)
+      },
+      entities = echo_entities
+    ),
     "multi-echo",
     class = "fmridataset_error_bids_import"
   )
@@ -137,10 +163,15 @@ test_that("BIDS import rejects ambiguous or unsupported domains", {
     value
   }
   expect_error(
-    .with_bids_frame_bindings(fixture, {
-      read_bids_bold(fixture$root, subject = "01",
-                     space = "MNI152NLin6Asym", events = FALSE)
-    }, entities = native_entities),
+    .with_bids_frame_bindings(fixture,
+      {
+        read_bids_bold(fixture$root,
+          subject = "01",
+          space = "MNI152NLin6Asym", events = FALSE
+        )
+      },
+      entities = native_entities
+    ),
     "no space entity",
     class = "fmridataset_error_bids_import"
   )
@@ -151,9 +182,12 @@ test_that("BIDS import rejects ambiguous or unsupported domains", {
     value
   }
   expect_error(
-    .with_bids_frame_bindings(fixture, {
-      read_bids_bold(fixture$root, subject = "01", events = FALSE)
-    }, entities = mixed_resolution_entities),
+    .with_bids_frame_bindings(fixture,
+      {
+        read_bids_bold(fixture$root, subject = "01", events = FALSE)
+      },
+      entities = mixed_resolution_entities
+    ),
     "multiple resolutions",
     class = "fmridataset_error_bids_import"
   )
@@ -200,12 +234,16 @@ test_that("native-space mask discovery does not request a named template", {
     value$space <- NA_character_
     value
   }
-  frame <- .with_bids_frame_bindings(fixture, {
-    read_bids_bold(fixture$root, subject = "01", events = FALSE)
-  }, entities = native_entities, discover_masks = function(project, subject, session, space) {
+  frame <- .with_bids_frame_bindings(fixture,
+    {
+      read_bids_bold(fixture$root, subject = "01", events = FALSE)
+    },
+    entities = native_entities,
+    discover_masks = function(project, subject, session, space) {
       seen_space <<- space
       fixture$masks
-  })
+    }
+  )
   expect_null(seen_space)
   expect_identical(frame$metadata$space, "native")
 })
@@ -217,10 +255,15 @@ test_that("intersection masking ignores non-brain tissue masks", {
   expect_true(file.copy(fixture$masks[[1L]], tissue_path))
   candidates <- c(fixture$masks, tissue_path)
 
-  frame <- .with_bids_frame_bindings(fixture, {
-    read_bids_bold(fixture$root, subject = "01", task = "memory",
-                   space = "MNI152NLin6Asym", events = FALSE)
-  }, masks = candidates)
+  frame <- .with_bids_frame_bindings(fixture,
+    {
+      read_bids_bold(fixture$root,
+        subject = "01", task = "memory",
+        space = "MNI152NLin6Asym", events = FALSE
+      )
+    },
+    masks = candidates
+  )
 
   expect_identical(feature_ids(frame), paste0("voxel-", fixture$support))
 })
@@ -231,19 +274,25 @@ test_that("explicit volume spaces cannot contradict selected BIDS space", {
   header <- neuroim2::read_header(fixture$bold[[1L]])
   affine <- fmridataset:::.nifti_header_affine(header)
   unlabeled <- volume_space(c(2, 2, 2), affine = affine, support = fixture$support)
-  labeled <- volume_space(c(2, 2, 2), affine = affine, support = fixture$support,
-                          template = "OtherSpace")
+  labeled <- volume_space(c(2, 2, 2),
+    affine = affine, support = fixture$support,
+    template = "OtherSpace"
+  )
 
   frame <- .with_bids_frame_bindings(fixture, {
-    read_bids_bold(fixture$root, subject = "01", task = "memory",
-                   space = "MNI152NLin6Asym", mask = unlabeled, events = FALSE)
+    read_bids_bold(fixture$root,
+      subject = "01", task = "memory",
+      space = "MNI152NLin6Asym", mask = unlabeled, events = FALSE
+    )
   })
   expect_identical(space(frame)$template, "MNI152NLin6Asym")
 
   expect_error(
     .with_bids_frame_bindings(fixture, {
-      read_bids_bold(fixture$root, subject = "01", task = "memory",
-                     space = "MNI152NLin6Asym", mask = labeled, events = FALSE)
+      read_bids_bold(fixture$root,
+        subject = "01", task = "memory",
+        space = "MNI152NLin6Asym", mask = labeled, events = FALSE
+      )
     }),
     "template disagrees",
     class = "fmridataset_error_bids_import"
