@@ -7,19 +7,7 @@ Generates a vector of block/run identifiers for each timepoint.
 ``` r
 blockids(x, ...)
 
-# S3 method for class 'matrix_dataset'
-blockids(x, ...)
-
 # S3 method for class 'fmri_dataset'
-blockids(x, ...)
-
-# S3 method for class 'fmri_mem_dataset'
-blockids(x, ...)
-
-# S3 method for class 'fmri_file_dataset'
-blockids(x, ...)
-
-# S3 method for class 'fmri_study_dataset'
 blockids(x, ...)
 
 # S3 method for class 'sampling_frame'

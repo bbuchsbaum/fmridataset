@@ -1,4 +1,8 @@
-# Reconstruct Voxel Data from Latent Representation
+# Reconstruct Voxel-Space Data from a Latent-Mode BIDS H5 Dataset
+
+Reconstructs full voxel-space time series for a scan by computing
+`basis %*% t(loadings) + offset`. Only available when
+`compression_mode = "latent"`.
 
 Reconstruct the full voxel-space data from the latent representation.
 This is computationally expensive and should be used sparingly.
@@ -6,30 +10,40 @@ This is computationally expensive and should be used sparingly.
 ## Usage
 
 ``` r
-reconstruct_voxels(x, rows = NULL, voxels = NULL, ...)
+reconstruct_voxels(x, scan_name = NULL, rows = NULL, voxels = NULL, ...)
+
+# S3 method for class 'bids_h5_study_dataset'
+reconstruct_voxels(x, scan_name, rows = NULL, voxels = NULL, ...)
+
+# S3 method for class 'latent_dataset'
+reconstruct_voxels(x, scan_name = NULL, rows = NULL, voxels = NULL, ...)
 ```
 
 ## Arguments
 
 - x:
 
-  A latent_dataset object
+  A `bids_h5_study_dataset` object opened in latent mode.
+
+- scan_name:
+
+  Character. Name of the scan to reconstruct.
 
 - rows:
 
-  Optional row indices (timepoints) to reconstruct
+  Integer vector of timepoint indices to return, or `NULL` for all.
 
 - voxels:
 
-  Optional voxel indices to reconstruct
+  Integer vector of voxel indices to return, or `NULL` for all.
 
 - ...:
 
-  Additional arguments
+  Additional arguments passed to methods.
 
 ## Value
 
-Matrix of reconstructed voxel data (time × voxels)
+A numeric matrix `[T, V]` (or subset thereof).
 
 ## See also
 

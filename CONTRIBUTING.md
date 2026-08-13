@@ -20,12 +20,14 @@ This package follows the tidyverse style guide with some modifications:
 2.  Install development dependencies:
 
     ``` r
+
     install.packages(c("devtools", "testthat", "lintr", "roxygen2"))
     ```
 
 3.  Load the package in development mode:
 
     ``` r
+
     devtools::load_all()
     ```
 
@@ -33,10 +35,13 @@ This package follows the tidyverse style guide with some modifications:
 
 1.  Create a new branch for your feature or bug fix
 2.  Write tests for any new functionality
-3.  Ensure all tests pass: `devtools::test()`
-4.  Check the package: `devtools::check()`
+3.  Ensure all tests pass:
+    [`devtools::test()`](https://devtools.r-lib.org/reference/test.html)
+4.  Check the package:
+    [`devtools::check()`](https://devtools.r-lib.org/reference/check.html)
 5.  Run the linter: `lintr::lint_package()`
-6.  Update documentation if needed: `devtools::document()`
+6.  Update documentation if needed:
+    [`devtools::document()`](https://devtools.r-lib.org/reference/document.html)
 
 ## Backend Development
 

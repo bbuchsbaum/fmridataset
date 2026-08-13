@@ -12,6 +12,7 @@ improvement suggestions.
 provide clear error messages:
 
 ``` r
+
 # In dataset_constructors.R
 matrix_dataset <- function(datamat, TR, run_length, event_table = data.frame()) {
   if (is.vector(datamat)) {
@@ -29,6 +30,7 @@ No validation that the coercion produces expected dimensions -
 **Suggested Improvement**:
 
 ``` r
+
 matrix_dataset <- function(datamat, TR, run_length, event_table = data.frame()) {
   # Explicit type checking with informative messages
   if (is.vector(datamat)) {
@@ -66,6 +68,7 @@ matrix_dataset <- function(datamat, TR, run_length, event_table = data.frame()) 
 returns different types depending on dataset type:
 
 ``` r
+
 # In data_access.R
 get_mask.fmri_file_dataset <- function(x, ...) {
   if (!is.null(x$backend)) {
@@ -94,6 +97,7 @@ internals - Type inconsistency makes generic programming difficult
 **Suggested Improvement**: Add a `standardize` parameter:
 
 ``` r
+
 get_mask <- function(x, standardize = TRUE, ...) {
   UseMethod("get_mask")
 }
@@ -116,6 +120,7 @@ get_mask.fmri_file_dataset <- function(x, standardize = TRUE, ...) {
 **Issue**: Many errors don’t guide users to solutions:
 
 ``` r
+
 # In dataset_constructors.R
 assert_that(sum(run_length) == nrow(datamat))
 # Produces: "sum(run_length) == nrow(datamat) is not TRUE"
@@ -127,6 +132,7 @@ suggest how to fix the issue - No context about which parameter is wrong
 **Suggested Improvement**:
 
 ``` r
+
 if (sum(run_length) != nrow(datamat)) {
   stop_fmridataset(
     fmridataset_error_config,
@@ -149,6 +155,7 @@ if (sum(run_length) != nrow(datamat)) {
 doesn’t validate file existence early:
 
 ``` r
+
 # Current code allows creation with non-existent files
 # Error occurs later during data access
 backend <- nifti_backend(
@@ -162,6 +169,7 @@ backend <- nifti_backend(
 **Suggested Improvement**: Add upfront validation:
 
 ``` r
+
 # In fmri_dataset()
 if (!all(file.exists(scan_files))) {
   missing <- scan_files[!file.exists(scan_files)]
@@ -185,6 +193,7 @@ if (!all(file.exists(scan_files))) {
 **Issue**: Similar concepts use different parameter names:
 
 ``` r
+
 # Different names for mask across functions:
 fmri_dataset(scans, mask = NULL, ...)           # "mask" 
 fmri_mem_dataset(scans, mask, ...)              # "mask" (required)
@@ -199,6 +208,7 @@ cognitive load
 **Suggested Improvement**: Add aliases for backward compatibility:
 
 ``` r
+
 fmri_dataset <- function(scans, mask = NULL, mask_source = NULL, ...) {
   # Support both parameter names
   if (!is.null(mask_source) && is.null(mask)) {
@@ -213,6 +223,7 @@ fmri_dataset <- function(scans, mask = NULL, mask_source = NULL, ...) {
 **Issue**: Function names don’t clearly indicate their purpose:
 
 ``` r
+
 # Unclear what these return:
 get_data()        # Returns native format (matrix, NeuroVec, etc.)
 get_data_matrix() # Always returns matrix
@@ -223,6 +234,7 @@ blocklens()       # Returns run lengths
 **Suggested Improvement**: Add clearer aliases:
 
 ``` r
+
 # Add more descriptive aliases
 get_data_native <- get_data
 get_timepoint_indices <- samples
@@ -236,6 +248,7 @@ get_run_lengths <- blocklens  # This already exists but isn't prominent
 **Issue**: Getting a simple data matrix requires multiple operations:
 
 ``` r
+
 # Current approach for masked data extraction:
 dset <- fmri_dataset(scans, mask, TR, run_length)
 data <- get_data(dset)  # Returns NeuroVec
@@ -246,6 +259,7 @@ masked_data <- neuroim2::series(data, which(mask != 0))
 **Suggested Improvement**: Add convenience function:
 
 ``` r
+
 # Add to API:
 get_masked_matrix <- function(x, ...) {
   UseMethod("get_masked_matrix")
@@ -267,6 +281,7 @@ get_masked_matrix.fmri_dataset <- function(x, ...) {
 documentation:
 
 ``` r
+
 matrix_dataset <- function(datamat, TR, run_length, event_table = data.frame()) {
   # ...
   ret <- list(
@@ -282,6 +297,7 @@ default - Numeric 1s instead of logical TRUE is inconsistent
 **Suggested Improvement**:
 
 ``` r
+
 matrix_dataset <- function(datamat, TR, run_length, 
                           event_table = data.frame(),
                           mask = NULL) {
@@ -308,6 +324,7 @@ matrix_dataset <- function(datamat, TR, run_length,
 **Issue**: TR is always required even when not needed:
 
 ``` r
+
 matrix_dataset <- function(datamat, TR, run_length, event_table = data.frame()) {
   # TR is required but might not be used in some analyses
 }
@@ -316,6 +333,7 @@ matrix_dataset <- function(datamat, TR, run_length, event_table = data.frame()) 
 **Suggested Improvement**: Make TR optional with warning:
 
 ``` r
+
 matrix_dataset <- function(datamat, TR = NULL, run_length, 
                           event_table = data.frame()) {
   if (is.null(TR)) {
@@ -334,6 +352,7 @@ matrix_dataset <- function(datamat, TR = NULL, run_length,
 **Issue**: Backend resources aren’t automatically cleaned up:
 
 ``` r
+
 # No automatic cleanup in dataset destructors
 # File handles or memory maps might leak
 backend <- backend_open(backend)
@@ -343,6 +362,7 @@ backend <- backend_open(backend)
 **Suggested Improvement**: Add finalizers:
 
 ``` r
+
 # In dataset constructors:
 backend <- backend_open(backend)
 
@@ -361,6 +381,7 @@ reg.finalizer(ret, function(obj) {
 but this isn’t clear from function names:
 
 ``` r
+
 # This returns components, not voxels!
 data <- get_data_matrix(latent_dataset_obj)
 # Returns: time × components, not time × voxels
@@ -370,6 +391,7 @@ data <- get_data_matrix(latent_dataset_obj)
 renaming:
 
 ``` r
+
 #' @details
 #' IMPORTANT: For latent datasets, get_data_matrix() returns the latent
 #' scores (time × components), not reconstructed voxel data. Use
@@ -390,6 +412,7 @@ get_latent_scores <- function(x, ...) {
 Create a centralized validation function:
 
 ``` r
+
 validate_fmri_inputs <- function(TR = NULL, run_length = NULL, 
                                 mask = NULL, data_dims = NULL) {
   errors <- list()
@@ -419,6 +442,7 @@ validate_fmri_inputs <- function(TR = NULL, run_length = NULL,
 ### 6.2 Add Type Checking Utilities
 
 ``` r
+
 ensure_matrix <- function(x, name = "data") {
   if (is.data.frame(x)) {
     message(sprintf("Converting %s from data.frame to matrix", name))
@@ -443,6 +467,7 @@ ensure_matrix <- function(x, name = "data") {
 Add a context parameter to error functions:
 
 ``` r
+
 with_fmri_context <- function(expr, context) {
   tryCatch(expr, error = function(e) {
     if (inherits(e, "fmridataset_error")) {

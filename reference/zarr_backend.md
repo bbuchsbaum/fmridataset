@@ -1,47 +1,33 @@
 # Create a Zarr Backend
 
-Creates a storage backend for Zarr array data.
+Creates a storage backend for Zarr array data using the CRAN zarr
+package.
 
 ## Usage
 
 ``` r
-zarr_backend(
-  source,
-  data_key = "data",
-  mask_key = "mask",
-  preload = FALSE,
-  cache_size = 100
-)
+zarr_backend(source, preload = FALSE)
 ```
 
 ## Arguments
 
 - source:
 
-  Character path to Zarr store (directory or zip) or URL for remote
-  stores
-
-- data_key:
-
-  Character key for the main data array within the store (default:
-  "data")
-
-- mask_key:
-
-  Character key for the mask array (default: "mask"). Set to NULL if no
-  mask.
+  Character path to Zarr store (directory or URL for remote stores)
 
 - preload:
 
   Logical, whether to load all data into memory (default: FALSE)
 
-- cache_size:
-
-  Integer, number of chunks to cache in memory (default: 100)
-
 ## Value
 
 A zarr_backend S3 object
+
+## Experimental
+
+This backend uses the CRAN zarr package which is relatively new (v0.1.1,
+Dec 2025). It supports Zarr v3 format only - Zarr v2 stores cannot be
+read. Please report any issues to help improve the package.
 
 ## Examples
 
@@ -50,14 +36,7 @@ if (FALSE) { # \dontrun{
 # Local Zarr store
 backend <- zarr_backend("path/to/data.zarr")
 
-# Remote S3 store
-backend <- zarr_backend("s3://bucket/path/to/data.zarr")
-
-# Custom array keys
-backend <- zarr_backend(
-  "data.zarr",
-  data_key = "fmri/bold",
-  mask_key = "fmri/mask"
-)
+# Remote store
+backend <- zarr_backend("https://example.com/data.zarr")
 } # }
 ```

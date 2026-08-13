@@ -5,6 +5,9 @@ Returns a logical mask indicating which voxels contain valid data.
 ## Usage
 
 ``` r
+# S3 method for class 'bids_h5_scan_backend'
+backend_get_mask(backend)
+
 # S3 method for class 'h5_backend'
 backend_get_mask(backend)
 

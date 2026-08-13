@@ -8,19 +8,7 @@ temporal information about fMRI acquisitions.
 ``` r
 get_TR(x, ...)
 
-# S3 method for class 'matrix_dataset'
-get_TR(x, ...)
-
 # S3 method for class 'fmri_dataset'
-get_TR(x, ...)
-
-# S3 method for class 'fmri_mem_dataset'
-get_TR(x, ...)
-
-# S3 method for class 'fmri_file_dataset'
-get_TR(x, ...)
-
-# S3 method for class 'fmri_study_dataset'
 get_TR(x, ...)
 
 # S3 method for class 'sampling_frame'
@@ -50,7 +38,8 @@ parameter is crucial for temporal analyses and hemodynamic modeling.
 
 ## See also
 
-`sampling_frame` for creating temporal structures,
+[`fmrihrf::sampling_frame()`](https://bbuchsbaum.github.io/fmrihrf/reference/sampling_frame.html)
+for creating temporal structures,
 [`get_total_duration`](https://bbuchsbaum.github.io/fmridataset/reference/get_total_duration.md)
 for total scan duration
 

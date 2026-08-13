@@ -12,7 +12,7 @@ series(
   dataset,
   selector = NULL,
   timepoints = NULL,
-  output = c("fmri_series", "DelayedMatrix"),
+  output = c("fmri_series"),
   event_window = NULL,
   ...
 )
@@ -34,7 +34,7 @@ series(
 
 - output:
 
-  Return type - "FmriSeries" (default) or "DelayedMatrix".
+  Return type. Only "fmri_series" is supported.
 
 - event_window:
 

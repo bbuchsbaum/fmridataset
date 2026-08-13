@@ -6,6 +6,9 @@ handles). Stateless backends can implement this as a no-op.
 ## Usage
 
 ``` r
+# S3 method for class 'bids_h5_scan_backend'
+backend_open(backend)
+
 # S3 method for class 'h5_backend'
 backend_open(backend)
 

@@ -104,6 +104,7 @@ for dimension-reduced data - `study`: Multi-subject study backend -
 ### Basic Backend Registration
 
 ``` r
+
 # Register a custom backend
 my_backend_factory <- function(source, ...) {
   # Implementation here
@@ -121,6 +122,7 @@ backend <- create_backend("my_backend", source = "data.txt")
 ### Using in Dataset Creation
 
 ``` r
+
 # Create backend and use in dataset
 backend <- create_backend("nifti", 
                          source = "scan.nii", 
@@ -131,6 +133,7 @@ dataset <- fmri_dataset(backend, TR = 2, run_length = 300)
 ### Package Integration
 
 ``` r
+
 # In external package's .onLoad()
 .onLoad <- function(libname, pkgname) {
   if (requireNamespace("fmridataset", quietly = TRUE)) {

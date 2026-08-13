@@ -12,7 +12,7 @@ new_fmri_series(data, voxel_info, temporal_info, selection_info, dataset_info)
 
 - data:
 
-  A lazy matrix (e.g., `delarr`), `DelayedMatrix`, or base matrix
+  A lazy matrix (e.g., `delarr`) or a base matrix
 
 - voxel_info:
 

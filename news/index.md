@@ -1,6 +1,223 @@
 # Changelog
 
-## fmridataset 0.9.0 (Development)
+## fmridataset 0.10.0 (Development)
+
+- Added the canonical
+  [`as_fmri_frame()`](https://bbuchsbaum.github.io/fmridataset/reference/as_fmri_frame.md)
+  coercion generic so companion packages can provide explicit legacy
+  adapters without owning a competing frame type.
+- Added
+  [`read_bids_bold()`](https://bbuchsbaum.github.io/fmridataset/reference/read_bids_bold.md)
+  as a narrow one-subject fMRIPrep on-ramp to a lazy `fmri_frame`, with
+  deterministic relative-path volume IDs, exact selectors, explicit
+  spatial ambiguity failures, common run-mask intersection, keyed
+  events, and non-mutating discovery that reads BOLD headers and masks
+  but no BOLD values.
+
+### Architecture
+
+- Began the 1.0 migration around a canonical observation-by-feature
+  `fmri_frame`, with spatially typed features and serializable array
+  sources.
+
+- Recorded package ownership and compatibility policy in
+  `inst/architecture/ADR-001-canonical-data-model.md`.
+
+- Added
+  [`write_frame()`](https://bbuchsbaum.github.io/fmridataset/reference/write_frame.md)
+  and
+  [`open_frame()`](https://bbuchsbaum.github.io/fmridataset/reference/write_frame.md)
+  as semantic entry points for atomic, manifest-backed HDF5 persistence
+  supplied by `fmristore`; reopened assays remain reconstructible lazy
+  sources.
+
+- Certified the first complete frame-native analysis path: metadata-only
+  filtering, stimulus-block design compilation, bounded variance-aware
+  group fitting, spatial-map reconstruction, and exact memory/HDF5 round
+  trips.
+
+- Added executable `ArraySource` contract validation for supported
+  dtypes, bounded chunk grids, capabilities, stable fingerprints, and
+  freedom from unserializable runtime state.
+
+- Array sources now become reconstructible `delarr` provider seeds;
+  serialized plans retain descriptors and selectors rather than pull
+  closures or handles.
+
+- Added a serializable NIfTI source with per-file volume pushdown,
+  packed-mask feature selection, stale-file detection, native-volume
+  reads, and direct `volume_space` recovery.
+
+- Added manifest-backed
+  [`row_sharded_source()`](https://bbuchsbaum.github.io/fmridataset/reference/row_sharded_source.md)
+  descriptors with stable shard IDs, inspectable global-to-local row
+  routing, exact touched-shard pushdown, immutable shard append, and a
+  compatible
+  [`row_bound_source()`](https://bbuchsbaum.github.io/fmridataset/reference/row_bound_source.md)
+  constructor.
+
+- Added an experimental serializable
+  [`zarr_array_source()`](https://bbuchsbaum.github.io/fmridataset/reference/zarr_array_source.md)
+  for two-dimensional observation-by-feature stores, including explicit
+  physical-axis order, metadata freshness checks, consecutive-range
+  pushdown, optional runtime discovery, deterministic handle cleanup,
+  and direct `delarr` compatibility.
+
+- Added canonical `entity_frame` and `entity_registry` contracts with
+  stable primary keys, scalar metadata, aligned multivariate blocks,
+  synchronized subsetting, frame/view accessors, and source-free FDS
+  entity-block arrays.
+
+- Added validated `key_relation`, `sparse_relation`, and
+  `relation_registry` contracts with explicit observation, feature, and
+  entity domains, referential-integrity checks, view restriction,
+  row-bind merging, and FDS persistence.
+
+- Added assay-free
+  [`hierarchy_index()`](https://bbuchsbaum.github.io/fmridataset/reference/hierarchy_index.md)
+  derivation for explicit root-to-leaf containment paths, with
+  entity-order-stable grouping codes, crossed-relation exclusion,
+  ambiguity checks, missing-ancestry propagation, and lazy-view
+  invariance.
+
+- `observations(..., resolve = TRUE)` now exposes namespaced scalar
+  annotations from every entity reachable through validated key
+  relations, while `obs_blocks(..., resolve = TRUE)` provides lazy
+  observation-aligned views of entity blocks without duplicating their
+  stored rows.
+  [`filter_obs()`](https://bbuchsbaum.github.io/fmridataset/reference/filter_obs.md)
+  resolves entity annotations by default and still performs no assay
+  reads.
+
+- Added `fmri_collection` for named, semantically equivalent frames that
+  must retain separate feature spaces, including participant-native
+  data. Collection validation compares assay, axis, block, entity, and
+  relation schemas without inferring spatial equality from dimensions,
+  and inspection remains zero-read.
+
+- Added `fmri_study`, typed `frame_link` descriptors, keyed
+  `event_table` objects, shared entity contextualization, and lazy
+  [`filter_entities()`](https://bbuchsbaum.github.io/fmridataset/reference/filter_entities.md)
+  study views. Entity filters propagate through frames and native-space
+  collections, and restrict linked axis maps and event rows without
+  reading assay data.
+
+- Added serializable balanced, imagewise, and featurewise block planners
+  with explicit byte ceilings, chunk-aware block shapes, stale-plan
+  detection, and bounded execution over frame views.
+
+- Added explicit matrix-versus-spatial execution dispatch. Complete
+  feature domains use native source reads when available; restricted
+  domains safely reconstruct through their feature space, with bounded
+  streaming helpers.
+
+- Froze the backend-neutral FDS logical manifest at version 1, including
+  a named-axis array registry, source-free assay and block declarations,
+  strict validation, semantic digests, physical binding, and frame
+  reconstruction.
+
+- Added `surface_space` with stable full-mesh vertex and hemisphere
+  identity, packed active/medial-wall support, content-addressed
+  topology and geometry, induced sparse adjacency, surface-map
+  reconstruction, restriction, spatial compatibility, and source-free
+  FDS persistence. Surface identity now follows `neurosurf`’s
+  surface-to-world transform convention, with an explicit adapter to and
+  native reconstruction path for
+  [`neurosurf::SurfaceGeometry`](https://bbuchsbaum.github.io/neurosurf/reference/SurfaceGeometry.html).
+
+- Added parent-linked `parcel_space` with sparse membership, explicit
+  mean/sum aggregation and reconstruction operators, induced parcel
+  adjacency, stable atlas-namespaced feature IDs, restriction, and FDS
+  persistence. The optional `neuroatlas` adapter delegates atlas
+  metadata and atlas-specific surface label coding to
+  [`neuroatlas::as_parcel_data()`](https://bbuchsbaum.github.io/neuroatlas/reference/as_parcel_data.html)
+  and
+  [`neuroatlas::get_roi()`](https://bbuchsbaum.github.io/neuroatlas/reference/get_roi.html).
+
+- Added parent-linked `basis_space` with stable component identities,
+  explicit analysis and synthesis operators, exact SVD-based
+  least-squares projection for non-orthonormal dictionaries,
+  restriction, reconstruction, provenance, backend-neutral in-memory
+  identity, and FDS/HDF5 persistence. An optional `fmrilatent` adapter
+  treats spatial loadings as the synthesis dictionary while leaving
+  model fitting, temporal scores, handles, and offsets in `fmrilatent`.
+
+- Added ordered heterogeneous `composite_space` domains for mixed
+  surface, volume, parcel, and representational parts. Part-qualified
+  feature IDs, explicit routing, arbitrary-order restriction,
+  block-diagonal adjacency, named native reconstruction, and FDS/HDF5
+  persistence support grayordinate-like data without duplicating
+  child-space geometry classes.
+
+- Added serializable `feature_map` descriptors with exact source and
+  target space identity, lazy target-by-source assay transformation,
+  explicit squared weight propagation for independent variances,
+  canonical parcel and basis maps, typed study-link validation, and
+  content-addressed acyclic derivation provenance.
+
+- Added bit-packed, deduplicated `mask_bank` storage and typed
+  `entity_feature_validity` relations. Validity follows feature views,
+  resolves lazily to observations, reports policy-free coverage,
+  persists through FDS, and can mask selected assays with `NA` without
+  conflating absent coverage with numerical zero.
+
+- The historical `v0.9.0` tag is preserved; development continues from
+  the current main line without retagging it.
+
+### Bug fixes
+
+- [`block_apply()`](https://bbuchsbaum.github.io/fmridataset/reference/block_apply.md)
+  now returns an empty list for a frame or view with no features,
+  instead of failing with `wrong sign in 'by' argument`. An empty
+  selection is a supported frame state, and the rest of the frame API
+  already honoured it.
+- [`feature_ids()`](https://bbuchsbaum.github.io/fmridataset/reference/feature-space.md)
+  on a `volume_space` with empty support now returns `character(0)`
+  rather than the single string `"voxel-"`, so feature IDs stay aligned
+  with
+  [`n_features()`](https://bbuchsbaum.github.io/fmridataset/reference/feature-space.md).
+  This desynchronisation made
+  [`explain()`](https://bbuchsbaum.github.io/fmridataset/reference/explain.md)
+  and
+  [`fds_frame_manifest()`](https://bbuchsbaum.github.io/fmridataset/reference/fds_frame_manifest.md)
+  fail on any zero-feature view of a volume space.
+
+### Dependencies
+
+- Declared `Remotes` entries for `fmrilatent` and `fmristore`, and
+  removed the archived `pryr` from `Suggests`. Without these, `pak`
+  could not solve the dependency graph, so every CI workflow failed
+  during dependency setup before reaching `R CMD check`.
+- Constrained `delarr (>= 0.1.0.9000)` and `fmristore (>= 0.1.0.9000)`,
+  the versions that first provide `delarr_provider_pull()` and
+  [`write_frame_h5()`](https://bbuchsbaum.github.io/fmristore/reference/write_frame_h5.html).
+  Older builds previously failed at namespace load or mid-test rather
+  than at dependency resolution.
+- Dropped the Bioconductor dependency surface. `DelayedArray` and
+  `DelayedMatrixStats` are no longer suggested, and CI no longer
+  installs `BiocManager`, `Rarr`, `rhdf5`, `DelayedArray`, or
+  `S4Arrays`. Lazy array support is built on `delarr`, which this
+  project owns.
+
+### Breaking changes
+
+- Retired the `DelayedArray` bridge. `as_delayed_array()` and its
+  methods, the `StorageBackendSeed` and `StudyBackendSeed` classes, and
+  `register_delayed_array_support()` are removed.
+  [`as_delarr()`](https://bbuchsbaum.github.io/fmridataset/reference/as_delarr.md)
+  provides the same lazy interface over the same backends
+  (`matrix_backend`, `nifti_backend`, `study_backend`, and a default
+  method) and is the supported replacement.
+- [`fmri_series()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_series.md)
+  no longer accepts `output = "DelayedMatrix"`; `output` is now
+  `"fmri_series"` only. The returned object already carries a `delarr`
+  lazy matrix payload, which
+  [`as_delarr()`](https://bbuchsbaum.github.io/fmridataset/reference/as_delarr.md)
+  exposes directly. Note that `delarr` is a hard dependency, so the
+  previous `DelayedArray` fallback path was unreachable in any
+  installable configuration.
+
+## fmridataset 0.9.0
 
 ### New features
 
@@ -23,9 +240,8 @@
   - Added
     [`as_delarr()`](https://bbuchsbaum.github.io/fmridataset/reference/as_delarr.md)
     generics for all storage backends and study adapters
-  - Retained optional
-    [`as_delayed_array()`](https://bbuchsbaum.github.io/fmridataset/reference/as_delayed_array.md)
-    paths for explicit DelayedMatrix output
+  - Retained optional `as_delayed_array()` paths for explicit
+    DelayedMatrix output
 
 ## fmridataset 0.8.9 (Hotfix)
 
@@ -63,7 +279,10 @@
 ### Bug fixes
 
 - Fixed chunking edge case when `nchunks > number of voxels`
-- Updated deprecated `with_mock()` calls to `with_mocked_bindings()`
+- Updated deprecated
+  [`with_mock()`](https://testthat.r-lib.org/reference/with_mock.html)
+  calls to
+  [`with_mocked_bindings()`](https://testthat.r-lib.org/reference/local_mocked_bindings.html)
 - Fixed dimensional consistency issues in storage backends
 - Resolved all test failures from package refactoring
 

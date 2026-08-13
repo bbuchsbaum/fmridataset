@@ -8,16 +8,7 @@ temporal structure information.
 ``` r
 n_runs(x, ...)
 
-# S3 method for class 'matrix_dataset'
-n_runs(x, ...)
-
 # S3 method for class 'fmri_dataset'
-n_runs(x, ...)
-
-# S3 method for class 'fmri_mem_dataset'
-n_runs(x, ...)
-
-# S3 method for class 'fmri_file_dataset'
 n_runs(x, ...)
 
 # S3 method for class 'fmri_study_dataset'

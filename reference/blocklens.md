@@ -8,19 +8,7 @@ Extends the sampling_frame generic to work with dataset objects.
 ``` r
 blocklens(x, ...)
 
-# S3 method for class 'matrix_dataset'
-blocklens(x, ...)
-
 # S3 method for class 'fmri_dataset'
-blocklens(x, ...)
-
-# S3 method for class 'fmri_mem_dataset'
-blocklens(x, ...)
-
-# S3 method for class 'fmri_file_dataset'
-blocklens(x, ...)
-
-# S3 method for class 'fmri_study_dataset'
 blocklens(x, ...)
 
 # S3 method for class 'sampling_frame'

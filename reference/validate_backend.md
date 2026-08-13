@@ -2,13 +2,9 @@
 
 Validates that a backend implements the required contract correctly.
 
-Internal function to validate storage backend objects
-
 ## Usage
 
 ``` r
-validate_backend(backend)
-
 validate_backend(backend)
 ```
 

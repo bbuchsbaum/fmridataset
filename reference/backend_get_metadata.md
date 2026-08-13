@@ -6,6 +6,9 @@ dimensions).
 ## Usage
 
 ``` r
+# S3 method for class 'bids_h5_scan_backend'
+backend_get_metadata(backend)
+
 # S3 method for class 'h5_backend'
 backend_get_metadata(backend)
 
@@ -18,6 +21,9 @@ backend_get_metadata(backend)
 # S3 method for class 'nifti_backend'
 backend_get_metadata(backend)
 
+backend_get_metadata(backend)
+
+# S3 method for class 'study_backend'
 backend_get_metadata(backend)
 
 # S3 method for class 'zarr_backend'

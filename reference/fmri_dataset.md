@@ -11,7 +11,7 @@ fmri_dataset(
   scans,
   mask = NULL,
   TR,
-  run_length,
+  run_length = NULL,
   event_table = data.frame(),
   base_path = ".",
   censor = NULL,
@@ -31,8 +31,12 @@ fmri_dataset(
 
 - mask:
 
-  Name of the binary mask file indicating the voxels to include in the
-  analysis. Ignored if scans is a backend object.
+  The binary mask indicating the voxels to include in the analysis,
+  given either as the name of a mask file (length-1 character) or as an
+  in-memory
+  [`neuroim2::NeuroVol`](https://bbuchsbaum.github.io/neuroim2/reference/NeuroVol.html)/`LogicalNeuroVol`.
+  An in-memory mask is routed straight to the backend, avoiding a
+  write-to-disk round-trip. Ignored if scans is a backend object.
 
 - TR:
 
@@ -41,7 +45,11 @@ fmri_dataset(
 - run_length:
 
   A vector of one or more integers indicating the number of scans in
-  each run.
+  each run. Optional: if omitted (`NULL`), run lengths are derived from
+  the per-file BOLD volume counts (one run per scan file). When supplied
+  with one entry per scan file, each value is validated against the file
+  header and a mismatch errors early, naming the offending run. Required
+  when `dummy_mode = TRUE` (no headers to derive from).
 
 - event_table:
 
@@ -98,6 +106,15 @@ dset <- fmri_dataset("scan1.nii",
   mask = "mask.nii", TR = 2,
   run_length = 300,
   event_table = data.frame(onsets = c(3, 20, 99), run = rep(1, 3))
+)
+
+# Create an fMRI dataset with an in-memory mask (no temp file needed)
+mask_vol <- neuroim2::LogicalNeuroVol(
+  array(TRUE, c(10, 10, 10)),
+  neuroim2::NeuroSpace(c(10, 10, 10))
+)
+dset <- fmri_dataset(c("scan1.nii", "scan2.nii"),
+  mask = mask_vol, TR = 2, run_length = c(150, 150)
 )
 
 # Create an fMRI dataset with a backend

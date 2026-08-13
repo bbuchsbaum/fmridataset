@@ -8,19 +8,7 @@ analysis or indexing operations.
 ``` r
 samples(x, ...)
 
-# S3 method for class 'matrix_dataset'
-samples(x, ...)
-
 # S3 method for class 'fmri_dataset'
-samples(x, ...)
-
-# S3 method for class 'fmri_mem_dataset'
-samples(x, ...)
-
-# S3 method for class 'fmri_file_dataset'
-samples(x, ...)
-
-# S3 method for class 'fmri_study_dataset'
 samples(x, ...)
 
 # S3 method for class 'sampling_frame'

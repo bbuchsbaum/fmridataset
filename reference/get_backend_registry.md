@@ -84,7 +84,7 @@ get_backend_registry()
 #>     class(backend) <- c("h5_backend", "storage_backend")
 #>     backend
 #> }
-#> <bytecode: 0x55ce37de1b50>
+#> <bytecode: 0x55ae7c1d1de0>
 #> <environment: namespace:fmridataset>
 #> 
 #> $h5$description
@@ -94,7 +94,7 @@ get_backend_registry()
 #> NULL
 #> 
 #> $h5$registered_at
-#> [1] "2026-01-22 12:18:50 UTC"
+#> [1] "2026-08-13 17:16:30 UTC"
 #> 
 #> 
 #> $latent
@@ -104,48 +104,17 @@ get_backend_registry()
 #> $latent$factory
 #> function (source, preload = FALSE) 
 #> {
-#>     if (is.character(source)) {
-#>         if (!all(file.exists(source))) {
-#>             missing <- source[!file.exists(source)]
-#>             stop_fmridataset(fmridataset_error_backend_io, sprintf("Source files not found: %s", 
-#>                 paste(missing, collapse = ", ")), file = missing[1], 
-#>                 operation = "create")
-#>         }
-#>         if (!all(grepl("\\.(lv\\.h5|h5)$", source, ignore.case = TRUE))) {
-#>             stop_fmridataset(fmridataset_error_config, "All source files must be HDF5 files (.h5 or .lv.h5)", 
-#>                 parameter = "source")
-#>         }
-#>     }
-#>     else if (is.list(source)) {
-#>         for (i in seq_along(source)) {
-#>             item <- source[[i]]
-#>             if (is.character(item)) {
-#>                 if (length(item) != 1 || !file.exists(item)) {
-#>                   stop_fmridataset(fmridataset_error_config, 
-#>                     sprintf("Source item %d must be an existing file path", 
-#>                       i), parameter = "source")
-#>                 }
-#>             }
-#>             else if (!inherits(item, "LatentNeuroVec")) {
-#>                 has_basis <- isS4(item) && "basis" %in% methods::slotNames(item)
-#>                 if (!has_basis) {
-#>                   stop_fmridataset(fmridataset_error_config, 
-#>                     sprintf("Source item %d must be a LatentNeuroVec object or file path", 
-#>                       i), parameter = "source")
-#>                 }
-#>             }
-#>         }
-#>     }
-#>     else {
-#>         stop_fmridataset(fmridataset_error_config, "source must be character vector or list", 
-#>             parameter = "source", value = class(source))
-#>     }
-#>     backend <- list(source = source, preload = preload, data = NULL, 
-#>         dims = NULL, is_open = FALSE)
+#>     .latent_backend_validate_source(source)
+#>     backend <- new.env(parent = emptyenv())
+#>     backend$source <- source
+#>     backend$preload <- preload
+#>     backend$data <- NULL
+#>     backend$dims <- NULL
+#>     backend$is_open <- FALSE
 #>     class(backend) <- c("latent_backend", "storage_backend")
 #>     backend
 #> }
-#> <bytecode: 0x55ce379e13e0>
+#> <bytecode: 0x55ae7c1b4b80>
 #> <environment: namespace:fmridataset>
 #> 
 #> $latent$description
@@ -155,7 +124,7 @@ get_backend_registry()
 #> NULL
 #> 
 #> $latent$registered_at
-#> [1] "2026-01-22 12:18:50 UTC"
+#> [1] "2026-08-13 17:16:30 UTC"
 #> 
 #> 
 #> $matrix
@@ -169,7 +138,6 @@ get_backend_registry()
 #>         stop_fmridataset(fmridataset_error_config, message = "data_matrix must be a matrix", 
 #>             parameter = "data_matrix", value = class(data_matrix))
 #>     }
-#>     n_timepoints <- nrow(data_matrix)
 #>     n_voxels <- ncol(data_matrix)
 #>     if (is.null(mask)) {
 #>         mask <- rep(TRUE, n_voxels)
@@ -198,7 +166,7 @@ get_backend_registry()
 #>     class(backend) <- c("matrix_backend", "storage_backend")
 #>     backend
 #> }
-#> <bytecode: 0x55ce37d08000>
+#> <bytecode: 0x55ae7c1ca128>
 #> <environment: namespace:fmridataset>
 #> 
 #> $matrix$description
@@ -208,7 +176,7 @@ get_backend_registry()
 #> NULL
 #> 
 #> $matrix$registered_at
-#> [1] "2026-01-22 12:18:50 UTC"
+#> [1] "2026-08-13 17:16:30 UTC"
 #> 
 #> 
 #> $nifti
@@ -268,7 +236,7 @@ get_backend_registry()
 #>     class(backend) <- c("nifti_backend", "storage_backend")
 #>     backend
 #> }
-#> <bytecode: 0x55ce37dd9218>
+#> <bytecode: 0x55ae7c1e8018>
 #> <environment: namespace:fmridataset>
 #> 
 #> $nifti$description
@@ -278,7 +246,7 @@ get_backend_registry()
 #> NULL
 #> 
 #> $nifti$registered_at
-#> [1] "2026-01-22 12:18:50 UTC"
+#> [1] "2026-08-13 17:16:30 UTC"
 #> 
 #> 
 #> $study
@@ -292,66 +260,15 @@ get_backend_registry()
 #>     if (!is.list(backends) || length(backends) == 0) {
 #>         stop_fmridataset(fmridataset_error_config, message = "backends must be a non-empty list")
 #>     }
-#>     backends <- lapply(backends, function(b) {
-#>         if (!inherits(b, "storage_backend")) {
-#>             if (inherits(b, "matrix_dataset") && !is.null(b$datamat)) {
-#>                 mask_logical <- as.logical(b$mask)
-#>                 matrix_backend(b$datamat, mask = mask_logical)
-#>             }
-#>             else if (!is.null(b$backend)) {
-#>                 b$backend
-#>             }
-#>             else {
-#>                 b
-#>             }
-#>         }
-#>         else {
-#>             b
-#>         }
-#>     })
-#>     lapply(backends, function(b) {
-#>         if (!inherits(b, "storage_backend")) {
-#>             stop_fmridataset(fmridataset_error_config, message = "all elements of backends must inherit from 'storage_backend'")
-#>         }
-#>     })
-#>     if (is.null(subject_ids)) {
-#>         subject_ids <- seq_along(backends)
-#>     }
-#>     if (length(subject_ids) != length(backends)) {
-#>         stop_fmridataset(fmridataset_error_config, message = "subject_ids must match length of backends")
-#>     }
+#>     backends <- .study_backend_coerce_backends(backends)
+#>     .study_backend_validate_backends(backends)
+#>     subject_ids <- .study_backend_resolve_subject_ids(subject_ids, 
+#>         backends)
 #>     dims_list <- lapply(backends, backend_get_dims)
 #>     spatial_dims <- lapply(dims_list, function(x) as.numeric(x$spatial))
 #>     time_dims <- vapply(dims_list, function(x) x$time, numeric(1))
-#>     ref_spatial <- spatial_dims[[1]]
-#>     for (i in seq_along(spatial_dims[-1])) {
-#>         sd <- spatial_dims[[i + 1]]
-#>         if (!identical(sd, ref_spatial)) {
-#>             stop_fmridataset(fmridataset_error_config, message = "spatial dimensions must match across backends")
-#>         }
-#>     }
-#>     masks <- lapply(backends, backend_get_mask)
-#>     ref_mask <- masks[[1]]
-#>     if (strict == "identical") {
-#>         for (m in masks[-1]) {
-#>             if (!identical(m, ref_mask)) {
-#>                 stop_fmridataset(fmridataset_error_config, message = "masks differ across backends")
-#>             }
-#>         }
-#>         combined_mask <- ref_mask
-#>     }
-#>     else if (strict == "intersect") {
-#>         for (m in masks[-1]) {
-#>             overlap <- sum(m & ref_mask)/length(ref_mask)
-#>             if (overlap < 0.95) {
-#>                 stop_fmridataset(fmridataset_error_config, message = "mask overlap <95%")
-#>             }
-#>         }
-#>         combined_mask <- Reduce("&", masks)
-#>     }
-#>     else {
-#>         stop_fmridataset(fmridataset_error_config, message = "unknown strict setting")
-#>     }
+#>     ref_spatial <- .study_backend_validate_spatial(spatial_dims)
+#>     combined_mask <- .study_backend_combine_masks(backends, strict)
 #>     subject_boundaries <- c(0L, cumsum(as.integer(time_dims)))
 #>     backend <- list(backends = backends, subject_ids = subject_ids, 
 #>         strict = strict, `_dims` = list(spatial = ref_spatial, 
@@ -360,7 +277,7 @@ get_backend_registry()
 #>     class(backend) <- c("study_backend", "storage_backend")
 #>     backend
 #> }
-#> <bytecode: 0x55ce379ee118>
+#> <bytecode: 0x55ae7c1b0a28>
 #> <environment: namespace:fmridataset>
 #> 
 #> $study$description
@@ -370,7 +287,7 @@ get_backend_registry()
 #> NULL
 #> 
 #> $study$registered_at
-#> [1] "2026-01-22 12:18:50 UTC"
+#> [1] "2026-08-13 17:16:30 UTC"
 #> 
 #> 
 #> $zarr
@@ -378,24 +295,27 @@ get_backend_registry()
 #> [1] "zarr"
 #> 
 #> $zarr$factory
-#> function (source, data_key = "data", mask_key = "mask", preload = FALSE, 
-#>     cache_size = 100) 
+#> function (source, preload = FALSE) 
 #> {
 #>     if (!is.character(source) || length(source) != 1) {
 #>         stop_fmridataset(fmridataset_error_config, "source must be a single character string", 
 #>             parameter = "source", value = class(source))
 #>     }
-#>     if (!requireNamespace("Rarr", quietly = TRUE)) {
-#>         stop_fmridataset(fmridataset_error_config, "The Rarr package is required for zarr_backend but is not installed.", 
-#>             details = "Install with: BiocManager::install('Rarr')")
+#>     if (!requireNamespace("zarr", quietly = TRUE)) {
+#>         stop_fmridataset(fmridataset_error_config, "The zarr package is required for zarr_backend but is not installed.", 
+#>             details = "Install with: install.packages('zarr')")
 #>     }
-#>     backend <- list(source = source, data_key = data_key, mask_key = mask_key, 
-#>         preload = preload, cache_size = cache_size, store = NULL, 
-#>         data_array = NULL, mask_array = NULL, dims = NULL, is_open = FALSE)
+#>     backend <- new.env(parent = emptyenv())
+#>     backend$source <- source
+#>     backend$preload <- preload
+#>     backend$zarr_array <- NULL
+#>     backend$data_cache <- NULL
+#>     backend$dims <- NULL
+#>     backend$is_open <- FALSE
 #>     class(backend) <- c("zarr_backend", "storage_backend")
 #>     backend
 #> }
-#> <bytecode: 0x55ce361c0508>
+#> <bytecode: 0x55ae7c1a0188>
 #> <environment: namespace:fmridataset>
 #> 
 #> $zarr$description
@@ -405,7 +325,7 @@ get_backend_registry()
 #> NULL
 #> 
 #> $zarr$registered_at
-#> [1] "2026-01-22 12:18:50 UTC"
+#> [1] "2026-08-13 17:16:30 UTC"
 #> 
 #> 
 
@@ -467,7 +387,7 @@ get_backend_registry("nifti")
 #>     class(backend) <- c("nifti_backend", "storage_backend")
 #>     backend
 #> }
-#> <bytecode: 0x55ce37dd9218>
+#> <bytecode: 0x55ae7c1e8018>
 #> <environment: namespace:fmridataset>
 #> 
 #> $description
@@ -477,6 +397,6 @@ get_backend_registry("nifti")
 #> NULL
 #> 
 #> $registered_at
-#> [1] "2026-01-22 12:18:50 UTC"
+#> [1] "2026-08-13 17:16:30 UTC"
 #> 
 ```

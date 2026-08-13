@@ -1,15 +1,13 @@
-pandoc: 3.1.11
-pkgdown: 2.2.0
+pandoc: 3.8.3
+pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
   architecture-overview: architecture-overview.html
   backend-development-basics: backend-development-basics.html
-  backend-registry: backend-registry.html
-  extending-backends: extending-backends.html
+  bids-h5-archive: bids-h5-archive.html
   fmridataset-intro: fmridataset-intro.html
-  h5-backend-usage: h5-backend-usage.html
   study-level-analysis: study-level-analysis.html
-last_built: 2026-01-22T12:18Z
+last_built: 2026-08-13T17:16Z
 urls:
   reference: https://bbuchsbaum.github.io/fmridataset/reference
   article: https://bbuchsbaum.github.io/fmridataset/articles

@@ -21,6 +21,7 @@ Let’s create a working backend for JSON-formatted fMRI data that
 demonstrates all the essential concepts:
 
 ``` r
+
 # Create a complete JSON backend implementation
 json_backend <- function(json_file, metadata_file = NULL) {
   # Input validation
@@ -178,6 +179,7 @@ product of spatial dimensions.
 These methods enhance functionality but aren’t required:
 
 ``` r
+
 # Optional: Metadata extraction
 backend_get_metadata.json_backend <- function(backend) {
   if (!backend$is_open) {
@@ -240,6 +242,7 @@ Backends need to track whether they’re open and manage resources
 appropriately:
 
 ``` r
+
 # Robust state management example
 stateful_backend <- function(source) {
   backend <- list(
@@ -329,6 +332,7 @@ cat("After close - is_open:", backend$is_open, "\n")
 Implement lazy loading to defer expensive operations:
 
 ``` r
+
 # Lazy loading backend
 lazy_backend <- function(data_source) {
   backend <- list(
@@ -426,6 +430,7 @@ backend_close(backend)
 Implement validation to ensure data integrity:
 
 ``` r
+
 # Create validation utilities
 validate_backend_contract <- function(backend_class) {
   required_methods <- c(
@@ -470,6 +475,7 @@ validate_backend_contract("lazy_backend")
 Implement intelligent caching for better performance:
 
 ``` r
+
 # Advanced caching backend
 cached_backend <- function(source, cache_size_mb = 100) {
   backend <- list(
@@ -597,6 +603,7 @@ backend_close(backend)
 Robust error handling makes backends production-ready:
 
 ``` r
+
 # Create a backend with comprehensive error handling
 robust_backend <- function(source) {
   backend <- list(
@@ -725,6 +732,7 @@ Here are essential guidelines for creating robust, efficient backends.
 Before considering your backend complete:
 
 ``` r
+
 backend_checklist <- function() {
   cat("Backend Development Checklist:\n\n")
   
@@ -790,6 +798,7 @@ backend_checklist()
 Comprehensive testing ensures reliability:
 
 ``` r
+
 # Test suite for backends
 test_backend <- function(backend_constructor, test_source) {
   cat("Testing backend implementation...\n\n")
@@ -904,6 +913,7 @@ See a production backend in action
 # Session Information
 
 ``` r
+
 sessionInfo()
 #> R version 4.3.2 (2023-10-31)
 #> Platform: aarch64-apple-darwin20 (64-bit)

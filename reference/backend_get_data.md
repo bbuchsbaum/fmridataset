@@ -6,6 +6,9 @@ orientation.
 ## Usage
 
 ``` r
+# S3 method for class 'bids_h5_scan_backend'
+backend_get_data(backend, rows = NULL, cols = NULL)
+
 # S3 method for class 'h5_backend'
 backend_get_data(backend, rows = NULL, cols = NULL)
 
@@ -44,3 +47,10 @@ backend_get_data(backend, rows = NULL, cols = NULL)
 ## Value
 
 A matrix in timepoints × voxels orientation
+
+## Details
+
+For `compression_mode = "parcellated"` reads
+`/scans/<name>/data/summary_data` (`[T, K]`). For
+`compression_mode = "latent"` reads `/scans/<name>/data/basis`
+(`[T, K]`). In both cases the return value is a `[T, K]` numeric matrix.

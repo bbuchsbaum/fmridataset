@@ -5,6 +5,9 @@ Returns the dimensions of the data stored in the backend.
 ## Usage
 
 ``` r
+# S3 method for class 'bids_h5_scan_backend'
+backend_get_dims(backend)
+
 # S3 method for class 'h5_backend'
 backend_get_dims(backend)
 

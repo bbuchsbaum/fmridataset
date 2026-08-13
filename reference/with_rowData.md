@@ -1,6 +1,6 @@
 # Attach rowData metadata to a lazy matrix
 
-Helper for reattaching metadata after DelayedMatrixStats operations.
+Helper for reattaching metadata after lazy matrix operations.
 
 ## Usage
 

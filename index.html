@@ -5,14 +5,15 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Unified Container for fMRI Datasets • fmridataset</title>
+<title>Spatially Typed Annotated fMRI Datasets • fmridataset</title>
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Unified Container for fMRI Datasets">
-<meta name="description" content="Provides a unified S3 class fmri_dataset for representing functional magnetic resonance imaging (fMRI) data from various sources including raw NIfTI files, BIDS projects, pre-loaded NeuroVec objects, and in-memory matrices. Features lazy loading, flexible data access patterns, and integration with neuroimaging analysis workflows.">
-<meta property="og:description" content="Provides a unified S3 class fmri_dataset for representing functional magnetic resonance imaging (fMRI) data from various sources including raw NIfTI files, BIDS projects, pre-loaded NeuroVec objects, and in-memory matrices. Features lazy loading, flexible data access patterns, and integration with neuroimaging analysis workflows.">
+<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><link href="extra.css" rel="stylesheet">
+<script src="extra.js"></script><meta property="og:title" content="Spatially Typed Annotated fMRI Datasets">
+<meta name="description" content="Provides spatially typed, annotated observation-by-feature containers for functional magnetic resonance imaging (fMRI) data. The package aligns lazy numerical assays with observation metadata, feature metadata, experimental entities, and explicit neuroimaging spaces while retaining compatibility with NIfTI, HDF5, BIDS, and in-memory sources.">
+<meta property="og:description" content="Provides spatially typed, annotated observation-by-feature containers for functional magnetic resonance imaging (fMRI) data. The package aligns lazy numerical assays with observation metadata, feature metadata, experimental entities, and explicit neuroimaging spaces while retaining compatibility with NIfTI, HDF5, BIDS, and in-memory sources.">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -22,7 +23,7 @@
 
     <a class="navbar-brand me-2" href="index.html">fmridataset</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.8.9</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.10.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,13 +36,11 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="articles/architecture-overview.html">Architecture Deep Dive: Design Principles and Extensibility</a></li>
-    <li><a class="dropdown-item" href="articles/backend-development-basics.html">Backend Development Basics: Creating Custom Storage Backends</a></li>
-    <li><a class="dropdown-item" href="articles/backend-registry.html">Backend Registry: Extending Data Format Support</a></li>
-    <li><a class="dropdown-item" href="articles/extending-backends.html">Advanced Backend Development: Storage Extensions</a></li>
+<li><a class="dropdown-item" href="articles/architecture-overview.html">Architecture Overview</a></li>
+    <li><a class="dropdown-item" href="articles/backend-development-basics.html">Writing Custom Storage Backends</a></li>
+    <li><a class="dropdown-item" href="articles/bids-h5-archive.html">BIDS H5 Archive: Compressing a Study into a Single File</a></li>
     <li><a class="dropdown-item" href="articles/fmridataset-intro.html">Getting Started with fmridataset</a></li>
-    <li><a class="dropdown-item" href="articles/h5-backend-usage.html">HDF5 Storage: High-Performance Data Management for Large-Scale fMRI Studies</a></li>
-    <li><a class="dropdown-item" href="articles/study-level-analysis.html">Scaling to Study-Level Analysis: From Single Subjects to Group Studies</a></li>
+    <li><a class="dropdown-item" href="articles/study-level-analysis.html">Study-Level Analysis: From Single Subjects to Group Studies</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
@@ -61,156 +60,125 @@
   <main id="main" class="col-md-9"><div class="section level1">
 <div class="page-header"><h1 id="fmridataset-">fmridataset <img src="reference/figures/logo.png" align="right" height="139"><a class="anchor" aria-label="anchor" href="#fmridataset-"></a>
 </h1></div>
-<!-- badges: start -->
-
-<div class="section level2">
-<h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
-</h2>
-<p><code>fmridataset</code> provides a unified framework for representing functional magnetic resonance imaging (fMRI) data from various sources. The package supports multiple data backends and offers a consistent interface for working with fMRI datasets regardless of their underlying storage format.</p>
-</div>
-<div class="section level2">
-<h2 id="features">Features<a class="anchor" aria-label="anchor" href="#features"></a>
-</h2>
-<ul>
-<li>
-<strong>Unified Interface</strong>: Work with fMRI data from NIfTI files, BIDS projects, pre-loaded NeuroVec objects, and in-memory matrices through a single API</li>
-<li>
-<strong>Lazy Loading</strong>: Efficient memory management with on-demand data loading</li>
-<li>
-<strong>Flexible Backends</strong>: Pluggable storage backends for different data formats</li>
-<li>
-<strong>Data Chunking</strong>: Built-in support for processing large datasets in chunks</li>
-<li>
-<strong>Temporal Structure</strong>: Rich sampling frame representation for run lengths, TR, and temporal organization</li>
-<li>
-<strong>Integration Ready</strong>: Seamlessly integrates with neuroimaging analysis workflows</li>
-</ul>
-</div>
+<p><a href="NEWS.html">Changelog</a> · <a href="inst/architecture/ADR-001-canonical-data-model.html">Canonical data model</a> · <a href="https://github.com/bbuchsbaum/fmridataset/issues" class="external-link">Issues</a> · <a href="CONTRIBUTING.html">Contributing</a></p>
+<p><code>fmridataset</code> is an R package for keeping fMRI arrays aligned with what their rows and columns mean. It represents each assay as observations by features and carries stable IDs, annotations, entities, relations, and explicit spatial identity through views, transformations, and storage round trips.</p>
+<p>Use it when raw time series, beta estimates, parcel values, surface data, or latent representations must retain their meaning as they move between analysis steps and storage systems.</p>
+<blockquote>
+<p><strong>Status:</strong> The <code>0.10.0</code> development line is an active migration toward 1.0 and requires R 4.3 or newer. <code><a href="reference/fmri_frame.html">fmri_frame()</a></code> is the canonical entry point; older dataset constructors remain available as transitional 0.x adapters. APIs may still change before 1.0.</p>
+</blockquote>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>You can install the development version of fmridataset from <a href="https://github.com/" class="external-link">GitHub</a> with:</p>
+<p>The current frame API is available from GitHub:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># install.packages("devtools")</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"bbuchsbaum/fmridataset"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"bbuchsbaum/fmridataset"</span><span class="op">)</span></span></code></pre></div>
+<p><code>fmridataset</code> is not currently on CRAN. The published <a href="https://bbuchsbaum.r-universe.dev/fmridataset" class="external-link">R-universe build</a> is version 0.8.9 and documents the legacy dataset API.</p>
 </div>
 <div class="section level2">
-<h2 id="quick-start">Quick Start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
+<h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
 </h2>
-<div class="section level3">
-<h3 id="creating-datasets">Creating Datasets<a class="anchor" aria-label="anchor" href="#creating-datasets"></a>
-</h3>
+<p>Create a small volume-backed frame, then select observations and voxels by their stable IDs:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/bbuchsbaum/fmridataset" class="external-link">fmridataset</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># From NIfTI files</span></span>
-<span><span class="va">dataset</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/fmri_dataset.html">fmri_dataset</a></span><span class="op">(</span></span>
-<span>  scans <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"run1.nii"</span>, <span class="st">"run2.nii"</span><span class="op">)</span>,</span>
-<span>  mask <span class="op">=</span> <span class="st">"mask.nii"</span>, </span>
-<span>  TR <span class="op">=</span> <span class="fl">2.0</span>,</span>
-<span>  run_length <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">240</span>, <span class="fl">240</span><span class="op">)</span></span>
+<span><span class="va">signal</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fl">24</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">6</span>, ncol <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
+<span><span class="va">voxel_space</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/volume_space.html">volume_space</a></span><span class="op">(</span></span>
+<span>  dim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span>,</span>
+<span>  affine <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fl">4</span><span class="op">)</span>,</span>
+<span>  template <span class="op">=</span> <span class="st">"toy"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># From in-memory matrix</span></span>
-<span><span class="va">mat_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1000</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">100</span>, ncol <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
-<span><span class="va">dataset</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/matrix_dataset.html">matrix_dataset</a></span><span class="op">(</span></span>
-<span>  datamat <span class="op">=</span> <span class="va">mat_data</span>,</span>
-<span>  TR <span class="op">=</span> <span class="fl">1.5</span>, </span>
-<span>  run_length <span class="op">=</span> <span class="fl">100</span></span>
+<span><span class="va">frame</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/fmri_frame.html">fmri_frame</a></span><span class="op">(</span></span>
+<span>  assays <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>signal <span class="op">=</span> <span class="va">signal</span><span class="op">)</span>,</span>
+<span>  observations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>    .obs_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"volume-"</span>, <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fl">6</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    run <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"run-1"</span>, <span class="st">"run-2"</span><span class="op">)</span>, each <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  space <span class="op">=</span> <span class="va">voxel_space</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># From pre-loaded NeuroVec objects  </span></span>
-<span><span class="va">dataset</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/fmri_mem_dataset.html">fmri_mem_dataset</a></span><span class="op">(</span></span>
-<span>  scans <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">neurovec1</span>, <span class="va">neurovec2</span><span class="op">)</span>,</span>
-<span>  mask <span class="op">=</span> <span class="va">mask_vol</span>,</span>
-<span>  TR <span class="op">=</span> <span class="fl">2.0</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-</div>
+<span><span class="va">view</span> <span class="op">&lt;-</span> <span class="va">frame</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"volume-6"</span>, <span class="st">"volume-1"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"voxel-4"</span>, <span class="st">"voxel-2"</span><span class="op">)</span><span class="op">]</span></span>
+<span></span>
+<span><span class="fu"><a href="reference/collect_assay.html">collect_assay</a></span><span class="op">(</span><span class="va">view</span><span class="op">)</span></span>
+<span><span class="co">#&gt;      [,1] [,2]</span></span>
+<span><span class="co">#&gt; [1,]   24   12</span></span>
+<span><span class="co">#&gt; [2,]   19    7</span></span>
+<span></span>
+<span><span class="fu"><a href="reference/frame-accessors.html">observation_ids</a></span><span class="op">(</span><span class="va">view</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "volume-6" "volume-1"</span></span>
+<span></span>
+<span><span class="fu"><a href="reference/feature-space.html">feature_ids</a></span><span class="op">(</span><span class="va">view</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "voxel-4" "voxel-2"</span></span></code></pre></div>
+<p>The numerical view, observation metadata, feature metadata, and restricted volume space all retain the requested order. For large assays, <code><a href="reference/collect_assay.html">collect_assay()</a></code> enforces an explicit memory budget; block execution and lazy array sources avoid requiring full materialization.</p>
 <div class="section level3">
-<h3 id="data-access">Data Access<a class="anchor" aria-label="anchor" href="#data-access"></a>
+<h3 id="load-one-bids-subject">Load one BIDS subject<a class="anchor" aria-label="anchor" href="#load-one-bids-subject"></a>
 </h3>
+<p>With <code>bidser</code> 0.5.0 or newer, a subject’s fMRIPrep BOLD runs can be opened as one lazy frame:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Get full data matrix</span></span>
-<span><span class="va">data_matrix</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/get_data_matrix.html">get_data_matrix</a></span><span class="op">(</span><span class="va">dataset</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">bold</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_bids_bold.html">read_bids_bold</a></span><span class="op">(</span></span>
+<span>  <span class="st">"/data/my-study"</span>,</span>
+<span>  subject <span class="op">=</span> <span class="st">"01"</span>,</span>
+<span>  task <span class="op">=</span> <span class="st">"memory"</span>,</span>
+<span>  space <span class="op">=</span> <span class="st">"MNI152NLin2009cAsym"</span></span>
+<span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Get spatial mask</span></span>
-<span><span class="va">mask</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/get_mask.html">get_mask</a></span><span class="op">(</span><span class="va">dataset</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Access temporal properties</span></span>
-<span><span class="fu"><a href="reference/n_timepoints.html">n_timepoints</a></span><span class="op">(</span><span class="va">dataset</span><span class="op">$</span><span class="va">sampling_frame</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/n_runs.html">n_runs</a></span><span class="op">(</span><span class="va">dataset</span><span class="op">$</span><span class="va">sampling_frame</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/get_TR.html">get_TR</a></span><span class="op">(</span><span class="va">dataset</span><span class="op">$</span><span class="va">sampling_frame</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="data-chunking">Data Chunking<a class="anchor" aria-label="anchor" href="#data-chunking"></a>
-</h3>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Process data in chunks</span></span>
-<span><span class="va">chunks</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/data_chunks.html">data_chunks</a></span><span class="op">(</span><span class="va">dataset</span>, nchunks <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
-<span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">chunk</span> <span class="op">&lt;-</span> <span class="va">chunks</span><span class="op">$</span><span class="fu">nextElem</span><span class="op">(</span><span class="op">)</span></span>
-<span>  <span class="co"># Process chunk$data, chunk$voxel_ind, etc.</span></span>
-<span><span class="op">}</span></span>
-<span></span>
-<span><span class="co"># Run-wise processing</span></span>
-<span><span class="va">run_chunks</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/data_chunks.html">data_chunks</a></span><span class="op">(</span><span class="va">dataset</span>, runwise <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">run1_data</span> <span class="op">&lt;-</span> <span class="va">run_chunks</span><span class="op">$</span><span class="fu">nextElem</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="type-conversions">Type Conversions<a class="anchor" aria-label="anchor" href="#type-conversions"></a>
-</h3>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Convert to matrix format</span></span>
-<span><span class="va">mat_dataset</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/as.matrix_dataset.html">as.matrix_dataset</a></span><span class="op">(</span><span class="va">dataset</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># All dataset types support the same interface</span></span>
-<span><span class="fu"><a href="reference/print.html">print</a></span><span class="op">(</span><span class="va">dataset</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">dataset</span><span class="op">$</span><span class="va">sampling_frame</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">run_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/filter_obs.html">filter_obs</a></span><span class="op">(</span><span class="va">bold</span>, <span class="va">run_id</span> <span class="op">==</span> <span class="st">"run-1"</span><span class="op">)</span></span>
+<span><span class="va">map</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/spatial_map.html">spatial_map</a></span><span class="op">(</span><span class="va">bold</span>, observation <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
+<p>Construction reads BOLD headers and the matching run masks, but not BOLD values. By default the frame uses the intersection of the run masks. No resampling or cross-space alignment is performed implicitly; ambiguous spaces, masks, or multi-echo selections produce an error requiring an explicit choice. Events remain a keyed auxiliary table rather than being copied onto volumes.</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="architecture">Architecture<a class="anchor" aria-label="anchor" href="#architecture"></a>
+<h2 id="what-it-covers">What it covers<a class="anchor" aria-label="anchor" href="#what-it-covers"></a>
 </h2>
-<p>The package uses a modular architecture with the following key components:</p>
 <ul>
 <li>
-<strong>Storage Backends</strong>: Pluggable data access layer (<code>matrix_backend</code>, <code>nifti_backend</code>)</li>
+<strong>Aligned assays:</strong> keep one or more numerical assays tied to the same observation and feature axes, with explicit roles, units, and provenance.</li>
 <li>
-<strong>Dataset Constructors</strong>: High-level dataset creation functions</li>
+<strong>Annotated domains:</strong> attach scalar metadata, multivariate blocks, experimental entities, and validated relations without copying assay data.</li>
 <li>
-<strong>Sampling Frames</strong>: Temporal structure representation</li>
+<strong>Spatial identity:</strong> represent volume, surface, parcel, basis, and composite feature spaces; compatibility is checked by identity rather than dimensions.</li>
 <li>
-<strong>Data Access Methods</strong>: Consistent interface for data retrieval</li>
+<strong>Explicit transformations:</strong> map between feature spaces with validated, serializable operators and derivation provenance.</li>
 <li>
-<strong>Chunking System</strong>: Efficient processing of large datasets</li>
+<strong>Bounded execution:</strong> read lazy in-memory, NIfTI, sharded, HDF5-backed, and experimental Zarr sources through observation-by-feature selections.</li>
+<li>
+<strong>Portable semantics:</strong> serialize the logical frame contract with FDS v1 and bind it to physical storage without changing axis or spatial identity.</li>
 </ul>
 </div>
 <div class="section level2">
-<h2 id="related-packages">Related Packages<a class="anchor" aria-label="anchor" href="#related-packages"></a>
+<h2 id="fit-and-boundaries">Fit and boundaries<a class="anchor" aria-label="anchor" href="#fit-and-boundaries"></a>
 </h2>
+<p><code>fmridataset</code> owns semantic containers, alignment, views, sources, spaces, and the logical FDS schema. Companion packages own adjacent responsibilities:</p>
 <ul>
 <li>
-<a href="https://github.com/bbuchsbaum/neuroim2" class="external-link"><code>neuroim2</code></a>: Neuroimaging data structures</li>
+<a href="https://github.com/bbuchsbaum/neuroim2" class="external-link"><code>neuroim2</code></a> provides native neuroimaging objects.</li>
 <li>
-<a href="https://github.com/bbuchsbaum/fmristore" class="external-link"><code>fmristore</code></a>: Advanced fMRI data storage</li>
+<a href="https://github.com/bbuchsbaum/delarr" class="external-link"><code>delarr</code></a> provides lazy numerical plans and bounded execution.</li>
 <li>
-<a href="https://github.com/bbuchsbaum/bidser" class="external-link"><code>bidser</code></a>: BIDS dataset utilities</li>
+<a href="https://github.com/bbuchsbaum/fmristore" class="external-link"><code>fmristore</code></a> provides certified HDF5 layouts, atomic writes, append, and recovery.</li>
+<li>
+<a href="https://github.com/bbuchsbaum/multidesign" class="external-link"><code>multidesign</code></a> and <a href="https://github.com/bbuchsbaum/fmrigds" class="external-link"><code>fmrigds</code></a> own design compilation and statistical execution.</li>
+<li>
+<a href="https://github.com/bbuchsbaum/bidser" class="external-link"><code>bidser</code></a> provides BIDS discovery used by <code><a href="reference/read_bids_bold.html">read_bids_bold()</a></code> and the optional BIDS-to-HDF5 workflow.</li>
 </ul>
+<p>HDF5 is the certified persistence direction for 1.0. Zarr support remains experimental, and <code>DelayedArray</code> is optional interoperability rather than the internal execution model. Legacy <code><a href="reference/fmri_dataset.html">fmri_dataset()</a></code>, <code><a href="reference/matrix_dataset.html">matrix_dataset()</a></code>, backend, and sampling-frame workflows remain available during the 0.x migration.</p>
 </div>
 <div class="section level2">
-<h2 id="getting-help">Getting Help<a class="anchor" aria-label="anchor" href="#getting-help"></a>
+<h2 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a>
 </h2>
 <ul>
-<li>Check the <a href="https://bbuchsbaum.github.io/fmridataset/">package documentation</a> for detailed guides</li>
-<li>Report bugs or request features on <a href="https://github.com/bbuchsbaum/fmridataset/issues" class="external-link">GitHub Issues</a>
-</li>
-<li>See the <a href="https://bbuchsbaum.github.io/fmridataset/articles/">vignettes</a> for detailed examples</li>
+<li>Run <code><a href="https://bbuchsbaum.github.io/fmridataset/reference">help(package = "fmridataset")</a></code> and <code><a href="reference/fmri_frame.html">?fmri_frame</a></code> for documentation that matches the installed package.</li>
+<li>Read the <a href="inst/architecture/ADR-001-canonical-data-model.html">canonical data model</a> for ownership, compatibility, and migration decisions.</li>
+<li>Read the <a href="inst/architecture/ADR-002-fds-v1-logical-schema.html">FDS v1 decision</a> for the backend-neutral persistence contract.</li>
+<li>See the <a href="NEWS.html">changelog</a> for the current development surface.</li>
+<li>The <a href="https://bbuchsbaum.github.io/fmridataset/">hosted package site</a> currently describes the published 0.8.9 release.</li>
 </ul>
 </div>
 <div class="section level2">
 <h2 id="contributing">Contributing<a class="anchor" aria-label="anchor" href="#contributing"></a>
 </h2>
-<p>Contributions are welcome! Please see our <a href="CONTRIBUTING.html">Contributing Guide</a> for details.</p>
+<p>See <a href="CONTRIBUTING.html">CONTRIBUTING.md</a> for development setup and checks. Changes to public behavior should include behavioral tests, updated roxygen documentation, and a <code>NEWS.md</code> entry.</p>
 </div>
 <div class="section level2">
 <h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
@@ -254,17 +222,7 @@
 </ul>
 </div>
 
-<div class="dev-status">
-<h2 data-toc-skip>Dev status</h2>
-<ul class="list-unstyled">
-<li><a href="https://github.com/bbuchsbaum/fmridataset/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/bbuchsbaum/fmridataset/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a></li>
-<li><a href="https://app.codecov.io/gh/bbuchsbaum/fmridataset?branch=main" class="external-link"><img src="https://codecov.io/gh/bbuchsbaum/fmridataset/branch/main/graph/badge.svg" alt="Codecov test coverage"></a></li>
-<li><a href="https://github.com/bbuchsbaum/fmridataset/actions/workflows/lint.yaml" class="external-link"><img src="https://github.com/bbuchsbaum/fmridataset/actions/workflows/lint.yaml/badge.svg" alt="lint"></a></li>
-<li><a href="https://github.com/bbuchsbaum/fmridataset/actions?query=workflow%3Apkgcheck" class="external-link"><img src="https://github.com/bbuchsbaum/fmridataset/workflows/pkgcheck/badge.svg" alt="pkgcheck"></a></li>
-<li><a href="https://CRAN.R-project.org/package=fmridataset" class="external-link"><img src="https://www.r-pkg.org/badges/version/fmridataset" alt="CRAN status"></a></li>
-<li><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental" class="external-link"><img src="https://img.shields.io/badge/lifecycle-experimental-orange.svg" alt="Lifecycle: experimental"></a></li>
-</ul>
-</div>
+
 
   </aside>
 </div>
@@ -275,7 +233,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

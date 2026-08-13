@@ -2,8 +2,8 @@
 
 Provides a lightweight S3 interface that defers materialization of
 backend data. The returned object is compatible with
-[`delarr::collect()`](https://rdrr.io/pkg/delarr/man/collect.html) as
-well as base [`as.matrix()`](https://rdrr.io/r/base/matrix.html) for
+[`delarr::collect()`](https://bbuchsbaum.github.io/delarr/reference/collect.html)
+as well as base [`as.matrix()`](https://rdrr.io/r/base/matrix.html) for
 realization.
 
 ## Usage

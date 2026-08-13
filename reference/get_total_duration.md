@@ -8,19 +8,7 @@ all runs.
 ``` r
 get_total_duration(x, ...)
 
-# S3 method for class 'matrix_dataset'
-get_total_duration(x, ...)
-
 # S3 method for class 'fmri_dataset'
-get_total_duration(x, ...)
-
-# S3 method for class 'fmri_mem_dataset'
-get_total_duration(x, ...)
-
-# S3 method for class 'fmri_file_dataset'
-get_total_duration(x, ...)
-
-# S3 method for class 'fmri_study_dataset'
 get_total_duration(x, ...)
 
 # S3 method for class 'sampling_frame'

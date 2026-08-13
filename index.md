@@ -1,148 +1,186 @@
 # fmridataset ![](reference/figures/logo.png)
 
-## Overview
+[Changelog](https://bbuchsbaum.github.io/fmridataset/NEWS.md) ·
+[Canonical data
+model](https://bbuchsbaum.github.io/fmridataset/inst/architecture/ADR-001-canonical-data-model.md)
+· [Issues](https://github.com/bbuchsbaum/fmridataset/issues) ·
+[Contributing](https://bbuchsbaum.github.io/fmridataset/CONTRIBUTING.md)
 
-`fmridataset` provides a unified framework for representing functional
-magnetic resonance imaging (fMRI) data from various sources. The package
-supports multiple data backends and offers a consistent interface for
-working with fMRI datasets regardless of their underlying storage
-format.
+`fmridataset` is an R package for keeping fMRI arrays aligned with what
+their rows and columns mean. It represents each assay as observations by
+features and carries stable IDs, annotations, entities, relations, and
+explicit spatial identity through views, transformations, and storage
+round trips.
 
-## Features
+Use it when raw time series, beta estimates, parcel values, surface
+data, or latent representations must retain their meaning as they move
+between analysis steps and storage systems.
 
-- **Unified Interface**: Work with fMRI data from NIfTI files, BIDS
-  projects, pre-loaded NeuroVec objects, and in-memory matrices through
-  a single API
-- **Lazy Loading**: Efficient memory management with on-demand data
-  loading
-- **Flexible Backends**: Pluggable storage backends for different data
-  formats
-- **Data Chunking**: Built-in support for processing large datasets in
-  chunks
-- **Temporal Structure**: Rich sampling frame representation for run
-  lengths, TR, and temporal organization
-- **Integration Ready**: Seamlessly integrates with neuroimaging
-  analysis workflows
+> **Status:** The `0.10.0` development line is an active migration
+> toward 1.0 and requires R 4.3 or newer.
+> [`fmri_frame()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_frame.md)
+> is the canonical entry point; older dataset constructors remain
+> available as transitional 0.x adapters. APIs may still change before
+> 1.0.
 
 ## Installation
 
-You can install the development version of fmridataset from
-[GitHub](https://github.com/) with:
+The current frame API is available from GitHub:
 
 ``` r
-# install.packages("devtools")
-devtools::install_github("bbuchsbaum/fmridataset")
+
+install.packages("remotes")
+remotes::install_github("bbuchsbaum/fmridataset")
 ```
 
-## Quick Start
+`fmridataset` is not currently on CRAN. The published [R-universe
+build](https://bbuchsbaum.r-universe.dev/fmridataset) is version 0.8.9
+and documents the legacy dataset API.
 
-### Creating Datasets
+## Quick start
+
+Create a small volume-backed frame, then select observations and voxels
+by their stable IDs:
 
 ``` r
+
 library(fmridataset)
 
-# From NIfTI files
-dataset <- fmri_dataset(
-  scans = c("run1.nii", "run2.nii"),
-  mask = "mask.nii", 
-  TR = 2.0,
-  run_length = c(240, 240)
+signal <- matrix(seq_len(24), nrow = 6, ncol = 4)
+voxel_space <- volume_space(
+  dim = c(2, 2, 1),
+  affine = diag(4),
+  template = "toy"
 )
 
-# From in-memory matrix
-mat_data <- matrix(rnorm(1000), nrow = 100, ncol = 10)
-dataset <- matrix_dataset(
-  datamat = mat_data,
-  TR = 1.5, 
-  run_length = 100
+frame <- fmri_frame(
+  assays = list(signal = signal),
+  observations = data.frame(
+    .obs_id = paste0("volume-", seq_len(6)),
+    run = rep(c("run-1", "run-2"), each = 3)
+  ),
+  space = voxel_space
 )
 
-# From pre-loaded NeuroVec objects  
-dataset <- fmri_mem_dataset(
-  scans = list(neurovec1, neurovec2),
-  mask = mask_vol,
-  TR = 2.0
+view <- frame[c("volume-6", "volume-1"), c("voxel-4", "voxel-2")]
+
+collect_assay(view)
+#>      [,1] [,2]
+#> [1,]   24   12
+#> [2,]   19    7
+
+observation_ids(view)
+#> [1] "volume-6" "volume-1"
+
+feature_ids(view)
+#> [1] "voxel-4" "voxel-2"
+```
+
+The numerical view, observation metadata, feature metadata, and
+restricted volume space all retain the requested order. For large
+assays,
+[`collect_assay()`](https://bbuchsbaum.github.io/fmridataset/reference/collect_assay.md)
+enforces an explicit memory budget; block execution and lazy array
+sources avoid requiring full materialization.
+
+### Load one BIDS subject
+
+With `bidser` 0.5.0 or newer, a subject’s fMRIPrep BOLD runs can be
+opened as one lazy frame:
+
+``` r
+
+bold <- read_bids_bold(
+  "/data/my-study",
+  subject = "01",
+  task = "memory",
+  space = "MNI152NLin2009cAsym"
 )
+
+run_1 <- filter_obs(bold, run_id == "run-1")
+map <- spatial_map(bold, observation = 1)
 ```
 
-### Data Access
+Construction reads BOLD headers and the matching run masks, but not BOLD
+values. By default the frame uses the intersection of the run masks. No
+resampling or cross-space alignment is performed implicitly; ambiguous
+spaces, masks, or multi-echo selections produce an error requiring an
+explicit choice. Events remain a keyed auxiliary table rather than being
+copied onto volumes.
 
-``` r
-# Get full data matrix
-data_matrix <- get_data_matrix(dataset)
+## What it covers
 
-# Get spatial mask
-mask <- get_mask(dataset)
+- **Aligned assays:** keep one or more numerical assays tied to the same
+  observation and feature axes, with explicit roles, units, and
+  provenance.
+- **Annotated domains:** attach scalar metadata, multivariate blocks,
+  experimental entities, and validated relations without copying assay
+  data.
+- **Spatial identity:** represent volume, surface, parcel, basis, and
+  composite feature spaces; compatibility is checked by identity rather
+  than dimensions.
+- **Explicit transformations:** map between feature spaces with
+  validated, serializable operators and derivation provenance.
+- **Bounded execution:** read lazy in-memory, NIfTI, sharded,
+  HDF5-backed, and experimental Zarr sources through
+  observation-by-feature selections.
+- **Portable semantics:** serialize the logical frame contract with FDS
+  v1 and bind it to physical storage without changing axis or spatial
+  identity.
 
-# Access temporal properties
-n_timepoints(dataset$sampling_frame)
-n_runs(dataset$sampling_frame)
-get_TR(dataset$sampling_frame)
-```
+## Fit and boundaries
 
-### Data Chunking
+`fmridataset` owns semantic containers, alignment, views, sources,
+spaces, and the logical FDS schema. Companion packages own adjacent
+responsibilities:
 
-``` r
-# Process data in chunks
-chunks <- data_chunks(dataset, nchunks = 5)
-for (i in 1:5) {
-  chunk <- chunks$nextElem()
-  # Process chunk$data, chunk$voxel_ind, etc.
-}
+- [`neuroim2`](https://github.com/bbuchsbaum/neuroim2) provides native
+  neuroimaging objects.
+- [`delarr`](https://github.com/bbuchsbaum/delarr) provides lazy
+  numerical plans and bounded execution.
+- [`fmristore`](https://github.com/bbuchsbaum/fmristore) provides
+  certified HDF5 layouts, atomic writes, append, and recovery.
+- [`multidesign`](https://github.com/bbuchsbaum/multidesign) and
+  [`fmrigds`](https://github.com/bbuchsbaum/fmrigds) own design
+  compilation and statistical execution.
+- [`bidser`](https://github.com/bbuchsbaum/bidser) provides BIDS
+  discovery used by
+  [`read_bids_bold()`](https://bbuchsbaum.github.io/fmridataset/reference/read_bids_bold.md)
+  and the optional BIDS-to-HDF5 workflow.
 
-# Run-wise processing
-run_chunks <- data_chunks(dataset, runwise = TRUE)
-run1_data <- run_chunks$nextElem()
-```
+HDF5 is the certified persistence direction for 1.0. Zarr support
+remains experimental, and `DelayedArray` is optional interoperability
+rather than the internal execution model. Legacy
+[`fmri_dataset()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_dataset.md),
+[`matrix_dataset()`](https://bbuchsbaum.github.io/fmridataset/reference/matrix_dataset.md),
+backend, and sampling-frame workflows remain available during the 0.x
+migration.
 
-### Type Conversions
+## Documentation
 
-``` r
-# Convert to matrix format
-mat_dataset <- as.matrix_dataset(dataset)
-
-# All dataset types support the same interface
-print(dataset)
-summary(dataset$sampling_frame)
-```
-
-## Architecture
-
-The package uses a modular architecture with the following key
-components:
-
-- **Storage Backends**: Pluggable data access layer (`matrix_backend`,
-  `nifti_backend`)
-- **Dataset Constructors**: High-level dataset creation functions
-- **Sampling Frames**: Temporal structure representation
-- **Data Access Methods**: Consistent interface for data retrieval
-- **Chunking System**: Efficient processing of large datasets
-
-## Related Packages
-
-- [`neuroim2`](https://github.com/bbuchsbaum/neuroim2): Neuroimaging
-  data structures
-- [`fmristore`](https://github.com/bbuchsbaum/fmristore): Advanced fMRI
-  data storage
-- [`bidser`](https://github.com/bbuchsbaum/bidser): BIDS dataset
-  utilities
-
-## Getting Help
-
-- Check the [package
-  documentation](https://bbuchsbaum.github.io/fmridataset/) for detailed
-  guides
-- Report bugs or request features on [GitHub
-  Issues](https://github.com/bbuchsbaum/fmridataset/issues)
-- See the
-  [vignettes](https://bbuchsbaum.github.io/fmridataset/articles/) for
-  detailed examples
+- Run
+  [`help(package = "fmridataset")`](https://bbuchsbaum.github.io/fmridataset/reference)
+  and
+  [`?fmri_frame`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_frame.md)
+  for documentation that matches the installed package.
+- Read the [canonical data
+  model](https://bbuchsbaum.github.io/fmridataset/inst/architecture/ADR-001-canonical-data-model.md)
+  for ownership, compatibility, and migration decisions.
+- Read the [FDS v1
+  decision](https://bbuchsbaum.github.io/fmridataset/inst/architecture/ADR-002-fds-v1-logical-schema.md)
+  for the backend-neutral persistence contract.
+- See the [changelog](https://bbuchsbaum.github.io/fmridataset/NEWS.md)
+  for the current development surface.
+- The [hosted package site](https://bbuchsbaum.github.io/fmridataset/)
+  currently describes the published 0.8.9 release.
 
 ## Contributing
 
-Contributions are welcome! Please see our [Contributing
-Guide](https://bbuchsbaum.github.io/fmridataset/CONTRIBUTING.md) for
-details.
+See
+[CONTRIBUTING.md](https://bbuchsbaum.github.io/fmridataset/CONTRIBUTING.md)
+for development setup and checks. Changes to public behavior should
+include behavioral tests, updated roxygen documentation, and a `NEWS.md`
+entry.
 
 ## License
 
