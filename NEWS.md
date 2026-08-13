@@ -123,6 +123,12 @@
   versions that first provide `delarr_provider_pull()` and `write_frame_h5()`.
   Older builds previously failed at namespace load or mid-test rather than at
   dependency resolution.
+* Dropped the Bioconductor dependency surface. `DelayedArray` and
+  `DelayedMatrixStats` are no longer suggested, and CI no longer installs
+  `BiocManager`, `Rarr`, `rhdf5`, `DelayedArray`, or `S4Arrays`. Lazy array
+  support is built on `delarr`, which this project owns. The optional
+  `as_delayed_array()` bridge is registered conditionally at load time and is
+  unaffected when `DelayedArray` happens to be present.
 
 # fmridataset 0.9.0
 
