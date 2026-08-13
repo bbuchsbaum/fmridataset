@@ -5,7 +5,8 @@
 - Added `read_bids_bold()` as a narrow one-subject fMRIPrep on-ramp to a lazy
   `fmri_frame`, with deterministic relative-path volume IDs, exact selectors,
   explicit spatial ambiguity failures, common run-mask intersection, keyed
-  events, and non-mutating metadata-only discovery.
+  events, and non-mutating discovery that reads BOLD headers and masks but no
+  BOLD values.
 
 ## Architecture
 

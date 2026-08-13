@@ -48,6 +48,12 @@ mask for each run and intersects their supports. An explicit mask path or
 ambiguous masks, multiple spaces, multi-echo selections, and incompatible
 grids fail before an assay is constructed.
 
+Automatic brain-mask discovery depends on fMRIPrep BIDS entities and filename
+conventions. The selected root-relative mask paths are recorded in the volume
+space metadata so the resulting support is auditable. Re-check the discovery
+contract when supporting a new fMRIPrep major version; callers can freeze the
+choice with an explicit mask path or `volume_space`.
+
 Union masks and feature-validity relations are deferred until their missing
 coverage semantics are implemented explicitly.
 
@@ -64,13 +70,15 @@ observation blocks versus auxiliary tables.
 
 ## Dependency and release boundary
 
-The importer requires the `bidser` release that exports vectorized
+The importer requires `bidser` 0.5.0 or newer, published through the package's
+declared `Additional_repositories` R-universe. That version exports vectorized
 `bids_entities()`, `n_volumes.character()`, and the existing fMRIPrep discovery,
 TR, mask, and event APIs. It performs an explicit runtime capability/version
 check and disables `bidser`'s on-disk index so importing does not modify the
-source dataset. Development CI may install an exact development revision, but
-public release claims require a released compatible `bidser` version; a GitHub
-`Remotes:` entry is not the release boundary.
+source dataset. Public release claims require the declared repository to resolve
+an installable compatible artifact and the installed-package integration test to
+pass. A GitHub `Remotes:` entry is unnecessary for that repository-backed
+dependency contract.
 
 ## Non-goals
 
