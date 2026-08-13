@@ -73,7 +73,6 @@ test_that("masked dataset produces consistent output", {
 })
 
 test_that("dataset print output matches snapshot", {
-
   ref_data <- load_golden_data("reference_data")
 
   dset <- matrix_dataset(

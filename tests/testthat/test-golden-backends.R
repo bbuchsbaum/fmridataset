@@ -104,7 +104,6 @@ test_that("backend validation works consistently", {
 })
 
 test_that("backend print output matches snapshot", {
-
   ref_data <- load_golden_data("reference_data")
 
   backend <- matrix_backend(

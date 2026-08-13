@@ -1,7 +1,6 @@
 # Snapshot tests for print methods and summaries
 
 test_that("fmri_dataset print snapshots", {
-
   ref_data <- generate_reference_data()
 
   # Basic dataset
@@ -42,7 +41,6 @@ test_that("fmri_dataset print snapshots", {
 })
 
 test_that("backend print snapshots", {
-
   ref_data <- generate_reference_data()
 
   # Matrix backend
@@ -73,7 +71,6 @@ test_that("backend print snapshots", {
 })
 
 test_that("sampling_frame print snapshots", {
-
   # Various configurations
   sframe_single <- fmrihrf::sampling_frame(TR = 2, blocklens = 100)
 
@@ -103,7 +100,6 @@ test_that("sampling_frame print snapshots", {
 })
 
 test_that("error message snapshots", {
-
   # Invalid dataset creation
   expect_snapshot_error({
     matrix_dataset(
@@ -136,7 +132,6 @@ test_that("error message snapshots", {
 })
 
 test_that("summary output snapshots", {
-
   ref_data <- generate_reference_data()
 
   dset <- matrix_dataset(
@@ -154,7 +149,6 @@ test_that("summary output snapshots", {
 })
 
 test_that("data chunk iterator snapshots", {
-
   ref_data <- generate_reference_data()
 
   dset <- matrix_dataset(
