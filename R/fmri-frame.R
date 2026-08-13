@@ -330,7 +330,9 @@ block_apply <- function(x, FUN, block_size = 4096L, assay = active_assay(x), ...
     .frame_abort("block_size must be positive.", "fmridataset_error_budget")
   }
   ids <- feature_ids(x)
-  starts <- seq.int(1L, length(ids), by = block_size)
+  # An empty feature selection is a valid frame; it yields no blocks rather than
+  # tripping seq.int()'s wrong-sign error on seq.int(1L, 0L, by = block_size).
+  starts <- seq.int(1L, by = block_size, length.out = ceiling(length(ids) / block_size))
   lapply(starts, function(start) {
     idx <- start:min(length(ids), start + block_size - 1L)
     FUN(collect_assay(x[, idx], assay = assay), ids[idx], ...)

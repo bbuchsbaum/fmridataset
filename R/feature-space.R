@@ -217,7 +217,12 @@ volume_space <- function(dim, affine = diag(4), support = NULL,
 #' @export
 n_features.volume_space <- function(x, ...) length(x$support)
 #' @export
-feature_ids.volume_space <- function(x, ...) paste0("voxel-", x$support)
+feature_ids.volume_space <- function(x, ...) {
+  # paste0() recycles to length 1 against a zero-length support, which would
+  # make feature_ids() disagree with n_features() for an empty restriction.
+  if (!length(x$support)) return(character(0))
+  paste0("voxel-", x$support)
+}
 #' @export
 native_shape.volume_space <- function(x, ...) x$dim
 #' @export

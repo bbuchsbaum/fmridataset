@@ -320,6 +320,7 @@ test_that("parcel spaces survive frame and FDS manifest round trips", {
 
 test_that("parcel spaces survive physical HDF5 frame round trips", {
   skip_if_not_installed("fmristore")
+  skip_if_not("write_frame_h5" %in% getNamespaceExports("fmristore"))
   x <- .parcel_fixture()
   frame <- fmri_frame(
     assays = list(beta = matrix(seq_len(4L), nrow = 2L)),
@@ -585,6 +586,7 @@ test_that("basis spaces survive logical and physical FDS round trips", {
   expect_identical(space_digest(space(restored)), space_digest(x))
 
   skip_if_not_installed("fmristore")
+  skip_if_not("write_frame_h5" %in% getNamespaceExports("fmristore"))
   path <- tempfile(fileext = ".h5")
   on.exit(unlink(path), add = TRUE)
   write_frame(frame, path)
@@ -824,6 +826,7 @@ test_that("composite spaces survive views and FDS round trips", {
   expect_identical(space_digest(space(restored)), space_digest(x))
 
   skip_if_not_installed("fmristore")
+  skip_if_not("write_frame_h5" %in% getNamespaceExports("fmristore"))
   path <- tempfile(fileext = ".h5")
   on.exit(unlink(path), add = TRUE)
   write_frame(frame, path)
