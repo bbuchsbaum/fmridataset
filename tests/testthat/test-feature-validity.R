@@ -215,6 +215,7 @@ test_that("validity relations survive FDS and HDF5 round trips", {
   expect_error(validate_fds_manifest(invalid), class = "fmridataset_error_schema")
 
   skip_if_not_installed("fmristore")
+  skip_if_not("write_frame_h5" %in% getNamespaceExports("fmristore"))
   path <- tempfile(fileext = ".fds.h5")
   on.exit(unlink(path), add = TRUE)
   write_frame(fx$frame, path)

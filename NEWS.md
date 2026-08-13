@@ -102,6 +102,28 @@
 * The historical `v0.9.0` tag is preserved; development continues from the
   current main line without retagging it.
 
+## Bug fixes
+
+* `block_apply()` now returns an empty list for a frame or view with no
+  features, instead of failing with `wrong sign in 'by' argument`. An empty
+  selection is a supported frame state, and the rest of the frame API already
+  honoured it.
+* `feature_ids()` on a `volume_space` with empty support now returns
+  `character(0)` rather than the single string `"voxel-"`, so feature IDs stay
+  aligned with `n_features()`. This desynchronisation made `explain()` and
+  `fds_frame_manifest()` fail on any zero-feature view of a volume space.
+
+## Dependencies
+
+* Declared `Remotes` entries for `fmrilatent` and `fmristore`, and removed the
+  archived `pryr` from `Suggests`. Without these, `pak` could not solve the
+  dependency graph, so every CI workflow failed during dependency setup before
+  reaching `R CMD check`.
+* Constrained `delarr (>= 0.1.0.9000)` and `fmristore (>= 0.1.0.9000)`, the
+  versions that first provide `delarr_provider_pull()` and `write_frame_h5()`.
+  Older builds previously failed at namespace load or mid-test rather than at
+  dependency resolution.
+
 # fmridataset 0.9.0
 
 ## New features
