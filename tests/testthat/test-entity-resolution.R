@@ -4,10 +4,12 @@
                                    scalar_collision = FALSE,
                                    block_collision = FALSE) {
   subject_scores <- counting_source(memory_source(matrix(
-    c(.2, .8, .4, .6), nrow = 2L, byrow = TRUE
+    c(.2, .8, .4, .6),
+    nrow = 2L, byrow = TRUE
   )))
   stimulus_pca <- counting_source(memory_source(matrix(
-    c(.1, .2, .3, .4, .5, .6), nrow = 3L, byrow = TRUE
+    c(.1, .2, .3, .4, .5, .6),
+    nrow = 3L, byrow = TRUE
   )))
   run_qc <- counting_source(memory_source(matrix(c(.9, .8, .7), ncol = 1L)))
   subject <- entity_frame(
@@ -90,15 +92,18 @@
     observation_run = key_relation("run_id", target = "run"),
     run_session = key_relation("session_id", source = "run", target = "session"),
     session_subject = key_relation(
-      "subject_id", source = "session", target = "subject"
+      "subject_id",
+      source = "session", target = "subject"
     ),
     observation_stimulus = key_relation(
-      "stimulus_id", target = "stimulus", allow_missing = missing_stimulus
+      "stimulus_id",
+      target = "stimulus", allow_missing = missing_stimulus
     )
   )
   if (direct_subject) {
     relation_values$observation_subject <- key_relation(
-      "subject_id", target = "subject"
+      "subject_id",
+      target = "subject"
     )
   }
 

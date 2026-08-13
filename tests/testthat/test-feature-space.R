@@ -118,8 +118,10 @@ test_that("surface identity respects neurosurf world transforms", {
 
   expect_false(identical(space_digest(x), space_digest(y)))
   expect_false(compatible_space(x, y)$compatible)
-  expect_identical(restrict_space(x, c(1L, 3L))$surf_to_world,
-                   x$surf_to_world)
+  expect_identical(
+    restrict_space(x, c(1L, 3L))$surf_to_world,
+    x$surf_to_world
+  )
 })
 
 test_that("surface contracts reject ambiguous meshes", {
@@ -160,7 +162,8 @@ test_that("neurosurf geometry adapts and reconstructs without duplicate mesh sem
   skip_if_not_installed("neurosurf")
 
   vertices <- matrix(c(0, 0, 0, 1, 0, 0, 0, 1, 0),
-                     ncol = 3L, byrow = TRUE)
+    ncol = 3L, byrow = TRUE
+  )
   geom <- neurosurf::SurfaceGeometry(
     vertices,
     matrix(c(0, 1, 2), nrow = 1L),
@@ -180,8 +183,10 @@ test_that("neurosurf geometry adapts and reconstructs without duplicate mesh sem
 })
 
 .parcel_fixture <- function(aggregation = "mean") {
-  parent <- volume_space(c(3, 2, 1), support = 1:6,
-                         template = "MNI152NLin6Asym")
+  parent <- volume_space(c(3, 2, 1),
+    support = 1:6,
+    template = "MNI152NLin6Asym"
+  )
   membership <- Matrix::sparseMatrix(
     i = 1:6,
     j = c(1L, 1L, 1L, 2L, 2L, 2L),
@@ -241,8 +246,10 @@ test_that("parcel restriction preserves parent identity and atlas metadata", {
 
   expect_identical(feature_ids(y), "toy-atlas:20")
   expect_identical(feature_data(y)$id, 20L)
-  expect_identical(space_digest(parent_space(y)),
-                   space_digest(parent_space(x)))
+  expect_identical(
+    space_digest(parent_space(y)),
+    space_digest(parent_space(x))
+  )
   expect_identical(y$atlas, x$atlas)
   expect_identical(dim(parcel_membership(y)), c(6L, 1L))
 })
@@ -275,27 +282,33 @@ test_that("parcel identity includes parent, atlas, membership, and aggregation",
 
 test_that("parcel contracts reject ambiguous operators", {
   parent <- volume_space(c(2, 2, 1))
-  data <- data.frame(id = c(1L, 2L), label = c("a", "b"),
-                     hemi = c("left", "right"))
+  data <- data.frame(
+    id = c(1L, 2L), label = c("a", "b"),
+    hemi = c("left", "right")
+  )
 
   expect_error(
     parcel_space(parent, 1:2, matrix(1, 3, 2), data,
-                 atlas = list(id = "toy")),
+      atlas = list(id = "toy")
+    ),
     "parent"
   )
   expect_error(
     parcel_space(parent, 1:2, cbind(c(1, 1, 0, 0), 0), data,
-                 atlas = list(id = "toy")),
+      atlas = list(id = "toy")
+    ),
     "parcel"
   )
   expect_error(
     parcel_space(parent, 1:2, cbind(c(1, -1, 0, 0), c(0, 0, 1, 1)), data,
-                 atlas = list(id = "toy")),
+      atlas = list(id = "toy")
+    ),
     "non-negative"
   )
   expect_error(
     parcel_space(parent, 1:2, cbind(c(1, 1, 0, 0), c(0, 0, 1, 1)), data,
-                 atlas = list(name = "missing id")),
+      atlas = list(name = "missing id")
+    ),
     "atlas.*id"
   )
 })
@@ -344,7 +357,8 @@ test_that("neuroatlas surface coding is delegated through get_roi", {
   skip_if_not_installed("neuroatlas")
 
   left_vertices <- matrix(c(0, 0, 0, 1, 0, 0, 0, 1, 0),
-                          ncol = 3L, byrow = TRUE)
+    ncol = 3L, byrow = TRUE
+  )
   right_vertices <- sweep(left_vertices, 2L, c(0, 0, 1), "+")
   faces <- matrix(c(0, 1, 2), nrow = 1L)
   left_geom <- neurosurf::SurfaceGeometry(left_vertices, faces, "lh")
@@ -375,21 +389,27 @@ test_that("neuroatlas surface coding is delegated through get_roi", {
   expect_identical(feature_ids(x), c("toy-surface:1", "toy-surface:2"))
   expect_identical(
     as.matrix(parcel_membership(x)),
-    rbind(c(1, 0), c(1, 0), c(0, 0),
-          c(0, 1), c(0, 1), c(0, 0))
+    rbind(
+      c(1, 0), c(1, 0), c(0, 0),
+      c(0, 1), c(0, 1), c(0, 0)
+    )
   )
   expect_identical(feature_data(x)$hemi, c("left", "right"))
 })
 
 .basis_fixture <- function(operator_backend = c("matrix", "sparse", "source")) {
   operator_backend <- match.arg(operator_backend)
-  parent <- volume_space(c(2, 2, 1), support = 1:4,
-                         template = "MNI152NLin6Asym")
+  parent <- volume_space(c(2, 2, 1),
+    support = 1:4,
+    template = "MNI152NLin6Asym"
+  )
   decoder <- matrix(
-    c(1, 0,
+    c(
+      1, 0,
       0, 1,
       1, 1,
-      2, -1),
+      2, -1
+    ),
     nrow = 4L, byrow = TRUE
   )
   encoder <- solve(crossprod(decoder), t(decoder))
@@ -422,10 +442,14 @@ test_that("basis_space owns stable component and parent identity", {
   expect_identical(n_features(x), 2L)
   expect_identical(feature_ids(x), c("smooth", "contrast"))
   expect_identical(native_shape(x), c(component = 2L))
-  expect_identical(feature_data(x)$component_id,
-                   c("smooth", "contrast"))
-  expect_identical(feature_data(x)$label,
-                   c("Smooth field", "Spatial contrast"))
+  expect_identical(
+    feature_data(x)$component_id,
+    c("smooth", "contrast")
+  )
+  expect_identical(
+    feature_data(x)$label,
+    c("Smooth field", "Spatial contrast")
+  )
   expect_identical(dim(basis_analysis(x)), c(2L, 4L))
   expect_identical(dim(basis_synthesis(x)), c(4L, 2L))
   expect_true(basis_projection_info(x)$left_inverse_validated)
@@ -441,7 +465,8 @@ test_that("basis projection is least squares for non-orthonormal dictionaries", 
 
   expect_equal(vectorize_space(x, native), coefficients, tolerance = 1e-12)
   expect_equal(as.numeric(reconstruct_space(x, coefficients)), parent_vector,
-               tolerance = 1e-12)
+    tolerance = 1e-12
+  )
   expect_equal(
     vectorize_space(x, reconstruct_space(x, coefficients)),
     coefficients,
@@ -465,15 +490,21 @@ test_that("dense sparse and lazy basis operators are equivalent", {
   coefficients <- c(-0.5, 1.7)
 
   expect_equal(vectorize_space(sparse, native),
-               vectorize_space(dense, native), tolerance = 1e-12)
+    vectorize_space(dense, native),
+    tolerance = 1e-12
+  )
   expect_equal(vectorize_space(lazy, native),
-               vectorize_space(dense, native), tolerance = 1e-12)
+    vectorize_space(dense, native),
+    tolerance = 1e-12
+  )
   expect_equal(as.numeric(reconstruct_space(sparse, coefficients)),
-               as.numeric(reconstruct_space(dense, coefficients)),
-               tolerance = 1e-12)
+    as.numeric(reconstruct_space(dense, coefficients)),
+    tolerance = 1e-12
+  )
   expect_equal(as.numeric(reconstruct_space(lazy, coefficients)),
-               as.numeric(reconstruct_space(dense, coefficients)),
-               tolerance = 1e-12)
+    as.numeric(reconstruct_space(dense, coefficients)),
+    tolerance = 1e-12
+  )
   expect_true(compatible_space(dense, sparse)$compatible)
   expect_true(compatible_space(dense, lazy)$compatible)
 })
@@ -484,8 +515,10 @@ test_that("basis restriction preserves parent and revalidates coordinates", {
 
   expect_identical(feature_ids(y), "contrast")
   expect_identical(feature_data(y)$component_id, "contrast")
-  expect_identical(space_digest(parent_space(y)),
-                   space_digest(parent_space(x)))
+  expect_identical(
+    space_digest(parent_space(y)),
+    space_digest(parent_space(x))
+  )
   expect_identical(dim(basis_analysis(y)), c(1L, 4L))
   expect_identical(dim(basis_synthesis(y)), c(4L, 1L))
   expect_equal(
@@ -598,14 +631,18 @@ test_that("basis spaces survive logical and physical FDS round trips", {
 
 test_that("fmrilatent loadings adapt without stealing model ownership", {
   skip_if_not_installed("fmrilatent")
-  parent <- volume_space(c(2, 2, 1), support = 1:4,
-                         template = "toy-native")
+  parent <- volume_space(c(2, 2, 1),
+    support = 1:4,
+    template = "toy-native"
+  )
   decoder <- Matrix::Matrix(
     matrix(c(1, 0, 0, 1, 1, 1, 2, -1), nrow = 4L, byrow = TRUE),
     sparse = TRUE
   )
-  scores <- Matrix::Matrix(matrix(c(1, 0, 0, 1, 2, -1), nrow = 3L,
-                                  byrow = TRUE))
+  scores <- Matrix::Matrix(matrix(c(1, 0, 0, 1, 2, -1),
+    nrow = 3L,
+    byrow = TRUE
+  ))
   mask_array <- array(TRUE, dim = c(2, 2, 1))
   mask <- neuroim2::LogicalNeuroVol(
     mask_array, neuroim2::NeuroSpace(c(2, 2, 1))
@@ -637,8 +674,10 @@ test_that("composite_space owns ordered part-qualified feature identity", {
   x <- make_composite_space_fixture()
 
   expect_s3_class(x, "composite_space")
-  expect_identical(composite_part_names(x),
-                   c("left_cortex", "right_cortex", "subcortical"))
+  expect_identical(
+    composite_part_names(x),
+    c("left_cortex", "right_cortex", "subcortical")
+  )
   expect_length(composite_parts(x), 3L)
   expect_s3_class(composite_part(x, "left_cortex"), "surface_space")
   expect_identical(n_features(x), 8L)
@@ -660,13 +699,21 @@ test_that("composite_space owns ordered part-qualified feature identity", {
   )
   fd <- feature_data(x)
   expect_identical(fd$.feature_id, feature_ids(x))
-  expect_identical(fd$.part,
-                   rep(c("left_cortex", "right_cortex", "subcortical"),
-                       c(3L, 3L, 2L)))
+  expect_identical(
+    fd$.part,
+    rep(
+      c("left_cortex", "right_cortex", "subcortical"),
+      c(3L, 3L, 2L)
+    )
+  )
   expect_identical(fd$.part_index, c(1:3, 1:3, 1:2))
-  expect_identical(fd$.part_feature_id,
-                   c(paste0("L-", 1:3), paste0("R-", 1:3),
-                     paste0("voxel-", 1:2)))
+  expect_identical(
+    fd$.part_feature_id,
+    c(
+      paste0("L-", 1:3), paste0("R-", 1:3),
+      paste0("voxel-", 1:2)
+    )
+  )
 })
 
 test_that("composite vectorization and reconstruction route native parts", {
@@ -696,8 +743,10 @@ test_that("composite restriction preserves arbitrary cross-part feature order", 
   y <- restrict_space(x, index)
 
   expect_identical(feature_ids(y), feature_ids(x)[index])
-  expect_identical(composite_part_names(y),
-                   c("left_cortex", "right_cortex", "subcortical"))
+  expect_identical(
+    composite_part_names(y),
+    c("left_cortex", "right_cortex", "subcortical")
+  )
   expect_identical(n_features(composite_part(y, "left_cortex")), 1L)
   expect_identical(n_features(composite_part(y, "right_cortex")), 1L)
   expect_identical(n_features(composite_part(y, "subcortical")), 2L)
@@ -744,7 +793,8 @@ test_that("composite identity includes ordered part names spaces and routing", {
   expect_true(compatible_space(x, make_composite_space_fixture())$compatible)
 
   reordered <- composite_space(composite_parts(x)[c(2L, 1L, 3L)],
-                               composite_type = x$composite_type)
+    composite_type = x$composite_type
+  )
   expect_false(identical(space_digest(x), space_digest(reordered)))
 
   renamed <- composite_parts(x)
@@ -874,8 +924,10 @@ test_that("composite neurosurf reconstruction delegates each surface part", {
     seq_len(n_features(x))
   )
   expect_error(
-    reconstruct_space(x, stats::setNames(seq_len(n_features(x)),
-                                        rep("duplicate", n_features(x)))),
+    reconstruct_space(x, stats::setNames(
+      seq_len(n_features(x)),
+      rep("duplicate", n_features(x))
+    )),
     "exactly once"
   )
 })

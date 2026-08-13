@@ -89,7 +89,9 @@ fds_study_manifest <- function(x) {
 fds_study_representations <- function(x) {
   validate_fmri_study(x)
   values <- study_frames(x, contextual = FALSE)
-  if (!inherits(x, "fmri_study_view")) return(values)
+  if (!inherits(x, "fmri_study_view")) {
+    return(values)
+  }
   shared <- entities(x)
   lapply(values, .contextualize_study_frame, shared = shared)
 }
@@ -98,22 +100,24 @@ fds_study_representations <- function(x) {
   if (!is.list(arrays)) {
     .fds_schema_abort("Study arrays must be a named registry.", "arrays")
   }
-  if (!length(arrays)) return(invisible(TRUE))
+  if (!length(arrays)) {
+    return(invisible(TRUE))
+  }
   array_names <- names(arrays)
   if (is.null(array_names) || anyNA(array_names) || any(!nzchar(array_names)) ||
-      anyDuplicated(array_names)) {
+    anyDuplicated(array_names)) {
     .fds_schema_abort("Study arrays must have unique non-empty names.", "arrays")
   }
   for (name in array_names) {
     value <- arrays[[name]]
     if (!is.list(value) ||
-        !all(c("key", "axes", "shape", "dtype") %in% names(value)) ||
-        !identical(value$key, name) || !is.character(value$axes) ||
-        !is.numeric(value$shape) || length(value$shape) < 2L ||
-        length(value$axes) != length(value$shape) || anyNA(value$shape) ||
-        any(value$shape < 0) || any(value$shape != as.integer(value$shape)) ||
-        !is.character(value$dtype) || length(value$dtype) != 1L ||
-        !value$dtype %in% .supported_source_dtypes) {
+      !all(c("key", "axes", "shape", "dtype") %in% names(value)) ||
+      !identical(value$key, name) || !is.character(value$axes) ||
+      !is.numeric(value$shape) || length(value$shape) < 2L ||
+      length(value$axes) != length(value$shape) || anyNA(value$shape) ||
+      any(value$shape < 0) || any(value$shape != as.integer(value$shape)) ||
+      !is.character(value$dtype) || length(value$dtype) != 1L ||
+      !value$dtype %in% .supported_source_dtypes) {
       .fds_schema_abort(
         sprintf("Study array '%s' has an invalid declaration.", name),
         paste0("arrays.", name)
@@ -135,13 +139,13 @@ fds_study_representations <- function(x) {
     return(invisible(TRUE))
   }
   if (!identical(value$type, "fmri_collection") ||
-      !identical(names(value), c("type", "members", "metadata", "provenance")) ||
-      !is.list(value$members) || !length(value$members)) {
+    !identical(names(value), c("type", "members", "metadata", "provenance")) ||
+    !is.list(value$members) || !length(value$members)) {
     .fds_schema_abort("Study representation type is unsupported or invalid.", paste0("representations.", name))
   }
   member_names <- names(value$members)
   if (is.null(member_names) || anyNA(member_names) || any(!nzchar(member_names)) ||
-      anyDuplicated(member_names)) {
+    anyDuplicated(member_names)) {
     .fds_schema_abort("Collection members require unique stable names.", paste0("representations.", name, ".members"))
   }
   for (member_name in member_names) validate_fds_manifest(value$members[[member_name]])
@@ -160,10 +164,12 @@ fds_study_representations <- function(x) {
 
 .validate_study_manifest_links <- function(links, representations) {
   if (!is.list(links)) .fds_schema_abort("Study links must be a named list.", "links")
-  if (!length(links)) return(invisible(TRUE))
+  if (!length(links)) {
+    return(invisible(TRUE))
+  }
   link_names <- names(links)
   if (is.null(link_names) || anyNA(link_names) || any(!nzchar(link_names)) ||
-      anyDuplicated(link_names)) {
+    anyDuplicated(link_names)) {
     .fds_schema_abort("Study links require unique non-empty names.", "links")
   }
   for (name in link_names) {
@@ -193,7 +199,7 @@ fds_study_representations <- function(x) {
         representations[[value$to]], value$to_axis, value$to
       )
       if (any(!value$map$.from_id %in% from_ids) ||
-          any(!value$map$.to_id %in% to_ids)) {
+        any(!value$map$.to_id %in% to_ids)) {
         .fds_schema_abort(
           sprintf("Study link '%s' map contains unknown axis IDs.", name),
           paste0("links.", name, ".map")
@@ -206,8 +212,8 @@ fds_study_representations <- function(x) {
         {
           validate_feature_map(typed_map)
           if (!identical(value$type, "mapped_from") ||
-              !identical(value$from_axis, "feature") ||
-              !identical(value$to_axis, "feature")) {
+            !identical(value$from_axis, "feature") ||
+            !identical(value$to_axis, "feature")) {
             .fds_schema_abort(
               sprintf("Study link '%s' uses a feature_map outside a feature mapped_from link.", name),
               paste0("links.", name, ".metadata.feature_map")
@@ -216,7 +222,7 @@ fds_study_representations <- function(x) {
           from_representation <- representations[[value$from]]
           to_representation <- representations[[value$to]]
           if (identical(from_representation$type, "fmri_collection") ||
-              identical(to_representation$type, "fmri_collection")) {
+            identical(to_representation$type, "fmri_collection")) {
             .fds_schema_abort(
               sprintf("Study link '%s' feature_map endpoints must be single frames.", name),
               paste0("links.", name, ".metadata.feature_map")
@@ -273,8 +279,8 @@ validate_fds_study_manifest <- function(manifest) {
   representations <- manifest$representations
   representation_names <- names(representations)
   if (!is.list(representations) || !length(representations) ||
-      is.null(representation_names) || anyNA(representation_names) ||
-      any(!nzchar(representation_names)) || anyDuplicated(representation_names)) {
+    is.null(representation_names) || anyNA(representation_names) ||
+    any(!nzchar(representation_names)) || anyDuplicated(representation_names)) {
     .fds_schema_abort("Study representations require unique stable names.", "representations")
   }
   for (name in representation_names) {
@@ -336,7 +342,7 @@ fds_study_bindings <- function(x) {
     actual_dtype <- if (inherits(value, "Matrix")) "float64" else .source_dtype_from_data(value)
   }
   if (is.null(actual_shape) ||
-      !identical(as.integer(actual_shape), as.integer(descriptor$shape))) {
+    !identical(as.integer(actual_shape), as.integer(descriptor$shape))) {
     .fds_schema_abort(
       sprintf("Physical study binding '%s' shape does not match its array.", key),
       paste0("bindings.", key, ".shape")
@@ -378,7 +384,7 @@ fds_study_bindings <- function(x) {
 .validate_bound_representations <- function(manifest, representations) {
   expected <- names(manifest$representations)
   if (!is.list(representations) || is.null(names(representations)) ||
-      anyDuplicated(names(representations)) || !setequal(names(representations), expected)) {
+    anyDuplicated(names(representations)) || !setequal(names(representations), expected)) {
     .fds_schema_abort(
       "Physical representation names must exactly match the study manifest.",
       "representations"
@@ -390,7 +396,7 @@ fds_study_bindings <- function(x) {
     value <- representations[[name]]
     if (identical(descriptor$type, "fmri_frame")) {
       if (!inherits(value, "fmri_frame") ||
-          !identical(fds_frame_manifest(value), descriptor$manifest)) {
+        !identical(fds_frame_manifest(value), descriptor$manifest)) {
         .fds_schema_abort(
           sprintf("Frame representation '%s' does not match its manifest.", name),
           paste0("representations.", name)
@@ -399,9 +405,9 @@ fds_study_bindings <- function(x) {
       next
     }
     if (!inherits(value, "fmri_collection") ||
-        !identical(names(collection_frames(value)), names(descriptor$members)) ||
-        !identical(value$metadata, descriptor$metadata) ||
-        !identical(value$provenance, descriptor$provenance)) {
+      !identical(names(collection_frames(value)), names(descriptor$members)) ||
+      !identical(value$metadata, descriptor$metadata) ||
+      !identical(value$provenance, descriptor$provenance)) {
       .fds_schema_abort(
         sprintf("Collection representation '%s' does not match its manifest.", name),
         paste0("representations.", name)
@@ -435,8 +441,8 @@ study_from_fds_manifest <- function(manifest, representations, bindings = list()
   representations <- .validate_bound_representations(manifest, representations)
   expected <- names(manifest$arrays)
   if (!is.list(bindings) ||
-      (length(expected) && (is.null(names(bindings)) || anyDuplicated(names(bindings)))) ||
-      !setequal(names(bindings), expected)) {
+    (length(expected) && (is.null(names(bindings)) || anyDuplicated(names(bindings)))) ||
+    !setequal(names(bindings), expected)) {
     .fds_schema_abort(
       "Physical study binding names must exactly match manifest arrays.",
       "bindings"

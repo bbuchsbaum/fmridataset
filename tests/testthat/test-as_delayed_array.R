@@ -174,8 +174,8 @@ test_that("as_delayed_array converts fmri_mem_dataset", {
   )
 
   mask_dims <- c(10, 10, 10)
-  mask_data <- array(1, mask_dims)  # All ones initially
-  mask_data[mask_data < 0.5] <- 0  # This will keep them all as 1
+  mask_data <- array(1, mask_dims) # All ones initially
+  mask_data[mask_data < 0.5] <- 0 # This will keep them all as 1
   mask_vol <- neuroim2::NeuroVol(
     mask_data,
     space = neuroim2::NeuroSpace(mask_dims)
@@ -204,7 +204,7 @@ test_that("as_delayed_array converts fmri_file_dataset", {
     scans = c("dummy1.nii"),
     mask = "dummy_mask.nii",
     TR = 2,
-    run_length = 100,  # Match the dummy backend's default for one file
+    run_length = 100, # Match the dummy backend's default for one file
     dummy_mode = TRUE
   )
 

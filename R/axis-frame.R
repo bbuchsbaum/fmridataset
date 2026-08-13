@@ -29,8 +29,7 @@
 }
 
 .axis_id_column <- function(axis) {
-  switch(
-    axis,
+  switch(axis,
     observation = ".obs_id",
     feature = ".feature_id",
     entity = ".entity_id",
@@ -40,8 +39,7 @@
 }
 
 .axis_id_prefix <- function(axis) {
-  switch(
-    axis,
+  switch(axis,
     observation = "obs",
     feature = "feature",
     entity = "entity",

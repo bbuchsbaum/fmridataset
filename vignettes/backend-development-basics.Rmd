@@ -114,7 +114,7 @@ csv_backend <- function(data_file) {
   backend <- list(
     data_file = data_file,
     data_cache = NULL,
-    is_open    = FALSE
+    is_open = FALSE
   )
   class(backend) <- c("csv_backend", "storage_backend")
   backend
@@ -122,7 +122,9 @@ csv_backend <- function(data_file) {
 
 # Open: read the CSV once and cache it
 backend_open.csv_backend <- function(backend) {
-  if (backend$is_open) return(backend)
+  if (backend$is_open) {
+    return(backend)
+  }
   backend$data_cache <- as.matrix(read.csv(backend$data_file, check.names = FALSE))
   backend$is_open <- TRUE
   backend
@@ -131,15 +133,17 @@ backend_open.csv_backend <- function(backend) {
 # Close: drop the cache
 backend_close.csv_backend <- function(backend) {
   backend$data_cache <- NULL
-  backend$is_open    <- FALSE
+  backend$is_open <- FALSE
   invisible(backend)
 }
 
 # Dims: rows = timepoints, cols = voxels; report as flat spatial volume
 backend_get_dims.csv_backend <- function(backend) {
   stopifnot(backend$is_open)
-  list(spatial = c(ncol(backend$data_cache), 1L, 1L),
-       time    = nrow(backend$data_cache))
+  list(
+    spatial = c(ncol(backend$data_cache), 1L, 1L),
+    time = nrow(backend$data_cache)
+  )
 }
 
 # Mask: all voxels valid
@@ -170,9 +174,9 @@ Open, query, and close the backend by calling the generics directly:
 b <- csv_backend("my_data.csv")
 b <- backend_open(b)
 
-dims <- backend_get_dims(b)        # spatial 500 x 1 x 1, time 200
-mask <- backend_get_mask(b)        # logical vector, length 500
-d    <- backend_get_data(b, rows = 1:20, cols = 1:50)  # 20 x 50 matrix
+dims <- backend_get_dims(b) # spatial 500 x 1 x 1, time 200
+mask <- backend_get_mask(b) # logical vector, length 500
+d <- backend_get_data(b, rows = 1:20, cols = 1:50) # 20 x 50 matrix
 
 b <- backend_close(b)
 ```
@@ -198,8 +202,8 @@ b <- create_backend("csv", data_file = "my_data.csv")
 `create_backend()` calls `validate_backend()` automatically unless you pass `validate = FALSE`. To see everything currently registered:
 
 ```{r list-backends}
-list_backend_names()          # character vector of registered names
-get_backend_registry()        # full registration details for all backends
+list_backend_names() # character vector of registered names
+get_backend_registry() # full registration details for all backends
 ```
 
 ## Validation
@@ -208,7 +212,7 @@ get_backend_registry()        # full registration details for all backends
 
 ```{r validate}
 b <- backend_open(csv_backend("my_data.csv"))
-validate_backend(b)           # returns TRUE or throws a descriptive error
+validate_backend(b) # returns TRUE or throws a descriptive error
 backend_close(b)
 ```
 

@@ -177,11 +177,11 @@ NULL
       row <- manifest[i, ]
 
       bids_h5_scan_backend(
-        h5_connection    = h5_connection,
-        scan_group_path  = paste0("/scans/", row$scan_name),
-        n_features       = n_features,
-        n_time           = row$n_time,
-        metadata         = list(
+        h5_connection = h5_connection,
+        scan_group_path = paste0("/scans/", row$scan_name),
+        n_features = n_features,
+        n_time = row$n_time,
+        metadata = list(
           subject = row$subject,
           task    = row$task,
           session = if (!is.na(row$session) && nzchar(row$session)) row$session else NULL,
@@ -205,23 +205,23 @@ NULL
     if (name %in% fields) idx_grp[[name]]$read() else NULL
   }
 
-  scan_name     <- read_field("scan_name")
-  subject       <- read_field("subject")
-  task          <- read_field("task")
-  session       <- read_field("session")
-  run           <- read_field("run")
-  n_time        <- read_field("n_time")
-  time_offset   <- read_field("time_offset")
-  has_events    <- read_field("has_events")
+  scan_name <- read_field("scan_name")
+  subject <- read_field("subject")
+  task <- read_field("task")
+  session <- read_field("session")
+  run <- read_field("run")
+  n_time <- read_field("n_time")
+  time_offset <- read_field("time_offset")
+  has_events <- read_field("has_events")
   has_confounds <- read_field("has_confounds")
 
   n <- length(scan_name)
 
   # Coerce types
-  if (is.null(session))      session      <- rep(NA_character_, n)
-  if (is.null(has_events))   has_events   <- rep(FALSE, n)
+  if (is.null(session)) session <- rep(NA_character_, n)
+  if (is.null(has_events)) has_events <- rep(FALSE, n)
   if (is.null(has_confounds)) has_confounds <- rep(FALSE, n)
-  if (is.null(time_offset))  time_offset  <- c(0L, cumsum(as.integer(n_time)))[seq_len(n)]
+  if (is.null(time_offset)) time_offset <- c(0L, cumsum(as.integer(n_time)))[seq_len(n)]
 
   tibble::tibble(
     scan_name     = as.character(scan_name),
@@ -248,14 +248,14 @@ NULL
   n_scans <- nrow(scan_rows)
 
   # Collect per-scan events, censor, run lengths
-  events_list  <- vector("list", n_scans)
+  events_list <- vector("list", n_scans)
   censor_parts <- vector("list", n_scans)
-  run_lengths  <- integer(n_scans)
+  run_lengths <- integer(n_scans)
 
   for (i in seq_len(n_scans)) {
-    row   <- scan_rows[i, ]
+    row <- scan_rows[i, ]
     sname <- row$scan_name
-    grp   <- h5[[paste0("scans/", sname)]]
+    grp <- h5[[paste0("scans/", sname)]]
 
     run_lengths[i] <- row$n_time
 
@@ -263,10 +263,10 @@ NULL
     if (row$has_events) {
       ev <- h5_read_events(grp)
       if (!is.null(ev) && nrow(ev) > 0) {
-        ev$run      <- row$run      # BIDS run label
-        ev$run_id   <- i            # sequential int within subject
+        ev$run <- row$run # BIDS run label
+        ev$run_id <- i # sequential int within subject
         ev$subject_id <- subject_id
-        ev$task     <- row$task
+        ev$task <- row$task
         if (!is.na(row$session) && nzchar(row$session)) {
           ev$session <- row$session
         }
@@ -336,18 +336,18 @@ NULL
                                            compression_mode = "parcellated") {
   subjects_in_manifest <- unique(manifest$subject)
 
-  datasets    <- vector("list", length(subjects_in_manifest))
+  datasets <- vector("list", length(subjects_in_manifest))
   subject_ids <- subjects_in_manifest
 
   for (i in seq_along(subjects_in_manifest)) {
-    sid       <- subjects_in_manifest[[i]]
+    sid <- subjects_in_manifest[[i]]
     subj_rows <- manifest[manifest$subject == sid, ]
     datasets[[i]] <- .build_subject_dataset(
-      scan_rows    = subj_rows,
+      scan_rows = subj_rows,
       scan_backends = scan_backends,
-      h5           = h5,
-      tr           = tr,
-      subject_id   = sid
+      h5 = h5,
+      tr = tr,
+      subject_id = sid
     )
   }
 
@@ -355,11 +355,11 @@ NULL
   study <- fmri_study_dataset(datasets, subject_ids = subject_ids)
 
   # Wrap as bids_h5_study_dataset subclass with extra fields
-  study$scan_manifest    <- manifest
-  study$h5_connection    <- h5_connection
+  study$scan_manifest <- manifest
+  study$h5_connection <- h5_connection
   study$compression_mode <- compression_mode
-  study$.bids_metadata   <- bids_meta
-  study$.scan_backends   <- scan_backends
+  study$.bids_metadata <- bids_meta
+  study$.scan_backends <- scan_backends
 
   class(study) <- c("bids_h5_study_dataset", "fmri_study_dataset", "fmri_dataset", "list")
   study
@@ -402,7 +402,7 @@ bids_h5_dataset <- function(file, preload = FALSE) {
 
   # Open shared connection (validates file exists, opens H5File)
   h5_connection <- h5_shared_connection(file)
-  h5            <- h5_connection$handle
+  h5 <- h5_connection$handle
 
   # Validate root attributes
   .bids_h5_dataset_validate_root(h5, file)
@@ -471,20 +471,20 @@ bids_h5_dataset <- function(file, preload = FALSE) {
 #'
 #' @export
 subset_bids_h5 <- function(x,
-                           task    = NULL,
+                           task = NULL,
                            subject = NULL,
                            session = NULL,
-                           run     = NULL) {
+                           run = NULL) {
   if (!inherits(x, "bids_h5_study_dataset")) {
     stop("'x' must be a bids_h5_study_dataset object.", call. = FALSE)
   }
 
   manifest <- x$scan_manifest
-  keep      <- rep(TRUE, nrow(manifest))
+  keep <- rep(TRUE, nrow(manifest))
 
-  if (!is.null(task))    keep <- keep & (manifest$task    %in% task)
+  if (!is.null(task)) keep <- keep & (manifest$task %in% task)
   if (!is.null(subject)) keep <- keep & (manifest$subject %in% subject)
-  if (!is.null(run))     keep <- keep & (manifest$run     %in% run)
+  if (!is.null(run)) keep <- keep & (manifest$run %in% run)
   if (!is.null(session)) {
     keep <- keep & (manifest$session %in% session)
   }
@@ -575,7 +575,7 @@ parcellation_info.bids_h5_study_dataset <- function(x, ...) {
   }
 
   cluster_ids <- h5[["parcellation/cluster_ids"]]$read()
-  n_parcels   <- length(cluster_ids)
+  n_parcels <- length(cluster_ids)
 
   cluster_map <- if (h5$exists("parcellation/cluster_map")) {
     h5[["parcellation/cluster_map"]]$read()
@@ -583,15 +583,18 @@ parcellation_info.bids_h5_study_dataset <- function(x, ...) {
     NULL
   }
 
-  labels <- tryCatch({
-    if (h5$exists("parcellation") &&
-          h5[["parcellation"]]$exists("cluster_meta") &&
-          h5[["parcellation/cluster_meta"]]$exists("labels")) {
-      h5[["parcellation/cluster_meta/labels"]]$read()
-    } else {
-      NULL
-    }
-  }, error = function(e) NULL)
+  labels <- tryCatch(
+    {
+      if (h5$exists("parcellation") &&
+        h5[["parcellation"]]$exists("cluster_meta") &&
+        h5[["parcellation/cluster_meta"]]$exists("labels")) {
+        h5[["parcellation/cluster_meta/labels"]]$read()
+      } else {
+        NULL
+      }
+    },
+    error = function(e) NULL
+  )
 
   list(
     cluster_ids = cluster_ids,
@@ -623,11 +626,16 @@ get_loadings.bids_h5_study_dataset <- function(x, scan_name = NULL, ...) {
   .get_one_loadings <- function(sn) {
     sgp <- paste0("/scans/", sn)
     per_scan <- .read_scan_loadings(h5, sgp)
-    if (!is.null(per_scan)) return(per_scan)
+    if (!is.null(per_scan)) {
+      return(per_scan)
+    }
     # Fall back to shared template loadings
-    if (has_template) return(.read_template_loadings(h5))
+    if (has_template) {
+      return(.read_template_loadings(h5))
+    }
     stop(sprintf("No loadings found for scan '%s' and no shared template.", sn),
-         call. = FALSE)
+      call. = FALSE
+    )
   }
 
   if (!is.null(scan_name)) {
@@ -670,7 +678,7 @@ reconstruct_voxels.bids_h5_study_dataset <- function(x, scan_name, rows = NULL,
   sgp <- paste0("/scans/", scan_name)
 
   # Read basis [T, K]
-  basis    <- backend_get_data(backend)
+  basis <- backend_get_data(backend)
   # Read loadings [V, K] — per-scan or shared template
   loadings <- .read_scan_loadings(h5, sgp)
   if (is.null(loadings) && .has_shared_template(h5)) {
@@ -678,10 +686,11 @@ reconstruct_voxels.bids_h5_study_dataset <- function(x, scan_name, rows = NULL,
   }
   if (is.null(loadings)) {
     stop(sprintf("No loadings found for scan '%s' and no shared template.", scan_name),
-         call. = FALSE)
+      call. = FALSE
+    )
   }
   # Read offset [V]
-  offset   <- .read_scan_offset(h5, sgp)
+  offset <- .read_scan_offset(h5, sgp)
 
   # Reconstruct: [T, K] %*% t([V, K]) = [T, V]
   recon <- basis %*% t(loadings)
@@ -734,10 +743,13 @@ encoding_info.bids_h5_study_dataset <- function(x, ...) {
 
   has_template <- .has_shared_template(h5)
   template_meta <- if (has_template) {
-    tryCatch({
-      meta_json <- h5[["latent_meta/template/meta"]]$read()
-      jsonlite::fromJSON(meta_json)
-    }, error = function(e) list())
+    tryCatch(
+      {
+        meta_json <- h5[["latent_meta/template/meta"]]$read()
+        jsonlite::fromJSON(meta_json)
+      },
+      error = function(e) list()
+    )
   } else {
     NULL
   }
@@ -759,15 +771,15 @@ encoding_info.bids_h5_study_dataset <- function(x, ...) {
 #' @export
 get_confounds.bids_h5_study_dataset <- function(x,
                                                 scan_name = NULL,
-                                                subject   = NULL,
-                                                task      = NULL,
+                                                subject = NULL,
+                                                task = NULL,
                                                 ...) {
   manifest <- x$scan_manifest
-  keep      <- manifest$has_confounds
+  keep <- manifest$has_confounds
 
   if (!is.null(scan_name)) keep <- keep & (manifest$scan_name %in% scan_name)
-  if (!is.null(subject))   keep <- keep & (manifest$subject   %in% subject)
-  if (!is.null(task))      keep <- keep & (manifest$task      %in% task)
+  if (!is.null(subject)) keep <- keep & (manifest$subject %in% subject)
+  if (!is.null(task)) keep <- keep & (manifest$task %in% task)
 
   matching <- manifest[keep, ]
 
@@ -826,11 +838,11 @@ study_to_group.fmri_study_dataset <- function(x, ...) {
   sids <- x$subject_ids
 
   # Reconstruct per-subject fmri_dataset objects from the study_backend
-  sb       <- x$backend
+  sb <- x$backend
   backends <- sb$backends
 
   datasets <- lapply(seq_along(sids), function(i) {
-    sid         <- sids[[i]]
+    sid <- sids[[i]]
     subj_backend <- backends[[i]]
 
     # Find matching rows in the combined event_table
@@ -884,20 +896,20 @@ study_to_group.fmri_study_dataset <- function(x, ...) {
 
 #' @export
 print.bids_h5_study_dataset <- function(x, ...) {
-  m          <- x$scan_manifest
+  m <- x$scan_manifest
   n_subjects <- length(unique(m$subject))
-  n_tasks    <- length(unique(m$task))
-  sess_vals  <- unique(m$session)
-  sess_vals  <- sess_vals[!is.na(sess_vals) & nzchar(sess_vals)]
+  n_tasks <- length(unique(m$task))
+  sess_vals <- unique(m$session)
+  sess_vals <- sess_vals[!is.na(sess_vals) & nzchar(sess_vals)]
   n_sessions <- length(sess_vals)
-  n_scans    <- nrow(m)
+  n_scans <- nrow(m)
   n_features <- if (!is.null(x$.scan_backends) && length(x$.scan_backends) > 0) {
     x$.scan_backends[[1]]$n_features
   } else {
     NA_integer_
   }
-  tr_val     <- get_TR(x)
-  total_tp   <- sum(m$n_time)
+  tr_val <- get_TR(x)
+  total_tp <- sum(m$n_time)
 
   cat("<bids_h5_study_dataset>\n")
   cat("  format        : BIDS H5 Study Archive\n")
@@ -909,11 +921,15 @@ print.bids_h5_study_dataset <- function(x, ...) {
   }
 
   cat("  subjects      :", n_subjects, "\n")
-  cat("  tasks         :", n_tasks,
-      "(", paste(unique(m$task), collapse = ", "), ")\n")
+  cat(
+    "  tasks         :", n_tasks,
+    "(", paste(unique(m$task), collapse = ", "), ")\n"
+  )
   if (n_sessions > 0) {
-    cat("  sessions      :", n_sessions,
-        "(", paste(sess_vals, collapse = ", "), ")\n")
+    cat(
+      "  sessions      :", n_sessions,
+      "(", paste(sess_vals, collapse = ", "), ")\n"
+    )
   }
   cat("  scans         :", n_scans, "\n")
   cat("  TR            :", tr_val, "s\n")

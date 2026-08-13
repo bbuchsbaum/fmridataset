@@ -1,6 +1,8 @@
 .normalize_frame_selector <- function(index, ids, axis) {
   n <- length(ids)
-  if (missing(index) || is.null(index)) return(seq_len(n))
+  if (missing(index) || is.null(index)) {
+    return(seq_len(n))
+  }
   if (is.character(index)) {
     if (anyNA(index) || anyDuplicated(index)) {
       .frame_abort(sprintf("%s ID selectors must be unique and non-missing.", axis), "fmridataset_error_alignment")

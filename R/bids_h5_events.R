@@ -145,7 +145,7 @@ h5_write_confounds <- function(h5_group, confounds, compression = 4L) {
   }
   cf_grp <- h5_group[["confounds"]]
 
-  n_time     <- nrow(mat)
+  n_time <- nrow(mat)
   n_confounds <- ncol(mat)
   chunks <- c(min(n_time, 256L), min(n_confounds, 64L))
 
@@ -183,7 +183,7 @@ h5_read_confounds <- function(h5_group) {
     return(NULL)
   }
 
-  ds  <- cf_grp[["data"]]
+  ds <- cf_grp[["data"]]
   mat <- ds$read()
 
   # Restore column names from attribute if present

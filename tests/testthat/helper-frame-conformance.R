@@ -47,8 +47,14 @@ expect_feature_space_conformance <- function(space) {
 }
 
 contains_runtime_state <- function(x) {
-  if (is.environment(x) || is.function(x) || typeof(x) == "externalptr") return(TRUE)
-  if (is.pairlist(x)) return(any(vapply(as.list(x), contains_runtime_state, logical(1))))
-  if (is.list(x)) return(any(vapply(unclass(x), contains_runtime_state, logical(1))))
+  if (is.environment(x) || is.function(x) || typeof(x) == "externalptr") {
+    return(TRUE)
+  }
+  if (is.pairlist(x)) {
+    return(any(vapply(as.list(x), contains_runtime_state, logical(1))))
+  }
+  if (is.list(x)) {
+    return(any(vapply(unclass(x), contains_runtime_state, logical(1))))
+  }
   FALSE
 }

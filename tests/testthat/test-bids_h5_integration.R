@@ -25,10 +25,10 @@ make_test_h5 <- function(file, scans, n_parcels, tr = 2.0,
   on.exit(tryCatch(h5$close_all(), error = function(e) NULL), add = TRUE)
 
   # Root attributes
-  h5$create_attr("format",           "bids_h5_study")
-  h5$create_attr("version",          "1.0")
+  h5$create_attr("format", "bids_h5_study")
+  h5$create_attr("version", "1.0")
   h5$create_attr("compression_mode", "parcellated")
-  h5$create_attr("writer_version",   "test")
+  h5$create_attr("writer_version", "test")
 
   # /parcellation/
   parc_grp <- h5$create_group("parcellation")
@@ -38,12 +38,12 @@ make_test_h5 <- function(file, scans, n_parcels, tr = 2.0,
 
   # /bids/
   bids_grp <- h5$create_group("bids")
-  unique_tasks    <- unique(vapply(scans, `[[`, character(1), "task"))
+  unique_tasks <- unique(vapply(scans, `[[`, character(1), "task"))
   unique_sessions <- unique(unlist(lapply(scans, function(s) s$session %||% "")))
   unique_sessions <- unique_sessions[nzchar(unique_sessions)]
-  bids_grp$create_dataset("tasks",    robj = unique_tasks)
-  bids_grp$create_dataset("name",     robj = "test_study")
-  bids_grp$create_dataset("space",    robj = "MNI152NLin2009cAsym")
+  bids_grp$create_dataset("tasks", robj = unique_tasks)
+  bids_grp$create_dataset("name", robj = "test_study")
+  bids_grp$create_dataset("space", robj = "MNI152NLin2009cAsym")
   bids_grp$create_dataset("pipeline", robj = "fmriprep")
   if (length(unique_sessions) > 0) {
     bids_grp$create_dataset("sessions", robj = unique_sessions)
@@ -51,31 +51,31 @@ make_test_h5 <- function(file, scans, n_parcels, tr = 2.0,
 
   # /spatial/ (minimal)
   spat_grp <- h5$create_group("spatial")
-  hdr_grp  <- spat_grp$create_group("header")
+  hdr_grp <- spat_grp$create_group("header")
   hdr_grp$create_dataset("dim", robj = c(n_parcels, 1L, 1L))
   hdr_grp$create_dataset("pixdim", robj = c(1.0, 1.0, 1.0))
 
   # /scans/
   scans_grp <- h5$create_group("scans")
-  scan_names_vec   <- character(length(scans))
-  n_time_vec       <- integer(length(scans))
-  subject_vec      <- character(length(scans))
-  task_vec         <- character(length(scans))
-  run_vec          <- character(length(scans))
-  session_vec      <- character(length(scans))
-  has_events_vec   <- integer(length(scans))
+  scan_names_vec <- character(length(scans))
+  n_time_vec <- integer(length(scans))
+  subject_vec <- character(length(scans))
+  task_vec <- character(length(scans))
+  run_vec <- character(length(scans))
+  session_vec <- character(length(scans))
+  has_events_vec <- integer(length(scans))
   has_confounds_vec <- integer(length(scans))
 
   for (i in seq_along(scans)) {
-    spec      <- scans[[i]]
-    sname     <- names(scans)[[i]]
+    spec <- scans[[i]]
+    sname <- names(scans)[[i]]
     scan_names_vec[[i]] <- sname
-    n_time              <- spec$n_time
-    n_time_vec[[i]]     <- n_time
-    subject_vec[[i]]    <- spec$subject
-    task_vec[[i]]       <- spec$task
-    run_vec[[i]]        <- spec$run %||% "01"
-    session_vec[[i]]    <- spec$session %||% ""
+    n_time <- spec$n_time
+    n_time_vec[[i]] <- n_time
+    subject_vec[[i]] <- spec$subject
+    task_vec[[i]] <- spec$task
+    run_vec[[i]] <- spec$run %||% "01"
+    session_vec[[i]] <- spec$session %||% ""
 
     sg <- scans_grp$create_group(sname)
     dg <- sg$create_group("data")
@@ -91,9 +91,9 @@ make_test_h5 <- function(file, scans, n_parcels, tr = 2.0,
     # Metadata
     md_grp <- sg$create_group("metadata")
     md_grp$create_dataset("subject", robj = spec$subject)
-    md_grp$create_dataset("task",    robj = spec$task)
-    md_grp$create_dataset("run",     robj = run_vec[[i]])
-    md_grp$create_dataset("tr",      robj = tr)
+    md_grp$create_dataset("task", robj = spec$task)
+    md_grp$create_dataset("run", robj = run_vec[[i]])
+    md_grp$create_dataset("tr", robj = tr)
     if (nzchar(session_vec[[i]])) {
       md_grp$create_dataset("session", robj = session_vec[[i]])
     }
@@ -129,15 +129,15 @@ make_test_h5 <- function(file, scans, n_parcels, tr = 2.0,
   # /scan_index/
   si <- h5$create_group("scan_index")
   time_offset <- c(0L, cumsum(n_time_vec[-length(n_time_vec)]))
-  si$create_dataset("scan_name",      robj = scan_names_vec)
-  si$create_dataset("subject",        robj = subject_vec)
-  si$create_dataset("task",           robj = task_vec)
-  si$create_dataset("run",            robj = run_vec)
-  si$create_dataset("session",        robj = session_vec)
-  si$create_dataset("n_time",         robj = n_time_vec)
-  si$create_dataset("time_offset",    robj = time_offset)
-  si$create_dataset("has_events",     robj = has_events_vec)
-  si$create_dataset("has_confounds",  robj = has_confounds_vec)
+  si$create_dataset("scan_name", robj = scan_names_vec)
+  si$create_dataset("subject", robj = subject_vec)
+  si$create_dataset("task", robj = task_vec)
+  si$create_dataset("run", robj = run_vec)
+  si$create_dataset("session", robj = session_vec)
+  si$create_dataset("n_time", robj = n_time_vec)
+  si$create_dataset("time_offset", robj = time_offset)
+  si$create_dataset("has_events", robj = has_events_vec)
+  si$create_dataset("has_confounds", robj = has_confounds_vec)
 
   h5$close_all()
   file
@@ -146,14 +146,14 @@ make_test_h5 <- function(file, scans, n_parcels, tr = 2.0,
 # Default test scans used by most tests
 make_default_scans <- function(K = 20L, T1 = 50L, T2 = 60L) {
   events1 <- data.frame(
-    onset      = c(0, 10, 20),
-    duration   = c(2, 2, 2),
+    onset = c(0, 10, 20),
+    duration = c(2, 2, 2),
     trial_type = c("face", "house", "face"),
     stringsAsFactors = FALSE
   )
   events2 <- data.frame(
-    onset      = c(0, 15),
-    duration   = c(2, 2),
+    onset = c(0, 15),
+    duration = c(2, 2),
     trial_type = c("house", "house"),
     stringsAsFactors = FALSE
   )
@@ -259,21 +259,21 @@ test_that("bids_h5_dataset validates compression_mode", {
   tmp <- tempfile(fileext = ".h5")
   on.exit(unlink(tmp), add = TRUE)
   h5 <- hdf5r::H5File$new(tmp, mode = "w")
-  h5$create_attr("format",           "bids_h5_study")
-  h5$create_attr("version",          "1.0")
-  h5$create_attr("compression_mode", "lna")   # not yet supported
+  h5$create_attr("format", "bids_h5_study")
+  h5$create_attr("version", "1.0")
+  h5$create_attr("compression_mode", "lna") # not yet supported
   # Need minimal scan_index and parcellation to get past earlier checks
   h5$create_group("parcellation")$create_dataset("cluster_ids", robj = 1L)
   si <- h5$create_group("scan_index")
-  si$create_dataset("scan_name",   robj = "sub-01_task-test_run-01")
-  si$create_dataset("subject",     robj = "01")
-  si$create_dataset("task",        robj = "test")
-  si$create_dataset("run",         robj = "01")
-  si$create_dataset("session",     robj = "")
-  si$create_dataset("n_time",      robj = 10L)
+  si$create_dataset("scan_name", robj = "sub-01_task-test_run-01")
+  si$create_dataset("subject", robj = "01")
+  si$create_dataset("task", robj = "test")
+  si$create_dataset("run", robj = "01")
+  si$create_dataset("session", robj = "")
+  si$create_dataset("n_time", robj = 10L)
   si$create_dataset("time_offset", robj = 0L)
-  si$create_dataset("has_events",     robj = 0L)
-  si$create_dataset("has_confounds",  robj = 0L)
+  si$create_dataset("has_events", robj = 0L)
+  si$create_dataset("has_confounds", robj = 0L)
   h5$close_all()
   expect_error(bids_h5_dataset(tmp), regexp = "parcellated|lna")
 })
@@ -291,8 +291,10 @@ test_that("scan_manifest returns tibble with expected columns", {
 
   m <- scan_manifest(study)
   expect_s3_class(m, "data.frame")
-  expected_cols <- c("scan_name", "subject", "task", "session", "run",
-                     "n_time", "time_offset", "has_events", "has_confounds")
+  expected_cols <- c(
+    "scan_name", "subject", "task", "session", "run",
+    "n_time", "time_offset", "has_events", "has_confounds"
+  )
   expect_true(all(expected_cols %in% names(m)))
   expect_equal(nrow(m), 4L)
 })
@@ -455,8 +457,8 @@ test_that("event_table is populated from stored events", {
   expect_s3_class(et, "data.frame")
   expect_gt(nrow(et), 0L)
   # Check that onset, duration, trial_type are present
-  expect_true("onset"      %in% names(et))
-  expect_true("duration"   %in% names(et))
+  expect_true("onset" %in% names(et))
+  expect_true("duration" %in% names(et))
   expect_true("trial_type" %in% names(et))
 })
 
@@ -467,8 +469,8 @@ test_that("event_table has task and run columns added by reader", {
   study <- bids_h5_dataset(tmp)
 
   et <- study$event_table
-  expect_true("task"       %in% names(et))
-  expect_true("run"        %in% names(et))
+  expect_true("task" %in% names(et))
+  expect_true("run" %in% names(et))
   expect_true("subject_id" %in% names(et))
 })
 
@@ -528,8 +530,8 @@ test_that("get_confounds returns tibble for single scan with confounds", {
 
   cf <- get_confounds(study, scan_name = "sub-01_task-nback_run-01")
   expect_s3_class(cf, "data.frame")
-  expect_equal(ncol(cf), 2L)    # motion_x, motion_y
-  expect_equal(nrow(cf), 50L)   # T1 is 50
+  expect_equal(ncol(cf), 2L) # motion_x, motion_y
+  expect_equal(nrow(cf), 50L) # T1 is 50
   expect_true("motion_x" %in% names(cf))
 })
 
@@ -571,7 +573,7 @@ test_that("subset_bids_h5 by task returns only matching scans", {
   expect_s3_class(nback, "bids_h5_study_dataset")
   m <- scan_manifest(nback)
   expect_true(all(m$task == "nback"))
-  expect_equal(nrow(m), 3L)  # 2 runs for sub-01 + 1 run for sub-02
+  expect_equal(nrow(m), 3L) # 2 runs for sub-01 + 1 run for sub-02
 })
 
 test_that("subset_bids_h5 by subject returns only matching scans", {
@@ -719,7 +721,7 @@ test_that("print.bids_h5_study_dataset produces output", {
 
   expect_output(print(study), "bids_h5_study_dataset")
   expect_output(print(study), "parcellated")
-  expect_output(print(study), "20")   # n_parcels
+  expect_output(print(study), "20") # n_parcels
 })
 
 

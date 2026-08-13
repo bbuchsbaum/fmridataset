@@ -164,16 +164,20 @@ test_that("collections allow synchronized views and detect a common space", {
 test_that("collection rejects incompatible assay and axis semantics", {
   reference <- .make_collection_frame("sub-01")$frame
   bad_assay <- .make_collection_frame(
-    "sub-02", assay_names = c("signal", "variance")
+    "sub-02",
+    assay_names = c("signal", "variance")
   )$frame
   bad_observation <- .make_collection_frame(
-    "sub-02", extra_observation = TRUE
+    "sub-02",
+    extra_observation = TRUE
   )$frame
   bad_factor <- .make_collection_frame(
-    "sub-02", condition_levels = c("B", "A")
+    "sub-02",
+    condition_levels = c("B", "A")
   )$frame
   bad_block <- .make_collection_frame(
-    "sub-02", block_components = c("x", "y")
+    "sub-02",
+    block_components = c("x", "y")
   )$frame
 
   expect_error(
@@ -202,7 +206,8 @@ test_that("collection validates entity, relation, and feature-domain schemas", {
   reference <- .make_collection_frame("sub-01")$frame
   bad_entity <- .make_collection_frame("sub-02", entity_extra = TRUE)$frame
   bad_space_type <- .make_collection_frame(
-    "sub-02", index_feature_space = TRUE
+    "sub-02",
+    index_feature_space = TRUE
   )$frame
   bad_relation <- fmri_frame(
     assays = lapply(assays(reference), `[[`, "source"),

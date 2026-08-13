@@ -85,7 +85,8 @@ make_composite_space_fixture <- function() {
     template = "fsLR-toy"
   )
   subcortical <- volume_space(
-    c(2, 1, 1), support = 1:2, template = "MNI-toy"
+    c(2, 1, 1),
+    support = 1:2, template = "MNI-toy"
   )
   composite_space(
     list(
@@ -101,13 +102,17 @@ make_composite_space_fixture <- function() {
 make_walking_skeleton_fixture <- function(instrument = FALSE) {
   subject_id <- factor(rep(c("sub-01", "sub-02", "sub-03"), c(6L, 5L, 7L)))
   Fac1 <- factor(
-    c("A", "B", "A", "B", "A", "B", "A", "B", "A", "B", "A",
-      "A", "B", "A", "B", "A", "B", "A"),
+    c(
+      "A", "B", "A", "B", "A", "B", "A", "B", "A", "B", "A",
+      "A", "B", "A", "B", "A", "B", "A"
+    ),
     levels = c("A", "B")
   )
   Fac2 <- factor(
-    c("old", "old", "new", "new", "old", "new", "new", "old", "old",
-      "new", "new", "old", "new", "old", "new", "new", "old", "old"),
+    c(
+      "old", "old", "new", "new", "old", "new", "new", "old", "old",
+      "new", "new", "old", "new", "old", "new", "new", "old", "old"
+    ),
     levels = c("old", "new")
   )
   stimulus_id <- paste0(
@@ -143,8 +148,7 @@ make_walking_skeleton_fixture <- function(instrument = FALSE) {
   )
 
   lifted_pca <- visual_pca[
-    match(observation_data$stimulus_id, stimulus$data$stimulus_id),
-    ,
+    match(observation_data$stimulus_id, stimulus$data$stimulus_id), ,
     drop = FALSE
   ]
   dense_data <- cbind(observation_data, as.data.frame(lifted_pca))

@@ -173,7 +173,7 @@ bids_h5_scan_backend <- function(h5_connection,
 
   compression_mode <- match.arg(compression_mode, c("parcellated", "latent"))
   n_features <- as.integer(n_features)
-  n_time     <- as.integer(n_time)
+  n_time <- as.integer(n_time)
 
   if (n_features < 1L) {
     stop_fmridataset(
@@ -193,13 +193,13 @@ bids_h5_scan_backend <- function(h5_connection,
   }
 
   backend <- new.env(parent = emptyenv())
-  backend$h5_connection    <- h5_connection
-  backend$scan_group_path  <- scan_group_path
-  backend$n_features       <- n_features
-  backend$n_time           <- n_time
-  backend$metadata         <- metadata
+  backend$h5_connection <- h5_connection
+  backend$scan_group_path <- scan_group_path
+  backend$n_features <- n_features
+  backend$n_time <- n_time
+  backend$metadata <- metadata
   backend$compression_mode <- compression_mode
-  backend$is_open          <- FALSE
+  backend$is_open <- FALSE
 
   class(backend) <- c("bids_h5_scan_backend", "storage_backend")
   backend
@@ -283,24 +283,27 @@ backend_get_data.bids_h5_scan_backend <- function(backend, rows = NULL, cols = N
     paste0(backend$scan_group_path, "/data/summary_data")
   }
 
-  data_matrix <- tryCatch({
-    ds <- conn$handle[[dataset_path]]
-    # HDF5 dataset is stored [T, K]; read as matrix and ensure correct orientation
-    mat <- ds[, ]   # shape [T, K] from hdf5r (row-major read)
-    if (!is.matrix(mat)) {
-      mat <- matrix(mat, nrow = backend$n_time, ncol = backend$n_features)
+  data_matrix <- tryCatch(
+    {
+      ds <- conn$handle[[dataset_path]]
+      # HDF5 dataset is stored [T, K]; read as matrix and ensure correct orientation
+      mat <- ds[, ] # shape [T, K] from hdf5r (row-major read)
+      if (!is.matrix(mat)) {
+        mat <- matrix(mat, nrow = backend$n_time, ncol = backend$n_features)
+      }
+      mat
+    },
+    error = function(e) {
+      stop_fmridataset(
+        fmridataset_error_backend_io,
+        message = sprintf(
+          "Failed to read data from '%s': %s", dataset_path, e$message
+        ),
+        file = conn$file,
+        operation = "read"
+      )
     }
-    mat
-  }, error = function(e) {
-    stop_fmridataset(
-      fmridataset_error_backend_io,
-      message = sprintf(
-        "Failed to read data from '%s': %s", dataset_path, e$message
-      ),
-      file = conn$file,
-      operation = "read"
-    )
-  })
+  )
 
   # Apply row/col subsetting
   if (!is.null(rows)) {
@@ -319,9 +322,9 @@ backend_get_data.bids_h5_scan_backend <- function(backend, rows = NULL, cols = N
 backend_get_metadata.bids_h5_scan_backend <- function(backend) {
   meta <- backend$metadata
   meta$compression_mode <- backend$compression_mode
-  meta$n_features       <- backend$n_features
-  meta$scan_group_path  <- backend$scan_group_path
-  meta$format           <- "bids_h5"
+  meta$n_features <- backend$n_features
+  meta$scan_group_path <- backend$scan_group_path
+  meta$format <- "bids_h5"
   meta
 }
 
@@ -361,7 +364,9 @@ print.bids_h5_scan_backend <- function(x, ...) {
 #' @keywords internal
 .read_scan_loadings <- function(h5_handle, scan_group_path) {
   path <- paste0(scan_group_path, "/data/loadings")
-  if (!h5_handle$exists(path)) return(NULL)
+  if (!h5_handle$exists(path)) {
+    return(NULL)
+  }
   h5_handle[[path]][, ]
 }
 
@@ -382,7 +387,9 @@ print.bids_h5_scan_backend <- function(x, ...) {
 #' @keywords internal
 .read_template_loadings <- function(h5_handle) {
   path <- "latent_meta/template/loadings"
-  if (!h5_handle$exists(path)) return(NULL)
+  if (!h5_handle$exists(path)) {
+    return(NULL)
+  }
   h5_handle[[path]][, ]
 }
 

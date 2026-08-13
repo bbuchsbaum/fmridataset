@@ -362,11 +362,15 @@ backend_get_data.h5_backend <- function(backend, rows = NULL, cols = NULL) {
 
   # Only register cleanup if we loaded on-demand (not preloaded)
   if (is.null(backend$h5_objects)) {
-    on.exit({
-      lapply(h5_objects, function(obj) {
-        tryCatch(close(obj), error = function(e) invisible(NULL))
-      })
-    }, add = TRUE, after = FALSE)
+    on.exit(
+      {
+        lapply(h5_objects, function(obj) {
+          tryCatch(close(obj), error = function(e) invisible(NULL))
+        })
+      },
+      add = TRUE,
+      after = FALSE
+    )
   }
 
   # Get mask information

@@ -131,7 +131,8 @@ test_that("key relations distinguish nested entity domains", {
     entities = registry,
     relations = list(
       session_subject = key_relation(
-        "subject_id", source = "session", target = "subject"
+        "subject_id",
+        source = "session", target = "subject"
       )
     )
   )
@@ -195,7 +196,8 @@ test_that("sparse relations validate edge identities and weights", {
   expect_error(
     sparse_relation(
       dplyr::bind_rows(edges[1L, ], edges[1L, ]),
-      "observation", "stimulus", weight = "score"
+      "observation", "stimulus",
+      weight = "score"
     ),
     "duplicate",
     class = "fmridataset_error_relation"
@@ -286,7 +288,8 @@ test_that("relation constructors reject malformed descriptors", {
   expect_error(
     sparse_relation(
       tibble::tibble(.from_id = "a", .to_id = "b", weight = "bad"),
-      "observation", "feature", weight = "weight"
+      "observation", "feature",
+      weight = "weight"
     ),
     "numeric",
     class = "fmridataset_error_relation"

@@ -130,8 +130,10 @@ if (length(installed) == length(optional_packages)) {
   cat("SUCCESS: All optional packages are installed\n")
   cat("Full test suite (testthat.R) will have comprehensive coverage\n")
 } else {
-  cat(sprintf("PARTIAL: %d/%d optional packages installed\n",
-              length(installed), length(optional_packages)))
+  cat(sprintf(
+    "PARTIAL: %d/%d optional packages installed\n",
+    length(installed), length(optional_packages)
+  ))
   cat("Some tests in the full suite may be skipped\n")
   cat("Install missing packages for comprehensive testing\n")
 }

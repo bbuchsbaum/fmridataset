@@ -127,7 +127,8 @@ fmri_frame <- function(assays, observations, features = NULL, space = NULL,
   if (.source_contains_runtime_state(provenance)) {
     .frame_abort(
       "Frame provenance cannot contain runtime state.",
-      "fmridataset_error_feature_map", field = "provenance"
+      "fmridataset_error_feature_map",
+      field = "provenance"
     )
   }
   relations <- .resolve_relation_registry(
@@ -363,12 +364,14 @@ explain <- function(x) {
   list(
     class = class(x)[1L],
     shape = dim(x),
-    assays = lapply(assays(x), function(a) list(
-      dtype = a$dtype,
-      chunks = source_chunks(a$source),
-      capabilities = source_capabilities(a$source),
-      fingerprint = source_fingerprint(a$source)
-    )),
+    assays = lapply(assays(x), function(a) {
+      list(
+        dtype = a$dtype,
+        chunks = source_chunks(a$source),
+        capabilities = source_capabilities(a$source),
+        fingerprint = source_fingerprint(a$source)
+      )
+    }),
     observation_ids = observation_ids(x),
     feature_ids = feature_ids(x),
     space_digest = space_digest(space(x))
