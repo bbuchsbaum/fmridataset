@@ -143,7 +143,8 @@ test_that("memoised file reads avoid repeated disk hits", {
   unlockBinding("read_vec", ns_neuro)
   assign("read_vec", function(scans, mask, mode, ...) {
     call_count <<- call_count + 1L
-    Sys.sleep(0.02)
+    # Sleep must exceed the ~16ms Windows timer granularity by a safe margin.
+    Sys.sleep(0.05)
     matrix(seq_len(sum(mask) * 2), nrow = 2)
   }, envir = ns_neuro)
   lockBinding("read_vec", ns_neuro)
@@ -304,6 +305,7 @@ test_that("performance doesn't degrade with many small runs", {
   )
 
   # Performance should be similar
-  ratio <- median(result$median[2]) / median(result$median[1])
+  # as.numeric: a bench_time ratio breaks expect_lt's failure formatting.
+  ratio <- as.numeric(median(result$median[2])) / as.numeric(median(result$median[1]))
   expect_lt(ratio, 2) # Many runs should be less than 2x slower
 })

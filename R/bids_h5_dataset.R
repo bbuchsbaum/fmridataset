@@ -398,6 +398,15 @@ bids_h5_dataset <- function(file, preload = FALSE) {
     )
   }
 
+  if (!file.exists(file)) {
+    # normalizePath(mustWork = TRUE) has OS-specific error text on Windows.
+    stop_fmridataset(
+      fmridataset_error_backend_io,
+      message = sprintf("No such file: %s", file),
+      file = file,
+      operation = "open"
+    )
+  }
   file <- normalizePath(file, mustWork = TRUE)
 
   # Open shared connection (validates file exists, opens H5File)
