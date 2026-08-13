@@ -6,8 +6,8 @@
 
 **Runner:**
 - testthat (v3.0.0+)
-- Edition 3 (configured in `tests/testthat/_testthat.yml`)
-- Config file: `tests/testthat/_testthat.yml` (minimal, just edition setting)
+- Edition 3 (configured via `Config/testthat/edition: 3` in `DESCRIPTION`;
+  testthat ignores `tests/testthat/_testthat.yml`, which has been removed)
 
 **Assertion Library:**
 - `testthat` built-in expectations: `expect_equal()`, `expect_true()`, `expect_s3_class()`, etc.

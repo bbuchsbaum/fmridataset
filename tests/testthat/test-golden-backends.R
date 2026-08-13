@@ -104,7 +104,6 @@ test_that("backend validation works consistently", {
 })
 
 test_that("backend print output matches snapshot", {
-  skip_if(testthat::edition_get() < 3, "Snapshot tests require testthat edition 3")
 
   ref_data <- load_golden_data("reference_data")
 
@@ -112,8 +111,10 @@ test_that("backend print output matches snapshot", {
     data_matrix = ref_data$matrix_data
   )
 
+  # matrix_backend has no print method, so snapshot the bounded structure
+  # rather than the default list dump of the full data payload.
   expect_snapshot({
-    print(backend)
+    str(backend, max.level = 1, give.attr = FALSE)
   })
 })
 

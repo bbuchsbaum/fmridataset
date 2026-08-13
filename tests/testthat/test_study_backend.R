@@ -1,5 +1,3 @@
-context("study_backend")
-
 test_that("constructor validates dimensions", {
   b1 <- matrix_backend(matrix(1:20, nrow = 10, ncol = 2), spatial_dims = c(2, 1, 1))
   b2 <- matrix_backend(matrix(1:20, nrow = 10, ncol = 2), spatial_dims = c(1, 2, 1))

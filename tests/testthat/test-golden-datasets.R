@@ -73,7 +73,6 @@ test_that("masked dataset produces consistent output", {
 })
 
 test_that("dataset print output matches snapshot", {
-  skip_if(testthat::edition_get() < 3, "Snapshot tests require testthat edition 3")
 
   ref_data <- load_golden_data("reference_data")
 

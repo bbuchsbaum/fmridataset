@@ -63,8 +63,9 @@ test_that("group_map supports error policies", {
   )
   expect_identical(skip_res$sub, c("sub-01", "sub-03"))
 
-  warn_res <- expect_warning(
-    group_map(
+  warn_res <- NULL
+  expect_warning(
+    warn_res <- group_map(
       gd,
       function(row) {
         if (row$sub == "sub-02") stop("boom")
