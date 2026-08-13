@@ -76,6 +76,11 @@ volume space all retain the requested order. For large assays,
 `collect_assay()` enforces an explicit memory budget; block execution and lazy
 array sources avoid requiring full materialization.
 
+Axis IDs are required by default. Importers can derive reproducible IDs from
+declared keys with `axis_frame(id_policy = "deterministic", ...)`. Exploratory
+session-only IDs require `id_policy = "ephemeral"`; they are visibly marked and
+must be replaced before FDS persistence or semantic certification.
+
 ## What it covers
 
 - **Aligned assays:** keep one or more numerical assays tied to the same

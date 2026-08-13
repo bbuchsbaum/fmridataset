@@ -4,16 +4,25 @@
 \alias{index_space}
 \title{Construct a generic indexed feature space}
 \usage{
-index_space(n, ids = NULL, namespace = NULL, data = NULL)
+index_space(
+  n,
+  ids = NULL,
+  namespace = NULL,
+  data = NULL,
+  id_policy = c("require", "deterministic", "ephemeral")
+)
 }
 \arguments{
 \item{n}{Number of features.}
 
 \item{ids}{Optional stable feature IDs.}
 
-\item{namespace}{Namespace used for generated IDs.}
+\item{namespace}{Stable namespace used for deterministic IDs.}
 
 \item{data}{Optional feature metadata.}
+
+\item{id_policy}{ID policy used when \code{ids} is absent. The default requires
+explicit IDs; deterministic IDs additionally require \code{namespace}.}
 }
 \value{
 An \code{index_space}.

@@ -33,7 +33,7 @@
 .api_user_exports <- c(
   "active_assay", "adjacency", "append_provenance", "append_source_shards",
   "apply_feature_validity", "as_fmri_frame", "as_provenance_graph", "assay",
-  "assays", "auxiliary_table", "axis_block",
+  "assays", "auxiliary_table", "axis_block", "axis_id_policy",
   "axis_frame", "basis_analysis", "basis_projection_info", "basis_space",
   "basis_space_from_decoder", "basis_space_from_fmrilatent", "basis_synthesis",
   "bind_observations", "block_apply", "canonical_bytes", "canonical_sha256",
@@ -48,7 +48,7 @@
   "feature_axis", "feature_blocks", "feature_data", "feature_ids", "feature_map",
   "feature_map_from_target", "features", "filter_entities", "filter_obs",
   "fmri_collection", "fmri_frame", "fmri_study", "frame_link", "hierarchy_index",
-  "index_space", "key_relation", "map_features", "mask_bank", "mask_values",
+  "ids_are_durable", "index_space", "key_relation", "map_features", "mask_bank", "mask_values",
   "memory_source", "n_features", "n_masks", "native_shape", "nifti_array_source",
   "nifti_source_space", "obs_blocks", "observation_axis", "observation_ids",
   "observation_validity", "observations", "open_frame", "parcel_aggregation",

@@ -79,6 +79,7 @@ fds_schema_version <- function() .fds_schema$version
     name = name,
     key = entity_key(x),
     ids = entity_ids(x),
+    id_policy = axis_id_policy(x),
     data = entity_data(x),
     blocks = .fds_block_manifests(
       entity_blocks(x),
@@ -94,6 +95,7 @@ fds_schema_version <- function() .fds_schema$version
   value <- list(
     ids = axis_ids(x),
     id_column = x$id_col,
+    id_policy = axis_id_policy(x),
     data = x$data,
     blocks = .fds_block_manifests(x$blocks, axis),
     metadata = x$metadata
@@ -117,6 +119,12 @@ fds_frame_manifest <- function(x) {
   }
   observation <- observation_axis(x)
   feature <- feature_axis(x)
+  if (!ids_are_durable(observation) || !ids_are_durable(feature)) {
+    .identity_abort(
+      "FDS persistence and semantic certification reject ephemeral axis IDs; reconstruct the axis with required or deterministic IDs first.",
+      field = "axes", policy = "ephemeral"
+    )
+  }
   observation_digest <- .axis_digest(observation)
   feature_digest <- .axis_digest(feature)
   assay_manifest <- lapply(assays(x), function(value) {
@@ -220,7 +228,10 @@ fds_frame_manifest <- function(x) {
       anyDuplicated(names_value)) {
     .fds_schema_abort("Manifest entities must have unique, non-empty names.", "entities")
   }
-  required <- c("name", "key", "ids", "data", "blocks", "entity_type", "metadata")
+  required <- c(
+    "name", "key", "ids", "id_policy", "data", "blocks", "entity_type",
+    "metadata"
+  )
   for (name in names_value) {
     value <- values[[name]]
     field <- paste0("entities.", name)
@@ -232,6 +243,14 @@ fds_frame_manifest <- function(x) {
       )
     }
     .validate_manifest_ids(value$ids, length(value$ids), paste0("entity:", name))
+    if (!inherits(value$id_policy, "fmri_id_policy") ||
+        !identical(value$id_policy$policy, "require") ||
+        !isTRUE(value$id_policy$durable)) {
+      .fds_schema_abort(
+        sprintf("Entity '%s' requires supplied durable IDs.", name),
+        paste0(field, ".id_policy")
+      )
+    }
     if (!is.character(value$key) || length(value$key) != 1L ||
         is.na(value$key) || !nzchar(value$key) ||
         !is.data.frame(value$data) || nrow(value$data) != length(value$ids) ||
@@ -349,7 +368,7 @@ fds_frame_manifest <- function(x) {
 }
 
 .validate_manifest_axis <- function(value, expected_n, axis, arrays, require_space = FALSE) {
-  required <- c("ids", "id_column", "data", "blocks", "metadata")
+  required <- c("ids", "id_column", "id_policy", "data", "blocks", "metadata")
   if (!is.list(value) || !all(required %in% names(value))) {
     .fds_schema_abort(
       sprintf("The %s axis is missing required fields.", axis),
@@ -357,6 +376,16 @@ fds_frame_manifest <- function(x) {
     )
   }
   .validate_manifest_ids(value$ids, expected_n, axis)
+  policy <- value$id_policy
+  if (!inherits(policy, "fmri_id_policy") ||
+      !identical(policy$schema_version, 1L) ||
+      !policy$policy %in% c("require", "deterministic") ||
+      !isTRUE(policy$durable)) {
+    .fds_schema_abort(
+      sprintf("The %s axis requires a durable version-1 ID policy.", axis),
+      paste0("axes.", axis, ".id_policy")
+    )
+  }
   if (!is.character(value$id_column) || length(value$id_column) != 1L ||
     is.na(value$id_column) || !nzchar(value$id_column)) {
     .fds_schema_abort("Axis id_column must be one non-empty string.", paste0("axes.", axis, ".id_column"))
@@ -737,22 +766,26 @@ frame_from_fds_manifest <- function(manifest, bindings) {
     names(out) <- names(entity_manifests)
     entity_registry(out)
   }
+  observation_axis_value <- axis_frame(
+    observation$data,
+    blocks = rebuild_blocks(observation),
+    id = observation$ids,
+    axis = "observation",
+    id_col = observation$id_column,
+    metadata = observation$metadata
+  )
+  observation_axis_value$id_policy <- observation$id_policy
+  feature_axis_value <- feature_axis(
+    feature$data,
+    space = feature$space,
+    blocks = rebuild_blocks(feature),
+    metadata = feature$metadata
+  )
+  feature_axis_value$id_policy <- feature$id_policy
   fmri_frame(
     assays = annotated,
-    observations = axis_frame(
-      observation$data,
-      blocks = rebuild_blocks(observation),
-      id = observation$ids,
-      axis = "observation",
-      id_col = observation$id_column,
-      metadata = observation$metadata
-    ),
-    features = feature_axis(
-      feature$data,
-      space = feature$space,
-      blocks = rebuild_blocks(feature),
-      metadata = feature$metadata
-    ),
+    observations = observation_axis_value,
+    features = feature_axis_value,
     entities = rebuild_entities(manifest$entities),
     relations = manifest$relations,
     tables = manifest$tables,

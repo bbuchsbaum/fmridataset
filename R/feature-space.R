@@ -122,18 +122,51 @@ assert_compatible_space <- function(x, y, ...) assert_same_space(x, y, ...)
 #'
 #' @param n Number of features.
 #' @param ids Optional stable feature IDs.
-#' @param namespace Namespace used for generated IDs.
+#' @param namespace Stable namespace used for deterministic IDs.
 #' @param data Optional feature metadata.
+#' @param id_policy ID policy used when `ids` is absent. The default requires
+#'   explicit IDs; deterministic IDs additionally require `namespace`.
 #' @return An `index_space`.
 #' @export
-index_space <- function(n, ids = NULL, namespace = NULL, data = NULL) {
+index_space <- function(n, ids = NULL, namespace = NULL, data = NULL,
+                        id_policy = c("require", "deterministic", "ephemeral")) {
   n <- as.integer(n)
   if (length(n) != 1L || is.na(n) || n < 0L) {
     .frame_abort("n must be one non-negative integer.", "fmridataset_error_space_mismatch")
   }
-  namespace <- namespace %||% uuid::UUIDgenerate()
-  if (is.null(ids)) {
-    ids <- sprintf("feature-%s-%06d", namespace, seq_len(n))
+  id_policy <- match.arg(id_policy)
+  if (is.null(ids) && identical(id_policy, "require")) {
+    .identity_abort(
+      "index_space ID policy 'require' requires supplied `ids`.",
+      field = "ids", policy = id_policy
+    )
+  }
+  if (identical(id_policy, "deterministic")) {
+    if (!is.character(namespace) || length(namespace) != 1L ||
+        is.na(namespace) || !nzchar(namespace)) {
+      .identity_abort(
+        "Deterministic index_space IDs require one non-empty `namespace`.",
+        field = "namespace", policy = id_policy
+      )
+    }
+    generated <- sprintf("feature-%s-%06d", namespace, seq_len(n))
+    if (!is.null(ids) && !identical(as.character(ids), generated)) {
+      .identity_abort(
+        "Supplied feature IDs do not match the deterministic namespace and indices.",
+        field = "ids", policy = id_policy
+      )
+    }
+    ids <- generated
+  }
+  if (identical(id_policy, "ephemeral")) {
+    if (!is.null(ids)) {
+      .identity_abort(
+        "Ephemeral index_space policy generates its own visibly marked IDs.",
+        field = "ids", policy = id_policy
+      )
+    }
+    namespace <- paste0("ephemeral-", uuid::UUIDgenerate())
+    ids <- sprintf("ephemeral-feature-%s-%06d", namespace, seq_len(n))
   }
   ids <- .validate_stable_ids(as.character(ids), "feature")
   if (length(ids) != n) {
@@ -150,6 +183,7 @@ index_space <- function(n, ids = NULL, namespace = NULL, data = NULL) {
       n = n,
       ids = ids,
       namespace = namespace,
+      id_policy = .id_policy(id_policy, namespace),
       data = data,
       schema_version = 1L
     ),
@@ -162,6 +196,10 @@ n_features.index_space <- function(x, ...) x$n
 #' @export
 feature_ids.index_space <- function(x, ...) x$ids
 #' @export
+axis_id_policy.index_space <- function(x) x$id_policy %||% .id_policy("require")
+#' @export
+ids_are_durable.index_space <- function(x) isTRUE(axis_id_policy(x)$durable)
+#' @export
 native_shape.index_space <- function(x, ...) x$n
 #' @export
 feature_data.index_space <- function(x, ...) x$data
@@ -171,17 +209,21 @@ space_digest.index_space <- function(x, ...) {
     type = "index_space",
     schema_version = x$schema_version,
     namespace = x$namespace,
+    id_policy = axis_id_policy(x),
     ids = x$ids
   ))
 }
 #' @export
 restrict_space.index_space <- function(x, index, ...) {
-  index_space(
+  out <- index_space(
     length(index),
     ids = x$ids[index],
     namespace = x$namespace,
-    data = x$data[index, , drop = FALSE]
+    data = x$data[index, , drop = FALSE],
+    id_policy = "require"
   )
+  out$id_policy <- axis_id_policy(x)
+  out
 }
 #' @export
 vectorize_space.index_space <- function(x, spatial_object, ...) {

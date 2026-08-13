@@ -1,9 +1,9 @@
-test_that("axis_frame generates persistent unique IDs", {
-  x <- axis_frame(data.frame(value = 1:3))
+test_that("axis_frame generates visibly ephemeral unique IDs when requested", {
+  x <- axis_frame(data.frame(value = 1:3), id_policy = "ephemeral")
 
   expect_s3_class(x, "axis_frame")
   expect_length(axis_ids(x), 3)
-  expect_true(all(grepl("^obs-", axis_ids(x))))
+  expect_true(all(grepl("^ephemeral-obs-", axis_ids(x))))
   expect_equal(anyDuplicated(axis_ids(x)), 0L)
   expect_identical(axis_ids(x[3:1]), rev(axis_ids(x)))
 })
@@ -37,12 +37,16 @@ test_that("axis blocks validate their leading dimension and components", {
     components = data.frame(.component_id = c("x", "y")),
     role = "continuous"
   )
-  x <- axis_frame(data.frame(v = 1:3), blocks = list(embed = b))
+  x <- axis_frame(
+    data.frame(v = 1:3), blocks = list(embed = b), id_policy = "ephemeral"
+  )
 
   expect_identical(dim(axis_block_data(axis_blocks(x)$embed)), c(3L, 2L))
   expect_identical(block_component_ids(axis_blocks(x)$embed), c("x", "y"))
   expect_error(
-    axis_frame(data.frame(v = 1:2), blocks = list(embed = b)),
+    axis_frame(
+      data.frame(v = 1:2), blocks = list(embed = b), id_policy = "ephemeral"
+    ),
     class = "fmridataset_error_alignment"
   )
 })

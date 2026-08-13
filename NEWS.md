@@ -26,6 +26,11 @@
   names remain exact-identity migration aliases and never infer alignment from
   shape.
 
+- Made axis identity policy explicit. Durable IDs are now supplied or derived
+  deterministically from declared keys; UUID-backed IDs require an explicit
+  `ephemeral` policy, are visibly marked, and are rejected by FDS persistence
+  and semantic certification.
+
 - Added one zero-I/O canonical frame schema for collection compatibility,
   observation binding, bounded explanation, FDS validation, and downstream
   protocol checks, with path-specific structured mismatch diagnostics.

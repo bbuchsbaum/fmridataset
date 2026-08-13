@@ -3,7 +3,99 @@
 }
 
 .new_uuid <- function(prefix, n = 1L) {
-  paste0(prefix, "-", uuid::UUIDgenerate(n = as.integer(n)))
+  paste0("ephemeral-", prefix, "-", uuid::UUIDgenerate(n = as.integer(n)))
+}
+
+.id_policy <- function(policy, namespace = NULL, keys = character()) {
+  structure(
+    list(
+      policy = policy,
+      namespace = namespace,
+      keys = as.character(keys),
+      durable = !identical(policy, "ephemeral"),
+      schema_version = 1L
+    ),
+    class = c("fmri_id_policy", "list")
+  )
+}
+
+.normalize_id_policy <- function(id_policy, id, data, axis, id_col,
+                                 id_keys, id_namespace) {
+  id_policy <- match.arg(id_policy, c("require", "deterministic", "ephemeral"))
+  prefix <- .axis_id_prefix(axis)
+  if (identical(id_policy, "require")) {
+    if (is.null(id) && !id_col %in% names(data)) {
+      .identity_abort(
+        sprintf(
+          "%s ID policy 'require' requires supplied IDs in `id` or `%s`.",
+          axis, id_col
+        ),
+        field = id_col, policy = id_policy
+      )
+    }
+    value <- id %||% data[[id_col]]
+    return(list(ids = value, descriptor = .id_policy("require")))
+  }
+  if (identical(id_policy, "ephemeral")) {
+    if (!is.null(id) || id_col %in% names(data)) {
+      .identity_abort(
+        "Ephemeral ID policy generates its own visibly marked IDs; do not supply IDs.",
+        field = id_col, policy = id_policy
+      )
+    }
+    return(list(
+      ids = .new_uuid(prefix, nrow(data)),
+      descriptor = .id_policy("ephemeral")
+    ))
+  }
+  if (!is.character(id_namespace) || length(id_namespace) != 1L ||
+      is.na(id_namespace) || !nzchar(id_namespace)) {
+    .identity_abort(
+      "Deterministic ID policy requires one non-empty `id_namespace`.",
+      field = "id_namespace", policy = id_policy
+    )
+  }
+  if (!is.character(id_keys) || !length(id_keys) || anyNA(id_keys) ||
+      any(!nzchar(id_keys)) || anyDuplicated(id_keys) ||
+      !all(id_keys %in% names(data))) {
+    .identity_abort(
+      "Deterministic ID policy requires unique `id_keys` present in axis data.",
+      field = "id_keys", policy = id_policy
+    )
+  }
+  key_data <- as.data.frame(data[id_keys], stringsAsFactors = FALSE)
+  if (any(vapply(key_data, is.list, logical(1))) || anyNA(key_data)) {
+    .identity_abort(
+      "Deterministic ID keys must be scalar and non-missing.",
+      field = "id_keys", policy = id_policy
+    )
+  }
+  signatures <- vapply(seq_len(nrow(key_data)), function(i) {
+    canonical_sha256(list(
+      namespace = id_namespace,
+      axis = axis,
+      keys = id_keys,
+      values = lapply(key_data[i, , drop = FALSE], function(value) value[[1L]])
+    ))
+  }, character(1))
+  generated <- paste0(prefix, "-", signatures)
+  if (anyDuplicated(generated)) {
+    .identity_abort(
+      "Deterministic ID keys must uniquely identify every axis element.",
+      field = "id_keys", policy = id_policy
+    )
+  }
+  supplied <- id %||% if (id_col %in% names(data)) data[[id_col]] else NULL
+  if (!is.null(supplied) && !identical(as.character(supplied), generated)) {
+    .identity_abort(
+      "Supplied IDs do not match IDs reconstructed from deterministic keys.",
+      field = id_col, policy = id_policy
+    )
+  }
+  list(
+    ids = generated,
+    descriptor = .id_policy("deterministic", id_namespace, id_keys)
+  )
 }
 
 .validate_stable_ids <- function(ids, what = "axis") {
@@ -159,22 +251,27 @@ block_component_ids <- function(x) x$components$.component_id
 #' @param axis Axis role. Observation is the public default.
 #' @param id_col Name of the ID column.
 #' @param metadata Additional serializable metadata.
+#' @param id_policy ID policy. `"require"` accepts only supplied durable IDs;
+#'   `"deterministic"` derives durable IDs from `id_keys` and `id_namespace`;
+#'   `"ephemeral"` creates visibly marked session-only IDs that cannot be
+#'   persisted or used for certified semantic identity.
+#' @param id_keys Columns that uniquely identify rows under deterministic policy.
+#' @param id_namespace Stable namespace under deterministic policy.
 #' @return An `axis_frame`.
 #' @export
 axis_frame <- function(data, blocks = list(), id = NULL,
                        axis = c("observation", "feature", "entity", "component"),
-                       id_col = NULL, metadata = list()) {
+                       id_col = NULL, metadata = list(),
+                       id_policy = c("require", "deterministic", "ephemeral"),
+                       id_keys = NULL, id_namespace = NULL) {
   axis <- match.arg(axis)
   data <- tibble::as_tibble(data)
   id_col <- id_col %||% .axis_id_column(axis)
 
-  if (is.null(id)) {
-    if (id_col %in% names(data)) {
-      id <- data[[id_col]]
-    } else {
-      id <- .new_uuid(.axis_id_prefix(axis), nrow(data))
-    }
-  }
+  policy_value <- .normalize_id_policy(
+    id_policy, id, data, axis, id_col, id_keys, id_namespace
+  )
+  id <- policy_value$ids
   id <- .validate_stable_ids(as.character(id), axis)
   if (length(id) != nrow(data)) {
     .frame_abort(
@@ -209,6 +306,7 @@ axis_frame <- function(data, blocks = list(), id = NULL,
       blocks = blocks,
       id_col = id_col,
       axis = axis,
+      id_policy = policy_value$descriptor,
       metadata = metadata
     ),
     class = "axis_frame"
@@ -231,6 +329,36 @@ axis_ids <- function(x) UseMethod("axis_ids")
 #' @export
 axis_ids.axis_frame <- function(x) x$data[[x$id_col]]
 
+#' Inspect axis ID durability
+#'
+#' @param x An axis, feature space, frame, or view.
+#' @return `axis_id_policy()` returns the versioned ID-policy descriptor;
+#'   `ids_are_durable()` returns one logical value.
+#' @name id-policy
+NULL
+
+#' @rdname id-policy
+#' @export
+axis_id_policy <- function(x) UseMethod("axis_id_policy")
+
+#' @export
+axis_id_policy.axis_frame <- function(x) {
+  x$id_policy %||% .id_policy("require")
+}
+
+#' @export
+axis_id_policy.feature_space <- function(x) .id_policy("require")
+
+#' @rdname id-policy
+#' @export
+ids_are_durable <- function(x) UseMethod("ids_are_durable")
+
+#' @export
+ids_are_durable.axis_frame <- function(x) isTRUE(axis_id_policy(x)$durable)
+
+#' @export
+ids_are_durable.feature_space <- function(x) isTRUE(axis_id_policy(x)$durable)
+
 #' @export
 length.axis_frame <- function(x) nrow(x$data)
 
@@ -240,14 +368,17 @@ length.axis_frame <- function(x) nrow(x$data)
   i <- as.integer(i)
   data <- x$data[i, , drop = FALSE]
   blocks <- lapply(x$blocks, .subset_axis_block, index = i)
-  axis_frame(
+  out <- axis_frame(
     data,
     blocks = blocks,
     id = data[[x$id_col]],
     axis = x$axis,
     id_col = x$id_col,
-    metadata = x$metadata
+    metadata = x$metadata,
+    id_policy = "require"
   )
+  out$id_policy <- axis_id_policy(x)
+  out
 }
 
 #' Construct a spatial feature axis
@@ -282,7 +413,8 @@ feature_axis.default <- function(data, space = NULL, blocks = list(), metadata =
     id = if (".feature_id" %in% names(data)) data$.feature_id else ids,
     axis = "feature",
     id_col = ".feature_id",
-    metadata = metadata
+    metadata = metadata,
+    id_policy = "require"
   )
   if (!identical(axis_ids(out), ids)) {
     .frame_abort(
@@ -291,6 +423,7 @@ feature_axis.default <- function(data, space = NULL, blocks = list(), metadata =
     )
   }
   out$space <- space
+  out$id_policy <- axis_id_policy(space)
   class(out) <- c("spatial_axis_frame", class(out))
   out
 }

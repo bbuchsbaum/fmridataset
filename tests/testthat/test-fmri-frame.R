@@ -14,11 +14,11 @@ test_that("fmri_frame aligns assays and annotated axes", {
 })
 
 test_that("fmri_frame rejects assay and feature mismatches", {
-  sp <- index_space(3)
+  sp <- index_space(3, namespace = "mismatch", id_policy = "deterministic")
   expect_error(
     fmri_frame(
       assays = list(a = matrix(1:8, 2, 4)),
-      observations = data.frame(x = 1:2),
+      observations = data.frame(.obs_id = c("o1", "o2"), x = 1:2),
       space = sp
     ),
     class = "fmridataset_error_alignment"

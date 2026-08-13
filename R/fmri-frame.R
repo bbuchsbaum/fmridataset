@@ -95,7 +95,10 @@ fmri_frame <- function(assays, observations, features = NULL, space = NULL,
     space <- features$space
   } else {
     if (is.null(space)) {
-      space <- index_space(shape[2L])
+      # Shape alone cannot establish feature identity. Exploratory construction
+      # remains possible only as an explicitly ephemeral space; persistence and
+      # semantic certification reject it until a durable domain is supplied.
+      space <- index_space(shape[2L], id_policy = "ephemeral")
     }
     if (is.null(features)) features <- feature_data(space)
     feature_axis_value <- feature_axis(features, space = space)
@@ -219,6 +222,11 @@ observation_ids.fmri_frame <- function(x, ...) axis_ids(observation_axis(x))
 
 #' @export
 feature_ids.fmri_frame <- function(x, ...) axis_ids(feature_axis(x))
+
+#' @export
+ids_are_durable.fmri_frame <- function(x) {
+  ids_are_durable(observation_axis(x)) && ids_are_durable(feature_axis(x)$space)
+}
 
 #' @rdname frame-accessors
 #' @export
@@ -471,10 +479,15 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
     blocks <- list()
   }
   data <- do.call(rbind, lapply(xs, axis_data))
-  axis_frame(
+  out <- axis_frame(
     data, blocks = blocks, id = data[[first$id_col]], axis = first$axis,
     id_col = first$id_col, metadata = first$metadata
   )
+  policies <- lapply(xs, axis_id_policy)
+  out$id_policy <- if (all(vapply(
+    policies, identical, logical(1), policies[[1L]]
+  ))) policies[[1L]] else .id_policy("require")
+  out
 }
 
 .frame_container_value <- function(x, name) x[[name]] %||% x$base[[name]]
