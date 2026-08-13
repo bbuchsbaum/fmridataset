@@ -15,5 +15,5 @@ with_rowData(x, rowData)
 \code{x} with \code{rowData} attribute set
 }
 \description{
-Helper for reattaching metadata after DelayedMatrixStats operations.
+Helper for reattaching metadata after lazy matrix operations.
 }

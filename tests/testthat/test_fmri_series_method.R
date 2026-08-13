@@ -19,16 +19,6 @@ test_that("fmri_series.fmri_dataset returns fmri_series", {
   expect_equal(fs$temporal_info$timepoint, 2:4)
 })
 
-test_that("fmri_series can return DelayedMatrix", {
-  skip_if_not_installed("DelayedArray")
-  dset <- create_test_dataset()
-  dm <- fmri_series(dset, selector = 1:2, timepoints = 1:2, output = "DelayedMatrix")
-  expect_s4_class(dm, "DelayedMatrix")
-  expected <- dset$backend$data_matrix[1:2, 1:2]
-  expect_equal(as.matrix(dm), expected)
-})
-
-
 test_that("as.matrix.fmri_series materialises data", {
   dset <- create_test_dataset()
   fs <- fmri_series(dset, selector = 1:4, timepoints = 1:3)

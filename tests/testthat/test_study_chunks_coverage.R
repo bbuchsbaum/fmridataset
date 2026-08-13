@@ -59,8 +59,6 @@ test_that("data_chunks.fmri_study_dataset multi-run per subject", {
 # --- fmri_series.fmri_study_dataset ---
 
 test_that("fmri_series.fmri_study_dataset works", {
-  skip_if_not_installed("DelayedArray")
-
   mat1 <- matrix(rnorm(40), nrow = 10, ncol = 4)
   mat2 <- matrix(rnorm(40), nrow = 10, ncol = 4)
   ds1 <- matrix_dataset(datamat = mat1, TR = 2, run_length = 10)
@@ -78,8 +76,6 @@ test_that("fmri_series.fmri_study_dataset works", {
 })
 
 test_that("fmri_series.fmri_study_dataset with timepoints", {
-  skip_if_not_installed("DelayedArray")
-
   mat1 <- matrix(rnorm(40), nrow = 10, ncol = 4)
   ds1 <- matrix_dataset(datamat = mat1, TR = 2, run_length = 10)
 
@@ -90,8 +86,6 @@ test_that("fmri_series.fmri_study_dataset with timepoints", {
 })
 
 test_that("fmri_series.fmri_study_dataset with selector", {
-  skip_if_not_installed("DelayedArray")
-
   mat1 <- matrix(rnorm(40), nrow = 10, ncol = 4)
   ds1 <- matrix_dataset(datamat = mat1, TR = 2, run_length = 10)
 

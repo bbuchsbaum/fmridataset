@@ -159,10 +159,15 @@ generate_all_golden_data <- function() {
   save_golden_data(mat_dataset, "matrix_dataset")
 
   # FmriSeries objects
-  fmri_series <- as_delayed_array(mat_dataset)
-  # Convert to regular array for storage
+  # as_delarr() dispatches on backends, not datasets, so wrap the data matrix
+  mat_backend <- matrix_backend(
+    mat_dataset$datamat,
+    mask = mat_dataset$mask > 0
+  )
+  fmri_series <- as_delarr(mat_backend)
+  # Materialise for storage (as.array() would leave the delarr lazy)
   fmri_series_data <- list(
-    data = as.array(fmri_series),
+    data = as.matrix(fmri_series),
     dims = dim(fmri_series),
     class = class(fmri_series)
   )

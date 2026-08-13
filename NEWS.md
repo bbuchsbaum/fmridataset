@@ -126,9 +126,21 @@
 * Dropped the Bioconductor dependency surface. `DelayedArray` and
   `DelayedMatrixStats` are no longer suggested, and CI no longer installs
   `BiocManager`, `Rarr`, `rhdf5`, `DelayedArray`, or `S4Arrays`. Lazy array
-  support is built on `delarr`, which this project owns. The optional
-  `as_delayed_array()` bridge is registered conditionally at load time and is
-  unaffected when `DelayedArray` happens to be present.
+  support is built on `delarr`, which this project owns.
+
+## Breaking changes
+
+* Retired the `DelayedArray` bridge. `as_delayed_array()` and its methods, the
+  `StorageBackendSeed` and `StudyBackendSeed` classes, and
+  `register_delayed_array_support()` are removed. `as_delarr()` provides the
+  same lazy interface over the same backends (`matrix_backend`,
+  `nifti_backend`, `study_backend`, and a default method) and is the supported
+  replacement.
+* `fmri_series()` no longer accepts `output = "DelayedMatrix"`; `output` is now
+  `"fmri_series"` only. The returned object already carries a `delarr` lazy
+  matrix payload, which `as_delarr()` exposes directly. Note that `delarr` is a
+  hard dependency, so the previous `DelayedArray` fallback path was unreachable
+  in any installable configuration.
 
 # fmridataset 0.9.0
 
