@@ -97,8 +97,15 @@ index_space <- function(n, ids = NULL, namespace = NULL, data = NULL) {
   if (length(n) != 1L || is.na(n) || n < 0L) {
     .frame_abort("n must be one non-negative integer.", "fmridataset_error_space_mismatch")
   }
-  namespace <- namespace %||% uuid::UUIDgenerate()
+  # The namespace has two jobs: seeding generated IDs, and disambiguating two
+  # spaces that legitimately reuse the same ID strings (parcel "1" of two
+  # different atlases). Only the first needs a default, and a random UUID is
+  # not a meaningful namespace - it is an ID-generation seed. Defaulting it
+  # unconditionally put a fresh UUID into the identity digest of every space,
+  # so two spaces declared with the SAME explicit feature IDs compared as
+  # incompatible and could not be bound.
   if (is.null(ids)) {
+    namespace <- namespace %||% uuid::UUIDgenerate()
     ids <- sprintf("feature-%s-%06d", namespace, seq_len(n))
   }
   ids <- .validate_stable_ids(as.character(ids), "feature")
