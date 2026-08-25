@@ -139,6 +139,7 @@ test_that(".collect_study_backend_block returns correct data", {
     rows = as.integer(c(1, 6)),
     cols = 1:4,
     subject_boundaries = c(0L, 5L, 10L),
+    col_maps = list(1:4, 1:4),
     n_time = 10L,
     n_vox = 4L
   )
@@ -158,6 +159,7 @@ test_that(".collect_study_backend_block handles empty rows", {
     rows = integer(0),
     cols = 1:4,
     subject_boundaries = c(0L, 5L),
+    col_maps = list(1:4),
     n_time = 5L,
     n_vox = 4L
   )

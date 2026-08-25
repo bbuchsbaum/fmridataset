@@ -334,7 +334,41 @@ source_read.feature_mapped_source <- function(x, observations = NULL,
   )
   operator <- operator[, contributing, drop = FALSE]
   if (identical(x$rule, "independent_variance")) operator <- operator^2
-  unname(as.matrix(values %*% Matrix::t(operator)))
+  .feature_map_apply_operator(values, operator)
+}
+
+# Apply a target-by-source operator to an observation-by-source block.
+#
+# `contributing` prunes source columns that are zero for EVERY requested target
+# feature, so which columns reach this product depends on the request. A plain
+# `values %*% t(operator)` therefore gave a target feature different values for
+# different requests: a zero weight still multiplies, and `0 * NA` is `NA`, so a
+# non-finite source value leaked into targets that do not depend on it whenever
+# some other requested target did.
+#
+# A weight of zero means the source feature is not part of the target, so it
+# must not contribute at all. Compute the product over finite values only, then
+# restore non-finiteness exactly where a target's own non-zero weights touch a
+# non-finite source value. The result then depends only on the operator row for
+# that target, which makes reads independent of request shape and of block size.
+.feature_map_apply_operator <- function(values, operator) {
+  values <- as.matrix(values)
+  unusable <- !is.finite(values)
+
+  if (!any(unusable)) {
+    return(unname(as.matrix(values %*% Matrix::t(operator))))
+  }
+
+  finite_values <- values
+  finite_values[unusable] <- 0
+  result <- unname(as.matrix(finite_values %*% Matrix::t(operator)))
+
+  # One hit means this target genuinely weights a non-finite source value.
+  hits <- unname(as.matrix(
+    (unusable * 1) %*% Matrix::t(operator != 0)
+  ))
+  result[hits > 0] <- NA_real_
+  result
 }
 #' @export
 source_read_native.feature_mapped_source <- function(x, observations = NULL, ...) {

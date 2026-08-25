@@ -136,7 +136,8 @@ execution_path <- function(
 #'
 #' @param x An `fmri_frame` or view.
 #' @param observations Observation IDs or integer positions. The requested
-#'   order and duplicates are preserved.
+#'   order is preserved. Duplicated selectors are rejected, as they are on
+#'   every other frame axis selection.
 #' @param assay Assay name.
 #' @param path One of `"auto"`, `"native"`, or `"reconstruct"`.
 #' @param memory_budget Maximum estimated bytes for all returned native maps.

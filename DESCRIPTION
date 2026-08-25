@@ -71,3 +71,4 @@ Additional_repositories: https://bbuchsbaum.r-universe.dev
 URL: https://github.com/bbuchsbaum/fmridataset, https://bbuchsbaum.github.io/fmridataset/
 BugReports: https://github.com/bbuchsbaum/fmridataset/issues
 Config/Needs/website: albersdown
+Config/testthat/edition: 3

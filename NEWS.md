@@ -1,5 +1,12 @@
 # fmridataset 0.10.0 (Development)
 
+- The test suite now runs under testthat edition 3
+  (`Config/testthat/edition: 3`), activating the previously inert snapshot
+  tests for canonical serialization. `series()` now signals its deprecation
+  through `lifecycle::deprecate_warn()`.
+- `write_frame()` now returns the committed path normalized with forward
+  slashes on every platform, and zarr `file://` sources are resolved to native
+  filesystem paths before opening, fixing Windows-only failures.
 - Added the canonical `as_fmri_frame()` coercion generic so companion packages
   can provide explicit legacy adapters without owning a competing frame type.
 - Added `read_bids_bold()` as a narrow one-subject fMRIPrep on-ramp to a lazy

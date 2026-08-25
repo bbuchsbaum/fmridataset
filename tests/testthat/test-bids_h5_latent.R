@@ -609,7 +609,7 @@ test_that("shared template: encoding_info reports template", {
   expect_equal(info$encoding_family, "shared_template")
   expect_true(info$has_shared_template)
   expect_equal(info$n_components, 5L)
-  expect_is(info$template_meta, "list")
+  expect_type(info$template_meta, "list")
 })
 
 test_that("shared template: subset preserves template fallback", {

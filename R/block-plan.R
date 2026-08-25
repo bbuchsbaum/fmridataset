@@ -65,7 +65,14 @@
 }
 
 .axis_block_ranges <- function(n, block_size, prefix) {
-  if (n == 0L) {
+  # A zero-length axis anywhere in the frame makes .plan_block_shape() return
+  # c(0L, 0L), so the OTHER axis arrives here with block_size 0 and a non-zero
+  # length. seq.int(1L, n, by = 0L) then raised a base-R
+  # "invalid '(to - from)/by'" for any frame that a filter_obs() or
+  # select_features() had emptied - legal frames that subset, collect, and
+  # round-trip correctly everywhere else. There is nothing to read, so the
+  # axis contributes no ranges and the plan holds no blocks.
+  if (n == 0L || block_size < 1L) {
     out <- data.frame(start = integer(), end = integer(), size = integer())
   } else {
     start <- seq.int(1L, n, by = block_size)
@@ -138,7 +145,8 @@ plan_blocks <- function(
   target_block_bytes <- .validate_budget_scalar(target_block_bytes, "target_block_bytes")
   selection <- .frame_selection(x)
   descriptor <- assay(selection$base, assay)
-  dtype_bytes <- .dtype_bytes(descriptor$dtype)
+  # A block must fit in memory once realized, not once read from storage.
+  dtype_bytes <- .realized_dtype_bytes(descriptor$dtype)
   capacity <- floor(min(memory_budget, target_block_bytes) / dtype_bytes)
   if (capacity < 1) {
     .frame_abort(

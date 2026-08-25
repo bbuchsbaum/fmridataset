@@ -97,8 +97,15 @@ index_space <- function(n, ids = NULL, namespace = NULL, data = NULL) {
   if (length(n) != 1L || is.na(n) || n < 0L) {
     .frame_abort("n must be one non-negative integer.", "fmridataset_error_space_mismatch")
   }
-  namespace <- namespace %||% uuid::UUIDgenerate()
+  # The namespace has two jobs: seeding generated IDs, and disambiguating two
+  # spaces that legitimately reuse the same ID strings (parcel "1" of two
+  # different atlases). Only the first needs a default, and a random UUID is
+  # not a meaningful namespace - it is an ID-generation seed. Defaulting it
+  # unconditionally put a fresh UUID into the identity digest of every space,
+  # so two spaces declared with the SAME explicit feature IDs compared as
+  # incompatible and could not be bound.
   if (is.null(ids)) {
+    namespace <- namespace %||% uuid::UUIDgenerate()
     ids <- sprintf("feature-%s-%06d", namespace, seq_len(n))
   }
   ids <- .validate_stable_ids(as.character(ids), "feature")
@@ -1476,9 +1483,20 @@ basis_space_from_fmrilatent <- function(x, parent, component_ids = NULL,
   do.call(
     rbind,
     lapply(seq_along(parts), function(part_index) {
+      # data.frame() recycles the scalar `part` against a zero-length
+      # part_index and reports "arguments imply differing number of rows",
+      # so an emptied part has to build its own zero-row frame. Same
+      # zero-length recycling the volume_space feature_ids() guard avoids.
+      n <- n_features(parts[[part_index]])
+      if (!n) {
+        return(data.frame(
+          part = character(), part_index = integer(),
+          stringsAsFactors = FALSE
+        ))
+      }
       data.frame(
         part = names(parts)[[part_index]],
-        part_index = seq_len(n_features(parts[[part_index]])),
+        part_index = seq_len(n),
         stringsAsFactors = FALSE
       )
     })
@@ -1525,7 +1543,14 @@ basis_space_from_fmrilatent <- function(x, parent, component_ids = NULL,
     )
   }
   expected_keys <- unlist(lapply(names(parts), function(part_name) {
-    paste(part_name, seq_len(n_features(parts[[part_name]])), sep = "::")
+    # paste() recycles the scalar name against a zero-length index and yields
+    # "part::" rather than character(), which made an emptied composite fail
+    # its own "every child feature exactly once" check.
+    n <- n_features(parts[[part_name]])
+    if (!n) {
+      return(character())
+    }
+    paste(part_name, seq_len(n), sep = "::")
   }), use.names = FALSE)
   if (!setequal(keys, expected_keys)) {
     .frame_abort(

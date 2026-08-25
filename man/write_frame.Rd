@@ -20,8 +20,9 @@ open_frame(path, format = "hdf5", ...)
 \item{...}{Arguments passed to the physical store implementation.}
 }
 \value{
-\code{write_frame()} invisibly returns the committed path. \code{open_frame()}
-returns an \code{fmri_frame}.
+\code{write_frame()} invisibly returns the committed path, normalized
+with forward slashes on every platform. \code{open_frame()} returns an
+\code{fmri_frame}.
 }
 \description{
 These functions provide the semantic-package entry point while delegating

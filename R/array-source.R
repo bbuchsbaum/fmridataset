@@ -93,6 +93,60 @@ source_close <- function(x, ...) UseMethod("source_close")
   unname(sizes[[dtype]])
 }
 
+# Width of one value once R holds it, as opposed to its width in storage.
+#
+# Budgets exist to bound what a read will occupy in memory, and every read
+# realizes an R vector: a float32 assay becomes R doubles, a uint8 assay becomes
+# R doubles. Budgeting against the storage width therefore under-counts by the
+# dtype ratio -- 2x for float32, 8x for uint8 -- and lets a collection exceed
+# the ceiling the caller asked for. This is the shared cost basis; storage width
+# (.dtype_bytes) remains the right measure for I/O accounting.
+.realized_dtype_bytes <- function(dtype) {
+  .dtype_bytes(dtype) # validates the dtype and its error message
+  switch(dtype,
+    logical = 4,
+    complex64 = ,
+    complex128 = 16,
+    8
+  )
+}
+
+# The R storage mode a dtype is realized into. Shares its mapping with
+# .realized_dtype_bytes() so that the accumulator a read allocates and the
+# budget charged for it always describe the same value.
+.realized_dtype_mode <- function(dtype) {
+  .dtype_bytes(dtype)
+  switch(dtype,
+    logical = "logical",
+    complex64 = ,
+    complex128 = "complex",
+    "double"
+  )
+}
+
+# Accumulator for a composed read, typed by the declared dtype.
+#
+# Composing sources used to preallocate matrix(NA_real_, ...) regardless of
+# dtype, so reading a logical assay through row_bound_source() or
+# row_sharded_source() returned doubles while source_dtype() still reported
+# "logical" - the descriptor and the data disagreed.
+.realized_na_matrix <- function(dtype, nrow, ncol) {
+  fill <- switch(.realized_dtype_mode(dtype),
+    logical = NA,
+    complex = NA_complex_,
+    NA_real_
+  )
+  matrix(fill, nrow = nrow, ncol = ncol)
+}
+
+# Zero-extent result of the same type.
+.realized_empty_matrix <- function(dtype, nrow, ncol) {
+  matrix(
+    vector(mode = .realized_dtype_mode(dtype), length = 0L),
+    nrow = nrow, ncol = ncol
+  )
+}
+
 .source_contains_runtime_state <- function(x) {
   if (is.environment(x) || is.function(x) || typeof(x) == "externalptr") {
     return(TRUE)
@@ -775,10 +829,10 @@ source_read.row_sharded_source <- function(x, observations = NULL, features = NU
   observations <- .normalize_source_index(observations, x$shape[[1L]])
   features <- .normalize_source_index(features, x$shape[[2L]])
   if (!length(observations) || !length(features)) {
-    return(matrix(numeric(), nrow = length(observations), ncol = length(features)))
+    return(.realized_empty_matrix(x$dtype, length(observations), length(features)))
   }
   location <- locate_source_rows(x, observations)
-  out <- matrix(NA_real_, nrow = length(observations), ncol = length(features))
+  out <- .realized_na_matrix(x$dtype, length(observations), length(features))
   for (shard in unique(location$.shard_index)) {
     at <- which(location$.shard_index == shard)
     out[at, ] <- source_read(
@@ -843,10 +897,10 @@ source_read.row_bound_source <- function(x, observations = NULL, features = NULL
   observations <- .normalize_source_index(observations, x$shape[1L])
   features <- .normalize_source_index(features, x$shape[2L])
   if (!length(observations) || !length(features)) {
-    return(matrix(numeric(), nrow = length(observations), ncol = length(features)))
+    return(.realized_empty_matrix(x$dtype, length(observations), length(features)))
   }
   subject <- findInterval(observations - 1L, x$boundaries[-length(x$boundaries)])
-  out <- matrix(NA_real_, nrow = length(observations), ncol = length(features))
+  out <- .realized_na_matrix(x$dtype, length(observations), length(features))
   for (s in unique(subject)) {
     at <- which(subject == s)
     local <- observations[at] - x$boundaries[s]

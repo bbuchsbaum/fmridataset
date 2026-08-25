@@ -189,6 +189,8 @@ test_that("reconstruct_voxels works", {
 
 test_that("fmri_latent_dataset deprecation works", {
   skip_if_not_installed("fmristore")
+  # Force lifecycle to warn deterministically regardless of session history.
+  withr::local_options(lifecycle_verbosity = "warning")
 
   # Define mock class if needed
   if (!isClass("mock_LatentNeuroVec")) {
