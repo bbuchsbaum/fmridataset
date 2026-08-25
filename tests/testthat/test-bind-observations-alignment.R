@@ -100,7 +100,8 @@ test_that("bind is order-insensitive for component alignment", {
   # rotation lands in column 1 and its translation in column 2.
   expect_equal(unname(ba[3:4, 1]), c(3, 4)) # a rotation
   expect_equal(unname(ba[3:4, 2]), c(1, 2)) # a translation
-  expect_equal(block_component_ids(obs_blocks(bind_observations(b, a))$motion),
+  expect_equal(
+    block_component_ids(obs_blocks(bind_observations(b, a))$motion),
     c("rotation", "translation")
   )
 })
