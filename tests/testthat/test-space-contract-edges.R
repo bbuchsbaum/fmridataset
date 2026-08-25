@@ -54,13 +54,16 @@ test_that("a space agreeing with the feature axis is accepted", {
   values <- matrix(as.double(1:9), 3, 3)
   observations <- data.frame(.obs_id = c("o1", "o2", "o3"))
 
-  both <- fmri_frame(list(a = values), observations = observations,
+  both <- fmri_frame(list(a = values),
+    observations = observations,
     features = axis, space = index
   )
-  axis_only <- fmri_frame(list(a = values), observations = observations,
+  axis_only <- fmri_frame(list(a = values),
+    observations = observations,
     features = axis
   )
-  space_only <- fmri_frame(list(a = values), observations = observations,
+  space_only <- fmri_frame(list(a = values),
+    observations = observations,
     space = index
   )
 
