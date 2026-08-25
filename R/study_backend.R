@@ -26,7 +26,7 @@ study_backend <- function(backends, subject_ids = NULL,
   time_dims <- vapply(dims_list, function(x) x$time, numeric(1))
 
   ref_spatial <- .study_backend_validate_spatial(spatial_dims)
-  combined_mask <- .study_backend_combine_masks(backends, strict)
+  mask_info <- .study_backend_combine_masks(backends, strict)
 
   subject_boundaries <- c(0L, cumsum(as.integer(time_dims)))
 
@@ -35,7 +35,8 @@ study_backend <- function(backends, subject_ids = NULL,
     subject_ids = subject_ids,
     strict = strict,
     `_dims` = list(spatial = ref_spatial, time = sum(time_dims)),
-    `_mask` = combined_mask,
+    `_mask` = mask_info$mask,
+    `_col_maps` = mask_info$col_maps,
     time_dims = as.integer(time_dims),
     subject_boundaries = as.integer(subject_boundaries)
   )
@@ -107,10 +108,28 @@ study_backend <- function(backends, subject_ids = NULL,
   ref_spatial
 }
 
-# Validate masks per `strict` mode and return the combined mask.
+# Validate masks per `strict` mode and return the combined mask together with
+# per-backend column routing.
+#
+# Each child backend resolves `cols` against its OWN mask, but the study backend
+# hands out column positions in the COMBINED mask. When the masks differ those
+# two numberings disagree, so every child must be given its own translation of
+# the requested columns. `col_maps[[s]][k]` is the position, within backend `s`'s
+# mask, of the voxel that the combined mask calls `k`. Under "identical" this is
+# the identity; under "intersect" each backend is offset by its own mask surplus.
 .study_backend_combine_masks <- function(backends, strict) {
   masks <- lapply(backends, backend_get_mask)
+  masks <- lapply(masks, function(m) as.logical(as.vector(m)))
   ref_mask <- masks[[1]]
+
+  lengths_ok <- vapply(masks, function(m) length(m) == length(ref_mask), logical(1))
+  if (!all(lengths_ok)) {
+    stop_fmridataset(
+      fmridataset_error_config,
+      message = "masks must describe the same voxel grid across backends"
+    )
+  }
+
   if (strict == "identical") {
     for (m in masks[-1]) {
       if (!identical(m, ref_mask)) {
@@ -138,7 +157,44 @@ study_backend <- function(backends, subject_ids = NULL,
       message = "unknown strict setting"
     )
   }
-  combined_mask
+
+  list(
+    mask = combined_mask,
+    col_maps = .study_backend_column_maps(combined_mask, masks)
+  )
+}
+
+# Column routing for a study backend, using the stored maps when present and
+# rebuilding them from the child masks otherwise (older or reconstructed
+# objects). Every path that reaches .collect_study_backend_block() must go
+# through this, or that path silently reads the wrong voxels.
+.study_backend_resolve_col_maps <- function(backend, combined_mask) {
+  col_maps <- backend$`_col_maps`
+  if (!is.null(col_maps)) {
+    return(col_maps)
+  }
+  child_masks <- lapply(backend$backends, function(b) {
+    as.logical(as.vector(backend_get_mask(b)))
+  })
+  .study_backend_column_maps(combined_mask, child_masks)
+}
+
+# Map combined-mask column positions onto each backend's own mask positions.
+.study_backend_column_maps <- function(combined_mask, masks) {
+  combined_voxels <- which(combined_mask)
+  lapply(masks, function(m) {
+    local <- match(combined_voxels, which(m))
+    if (anyNA(local)) {
+      stop_fmridataset(
+        fmridataset_error_config,
+        message = paste(
+          "combined mask selects voxels absent from a subject mask;",
+          "cannot route study columns"
+        )
+      )
+    }
+    local
+  })
 }
 
 #' @rdname backend_open
@@ -201,11 +257,14 @@ backend_get_data.study_backend <- function(backend, rows = NULL, cols = NULL) {
   rows <- .study_backend_get_data_as_integer(rows, "Row")
   cols <- .study_backend_get_data_as_integer(cols, "Column")
 
+  col_maps <- .study_backend_resolve_col_maps(backend, mask)
+
   .collect_study_backend_block(
     backends = backend$backends,
     rows = rows,
     cols = cols,
     subject_boundaries = backend$subject_boundaries,
+    col_maps = col_maps,
     n_time = n_time,
     n_vox = n_vox
   )
@@ -247,7 +306,8 @@ backend_get_metadata.study_backend <- function(backend) {
 }
 
 .collect_study_backend_block <- function(backends, rows, cols,
-                                         subject_boundaries, n_time, n_vox) {
+                                         subject_boundaries, col_maps,
+                                         n_time, n_vox) {
   n_rows <- length(rows)
   n_cols <- length(cols)
 
@@ -267,7 +327,9 @@ backend_get_metadata.study_backend <- function(backend) {
 
     subj_backend <- backends[[s]]
     local_rows <- sorted_rows[idx] - subject_boundaries[s]
-    subj_data <- backend_get_data(subj_backend, rows = local_rows, cols = cols)
+    # `cols` is in combined-mask numbering; each backend needs its own.
+    local_cols <- col_maps[[s]][cols]
+    subj_data <- backend_get_data(subj_backend, rows = local_rows, cols = local_cols)
     if (!is.matrix(subj_data)) {
       subj_data <- as.matrix(subj_data)
     }

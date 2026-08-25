@@ -15,7 +15,7 @@ test_that("public frame I/O delegates to lazy HDF5 storage", {
 
   expect_identical(
     write_frame(frame, path),
-    normalizePath(path, mustWork = TRUE)
+    normalizePath(path, winslash = "/", mustWork = TRUE)
   )
   reopened <- open_frame(path)
 

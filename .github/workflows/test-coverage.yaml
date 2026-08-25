@@ -17,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      NOT_CRAN: true
 
     steps:
       - uses: actions/checkout@v4
@@ -25,10 +27,22 @@ jobs:
         with:
           use-public-rspm: true
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libhdf5-dev
+
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::covr, any::xml2
           needs: coverage
+
+      # Coverage measured without the optional backends reports their code as
+      # untested rather than as skipped, which is how R/frame-io.R reads at 8%.
+      - name: Install GitHub packages
+        run: |
+          Rscript -e 'tryCatch(remotes::install_github("bbuchsbaum/fmristore", dependencies = TRUE), error = function(e) warning("fmristore: ", e$message))'
+          Rscript -e 'tryCatch(remotes::install_github("bbuchsbaum/bidser", dependencies = TRUE), error = function(e) warning("bidser: ", e$message))'
 
       - name: Test coverage
         run: |
@@ -37,6 +51,8 @@ jobs:
             clean = FALSE,
             install_path = file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "package")
           )
+          cat(sprintf("Coverage: %.2f%%\n", covr::percent_coverage(cov)))
+          print(covr::coverage_to_list(cov)$filecoverage)
           covr::to_cobertura(cov)
         shell: Rscript {0}
 

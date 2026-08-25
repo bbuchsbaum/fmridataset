@@ -31,5 +31,5 @@ See \code{\link[=fmri_series]{fmri_series()}}
 }
 \description{
 \code{series()} forwards to \code{\link[=fmri_series]{fmri_series()}} for backward compatibility.
-A deprecation warning is emitted once per session.
+A deprecation warning is emitted via the lifecycle package.
 }

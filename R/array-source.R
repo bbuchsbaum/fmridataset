@@ -93,6 +93,24 @@ source_close <- function(x, ...) UseMethod("source_close")
   unname(sizes[[dtype]])
 }
 
+# Width of one value once R holds it, as opposed to its width in storage.
+#
+# Budgets exist to bound what a read will occupy in memory, and every read
+# realizes an R vector: a float32 assay becomes R doubles, a uint8 assay becomes
+# R doubles. Budgeting against the storage width therefore under-counts by the
+# dtype ratio -- 2x for float32, 8x for uint8 -- and lets a collection exceed
+# the ceiling the caller asked for. This is the shared cost basis; storage width
+# (.dtype_bytes) remains the right measure for I/O accounting.
+.realized_dtype_bytes <- function(dtype) {
+  .dtype_bytes(dtype) # validates the dtype and its error message
+  switch(dtype,
+    logical = 4,
+    complex64 = ,
+    complex128 = 16,
+    8
+  )
+}
+
 .source_contains_runtime_state <- function(x) {
   if (is.environment(x) || is.function(x) || typeof(x) == "externalptr") {
     return(TRUE)

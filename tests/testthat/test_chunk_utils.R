@@ -1,5 +1,3 @@
-context("chunk utilities")
-
 library(fmridataset)
 
 ## tests for arbitrary_chunks and one_chunk

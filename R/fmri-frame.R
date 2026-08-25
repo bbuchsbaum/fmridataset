@@ -300,10 +300,22 @@ collect_assay <- function(x, assay = active_assay(x),
                           force = FALSE) {
   selection <- .frame_selection(x)
   descriptor <- assay(selection$base, assay)
-  bytes <- length(selection$observations) * length(selection$features) * .dtype_bytes(descriptor$dtype)
+  # Realized width, not storage width: the result is an R matrix.
+  bytes <- length(selection$observations) * length(selection$features) *
+    .realized_dtype_bytes(descriptor$dtype)
   if (!isTRUE(force) && bytes > memory_budget) {
     .frame_abort(
-      sprintf("Collecting this assay requires %s bytes, above memory_budget.", format(bytes, scientific = FALSE)),
+      sprintf(
+        paste0(
+          "Collecting this assay requires %s bytes (%d x %d %s values ",
+          "realized as R doubles), above the memory_budget of %s bytes. ",
+          "Raise memory_budget, select fewer rows or columns, or pass force = TRUE."
+        ),
+        format(bytes, scientific = FALSE),
+        length(selection$observations), length(selection$features),
+        descriptor$dtype,
+        format(memory_budget, scientific = FALSE)
+      ),
       "fmridataset_error_budget",
       required_bytes = bytes,
       memory_budget = memory_budget
@@ -378,6 +390,72 @@ explain <- function(x) {
   )
 }
 
+.assert_bind_agreement <- function(reference, candidate, what) {
+  if (isTRUE(all.equal(reference, candidate))) {
+    return(invisible(TRUE))
+  }
+  .frame_abort(
+    sprintf(
+      "Frames disagree on %s; bind_observations() cannot choose between them.",
+      what
+    ),
+    "fmridataset_error_alignment",
+    field = what
+  )
+}
+
+# Return a block's data with its component axis permuted into `proto`'s
+# component order, refusing any block whose component identities differ.
+# Binding rbinds these positionally, so a block whose components are merely
+# ordered differently would otherwise file each frame's values under the
+# previous frame's labels.
+.aligned_block_data <- function(block, proto, block_name) {
+  ref <- block_components(proto)
+  cur <- block_components(block)
+  ref_ids <- ref$.component_id
+  cur_ids <- cur$.component_id
+
+  if (length(cur_ids) != length(ref_ids) || !setequal(cur_ids, ref_ids)) {
+    .frame_abort(
+      sprintf(
+        "Block %s has different components across bound frames (%s vs %s).",
+        encodeString(block_name, quote = "\""),
+        paste(ref_ids, collapse = ", "),
+        paste(cur_ids, collapse = ", ")
+      ),
+      "fmridataset_error_alignment",
+      block = block_name,
+      expected = ref_ids,
+      actual = cur_ids
+    )
+  }
+
+  perm <- match(ref_ids, cur_ids)
+  reordered <- cur[perm, , drop = FALSE]
+  if (!isTRUE(all.equal(as.data.frame(reordered), as.data.frame(ref)))) {
+    .frame_abort(
+      sprintf(
+        "Block %s has conflicting component metadata across bound frames.",
+        encodeString(block_name, quote = "\"")
+      ),
+      "fmridataset_error_alignment",
+      block = block_name
+    )
+  }
+
+  .permute_block_columns(axis_block_data(block), perm)
+}
+
+.permute_block_columns <- function(data, perm) {
+  if (identical(perm, seq_along(perm))) {
+    return(data)
+  }
+  if (inherits(data, "array_source")) {
+    return(source_view(data, features = perm))
+  }
+  data[, perm, drop = FALSE]
+}
+
 .bind_axis_frames <- function(xs) {
   first <- xs[[1L]]
   if (length(first$blocks)) {
@@ -386,13 +464,16 @@ explain <- function(x) {
       .frame_abort("Bound axes must have identical block names.", "fmridataset_error_alignment")
     }
     blocks <- lapply(block_names, function(nm) {
-      values <- lapply(xs, function(x) axis_block_data(x$blocks[[nm]]))
+      proto <- first$blocks[[nm]]
+      # Block data is row-bound positionally, so the component axes must be
+      # brought into a common order FIRST. Aligning by component ID rather than
+      # by column position is what keeps values under the label they belong to.
+      values <- lapply(xs, function(x) .aligned_block_data(x$blocks[[nm]], proto, nm))
       if (any(vapply(values, inherits, logical(1), what = "array_source"))) {
         source <- row_bound_source(lapply(values, as_array_source))
       } else {
         source <- do.call(rbind, values)
       }
-      proto <- first$blocks[[nm]]
       axis_block(source, proto$components, proto$role, proto$units, proto$metadata)
     })
     names(blocks) <- block_names
@@ -423,6 +504,15 @@ bind_observations <- function(...) {
         operation = "bind_observations"
       )
     }
+    # The bound frame keeps the first frame's feature annotations, tables, and
+    # metadata. That is only sound when the others agree; otherwise the result
+    # would silently assert the first frame's description of shared objects.
+    .assert_bind_agreement(
+      axis_data(feature_axis(first)), axis_data(feature_axis(x)),
+      "feature metadata"
+    )
+    .assert_bind_agreement(first$tables, x$tables, "tables")
+    .assert_bind_agreement(first$metadata, x$metadata, "metadata")
   }
   relation_values <- .bind_relation_registries(lapply(xs, relations))
   obs <- .bind_axis_frames(lapply(xs, observation_axis))

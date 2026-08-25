@@ -97,6 +97,10 @@ as_delarr.study_backend <- function(backend, ...) {
   n_time <- sum(backend$time_dims)
   mask <- backend_get_mask(backend)
   n_vox <- as.integer(sum(mask))
+  # Resolved once, outside the closure: this is the default read path for a
+  # study backend, and it hands child backends columns numbered in the
+  # combined mask.
+  col_maps <- .study_backend_resolve_col_maps(backend, mask)
 
   pull_fun <- function(rows = NULL, cols = NULL) {
     rows <- if (is.null(rows)) seq_len(n_time) else rows
@@ -124,6 +128,7 @@ as_delarr.study_backend <- function(backend, ...) {
       rows = rows,
       cols = cols,
       subject_boundaries = backend$subject_boundaries,
+      col_maps = col_maps,
       n_time = n_time,
       n_vox = n_vox
     )

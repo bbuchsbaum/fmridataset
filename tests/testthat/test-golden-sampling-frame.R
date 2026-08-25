@@ -42,8 +42,6 @@ test_that("sampling_frame accessors work consistently", {
 })
 
 test_that("sampling_frame print output matches snapshot", {
-  testthat::local_edition(3)
-
   sframe <- fmrihrf::sampling_frame(TR = 2, blocklens = c(100, 100, 150))
 
   expect_snapshot({

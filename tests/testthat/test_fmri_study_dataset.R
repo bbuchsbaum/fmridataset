@@ -1,5 +1,3 @@
-context("fmri_study_dataset")
-
 test_that("constructor combines datasets", {
   b1 <- matrix_backend(matrix(1:20, nrow = 10, ncol = 2), spatial_dims = c(2, 1, 1))
   b2 <- matrix_backend(matrix(21:40, nrow = 10, ncol = 2), spatial_dims = c(2, 1, 1))
