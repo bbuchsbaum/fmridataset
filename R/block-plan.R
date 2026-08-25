@@ -138,7 +138,8 @@ plan_blocks <- function(
   target_block_bytes <- .validate_budget_scalar(target_block_bytes, "target_block_bytes")
   selection <- .frame_selection(x)
   descriptor <- assay(selection$base, assay)
-  dtype_bytes <- .dtype_bytes(descriptor$dtype)
+  # A block must fit in memory once realized, not once read from storage.
+  dtype_bytes <- .realized_dtype_bytes(descriptor$dtype)
   capacity <- floor(min(memory_budget, target_block_bytes) / dtype_bytes)
   if (capacity < 1) {
     .frame_abort(
