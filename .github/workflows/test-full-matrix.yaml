@@ -89,19 +89,44 @@ jobs:
       - name: Test with all optional packages
         run: |
           Rscript -e '
-          # Run tests and ensure none are skipped due to missing packages
-          test_results <- testthat::test_dir("tests/testthat", reporter = "summary")
-          
-          # Check for skipped tests
-          skipped <- sum(test_results$skipped)
-          if (skipped > 0) {
-            cat("WARNING:", skipped, "tests were skipped\n")
-            # Check if skips are due to missing packages
-            skip_msgs <- attr(test_results, "skip_messages")
-            pkg_skips <- grep("not installed|not available", skip_msgs, value = TRUE)
-            if (length(pkg_skips) > 0) {
-              stop("Tests skipped due to missing packages:\n", paste(pkg_skips, collapse = "\n"))
+          # The package MUST be loaded: test_dir defaults to load_package = "none",
+          # which silently runs every test against an empty namespace.
+          res <- testthat::test_dir(
+            "tests/testthat",
+            reporter = "summary",
+            load_package = "installed",
+            stop_on_failure = FALSE
+          )
+
+          df <- as.data.frame(res)
+          bad <- sum(df$failed) + sum(df$error)
+          if (bad > 0) stop("Test failures or errors: ", bad)
+
+          # Skip reasons live on the expectation conditions, not on an attribute.
+          skips <- unlist(lapply(res, function(f) {
+            r <- f$results
+            if (is.null(r)) return(character(0))
+            vapply(Filter(function(e) inherits(e, "expectation_skip"), r),
+                   conditionMessage, character(1))
+          }), use.names = FALSE)
+          skips <- sub("^Reason: ", "", sub("\n.*", "", skips))
+
+          if (length(skips)) {
+            cat("Skipped", length(skips), "tests:\n")
+            for (s in sort(unique(skips))) {
+              cat(sprintf("  %3d  %s\n", sum(skips == s), s))
             }
+          }
+
+          # This job installs every optional package, so a skip that names an absent
+          # or inadequate dependency means the matrix is not testing what it claims.
+          dep_gap <- grep(
+            "not installed|not available|lacks|is required|is not TRUE",
+            skips, value = TRUE
+          )
+          if (length(dep_gap)) {
+            stop("Optional-dependency gaps in the all-optional-packages matrix:\n",
+                 paste(unique(dep_gap), collapse = "\n"))
           }
           '
       
