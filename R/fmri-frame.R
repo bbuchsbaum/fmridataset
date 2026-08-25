@@ -98,6 +98,18 @@ fmri_frame <- function(assays, observations, features = NULL, space = NULL,
   }
 
   if (inherits(features, "spatial_axis_frame")) {
+    # A spatial feature axis already carries its space. Silently preferring it
+    # over an explicit `space` argument discarded contradictory input, which is
+    # exactly the ambiguity the frame contract says to reject early.
+    if (!is.null(space) && !isTRUE(compatible_space(features$space, space)$compatible)) {
+      .frame_abort(
+        paste(
+          "features already carries a feature space that disagrees with the",
+          "space argument; supply only one."
+        ),
+        "fmridataset_error_space_mismatch"
+      )
+    }
     feature_axis_value <- features
     space <- features$space
   } else {

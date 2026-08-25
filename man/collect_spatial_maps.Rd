@@ -16,7 +16,8 @@ collect_spatial_maps(
 \item{x}{An \code{fmri_frame} or view.}
 
 \item{observations}{Observation IDs or integer positions. The requested
-order and duplicates are preserved.}
+order is preserved. Duplicated selectors are rejected, as they are on
+every other frame axis selection.}
 
 \item{assay}{Assay name.}
 
