@@ -234,7 +234,10 @@ source_read.row_index_source <- function(x, observations = NULL,
   shape <- source_shape(x)
   observations <- .normalize_source_index(observations, shape[[1L]])
   features <- .normalize_source_index(features, shape[[2L]])
-  out <- matrix(NA, nrow = length(observations), ncol = length(features))
+  # Typed by the declared dtype: matrix(NA, ...) is logical, so a lift with no
+  # present rows used to return a logical matrix while source_dtype() reported
+  # the child's dtype.
+  out <- .realized_na_matrix(source_dtype(x), length(observations), length(features))
   if (!length(observations) || !length(features)) {
     return(out)
   }

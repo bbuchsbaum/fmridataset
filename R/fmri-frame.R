@@ -32,6 +32,7 @@ aligned_assay_set <- function(assays, observations, features) {
   feature_digest <- .axis_digest(features)
   out <- lapply(names(assays), function(nm) {
     value <- assays[[nm]]
+    .assert_assay_dimnames(value, nm, observations, features)
     source <- if (inherits(value, "aligned_assay")) value$source else as_array_source(value)
     validate_array_source(source)
     annotation <- if (is.list(value) && !inherits(value, "array_source")) value else list()
@@ -402,6 +403,39 @@ explain <- function(x) {
   )
 }
 
+# A matrix passed as an assay may carry dimnames. The axis IDs are
+# authoritative, so the dimnames are dropped -- but dropping them silently when
+# they NAME DIFFERENT THINGS hides a real mix-up, which is the ambiguous input
+# the frame contract says to reject early. Matching or absent dimnames are fine.
+.assert_assay_dimnames <- function(value, name, observations, features) {
+  if (!is.matrix(value)) {
+    return(invisible(TRUE))
+  }
+  dn <- dimnames(value)
+  if (is.null(dn)) {
+    return(invisible(TRUE))
+  }
+  check <- function(candidate, expected, axis) {
+    if (is.null(candidate) || identical(candidate, expected)) {
+      return(invisible(TRUE))
+    }
+    .frame_abort(
+      sprintf(
+        "Assay '%s' has %s dimnames that disagree with the %s IDs; drop them or align them.",
+        name, axis, axis
+      ),
+      "fmridataset_error_alignment",
+      assay = name,
+      axis = axis,
+      expected = expected,
+      actual = candidate
+    )
+  }
+  check(dn[[1L]], axis_ids(observations), "observation")
+  check(dn[[2L]], axis_ids(features), "feature")
+  invisible(TRUE)
+}
+
 .assert_bind_agreement <- function(reference, candidate, what) {
   if (isTRUE(all.equal(reference, candidate))) {
     return(invisible(TRUE))
@@ -492,7 +526,29 @@ explain <- function(x) {
   } else {
     blocks <- list()
   }
-  data <- do.call(rbind, lapply(xs, axis_data))
+  # rbind() reports mismatched axis metadata as bare base-R conditions
+  # ("numbers of columns of arguments do not match", "names do not match
+  # previous names"), which name neither the frame nor the column. Check first
+  # so the failure arrives as a structured alignment error that says what
+  # differs.
+  values <- lapply(xs, axis_data)
+  reference <- names(values[[1L]])
+  for (i in seq_along(values)[-1L]) {
+    candidate <- names(values[[i]])
+    if (!identical(candidate, reference)) {
+      .frame_abort(
+        sprintf(
+          "Bound axes have different metadata columns (%s vs %s).",
+          paste(reference, collapse = ", "),
+          paste(candidate, collapse = ", ")
+        ),
+        "fmridataset_error_alignment",
+        expected = reference,
+        actual = candidate
+      )
+    }
+  }
+  data <- do.call(rbind, values)
   axis_frame(data, blocks = blocks, id = data[[first$id_col]], axis = first$axis, id_col = first$id_col)
 }
 

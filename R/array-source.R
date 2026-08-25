@@ -626,13 +626,13 @@ row_sharded_source <- function(sources, shard_ids = NULL, shard_data = NULL) {
   sources <- lapply(sources, as_array_source)
   invisible(lapply(sources, validate_array_source))
   shapes <- lapply(sources, source_shape)
+  # Empty shards are permitted. They make two consecutive boundaries equal, and
+  # findInterval() resolves a row to the last boundary at or below it, so an
+  # empty shard is simply never routed to. Rejecting them made
+  # bind_observations() refuse a zero-observation frame, which is legal
+  # everywhere else in the model - such frames subset, collect, plan, and FDS
+  # round-trip - and which binding should treat as an identity.
   rows <- vapply(shapes, `[[`, integer(1), 1L)
-  if (any(rows == 0L)) {
-    .frame_abort(
-      "Row-sharded sources cannot contain shards with zero observations.",
-      "fmridataset_error_alignment"
-    )
-  }
   n_feature <- vapply(shapes, `[[`, integer(1), 2L)
   if (length(unique(n_feature)) != 1L) {
     .frame_abort("Row-sharded sources must have the same feature count.", "fmridataset_error_alignment")
