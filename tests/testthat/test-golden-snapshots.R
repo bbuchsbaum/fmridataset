@@ -52,8 +52,13 @@ test_that("backend print snapshots", {
     )
   )
 
+  # matrix_backend has no print method, so print() dumps the entire data
+  # payload: this one snapshot was 1896 lines of a raw 50x100 rnorm matrix,
+  # unreviewable and broken by any RNG or precision change. Capture the
+  # structure instead, as commit 47581e4 already did for the sibling
+  # golden-backends snapshot.
   expect_snapshot({
-    print(backend_mat)
+    str(backend_mat, max.level = 1, give.attr = FALSE)
   })
 
   # Multi-run backend
@@ -66,7 +71,7 @@ test_that("backend print snapshots", {
   )
 
   expect_snapshot({
-    print(backend_multi)
+    str(backend_multi, max.level = 1, give.attr = FALSE)
   })
 })
 
