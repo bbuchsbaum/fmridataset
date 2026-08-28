@@ -2,6 +2,7 @@ name: vignette-quality
 
 on:
   push:
+    branches: [main, master]
     paths:
       - 'vignettes/**'
       - 'inst/WORDLIST'
