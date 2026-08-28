@@ -125,7 +125,9 @@ jobs:
 
           df <- as.data.frame(res)
           dir.create("ci-evidence", showWarnings = FALSE)
-          utils::write.csv(df, "ci-evidence/test-results.csv", row.names = FALSE)
+          # testthat result frames contain list columns (calls and conditions),
+          # which CSV cannot encode. RDS retains the complete diagnostic data.
+          saveRDS(df, "ci-evidence/test-results.rds")
           bad <- sum(df$failed, na.rm = TRUE) + sum(df$error, na.rm = TRUE)
           if (bad > 0) stop("Test failures or errors: ", bad)
 
