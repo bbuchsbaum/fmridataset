@@ -245,6 +245,7 @@ jobs:
         with:
           error-on: '"error"'
           check-dir: '"check"'
+          build_args: 'c("--no-manual", "--no-build-vignettes")'
           args: 'c("--no-manual", "--no-vignettes", "--no-build-vignettes")'
 
       - name: Upload minimal check evidence

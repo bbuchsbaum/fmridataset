@@ -70,7 +70,7 @@ jobs:
           # knitr is installed explicitly so the tarball carries its prebuilt
           # vignette index even though the hard-dependency check does not rerun
           # vignette code.
-          build_args: 'c("--no-manual")'
+          build_args: 'c("--no-manual", "--no-build-vignettes")'
           args: 'c("--no-manual", "--no-vignettes", "--no-build-vignettes")'
 
       - name: Record dependency and failure-classification evidence

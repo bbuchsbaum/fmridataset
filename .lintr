@@ -1,16 +1,15 @@
-linters: linters_with_tags("correctness")[c(
+linters:
+  # namespace_linter treats deliberate qualified calls as style findings;
+  # R CMD check remains the gate for undeclared package usage.
+  linters_with_tags("correctness")[c(
     "duplicate_argument_linter",
     "equals_na_linter",
     "missing_argument_linter",
-    "namespace_linter",
     "package_hooks_linter",
     "sprintf_linter"
   )]
 exclusions: list(
     "tests/testthat.R",
     "data-raw",
-    "inst/doc",
-    # Namespace checks in tests confuse deliberate internal (`:::`) coverage
-    # with production namespace use; the source and examples remain checked.
-    "tests" = list(namespace_linter = Inf)
+    "inst/doc"
   )
