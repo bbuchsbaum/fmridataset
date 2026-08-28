@@ -66,6 +66,9 @@ jobs:
       - uses: r-lib/actions/check-r-package@v2
         id: package_check
         with:
+          # The hard-only build deliberately omits rmarkdown, so R reports that
+          # prebuilt vignette outputs are absent. Vignette CI remains strict.
+          error-on: '"error"'
           upload-snapshots: true
           # knitr is installed explicitly so the tarball carries its prebuilt
           # vignette index even though the hard-dependency check does not rerun
