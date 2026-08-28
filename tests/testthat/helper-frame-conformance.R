@@ -36,7 +36,7 @@ expect_array_source_conformance <- function(source, reference) {
   # nothing, and must not disturb the descriptor.
   handle <- source_open(source)
   expect_true(inherits(handle, "array_source_handle"))
-  expect_silent(source_close(source))
+  expect_silent(source_close(handle))
   expect_identical(source_fingerprint(source), descriptor$fingerprint)
 
   n_row <- nrow(reference)

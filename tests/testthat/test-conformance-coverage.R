@@ -63,6 +63,29 @@ test_that("NIfTI sources conform against an independent read", {
   expect_array_source_conformance(source, reference)
 })
 
+fmristore_has_h5_array_source <- function() {
+  requireNamespace("fmristore", quietly = TRUE) &&
+    requireNamespace("hdf5r", quietly = TRUE) &&
+    "h5_array_source" %in% getNamespaceExports("fmristore")
+}
+
+test_that("HDF5 extension sources conform against stored values", {
+  skip_if_not(
+    fmristore_has_h5_array_source(),
+    "the installed fmristore does not provide h5_array_source()"
+  )
+
+  path <- tempfile(fileext = ".h5")
+  values <- matrix(as.double(1:24), nrow = 6L, ncol = 4L)
+  h5 <- hdf5r::H5File$new(path, mode = "w")
+  h5$create_dataset("values", robj = values, chunk_dims = c(2L, 2L))
+  h5$close_all()
+  on.exit(unlink(path), add = TRUE)
+
+  source <- fmristore::h5_array_source(path, "values")
+  expect_array_source_conformance(source, values)
+})
+
 # -------------------------------------------------------------- feature spaces
 
 test_that("index and volume spaces conform", {
@@ -133,6 +156,9 @@ test_that("every dispatchable source and space is covered or excused", {
     "row_sharded_source", "source_view", "sparse_entity_source",
     "validity_masked_source", "zarr_array_source"
   )
+  if (fmristore_has_h5_array_source()) {
+    covered_sources <- c(covered_sources, "h5_array_source")
+  }
   # fault_source injects failures on demand; refusing to read is its purpose,
   # so the read contract cannot apply to it.
   excused_sources <- c("fault_source", "default")
