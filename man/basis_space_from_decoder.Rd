@@ -12,7 +12,8 @@ basis_space_from_decoder(
   basis_type = "linear_basis",
   provenance = list(),
   tolerance = 1e-08,
-  metadata = list()
+  metadata = list(),
+  encoder = c("least_squares", "none")
 )
 }
 \arguments{

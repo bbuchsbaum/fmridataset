@@ -1156,9 +1156,27 @@ basis_space <- function(parent, component_ids, encoder, decoder = NULL,
       "fmridataset_error_space_mismatch"
     )
   }
-  encoder <- .validate_linear_operator(
-    encoder, c(k, n_features(parent)), "encoder"
-  )
+  # A basis carries an analysis operator (parent -> components), a synthesis
+  # operator (components -> parent), or both. Requiring the encoder excluded
+  # exactly the case latent_dataset serves: loadings are a synthesis
+  # dictionary, and ICA or dictionary-learning fits are frequently
+  # rank-deficient or non-orthogonal, so no exact left inverse exists. Such a
+  # basis can reconstruct voxels from scores, which is all that path ever
+  # needed; it simply cannot project new voxel data into the components.
+  if (is.null(encoder) && is.null(decoder)) {
+    .frame_abort(
+      paste(
+        "A basis space needs an encoder, a decoder, or both;",
+        "with neither it cannot relate components to the parent space."
+      ),
+      "fmridataset_error_space_mismatch"
+    )
+  }
+  if (!is.null(encoder)) {
+    encoder <- .validate_linear_operator(
+      encoder, c(k, n_features(parent)), "encoder"
+    )
+  }
   if (!is.null(decoder)) {
     decoder <- .validate_linear_operator(
       decoder, c(n_features(parent), k), "decoder"
@@ -1183,7 +1201,7 @@ basis_space <- function(parent, component_ids, encoder, decoder = NULL,
   data <- data[c(".feature_id", setdiff(names(data), ".feature_id"))]
 
   inverse_error <- NULL
-  if (!is.null(decoder)) {
+  if (!is.null(encoder) && !is.null(decoder)) {
     inverse_error <- .basis_left_inverse_error(
       .collect_linear_operator(encoder),
       .collect_linear_operator(decoder)
@@ -1208,7 +1226,7 @@ basis_space <- function(parent, component_ids, encoder, decoder = NULL,
       basis_type = basis_type,
       provenance = provenance,
       projection = list(
-        left_inverse_validated = !is.null(decoder),
+        left_inverse_validated = !is.null(encoder) && !is.null(decoder),
         left_inverse_error = inverse_error,
         tolerance = tolerance
       ),
@@ -1232,16 +1250,36 @@ basis_space_from_decoder <- function(parent, component_ids, decoder,
                                      data = NULL,
                                      basis_type = "linear_basis",
                                      provenance = list(), tolerance = 1e-8,
-                                     metadata = list()) {
+                                     metadata = list(),
+                                     encoder = c("least_squares", "none")) {
+  encoder <- match.arg(encoder)
   decoder <- .validate_linear_operator(
     decoder, c(n_features(parent), length(component_ids)), "decoder"
   )
+  if (identical(encoder, "none")) {
+    return(basis_space(
+      parent = parent,
+      component_ids = component_ids,
+      encoder = NULL,
+      decoder = decoder,
+      data = data,
+      basis_type = basis_type,
+      provenance = provenance,
+      tolerance = tolerance,
+      metadata = metadata
+    ))
+  }
   dense <- as.matrix(.collect_linear_operator(decoder))
   decomposition <- svd(dense, nu = ncol(dense), nv = ncol(dense))
   rank_threshold <- max(dim(dense)) * max(decomposition$d) * .Machine$double.eps
   if (!length(decomposition$d) || any(decomposition$d <= rank_threshold)) {
     .frame_abort(
-      "decoder must have full column rank for an exact least-squares encoder.",
+      paste(
+        "decoder must have full column rank for an exact least-squares encoder.",
+        "Rank-deficient dictionaries, as ICA and dictionary learning routinely",
+        "produce, have no exact left inverse; pass encoder = \"none\" for a",
+        "synthesis-only basis that reconstructs but does not project."
+      ),
       "fmridataset_error_space_mismatch"
     )
   }
@@ -1320,8 +1358,15 @@ restrict_space.basis_space <- function(x, index, ...) {
   } else {
     .subset_linear_operator(x$decoder, features = index)
   }
-  selected_encoder <- .subset_linear_operator(x$encoder, observations = index)
-  if (!is.null(selected_decoder)) {
+  selected_encoder <- if (is.null(x$encoder)) {
+    NULL
+  } else {
+    .subset_linear_operator(x$encoder, observations = index)
+  }
+  # Restricting the component axis changes the least-squares encoder, so it is
+  # recomputed from the restricted decoder rather than subset. A decoder-only
+  # basis stays decoder-only.
+  if (!is.null(selected_decoder) && !is.null(selected_encoder)) {
     selected_encoder <- solve(
       crossprod(as.matrix(.collect_linear_operator(selected_decoder))),
       t(as.matrix(.collect_linear_operator(selected_decoder)))
@@ -1341,6 +1386,16 @@ restrict_space.basis_space <- function(x, index, ...) {
 }
 #' @export
 vectorize_space.basis_space <- function(x, spatial_object, ...) {
+  if (is.null(x$encoder)) {
+    .frame_abort(
+      paste(
+        "This basis space has no encoder, so parent data cannot be projected",
+        "into its components. It was built from a synthesis dictionary alone;",
+        "reconstruct_space() still works."
+      ),
+      "fmridataset_error_space_mismatch"
+    )
+  }
   parent_values <- vectorize_space(x$parent, spatial_object, ...)
   encoder <- .collect_linear_operator(x$encoder)
   as.numeric(encoder %*% parent_values)
