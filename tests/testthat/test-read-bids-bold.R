@@ -194,7 +194,10 @@ test_that("BIDS import rejects ambiguous or unsupported domains", {
 })
 
 test_that("BIDS importer reports the development bidser dependency", {
-  skip_if(packageVersion("bidser") >= "0.5.0")
+  skip_if(
+    requireNamespace("bidser", quietly = TRUE) &&
+      packageVersion("bidser") >= "0.5.0"
+  )
   expect_error(
     read_bids_bold(tempdir(), subject = "01"),
     "bidser.*0.5.0",
