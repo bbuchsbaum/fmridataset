@@ -203,26 +203,42 @@ jobs:
       # in loadVignetteBuilder() without it, even with --no-build-vignettes.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
+          # Do not restore a broader all-optional cache into this proof job.
+          cache: false
           extra-packages: |
             any::rcmdcheck
             any::knitr
-          needs: check
+            any::testthat
           dependencies: '"hard"'
       
-      # Verify optional packages are NOT installed
+      # Verify the installed library against a retained hard-only lockfile.
       - name: Check minimal setup
         run: |
-          Rscript -e '
-          optional_pkgs <- c("bench", "bidser", "arrow", "fmristore")
-          installed <- optional_pkgs[vapply(
-            optional_pkgs, requireNamespace, logical(1), quietly = TRUE
+          dir.create("ci-evidence", showWarnings = FALSE)
+          pak::lockfile_create(
+            c("deps::.", "any::sessioninfo", "any::rcmdcheck",
+              "any::knitr", "any::testthat"),
+            lockfile = "ci-evidence/minimal-hard-dependencies.lock",
+            dependencies = "hard"
+          )
+          lock <- jsonlite::read_json(
+            "ci-evidence/minimal-hard-dependencies.lock", simplifyVector = TRUE
+          )
+          hard_graph <- lock$packages$package
+          description <- read.dcf("DESCRIPTION")
+          optional_pkgs <- trimws(strsplit(
+            gsub("[(][^)]*[)]", "", description[1, "Suggests"]), ","
+          )[[1L]])
+          installed <- optional_pkgs[vapply(optional_pkgs, requireNamespace,
+            logical(1), quietly = TRUE
           )]
-          if (length(installed) > 0) {
-            stop("Optional packages leaked into the minimal test: ",
-              paste(installed, collapse = ", "))
+          leaked <- setdiff(installed, hard_graph)
+          if (length(leaked) > 0) {
+            stop("Packages outside the retained hard-only graph leaked into ",
+              "the minimal test: ", paste(leaked, collapse = ", "))
           }
-          cat("Minimal dependency setup contains no audited optional packages.\n")
-          '
+          cat("Minimal setup matches the retained hard-only dependency graph.\n")
+        shell: Rscript {0}
       
       # Run R CMD check with minimal deps
       - uses: r-lib/actions/check-r-package@v2
@@ -230,3 +246,13 @@ jobs:
           error-on: '"error"'
           check-dir: '"check"'
           args: 'c("--no-manual", "--no-vignettes", "--no-build-vignettes")'
+
+      - name: Upload minimal check evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minimal-dependencies-results
+          path: |
+            check
+            ci-evidence
+          if-no-files-found: warn

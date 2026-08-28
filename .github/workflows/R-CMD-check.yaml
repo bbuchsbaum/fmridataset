@@ -54,11 +54,13 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         id: dependencies
         with:
+          # A restore-key cache can contain packages from a broader workflow.
+          # Disable it so this matrix actually certifies the hard-only graph.
+          cache: false
           extra-packages: |
             any::rcmdcheck
             any::knitr
             any::testthat
-          needs: check
           dependencies: '"hard"'
 
       - uses: r-lib/actions/check-r-package@v2
@@ -90,14 +92,21 @@ jobs:
             "ci-evidence/installed-packages.csv", row.names = FALSE
           )
           capture.output(sessionInfo(), file = "ci-evidence/session-info.txt")
-          if (file.exists(".github/pkg.lock")) {
-            file.copy(".github/pkg.lock", "ci-evidence/pkg.lock", overwrite = TRUE)
-          }
           outcomes <- c(
             setup_r = Sys.getenv("SETUP_R_OUTCOME", "unknown"),
             dependencies = Sys.getenv("DEPENDENCY_OUTCOME", "unknown"),
             package_check = Sys.getenv("CHECK_OUTCOME", "unknown")
           )
+          if (outcomes[["dependencies"]] == "success") {
+            # setup-r-dependencies removes its installation lockfile. Recreate
+            # the same graph so the artifact records what this job certified.
+            pak::lockfile_create(
+              c("deps::.", "any::sessioninfo", "any::rcmdcheck",
+                "any::knitr", "any::testthat"),
+              lockfile = "ci-evidence/hard-dependencies.lock",
+              dependencies = "hard"
+            )
+          }
           classification <- if (outcomes[["setup_r"]] != "success") {
             "environment failure"
           } else if (outcomes[["dependencies"]] != "success") {
