@@ -70,11 +70,13 @@
     seq_len(2L * n_features(feature_space)),
     nrow = 2L
   )))
+  feature_info <- feature_data(feature_space)
+  feature_info$parcel <- "native"
   frame <- fmri_frame(
     assays = list(signal = source),
     observations = observations_data,
     features = feature_axis(
-      dplyr::mutate(feature_data(feature_space), parcel = "native"),
+      feature_info,
       space = feature_space
     ),
     entities = list(subject = entity_value),

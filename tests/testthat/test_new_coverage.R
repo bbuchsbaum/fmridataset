@@ -22,6 +22,8 @@ test_that("slicewise_chunks generates one mask per slice", {
 # Test deprecated series() alias
 
 test_that("series alias forwards with deprecation warning", {
+  # Force lifecycle to warn deterministically regardless of session history.
+  withr::local_options(lifecycle_verbosity = "warning")
   mat <- matrix(1:40, nrow = 5, ncol = 8)
   backend <- matrix_backend(mat, mask = rep(TRUE, 8), spatial_dims = c(2, 2, 2))
   dset <- fmri_dataset(backend, TR = 1, run_length = 5)

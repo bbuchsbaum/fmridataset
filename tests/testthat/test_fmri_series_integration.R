@@ -76,6 +76,7 @@ test_that("edge cases for selection are handled", {
 
 
 test_that("tidyverse workflow on fmri_series output", {
+  skip_if_not_installed("dplyr")
   dset <- create_matrix_dataset()
   fs <- fmri_series(dset, selector = 1:2, timepoints = 1:4)
   tb <- as_tibble(fs)

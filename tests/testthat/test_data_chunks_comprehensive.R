@@ -185,6 +185,35 @@ test_that("collect_chunks gathers all chunks from iterator", {
   expect_equal(chunk_nums, 1:3)
 })
 
+test_that("collect_chunks enforces retained output and peak working memory", {
+  dset <- create_test_matrix_dataset(n_time = 10, n_voxels = 12)
+  iter <- data_chunks(dset, nchunks = 3)
+  costs <- iter$costs
+  retained_before <- c(0, head(cumsum(costs$output_bytes), -1L))
+  peak <- max(retained_before + costs$peak_bytes)
+
+  expect_error(
+    collect_chunks(iter, memory_budget = peak - 1),
+    class = "fmridataset_error_budget"
+  )
+
+  # The preflight error occurs before the iterator advances.
+  chunks <- collect_chunks(iter, memory_budget = peak)
+  expect_length(chunks, 3)
+})
+
+test_that("finite chunk budgets require an inspectable iterator estimate", {
+  get_chunk <- function(i) data_chunk(matrix(i, 1, 1), i, i, i)
+  iter <- fmridataset:::chunk_iter(NULL, 1, get_chunk)
+
+  expect_error(
+    collect_chunks(iter, memory_budget = 1024),
+    "does not provide memory-cost estimates",
+    class = "fmridataset_error_budget"
+  )
+  expect_length(collect_chunks(iter, memory_budget = 1, force = TRUE), 1)
+})
+
 test_that("data chunking preserves data integrity", {
   # Create known data
   mat <- matrix(1:60, nrow = 6, ncol = 10) # Known values

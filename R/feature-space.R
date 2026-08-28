@@ -97,8 +97,15 @@ index_space <- function(n, ids = NULL, namespace = NULL, data = NULL) {
   if (length(n) != 1L || is.na(n) || n < 0L) {
     .frame_abort("n must be one non-negative integer.", "fmridataset_error_space_mismatch")
   }
-  namespace <- namespace %||% uuid::UUIDgenerate()
+  # The namespace has two jobs: seeding generated IDs, and disambiguating two
+  # spaces that legitimately reuse the same ID strings (parcel "1" of two
+  # different atlases). Only the first needs a default, and a random UUID is
+  # not a meaningful namespace - it is an ID-generation seed. Defaulting it
+  # unconditionally put a fresh UUID into the identity digest of every space,
+  # so two spaces declared with the SAME explicit feature IDs compared as
+  # incompatible and could not be bound.
   if (is.null(ids)) {
+    namespace <- namespace %||% uuid::UUIDgenerate()
     ids <- sprintf("feature-%s-%06d", namespace, seq_len(n))
   }
   ids <- .validate_stable_ids(as.character(ids), "feature")
@@ -771,7 +778,10 @@ parcel_space <- function(parent, parcel_ids, membership, data = NULL,
       "fmridataset_error_space_mismatch"
     )
   }
-  ids <- paste0(atlas$id, ":", parcel_ids)
+  # paste0() recycles a zero-length parcel_ids against the scalar atlas id and
+  # yields "atlas:" rather than character(), so an emptied parcel space failed
+  # its own ID check. Same recycling the volume and composite guards avoid.
+  ids <- if (k) paste0(atlas$id, ":", parcel_ids) else character()
   if (".feature_id" %in% names(data) &&
     !identical(as.character(data$.feature_id), ids)) {
     .frame_abort(
@@ -1084,6 +1094,9 @@ parcel_space_from_atlas <- function(atlas, parent,
 
 .basis_left_inverse_error <- function(encoder, decoder) {
   product <- as.matrix(encoder %*% decoder)
+  if (!nrow(product)) {
+    return(0)
+  }
   max(abs(product - diag(nrow(product))))
 }
 
@@ -1120,13 +1133,10 @@ basis_space <- function(parent, component_ids, encoder, decoder = NULL,
   component_ids <- .validate_stable_ids(
     as.character(component_ids), "component"
   )
+  # An empty basis is legal. Every other feature space supports an empty
+  # restriction, and an empty selection is legal on every frame axis; refusing
+  # one here made restrict_space(basis, integer(0)) the sole exception.
   k <- length(component_ids)
-  if (!k) {
-    .frame_abort(
-      "A basis space must contain at least one component.",
-      "fmridataset_error_space_mismatch"
-    )
-  }
   if (!is.character(basis_type) || length(basis_type) != 1L ||
     is.na(basis_type) || !nzchar(basis_type)) {
     .frame_abort(
@@ -1149,9 +1159,27 @@ basis_space <- function(parent, component_ids, encoder, decoder = NULL,
       "fmridataset_error_space_mismatch"
     )
   }
-  encoder <- .validate_linear_operator(
-    encoder, c(k, n_features(parent)), "encoder"
-  )
+  # A basis carries an analysis operator (parent -> components), a synthesis
+  # operator (components -> parent), or both. Requiring the encoder excluded
+  # exactly the case latent_dataset serves: loadings are a synthesis
+  # dictionary, and ICA or dictionary-learning fits are frequently
+  # rank-deficient or non-orthogonal, so no exact left inverse exists. Such a
+  # basis can reconstruct voxels from scores, which is all that path ever
+  # needed; it simply cannot project new voxel data into the components.
+  if (is.null(encoder) && is.null(decoder)) {
+    .frame_abort(
+      paste(
+        "A basis space needs an encoder, a decoder, or both;",
+        "with neither it cannot relate components to the parent space."
+      ),
+      "fmridataset_error_space_mismatch"
+    )
+  }
+  if (!is.null(encoder)) {
+    encoder <- .validate_linear_operator(
+      encoder, c(k, n_features(parent)), "encoder"
+    )
+  }
   if (!is.null(decoder)) {
     decoder <- .validate_linear_operator(
       decoder, c(n_features(parent), k), "decoder"
@@ -1176,7 +1204,7 @@ basis_space <- function(parent, component_ids, encoder, decoder = NULL,
   data <- data[c(".feature_id", setdiff(names(data), ".feature_id"))]
 
   inverse_error <- NULL
-  if (!is.null(decoder)) {
+  if (!is.null(encoder) && !is.null(decoder)) {
     inverse_error <- .basis_left_inverse_error(
       .collect_linear_operator(encoder),
       .collect_linear_operator(decoder)
@@ -1201,7 +1229,7 @@ basis_space <- function(parent, component_ids, encoder, decoder = NULL,
       basis_type = basis_type,
       provenance = provenance,
       projection = list(
-        left_inverse_validated = !is.null(decoder),
+        left_inverse_validated = !is.null(encoder) && !is.null(decoder),
         left_inverse_error = inverse_error,
         tolerance = tolerance
       ),
@@ -1219,22 +1247,44 @@ basis_space <- function(parent, component_ids, encoder, decoder = NULL,
 #'
 #' @param parent,component_ids,decoder,data,basis_type,provenance,tolerance,metadata
 #'   Passed to [basis_space()].
+#' @param encoder Either `"least_squares"` to construct and validate the exact
+#'   unregularized left inverse, or `"none"` for a synthesis-only basis.
 #' @return A `basis_space`.
 #' @export
 basis_space_from_decoder <- function(parent, component_ids, decoder,
                                      data = NULL,
                                      basis_type = "linear_basis",
                                      provenance = list(), tolerance = 1e-8,
-                                     metadata = list()) {
+                                     metadata = list(),
+                                     encoder = c("least_squares", "none")) {
+  encoder <- match.arg(encoder)
   decoder <- .validate_linear_operator(
     decoder, c(n_features(parent), length(component_ids)), "decoder"
   )
+  if (identical(encoder, "none")) {
+    return(basis_space(
+      parent = parent,
+      component_ids = component_ids,
+      encoder = NULL,
+      decoder = decoder,
+      data = data,
+      basis_type = basis_type,
+      provenance = provenance,
+      tolerance = tolerance,
+      metadata = metadata
+    ))
+  }
   dense <- as.matrix(.collect_linear_operator(decoder))
   decomposition <- svd(dense, nu = ncol(dense), nv = ncol(dense))
   rank_threshold <- max(dim(dense)) * max(decomposition$d) * .Machine$double.eps
   if (!length(decomposition$d) || any(decomposition$d <= rank_threshold)) {
     .frame_abort(
-      "decoder must have full column rank for an exact least-squares encoder.",
+      paste(
+        "decoder must have full column rank for an exact least-squares encoder.",
+        "Rank-deficient dictionaries, as ICA and dictionary learning routinely",
+        "produce, have no exact left inverse; pass encoder = \"none\" for a",
+        "synthesis-only basis that reconstructs but does not project."
+      ),
       "fmridataset_error_space_mismatch"
     )
   }
@@ -1313,8 +1363,17 @@ restrict_space.basis_space <- function(x, index, ...) {
   } else {
     .subset_linear_operator(x$decoder, features = index)
   }
-  selected_encoder <- .subset_linear_operator(x$encoder, observations = index)
-  if (!is.null(selected_decoder)) {
+  selected_encoder <- if (is.null(x$encoder)) {
+    NULL
+  } else {
+    .subset_linear_operator(x$encoder, observations = index)
+  }
+  # Restricting the component axis changes the least-squares encoder, so it is
+  # recomputed from the restricted decoder rather than subset. A decoder-only
+  # basis stays decoder-only.
+  # solve() cannot invert a 0-by-0 cross-product, and an empty basis has no
+  # least-squares solution to recompute: keep the subset encoder as it is.
+  if (length(index) && !is.null(selected_decoder) && !is.null(selected_encoder)) {
     selected_encoder <- solve(
       crossprod(as.matrix(.collect_linear_operator(selected_decoder))),
       t(as.matrix(.collect_linear_operator(selected_decoder)))
@@ -1334,6 +1393,16 @@ restrict_space.basis_space <- function(x, index, ...) {
 }
 #' @export
 vectorize_space.basis_space <- function(x, spatial_object, ...) {
+  if (is.null(x$encoder)) {
+    .frame_abort(
+      paste(
+        "This basis space has no encoder, so parent data cannot be projected",
+        "into its components. It was built from a synthesis dictionary alone;",
+        "reconstruct_space() still works."
+      ),
+      "fmridataset_error_space_mismatch"
+    )
+  }
   parent_values <- vectorize_space(x$parent, spatial_object, ...)
   encoder <- .collect_linear_operator(x$encoder)
   as.numeric(encoder %*% parent_values)
@@ -1476,9 +1545,20 @@ basis_space_from_fmrilatent <- function(x, parent, component_ids = NULL,
   do.call(
     rbind,
     lapply(seq_along(parts), function(part_index) {
+      # data.frame() recycles the scalar `part` against a zero-length
+      # part_index and reports "arguments imply differing number of rows",
+      # so an emptied part has to build its own zero-row frame. Same
+      # zero-length recycling the volume_space feature_ids() guard avoids.
+      n <- n_features(parts[[part_index]])
+      if (!n) {
+        return(data.frame(
+          part = character(), part_index = integer(),
+          stringsAsFactors = FALSE
+        ))
+      }
       data.frame(
         part = names(parts)[[part_index]],
-        part_index = seq_len(n_features(parts[[part_index]])),
+        part_index = seq_len(n),
         stringsAsFactors = FALSE
       )
     })
@@ -1525,7 +1605,14 @@ basis_space_from_fmrilatent <- function(x, parent, component_ids = NULL,
     )
   }
   expected_keys <- unlist(lapply(names(parts), function(part_name) {
-    paste(part_name, seq_len(n_features(parts[[part_name]])), sep = "::")
+    # paste() recycles the scalar name against a zero-length index and yields
+    # "part::" rather than character(), which made an emptied composite fail
+    # its own "every child feature exactly once" check.
+    n <- n_features(parts[[part_name]])
+    if (!n) {
+      return(character())
+    }
+    paste(part_name, seq_len(n), sep = "::")
   }), use.names = FALSE)
   if (!setequal(keys, expected_keys)) {
     .frame_abort(

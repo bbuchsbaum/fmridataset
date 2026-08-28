@@ -38,6 +38,7 @@
 ^cran-comments\.md$
 ^fmridataset_.*\.tar\.gz$
 ^\.covr_result\.rds$
+^cobertura\.xml$
 ^python$
 ^shared$
 ^\.beads$

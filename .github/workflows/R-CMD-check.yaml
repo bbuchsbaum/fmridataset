@@ -15,6 +15,8 @@ concurrency:
 jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
+    permissions:
+      contents: read
 
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
 
@@ -31,6 +33,7 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
+      _R_CHECK_FORCE_SUGGESTS_: false
       # neurosurf imports rgl, whose DLL links libGLU. Hosted runners have no
       # XQuartz, so loading it aborts installation on macOS. rgl's null device
       # needs no OpenGL and nothing here renders anything.
@@ -42,17 +45,97 @@ jobs:
       - uses: r-lib/actions/setup-pandoc@v2
 
       - uses: r-lib/actions/setup-r@v2
+        id: setup_r
         with:
           r-version: ${{ matrix.config.r }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
       - uses: r-lib/actions/setup-r-dependencies@v2
+        id: dependencies
         with:
-          extra-packages: any::rcmdcheck
-          needs: check
+          # A restore-key cache can contain packages from a broader workflow.
+          # Disable it so this matrix actually certifies the hard-only graph.
+          cache: false
+          extra-packages: |
+            any::rcmdcheck
+            any::knitr
+            any::testthat
+          dependencies: '"hard"'
 
       - uses: r-lib/actions/check-r-package@v2
+        id: package_check
         with:
+          # The hard-only build deliberately omits rmarkdown, so R reports that
+          # prebuilt vignette outputs are absent. Vignette CI remains strict.
+          error-on: '"error"'
           upload-snapshots: true
-          build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")' 
+          # knitr is installed explicitly so the tarball carries its prebuilt
+          # vignette index even though the hard-dependency check does not rerun
+          # vignette code.
+          build_args: 'c("--no-manual", "--no-build-vignettes")'
+          args: 'c("--no-manual", "--no-vignettes", "--no-build-vignettes")'
+
+      - name: Record dependency and failure-classification evidence
+        if: always()
+        env:
+          SETUP_R_OUTCOME: ${{ steps.setup_r.outcome }}
+          DEPENDENCY_OUTCOME: ${{ steps.dependencies.outcome }}
+          CHECK_OUTCOME: ${{ steps.package_check.outcome }}
+        run: |
+          dir.create("ci-evidence", showWarnings = FALSE)
+          installed <- as.data.frame(utils::installed.packages(
+            fields = c("RemoteRepo", "RemoteSha", "Repository")
+          ))
+          keep <- intersect(
+            c("Package", "Version", "RemoteRepo", "RemoteSha", "Repository"),
+            names(installed)
+          )
+          utils::write.csv(installed[, keep, drop = FALSE],
+            "ci-evidence/installed-packages.csv", row.names = FALSE
+          )
+          capture.output(sessionInfo(), file = "ci-evidence/session-info.txt")
+          outcomes <- c(
+            setup_r = Sys.getenv("SETUP_R_OUTCOME", "unknown"),
+            dependencies = Sys.getenv("DEPENDENCY_OUTCOME", "unknown"),
+            package_check = Sys.getenv("CHECK_OUTCOME", "unknown")
+          )
+          if (outcomes[["dependencies"]] == "success") {
+            # setup-r-dependencies removes its installation lockfile. Recreate
+            # the same graph so the artifact records what this job certified.
+            pak::lockfile_create(
+              c("deps::.", "any::sessioninfo", "any::rcmdcheck",
+                "any::knitr", "any::testthat"),
+              lockfile = "ci-evidence/hard-dependencies.lock",
+              dependencies = "hard"
+            )
+          }
+          classification <- if (outcomes[["setup_r"]] != "success") {
+            "environment failure"
+          } else if (outcomes[["dependencies"]] != "success") {
+            "dependency failure"
+          } else if (outcomes[["package_check"]] != "success") {
+            "package failure"
+          } else {
+            "success"
+          }
+          lines <- c(
+            paste0("classification: ", classification),
+            paste0(names(outcomes), ": ", outcomes)
+          )
+          writeLines(lines, "ci-evidence/classification.txt")
+          cat(paste0("### R CMD check evidence\n\n```text\n",
+            paste(lines, collapse = "\n"), "\n```\n"),
+            file = Sys.getenv("GITHUB_STEP_SUMMARY"), append = TRUE
+          )
+        shell: Rscript {0}
+
+      - name: Upload check and dependency evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r-cmd-check-${{ matrix.config.os }}-${{ matrix.config.r }}
+          path: |
+            check
+            ci-evidence
+          if-no-files-found: warn

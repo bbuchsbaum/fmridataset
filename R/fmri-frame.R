@@ -32,6 +32,7 @@ aligned_assay_set <- function(assays, observations, features) {
   feature_digest <- .axis_digest(features)
   out <- lapply(names(assays), function(nm) {
     value <- assays[[nm]]
+    .assert_assay_dimnames(value, nm, observations, features)
     source <- if (inherits(value, "aligned_assay")) value$source else as_array_source(value)
     validate_array_source(source)
     annotation <- if (is.list(value) && !inherits(value, "array_source")) value else list()
@@ -98,6 +99,18 @@ fmri_frame <- function(assays, observations, features = NULL, space = NULL,
   }
 
   if (inherits(features, "spatial_axis_frame")) {
+    # A spatial feature axis already carries its space. Silently preferring it
+    # over an explicit `space` argument discarded contradictory input, which is
+    # exactly the ambiguity the frame contract says to reject early.
+    if (!is.null(space) && !isTRUE(compatible_space(features$space, space)$compatible)) {
+      .frame_abort(
+        paste(
+          "features already carries a feature space that disagrees with the",
+          "space argument; supply only one."
+        ),
+        "fmridataset_error_space_mismatch"
+      )
+    }
     feature_axis_value <- features
     space <- features$space
   } else {
@@ -291,8 +304,9 @@ print.fmri_frame <- function(x, ...) {
 #'
 #' @param x An `fmri_frame` or view.
 #' @param assay Assay name.
-#' @param memory_budget Maximum output bytes.
-#' @param force Allow collection above the budget.
+#' @param memory_budget Maximum estimated peak bytes, including the retained
+#'   output and source conversion or decompression buffers.
+#' @param force Allow collection above the estimated peak budget.
 #' @return A dense matrix.
 #' @export
 collect_assay <- function(x, assay = active_assay(x),
@@ -300,15 +314,12 @@ collect_assay <- function(x, assay = active_assay(x),
                           force = FALSE) {
   selection <- .frame_selection(x)
   descriptor <- assay(selection$base, assay)
-  bytes <- length(selection$observations) * length(selection$features) * .dtype_bytes(descriptor$dtype)
-  if (!isTRUE(force) && bytes > memory_budget) {
-    .frame_abort(
-      sprintf("Collecting this assay requires %s bytes, above memory_budget.", format(bytes, scientific = FALSE)),
-      "fmridataset_error_budget",
-      required_bytes = bytes,
-      memory_budget = memory_budget
-    )
-  }
+  cost <- source_realization_cost(
+    descriptor$source,
+    observations = selection$observations,
+    features = selection$features
+  )
+  .assert_realization_budget(cost, memory_budget, "collect_assay()", force)
   source_read(
     descriptor$source,
     observations = selection$observations,
@@ -378,6 +389,105 @@ explain <- function(x) {
   )
 }
 
+# A matrix passed as an assay may carry dimnames. The axis IDs are
+# authoritative, so the dimnames are dropped -- but dropping them silently when
+# they NAME DIFFERENT THINGS hides a real mix-up, which is the ambiguous input
+# the frame contract says to reject early. Matching or absent dimnames are fine.
+.assert_assay_dimnames <- function(value, name, observations, features) {
+  if (!is.matrix(value)) {
+    return(invisible(TRUE))
+  }
+  dn <- dimnames(value)
+  if (is.null(dn)) {
+    return(invisible(TRUE))
+  }
+  check <- function(candidate, expected, axis) {
+    if (is.null(candidate) || identical(candidate, expected)) {
+      return(invisible(TRUE))
+    }
+    .frame_abort(
+      sprintf(
+        "Assay '%s' has %s dimnames that disagree with the %s IDs; drop them or align them.",
+        name, axis, axis
+      ),
+      "fmridataset_error_alignment",
+      assay = name,
+      axis = axis,
+      expected = expected,
+      actual = candidate
+    )
+  }
+  check(dn[[1L]], axis_ids(observations), "observation")
+  check(dn[[2L]], axis_ids(features), "feature")
+  invisible(TRUE)
+}
+
+.assert_bind_agreement <- function(reference, candidate, what) {
+  if (isTRUE(all.equal(reference, candidate))) {
+    return(invisible(TRUE))
+  }
+  .frame_abort(
+    sprintf(
+      "Frames disagree on %s; bind_observations() cannot choose between them.",
+      what
+    ),
+    "fmridataset_error_alignment",
+    field = what
+  )
+}
+
+# Return a block's data with its component axis permuted into `proto`'s
+# component order, refusing any block whose component identities differ.
+# Binding rbinds these positionally, so a block whose components are merely
+# ordered differently would otherwise file each frame's values under the
+# previous frame's labels.
+.aligned_block_data <- function(block, proto, block_name) {
+  ref <- block_components(proto)
+  cur <- block_components(block)
+  ref_ids <- ref$.component_id
+  cur_ids <- cur$.component_id
+
+  if (length(cur_ids) != length(ref_ids) || !setequal(cur_ids, ref_ids)) {
+    .frame_abort(
+      sprintf(
+        "Block %s has different components across bound frames (%s vs %s).",
+        encodeString(block_name, quote = "\""),
+        paste(ref_ids, collapse = ", "),
+        paste(cur_ids, collapse = ", ")
+      ),
+      "fmridataset_error_alignment",
+      block = block_name,
+      expected = ref_ids,
+      actual = cur_ids
+    )
+  }
+
+  perm <- match(ref_ids, cur_ids)
+  reordered <- cur[perm, , drop = FALSE]
+  if (!isTRUE(all.equal(as.data.frame(reordered), as.data.frame(ref)))) {
+    .frame_abort(
+      sprintf(
+        "Block %s has conflicting component metadata across bound frames.",
+        encodeString(block_name, quote = "\"")
+      ),
+      "fmridataset_error_alignment",
+      block = block_name
+    )
+  }
+
+  .permute_block_columns(axis_block_data(block), perm)
+}
+
+.permute_block_columns <- function(data, perm) {
+  if (identical(perm, seq_along(perm))) {
+    return(data)
+  }
+  if (inherits(data, "array_source")) {
+    return(source_view(data, features = perm))
+  }
+  data[, perm, drop = FALSE]
+}
+
 .bind_axis_frames <- function(xs) {
   first <- xs[[1L]]
   if (length(first$blocks)) {
@@ -386,20 +496,45 @@ explain <- function(x) {
       .frame_abort("Bound axes must have identical block names.", "fmridataset_error_alignment")
     }
     blocks <- lapply(block_names, function(nm) {
-      values <- lapply(xs, function(x) axis_block_data(x$blocks[[nm]]))
+      proto <- first$blocks[[nm]]
+      # Block data is row-bound positionally, so the component axes must be
+      # brought into a common order FIRST. Aligning by component ID rather than
+      # by column position is what keeps values under the label they belong to.
+      values <- lapply(xs, function(x) .aligned_block_data(x$blocks[[nm]], proto, nm))
       if (any(vapply(values, inherits, logical(1), what = "array_source"))) {
         source <- row_bound_source(lapply(values, as_array_source))
       } else {
         source <- do.call(rbind, values)
       }
-      proto <- first$blocks[[nm]]
       axis_block(source, proto$components, proto$role, proto$units, proto$metadata)
     })
     names(blocks) <- block_names
   } else {
     blocks <- list()
   }
-  data <- do.call(rbind, lapply(xs, axis_data))
+  # rbind() reports mismatched axis metadata as bare base-R conditions
+  # ("numbers of columns of arguments do not match", "names do not match
+  # previous names"), which name neither the frame nor the column. Check first
+  # so the failure arrives as a structured alignment error that says what
+  # differs.
+  values <- lapply(xs, axis_data)
+  reference <- names(values[[1L]])
+  for (i in seq_along(values)[-1L]) {
+    candidate <- names(values[[i]])
+    if (!identical(candidate, reference)) {
+      .frame_abort(
+        sprintf(
+          "Bound axes have different metadata columns (%s vs %s).",
+          paste(reference, collapse = ", "),
+          paste(candidate, collapse = ", ")
+        ),
+        "fmridataset_error_alignment",
+        expected = reference,
+        actual = candidate
+      )
+    }
+  }
+  data <- do.call(rbind, values)
   axis_frame(data, blocks = blocks, id = data[[first$id_col]], axis = first$axis, id_col = first$id_col)
 }
 
@@ -423,6 +558,15 @@ bind_observations <- function(...) {
         operation = "bind_observations"
       )
     }
+    # The bound frame keeps the first frame's feature annotations, tables, and
+    # metadata. That is only sound when the others agree; otherwise the result
+    # would silently assert the first frame's description of shared objects.
+    .assert_bind_agreement(
+      axis_data(feature_axis(first)), axis_data(feature_axis(x)),
+      "feature metadata"
+    )
+    .assert_bind_agreement(first$tables, x$tables, "tables")
+    .assert_bind_agreement(first$metadata, x$metadata, "metadata")
   }
   relation_values <- .bind_relation_registries(lapply(xs, relations))
   obs <- .bind_axis_frames(lapply(xs, observation_axis))

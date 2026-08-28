@@ -155,7 +155,7 @@ fmri_latent_dataset <- function(latent_files, mask_source = NULL, TR,
     "0.9.0",
     "fmri_latent_dataset()",
     "latent_dataset()",
-    details = "The new interface provides proper handling of latent space data.",
+    details = "The new interface provides proper handling of latent space data."
   )
 
   # Forward to new function

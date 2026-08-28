@@ -31,13 +31,15 @@
 #' @param format Storage format. The walking-skeleton implementation supports
 #'   `"hdf5"`.
 #' @param ... Arguments passed to the physical store implementation.
-#' @return `write_frame()` invisibly returns the committed path. `open_frame()`
-#'   returns an `fmri_frame`.
+#' @return `write_frame()` invisibly returns the committed path, normalized
+#'   with forward slashes on every platform. `open_frame()` returns an
+#'   `fmri_frame`.
 #' @export
 write_frame <- function(x, path, format = "hdf5", ...) {
   format <- match.arg(format, "hdf5")
   .require_frame_store("write_frame_h5")
-  fmristore::write_frame_h5(x, path, ...)
+  committed <- fmristore::write_frame_h5(x, path, ...)
+  invisible(normalizePath(committed, winslash = "/", mustWork = TRUE))
 }
 
 #' @rdname write_frame

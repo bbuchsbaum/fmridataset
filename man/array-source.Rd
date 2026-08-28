@@ -12,6 +12,7 @@
 \alias{source_read}
 \alias{source_read_native}
 \alias{source_close}
+\alias{source_realization_cost}
 \title{Serializable numerical array sources}
 \usage{
 as_array_source(x, ...)
@@ -33,6 +34,8 @@ source_read(x, observations = NULL, features = NULL, ...)
 source_read_native(x, observations = NULL, ...)
 
 source_close(x, ...)
+
+source_realization_cost(x, observations = NULL, features = NULL)
 }
 \arguments{
 \item{x}{An array source or object coercible to one.}
@@ -43,6 +46,16 @@ source_close(x, ...)
 
 \item{features}{Optional feature positions.}
 }
+\value{
+A \code{source_realization_cost} list containing storage and realized
+dtypes, storage and output bytes, temporary buffer components, and the
+estimated peak bytes.
+}
 \description{
-Serializable numerical array sources
+The estimate distinguishes source storage from the R object returned by a
+read. Numeric source dtypes, including float16 and float32, are realized as
+R doubles. The conservative peak estimate adds selection, conversion, and
+compressed-input buffers to the retained output. It covers numerical
+payloads; fixed R object headers and selector metadata are outside the
+estimate.
 }

@@ -8,18 +8,23 @@
 \alias{as_delarr.default}
 \title{Convert backend to a delarr lazy matrix}
 \usage{
-as_delarr(backend, ...)
+as_delarr(backend, memory_budget = Inf, ...)
 
-\method{as_delarr}{matrix_backend}(backend, ...)
+\method{as_delarr}{matrix_backend}(backend, memory_budget = Inf, ...)
 
-\method{as_delarr}{nifti_backend}(backend, ...)
+\method{as_delarr}{nifti_backend}(backend, memory_budget = Inf, ...)
 
-\method{as_delarr}{study_backend}(backend, ...)
+\method{as_delarr}{study_backend}(backend, memory_budget = Inf, ...)
 
-\method{as_delarr}{default}(backend, ...)
+\method{as_delarr}{default}(backend, memory_budget = Inf, ...)
 }
 \arguments{
 \item{backend}{A storage backend object}
+
+\item{memory_budget}{Optional hard ceiling for the estimated peak bytes of
+any realization. The default, \code{Inf}, preserves an unconstrained lazy
+object. A finite ceiling is checked before the delarr object is created
+and again for every provider pull.}
 
 \item{...}{Passed to methods}
 }

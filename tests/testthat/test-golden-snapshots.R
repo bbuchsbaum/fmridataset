@@ -1,8 +1,6 @@
 # Snapshot tests for print methods and summaries
 
 test_that("fmri_dataset print snapshots", {
-  testthat::local_edition(3)
-
   ref_data <- generate_reference_data()
 
   # Basic dataset
@@ -31,7 +29,7 @@ test_that("fmri_dataset print snapshots", {
   dset_masked <- matrix_dataset(
     ref_data$matrix_data,
     TR = ref_data$metadata$TR,
-    run_length = ref_data$metadata$run_lengths,
+    run_length = ref_data$metadata$run_lengths
   )
 
   # Inject custom mask for snapshot coverage
@@ -43,8 +41,6 @@ test_that("fmri_dataset print snapshots", {
 })
 
 test_that("backend print snapshots", {
-  testthat::local_edition(3)
-
   ref_data <- generate_reference_data()
 
   # Matrix backend
@@ -56,8 +52,13 @@ test_that("backend print snapshots", {
     )
   )
 
+  # matrix_backend has no print method, so print() dumps the entire data
+  # payload: this one snapshot was 1896 lines of a raw 50x100 rnorm matrix,
+  # unreviewable and broken by any RNG or precision change. Capture the
+  # structure instead, as commit 47581e4 already did for the sibling
+  # golden-backends snapshot.
   expect_snapshot({
-    print(backend_mat)
+    str(backend_mat, max.level = 1, give.attr = FALSE)
   })
 
   # Multi-run backend
@@ -70,13 +71,11 @@ test_that("backend print snapshots", {
   )
 
   expect_snapshot({
-    print(backend_multi)
+    str(backend_multi, max.level = 1, give.attr = FALSE)
   })
 })
 
 test_that("sampling_frame print snapshots", {
-  testthat::local_edition(3)
-
   # Various configurations
   sframe_single <- fmrihrf::sampling_frame(TR = 2, blocklens = 100)
 
@@ -106,8 +105,6 @@ test_that("sampling_frame print snapshots", {
 })
 
 test_that("error message snapshots", {
-  testthat::local_edition(3)
-
   # Invalid dataset creation
   expect_snapshot_error({
     matrix_dataset(
@@ -140,8 +137,6 @@ test_that("error message snapshots", {
 })
 
 test_that("summary output snapshots", {
-  testthat::local_edition(3)
-
   ref_data <- generate_reference_data()
 
   dset <- matrix_dataset(
@@ -159,8 +154,6 @@ test_that("summary output snapshots", {
 })
 
 test_that("data chunk iterator snapshots", {
-  testthat::local_edition(3)
-
   ref_data <- generate_reference_data()
 
   dset <- matrix_dataset(

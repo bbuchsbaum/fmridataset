@@ -1,4 +1,5 @@
 test_that("full workflow and dplyr pipeline", {
+  skip_if_not_installed("dplyr")
   b1 <- matrix_backend(matrix(1:20, nrow = 10, ncol = 2), spatial_dims = c(2, 1, 1))
   b2 <- matrix_backend(matrix(21:40, nrow = 10, ncol = 2), spatial_dims = c(2, 1, 1))
   d1 <- fmri_dataset(b1, TR = 2, run_length = 10)

@@ -110,12 +110,12 @@ test_that("row-sharded sources reject ambiguous or incompatible manifests", {
   a <- memory_source(matrix(1:12, 3, 4))
   wrong_features <- memory_source(matrix(1:15, 3, 5))
   wrong_dtype <- memory_source(matrix(1:8, 2, 4), dtype = "float32")
-  empty <- memory_source(matrix(numeric(), 0, 4))
 
   expect_error(row_sharded_source(list(a, a), shard_ids = c("same", "same")), "unique")
   expect_error(row_sharded_source(list(a, wrong_features)), "feature count")
   expect_error(row_sharded_source(list(a, wrong_dtype)), "dtype")
-  expect_error(row_sharded_source(list(empty)), "zero observations")
+  # An empty shard is neither ambiguous nor incompatible, only empty; see
+  # test-row-sharded-empty-shards.R for its routing contract.
   expect_error(
     row_sharded_source(list(a), shard_data = data.frame(.start = 1L)),
     "reserved"

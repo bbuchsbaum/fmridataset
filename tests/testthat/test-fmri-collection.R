@@ -63,11 +63,13 @@
     counting_source(memory_source(values / 10 + .1))
   )
   names(sources) <- assay_names
+  feature_info <- feature_data(feature_space)
+  feature_info$parcel <- "native"
   frame <- fmri_frame(
     assays = sources,
     observations = axis_frame(observations_data, blocks = list(motion = motion)),
     features = feature_axis(
-      dplyr::mutate(feature_data(feature_space), parcel = "native"),
+      feature_info,
       space = feature_space
     ),
     entities = list(subject = subject_entity),

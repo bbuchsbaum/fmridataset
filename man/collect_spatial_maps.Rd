@@ -16,13 +16,15 @@ collect_spatial_maps(
 \item{x}{An \code{fmri_frame} or view.}
 
 \item{observations}{Observation IDs or integer positions. The requested
-order and duplicates are preserved.}
+order is preserved. Duplicated selectors are rejected, as they are on
+every other frame axis selection.}
 
 \item{assay}{Assay name.}
 
 \item{path}{One of \code{"auto"}, \code{"native"}, or \code{"reconstruct"}.}
 
-\item{memory_budget}{Maximum estimated bytes for all returned native maps.}
+\item{memory_budget}{Maximum estimated peak bytes for all returned native
+maps plus the current packed read, conversion, and reconstruction buffers.}
 }
 \value{
 A named list with one native spatial object per observation.

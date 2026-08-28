@@ -27,7 +27,8 @@ execute_spatial(
 
 \item{path}{One of \code{"auto"}, \code{"native"}, or \code{"reconstruct"}.}
 
-\item{memory_budget}{Maximum estimated bytes for one input spatial map.}
+\item{memory_budget}{Maximum estimated peak bytes for one input spatial map
+plus its packed read, conversion, and reconstruction buffers.}
 }
 \value{
 A list of callback results in requested observation order.

@@ -5,10 +5,14 @@
 #' base `as.matrix()` for realization.
 #'
 #' @param backend A storage backend object
+#' @param memory_budget Optional hard ceiling for the estimated peak bytes of
+#'   any realization. The default, `Inf`, preserves an unconstrained lazy
+#'   object. A finite ceiling is checked before the delarr object is created
+#'   and again for every provider pull.
 #' @param ... Passed to methods
 #' @return A `delarr` lazy matrix
 #' @export
-as_delarr <- function(backend, ...) {
+as_delarr <- function(backend, memory_budget = Inf, ...) {
   UseMethod("as_delarr")
 }
 
@@ -21,19 +25,44 @@ as_delarr <- function(backend, ...) {
   }
 }
 
+.as_delarr_cost <- function(shape, dtype = "float64",
+                            already_realized = TRUE, compressed = FALSE) {
+  .realization_cost_from_shape(
+    shape,
+    dtype,
+    already_realized = already_realized,
+    compressed = compressed
+  )
+}
+
+.as_delarr_assert_budget <- function(shape, memory_budget,
+                                     dtype = "float64",
+                                     already_realized = TRUE,
+                                     compressed = FALSE) {
+  cost <- .as_delarr_cost(shape, dtype, already_realized, compressed)
+  .assert_realization_budget(cost, memory_budget, "delarr realization")
+  invisible(cost)
+}
+
 #' @rdname as_delarr
 #' @export
-as_delarr.matrix_backend <- function(backend, ...) {
+as_delarr.matrix_backend <- function(backend, memory_budget = Inf, ...) {
   .ensure_delarr()
   dims <- backend_get_dims(backend)
   mask <- backend_get_mask(backend)
   n_time <- as.integer(dims$time)
   n_vox <- as.integer(sum(mask))
+  .as_delarr_assert_budget(c(n_time, n_vox), memory_budget)
 
   delarr::delarr_backend(
     nrow = n_time,
     ncol = n_vox,
     pull = function(rows = NULL, cols = NULL) {
+      pull_shape <- c(
+        if (is.null(rows)) n_time else length(rows),
+        if (is.null(cols)) n_vox else length(cols)
+      )
+      .as_delarr_assert_budget(pull_shape, memory_budget)
       backend_get_data(backend, rows = rows, cols = cols)
     }
   )
@@ -41,17 +70,34 @@ as_delarr.matrix_backend <- function(backend, ...) {
 
 #' @rdname as_delarr
 #' @export
-as_delarr.nifti_backend <- function(backend, ...) {
+as_delarr.nifti_backend <- function(backend, memory_budget = Inf, ...) {
   .ensure_delarr()
   dims <- backend_get_dims(backend)
   mask <- backend_get_mask(backend)
   n_time <- as.integer(dims$time)
   n_vox <- as.integer(sum(mask))
+  already_realized <- !is.null(backend$data)
+  compressed <- is.character(backend$source) &&
+    any(grepl("\\.gz$", backend$source, ignore.case = TRUE))
+  .as_delarr_assert_budget(
+    c(n_time, n_vox), memory_budget,
+    already_realized = already_realized,
+    compressed = compressed
+  )
 
   delarr::delarr_backend(
     nrow = n_time,
     ncol = n_vox,
     pull = function(rows = NULL, cols = NULL) {
+      pull_shape <- c(
+        if (is.null(rows)) n_time else length(rows),
+        if (is.null(cols)) n_vox else length(cols)
+      )
+      .as_delarr_assert_budget(
+        pull_shape, memory_budget,
+        already_realized = already_realized,
+        compressed = compressed
+      )
       backend_get_data(backend, rows = rows, cols = cols)
     }
   )
@@ -89,7 +135,7 @@ as_delarr.nifti_backend <- function(backend, ...) {
 
 #' @rdname as_delarr
 #' @export
-as_delarr.study_backend <- function(backend, ...) {
+as_delarr.study_backend <- function(backend, memory_budget = Inf, ...) {
   .ensure_delarr()
 
   backend <- .as_delarr_study_ensure_dims(backend)
@@ -97,6 +143,14 @@ as_delarr.study_backend <- function(backend, ...) {
   n_time <- sum(backend$time_dims)
   mask <- backend_get_mask(backend)
   n_vox <- as.integer(sum(mask))
+  .as_delarr_assert_budget(
+    c(n_time, n_vox), memory_budget,
+    already_realized = FALSE
+  )
+  # Resolved once, outside the closure: this is the default read path for a
+  # study backend, and it hands child backends columns numbered in the
+  # combined mask.
+  col_maps <- .study_backend_resolve_col_maps(backend, mask)
 
   pull_fun <- function(rows = NULL, cols = NULL) {
     rows <- if (is.null(rows)) seq_len(n_time) else rows
@@ -104,6 +158,11 @@ as_delarr.study_backend <- function(backend, ...) {
 
     if (is.logical(rows)) rows <- which(rows)
     if (is.logical(cols)) cols <- which(cols)
+
+    .as_delarr_assert_budget(
+      c(length(rows), length(cols)), memory_budget,
+      already_realized = FALSE
+    )
 
     if (any(rows < 1L | rows > n_time)) {
       stop("Row indices out of bounds", call. = FALSE)
@@ -124,6 +183,7 @@ as_delarr.study_backend <- function(backend, ...) {
       rows = rows,
       cols = cols,
       subject_boundaries = backend$subject_boundaries,
+      col_maps = col_maps,
       n_time = n_time,
       n_vox = n_vox
     )
@@ -138,6 +198,6 @@ as_delarr.study_backend <- function(backend, ...) {
 
 #' @rdname as_delarr
 #' @export
-as_delarr.default <- function(backend, ...) {
+as_delarr.default <- function(backend, memory_budget = Inf, ...) {
   stop("No as_delarr method for class: ", class(backend)[1])
 }
