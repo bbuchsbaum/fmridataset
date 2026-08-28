@@ -29,7 +29,7 @@ test_that("fmri_dataset print snapshots", {
   dset_masked <- matrix_dataset(
     ref_data$matrix_data,
     TR = ref_data$metadata$TR,
-    run_length = ref_data$metadata$run_lengths,
+    run_length = ref_data$metadata$run_lengths
   )
 
   # Inject custom mask for snapshot coverage

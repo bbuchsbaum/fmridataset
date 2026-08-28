@@ -304,8 +304,9 @@ print.fmri_frame <- function(x, ...) {
 #'
 #' @param x An `fmri_frame` or view.
 #' @param assay Assay name.
-#' @param memory_budget Maximum output bytes.
-#' @param force Allow collection above the budget.
+#' @param memory_budget Maximum estimated peak bytes, including the retained
+#'   output and source conversion or decompression buffers.
+#' @param force Allow collection above the estimated peak budget.
 #' @return A dense matrix.
 #' @export
 collect_assay <- function(x, assay = active_assay(x),
@@ -313,27 +314,12 @@ collect_assay <- function(x, assay = active_assay(x),
                           force = FALSE) {
   selection <- .frame_selection(x)
   descriptor <- assay(selection$base, assay)
-  # Realized width, not storage width: the result is an R matrix.
-  bytes <- length(selection$observations) * length(selection$features) *
-    .realized_dtype_bytes(descriptor$dtype)
-  if (!isTRUE(force) && bytes > memory_budget) {
-    .frame_abort(
-      sprintf(
-        paste0(
-          "Collecting this assay requires %s bytes (%d x %d %s values ",
-          "realized as R doubles), above the memory_budget of %s bytes. ",
-          "Raise memory_budget, select fewer rows or columns, or pass force = TRUE."
-        ),
-        format(bytes, scientific = FALSE),
-        length(selection$observations), length(selection$features),
-        descriptor$dtype,
-        format(memory_budget, scientific = FALSE)
-      ),
-      "fmridataset_error_budget",
-      required_bytes = bytes,
-      memory_budget = memory_budget
-    )
-  }
+  cost <- source_realization_cost(
+    descriptor$source,
+    observations = selection$observations,
+    features = selection$features
+  )
+  .assert_realization_budget(cost, memory_budget, "collect_assay()", force)
   source_read(
     descriptor$source,
     observations = selection$observations,

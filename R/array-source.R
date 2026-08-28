@@ -124,6 +124,141 @@ source_close <- function(x, ...) UseMethod("source_close")
   )
 }
 
+.source_cost_traits <- function(x) {
+  if (inherits(x, "memory_source")) {
+    return(list(already_realized = TRUE, compressed = FALSE))
+  }
+  if (inherits(x, "nifti_array_source")) {
+    return(list(
+      already_realized = FALSE,
+      compressed = any(grepl("\\.gz$", x$uri, ignore.case = TRUE))
+    ))
+  }
+  if (inherits(x, "zarr_array_source")) {
+    # Zarr chunks may be compressed even though compression metadata is kept by
+    # the physical store rather than the logical ArraySource descriptor.
+    return(list(already_realized = FALSE, compressed = TRUE))
+  }
+  if (inherits(x, c("source_view", "counting_source", "fault_source")) &&
+    inherits(x$source, "array_source")) {
+    return(.source_cost_traits(x$source))
+  }
+  list(already_realized = FALSE, compressed = FALSE)
+}
+
+.realization_cost_from_shape <- function(shape, dtype,
+                                         already_realized = FALSE,
+                                         compressed = FALSE) {
+  shape <- as.integer(shape)
+  values <- prod(as.double(shape))
+  storage_width <- .dtype_bytes(dtype)
+  realized_width <- .realized_dtype_bytes(dtype)
+  storage_bytes <- values * storage_width
+  output_bytes <- values * realized_width
+  conversion_buffer_bytes <- if (isTRUE(already_realized) ||
+    storage_width == realized_width) {
+    0
+  } else {
+    output_bytes
+  }
+  # Non-memory readers commonly hold selected values while copying into the
+  # final R matrix. Keep that intermediate distinct from dtype conversion so
+  # equal-width and converted sources are both represented conservatively.
+  selection_buffer_bytes <- if (isTRUE(already_realized)) 0 else output_bytes
+  decompression_buffer_bytes <- if (isTRUE(compressed)) storage_bytes else 0
+  temporary_bytes <- selection_buffer_bytes + conversion_buffer_bytes +
+    decompression_buffer_bytes
+
+  structure(
+    list(
+      shape = shape,
+      values = values,
+      storage_dtype = dtype,
+      storage_bytes = storage_bytes,
+      realized_dtype = .realized_dtype_mode(dtype),
+      realized_dtype_bytes = realized_width,
+      estimated_output_bytes = output_bytes,
+      selection_buffer_bytes = selection_buffer_bytes,
+      conversion_buffer_bytes = conversion_buffer_bytes,
+      decompression_buffer_bytes = decompression_buffer_bytes,
+      estimated_temporary_bytes = temporary_bytes,
+      estimated_peak_bytes = output_bytes + temporary_bytes
+    ),
+    class = "source_realization_cost"
+  )
+}
+
+#' Estimate the memory cost of realizing an array-source selection
+#'
+#' The estimate distinguishes source storage from the R object returned by a
+#' read. Numeric source dtypes, including float16 and float32, are realized as
+#' R doubles. The conservative peak estimate adds selection, conversion, and
+#' compressed-input buffers to the retained output. It covers numerical
+#' payloads; fixed R object headers and selector metadata are outside the
+#' estimate.
+#'
+#' @param x An array source or object coercible to one.
+#' @return A `source_realization_cost` list containing storage and realized
+#'   dtypes, storage and output bytes, temporary buffer components, and the
+#'   estimated peak bytes.
+#' @rdname array-source
+#' @export
+source_realization_cost <- function(x, observations = NULL, features = NULL) {
+  x <- as_array_source(x)
+  shape <- source_shape(x)
+  observations <- .normalize_source_index(observations, shape[[1L]])
+  features <- .normalize_source_index(features, shape[[2L]])
+  traits <- .source_cost_traits(x)
+  .realization_cost_from_shape(
+    c(length(observations), length(features)),
+    source_dtype(x),
+    already_realized = traits$already_realized,
+    compressed = traits$compressed
+  )
+}
+
+.assert_realization_budget <- function(cost, memory_budget, operation,
+                                       force = FALSE) {
+  if (isTRUE(force)) {
+    return(invisible(cost))
+  }
+  if (!is.numeric(memory_budget) || length(memory_budget) != 1L ||
+    is.na(memory_budget) || memory_budget <= 0) {
+    .frame_abort(
+      "memory_budget must be one positive number.",
+      "fmridataset_error_budget",
+      operation = operation,
+      memory_budget = memory_budget
+    )
+  }
+  if (cost$estimated_peak_bytes > memory_budget) {
+    .frame_abort(
+      sprintf(
+        paste0(
+          "%s is estimated to retain %s output bytes and peak at %s bytes ",
+          "(%s source values realized as R %s), above memory_budget of %s bytes."
+        ),
+        operation,
+        format(cost$estimated_output_bytes, scientific = FALSE),
+        format(cost$estimated_peak_bytes, scientific = FALSE),
+        cost$storage_dtype,
+        cost$realized_dtype,
+        format(memory_budget, scientific = FALSE)
+      ),
+      "fmridataset_error_budget",
+      operation = operation,
+      storage_dtype = cost$storage_dtype,
+      realized_dtype = cost$realized_dtype,
+      estimated_output_bytes = cost$estimated_output_bytes,
+      estimated_temporary_bytes = cost$estimated_temporary_bytes,
+      estimated_peak_bytes = cost$estimated_peak_bytes,
+      required_bytes = cost$estimated_peak_bytes,
+      memory_budget = memory_budget
+    )
+  }
+  invisible(cost)
+}
+
 # Accumulator for a composed read, typed by the declared dtype.
 #
 # Composing sources used to preallocate matrix(NA_real_, ...) regardless of
@@ -456,7 +591,10 @@ source_close.source_view <- function(x, ...) invisible(TRUE)
 #' @export
 counting_source <- function(source) {
   id <- uuid::UUIDgenerate()
-  .source_counter_registry[[id]] <- list(reads = 0, values = 0, bytes = 0, opens = 0, closes = 0)
+  .source_counter_registry[[id]] <- list(
+    reads = 0, values = 0, bytes = 0, storage_bytes = 0,
+    output_bytes = 0, opens = 0, closes = 0
+  )
   out <- structure(
     list(source = as_array_source(source), counter_id = id),
     class = c("counting_source", "array_source")
@@ -487,7 +625,10 @@ source_counts <- function(x) .source_counter(x)
 #' @rdname counting_source
 #' @export
 reset_source_counts <- function(x) {
-  .set_source_counter(x, list(reads = 0, values = 0, bytes = 0, opens = 0, closes = 0))
+  .set_source_counter(x, list(
+    reads = 0, values = 0, bytes = 0, storage_bytes = 0,
+    output_bytes = 0, opens = 0, closes = 0
+  ))
 }
 
 #' @export
@@ -514,9 +655,13 @@ source_read.counting_source <- function(x, observations = NULL, features = NULL,
   features <- .normalize_source_index(features, shape[2L])
   count <- .source_counter(x)
   n <- length(observations) * length(features)
+  storage_bytes <- n * .dtype_bytes(source_dtype(x))
+  output_bytes <- n * .realized_dtype_bytes(source_dtype(x))
   count$reads <- count$reads + 1
   count$values <- count$values + n
-  count$bytes <- count$bytes + n * .dtype_bytes(source_dtype(x))
+  count$bytes <- count$bytes + output_bytes
+  count$storage_bytes <- count$storage_bytes + storage_bytes
+  count$output_bytes <- count$output_bytes + output_bytes
   .set_source_counter(x, count)
   source_read(x$source, observations = observations, features = features, ...)
 }
@@ -524,9 +669,13 @@ source_read.counting_source <- function(x, observations = NULL, features = NULL,
 source_read_native.counting_source <- function(x, observations = NULL, ...) {
   value <- source_read_native(x$source, observations = observations, ...)
   count <- .source_counter(x)
+  storage_bytes <- length(value) * .dtype_bytes(source_dtype(x))
+  output_bytes <- length(value) * .realized_dtype_bytes(source_dtype(x))
   count$reads <- count$reads + 1
   count$values <- count$values + length(value)
-  count$bytes <- count$bytes + length(value) * .dtype_bytes(source_dtype(x))
+  count$bytes <- count$bytes + output_bytes
+  count$storage_bytes <- count$storage_bytes + storage_bytes
+  count$output_bytes <- count$output_bytes + output_bytes
   .set_source_counter(x, count)
   value
 }
@@ -925,6 +1074,15 @@ delarr_provider_pull.array_source <- function(provider, indices, ...) {
       operation = "provider_read"
     )
   }
+  memory_budget <- attr(provider, "fmridataset.memory_budget", exact = TRUE)
+  if (!is.null(memory_budget)) {
+    cost <- source_realization_cost(
+      provider,
+      observations = indices[[1L]],
+      features = indices[[2L]]
+    )
+    .assert_realization_budget(cost, memory_budget, "delarr provider pull")
+  }
   source_read(
     provider,
     observations = indices[[1L]],
@@ -934,7 +1092,7 @@ delarr_provider_pull.array_source <- function(provider, indices, ...) {
 }
 
 #' @export
-as_delarr.array_source <- function(backend, ...) {
+as_delarr.array_source <- function(backend, memory_budget = Inf, ...) {
   .ensure_delarr()
   if (!"delarr_provider" %in% getNamespaceExports("delarr")) {
     .frame_abort(
@@ -945,6 +1103,9 @@ as_delarr.array_source <- function(backend, ...) {
   }
   shape <- source_shape(backend)
   chunks <- source_chunks(backend)
+  cost <- source_realization_cost(backend)
+  .assert_realization_budget(cost, memory_budget, "delarr realization")
+  attr(backend, "fmridataset.memory_budget") <- memory_budget
   delarr::delarr_provider(
     provider = backend,
     dims = shape,

@@ -82,16 +82,28 @@ test_that("feature-restricted views reconstruct instead of widening native reads
 
 test_that("spatial collection and streaming enforce different memory totals", {
   x <- make_frame_fixture()$frame
+  collection_cost <- fmridataset:::.spatial_realization_cost(
+    x, 2L, active_assay(x), "reconstruct"
+  )
+  streaming_cost <- fmridataset:::.spatial_realization_cost(
+    x, 1L, active_assay(x), "reconstruct"
+  )
+
+  expect_gt(collection_cost$estimated_peak_bytes, collection_cost$estimated_output_bytes)
+  expect_gt(collection_cost$estimated_peak_bytes, streaming_cost$estimated_peak_bytes)
 
   expect_error(
-    collect_spatial_maps(x, 1:2, memory_budget = 64),
+    collect_spatial_maps(
+      x, 1:2,
+      memory_budget = collection_cost$estimated_peak_bytes - 1
+    ),
     class = "fmridataset_error_budget"
   )
   streamed <- execute_spatial(
     x,
     1:2,
     function(map, observation_id) observation_id,
-    memory_budget = 64
+    memory_budget = streaming_cost$estimated_peak_bytes
   )
   expect_identical(unlist(streamed, use.names = FALSE), observation_ids(x)[1:2])
 })
@@ -104,11 +116,16 @@ test_that("composite spatial budgets sum native part realizations", {
     space = spatial
   )
 
-  expect_error(
-    collect_spatial_maps(x, memory_budget = 63),
-    class = "fmridataset_error_budget"
+  cost <- fmridataset:::.spatial_realization_cost(
+    x, 1L, active_assay(x), "reconstruct"
   )
-  map <- collect_spatial_maps(x, memory_budget = 64)[[1L]]
+  expect_equal(cost$estimated_output_bytes, 64)
+  expect_gt(cost$estimated_peak_bytes, cost$estimated_output_bytes)
+  expect_error(collect_spatial_maps(
+    x,
+    memory_budget = cost$estimated_peak_bytes - 1
+  ), class = "fmridataset_error_budget")
+  map <- collect_spatial_maps(x, memory_budget = cost$estimated_peak_bytes)[[1L]]
   expect_s3_class(map, "composite_map")
   expect_identical(names(map$parts), composite_part_names(spatial))
 })

@@ -15,6 +15,8 @@ concurrency:
 jobs:
   test-coverage:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
@@ -34,30 +36,51 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::covr, any::xml2
+          extra-packages: |
+            any::covr
+            any::xml2
+            any::bidser
+            github::bbuchsbaum/fmristore@e7fbbfca181ebd118acee150774a4f58640e039d
           needs: coverage
-
-      # Coverage measured without the optional backends reports their code as
-      # untested rather than as skipped, which is how R/frame-io.R reads at 8%.
-      - name: Install GitHub packages
-        run: |
-          Rscript -e 'tryCatch(remotes::install_github("bbuchsbaum/fmristore", dependencies = TRUE), error = function(e) warning("fmristore: ", e$message))'
-          Rscript -e 'tryCatch(remotes::install_github("bbuchsbaum/bidser", dependencies = TRUE), error = function(e) warning("bidser: ", e$message))'
 
       - name: Test coverage
         run: |
+          # covr 3.6.5 cannot form line ranges when source-marker exclusions
+          # meet records without srcref data. Coverage must not silently drop
+          # those regions, so this job disables marker exclusions entirely.
+          options(
+            covr.exclude_pattern = "a^",
+            covr.exclude_start = "a^",
+            covr.exclude_end = "a^"
+          )
           cov <- covr::package_coverage(
             quiet = FALSE,
             clean = FALSE,
             install_path = file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "package")
           )
-          cat(sprintf("Coverage: %.2f%%\n", covr::percent_coverage(cov)))
-          print(covr::coverage_to_list(cov)$filecoverage)
+          percent <- covr::percent_coverage(cov)
+          files <- covr::coverage_to_list(cov)$filecoverage
+          lines <- capture.output({
+            cat(sprintf("Coverage: %.2f%%\n", percent))
+            print(files)
+          })
+          writeLines(lines, "coverage-summary.txt")
+          cat(paste(lines, collapse = "\n"), "\n")
           covr::to_cobertura(cov)
         shell: Rscript {0}
+
+      - name: Upload coverage evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-evidence
+          path: |
+            cobertura.xml
+            coverage-summary.txt
+          if-no-files-found: warn
 
       - uses: codecov/codecov-action@v4
         with:
           fail_ci_if_error: ${{ github.event_name != 'pull_request' && true || false }}
           file: ./cobertura.xml
-          token: ${{ secrets.CODECOV_TOKEN }} 
+          token: ${{ secrets.CODECOV_TOKEN }}

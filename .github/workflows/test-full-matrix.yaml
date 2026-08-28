@@ -15,6 +15,8 @@ concurrency:
 jobs:
   test-all-optional:
     runs-on: ${{ matrix.config.os }}
+    permissions:
+      contents: read
     
     name: ${{ matrix.config.os }} (${{ matrix.config.r }}) - all optional packages
     
@@ -34,6 +36,7 @@ jobs:
       NOT_CRAN: true
       _R_CHECK_CRAN_INCOMING_: false
       _R_CHECK_FORCE_SUGGESTS_: true
+      RGL_USE_NULL: true
     
     steps:
       - uses: actions/checkout@v4
@@ -58,48 +61,72 @@ jobs:
           extra-packages: |
             any::rcmdcheck
             any::testthat
-            any::covr
           needs: check
           dependencies: '"all"'
       
       # No Bioconductor step: fmridataset builds lazy array support on delarr,
       # which this project owns, rather than on DelayedArray.
       
-      # Install GitHub packages if needed
-      - name: Install GitHub packages
-        run: |
-          Rscript -e 'if (!requireNamespace("remotes", quietly = TRUE)) install.packages("remotes")'
-          Rscript -e 'tryCatch(remotes::install_github("bbuchsbaum/fmristore", dependencies = TRUE), error = function(e) warning("Could not install fmristore: ", e$message))'
-          Rscript -e 'tryCatch(remotes::install_github("bbuchsbaum/bidser", dependencies = TRUE), error = function(e) warning("Could not install bidser: ", e$message))'
-      
       # Verify all optional packages are installed
       - name: Check optional packages
         run: |
-          Rscript -e '
-          optional_pkgs <- c("bench", "bidser", "crayon", "arrow", "dplyr",
-                            "fmristore", "foreach", "jsonlite", "yaml")
-          missing <- optional_pkgs[!sapply(optional_pkgs, requireNamespace, quietly = TRUE)]
-          if (length(missing) > 0) {
-            stop("Missing optional packages: ", paste(missing, collapse = ", "))
+          dir.create("ci-evidence", showWarnings = FALSE)
+          description <- read.dcf("DESCRIPTION")
+          optional_pkgs <- trimws(strsplit(
+            gsub("\\s*\\([^)]*\\)", "", description[1, "Suggests"]), ","
+          )[[1L]])
+          optional_pkgs <- optional_pkgs[nzchar(optional_pkgs)]
+          errors <- setNames(rep("", length(optional_pkgs)), optional_pkgs)
+          available <- vapply(optional_pkgs, function(pkg) {
+            tryCatch({
+              loadNamespace(pkg)
+              TRUE
+            }, error = function(e) {
+              errors[[pkg]] <<- conditionMessage(e)
+              FALSE
+            })
+          }, logical(1))
+          field <- function(pkg, name) {
+            if (!available[[pkg]]) return(NA_character_)
+            value <- utils::packageDescription(pkg, fields = name)
+            if (is.null(value) || is.na(value) || !nzchar(value)) NA_character_ else value
           }
-          cat("All optional packages installed successfully\n")
-          '
+          receipt <- data.frame(
+            package = optional_pkgs,
+            available = unname(available),
+            version = vapply(optional_pkgs, function(pkg) {
+              if (available[[pkg]]) as.character(utils::packageVersion(pkg)) else NA_character_
+            }, character(1)),
+            remote_sha = vapply(optional_pkgs, field, character(1), name = "RemoteSha"),
+            repository = vapply(optional_pkgs, field, character(1), name = "Repository"),
+            error = unname(errors)
+          )
+          utils::write.csv(receipt, "ci-evidence/optional-package-receipt.csv",
+            row.names = FALSE
+          )
+          print(receipt, row.names = FALSE)
+          if (any(!available)) {
+            stop("Missing or unloadable optional packages: ",
+              paste(optional_pkgs[!available], collapse = ", "))
+          }
+          cat("All DESCRIPTION Suggests are installed and loadable.\n")
+        shell: Rscript {0}
       
-      # Run tests with coverage
+      # Run the source-loaded test suite with every Suggest installed.
       - name: Test with all optional packages
         run: |
-          Rscript -e '
-          # The package MUST be loaded: test_dir defaults to load_package = "none",
-          # which silently runs every test against an empty namespace.
-          res <- testthat::test_dir(
-            "tests/testthat",
+          # test_local() installs/loads this checkout's source package before
+          # discovering tests; it cannot silently test an empty namespace.
+          res <- testthat::test_local(
+            ".",
             reporter = "summary",
-            load_package = "installed",
             stop_on_failure = FALSE
           )
 
           df <- as.data.frame(res)
-          bad <- sum(df$failed) + sum(df$error)
+          dir.create("ci-evidence", showWarnings = FALSE)
+          utils::write.csv(df, "ci-evidence/test-results.csv", row.names = FALSE)
+          bad <- sum(df$failed, na.rm = TRUE) + sum(df$error, na.rm = TRUE)
           if (bad > 0) stop("Test failures or errors: ", bad)
 
           # Skip reasons live on the expectation conditions, not on an attribute.
@@ -128,26 +155,31 @@ jobs:
             stop("Optional-dependency gaps in the all-optional-packages matrix:\n",
                  paste(unique(dep_gap), collapse = "\n"))
           }
-          '
+        shell: Rscript {0}
       
       # Run R CMD check
       - uses: r-lib/actions/check-r-package@v2
         with:
-          error-on: '"error"'
+          error-on: '"warning"'
           check-dir: '"check"'
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
           args: 'c("--no-manual", "--as-cran", "--no-vignettes")'
       
       # Upload test results
       - name: Upload check results
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ runner.os }}-r${{ matrix.config.r }}-results
-          path: check
+          path: |
+            check
+            ci-evidence
+          if-no-files-found: warn
 
   test-minimal:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     name: ubuntu-latest (release) - minimal dependencies only
     
@@ -182,11 +214,14 @@ jobs:
         run: |
           Rscript -e '
           optional_pkgs <- c("bench", "bidser", "arrow", "fmristore")
-          installed <- optional_pkgs[sapply(optional_pkgs, requireNamespace, quietly = TRUE)]
+          installed <- optional_pkgs[vapply(
+            optional_pkgs, requireNamespace, logical(1), quietly = TRUE
+          )]
           if (length(installed) > 0) {
-            warning("Optional packages installed in minimal test: ", 
-                   paste(installed, collapse = ", "))
+            stop("Optional packages leaked into the minimal test: ",
+              paste(installed, collapse = ", "))
           }
+          cat("Minimal dependency setup contains no audited optional packages.\n")
           '
       
       # Run R CMD check with minimal deps

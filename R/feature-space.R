@@ -1244,6 +1244,8 @@ basis_space <- function(parent, component_ids, encoder, decoder = NULL,
 #'
 #' @param parent,component_ids,decoder,data,basis_type,provenance,tolerance,metadata
 #'   Passed to [basis_space()].
+#' @param encoder Either `"least_squares"` to construct and validate the exact
+#'   unregularized left inverse, or `"none"` for a synthesis-only basis.
 #' @return A `basis_space`.
 #' @export
 basis_space_from_decoder <- function(parent, component_ids, decoder,

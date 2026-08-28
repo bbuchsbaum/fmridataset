@@ -18,6 +18,9 @@ basis_space_from_decoder(
 }
 \arguments{
 \item{parent, component_ids, decoder, data, basis_type, provenance, tolerance, metadata}{Passed to \code{\link[=basis_space]{basis_space()}}.}
+
+\item{encoder}{Either \code{"least_squares"} to construct and validate the exact
+unregularized left inverse, or \code{"none"} for a synthesis-only basis.}
 }
 \value{
 A \code{basis_space}.

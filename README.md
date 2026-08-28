@@ -72,8 +72,13 @@ feature_ids(view)
 
 The numerical view, observation metadata, feature metadata, and restricted
 volume space all retain the requested order. For large assays,
-`collect_assay()` enforces an explicit memory budget; block execution and lazy
-array sources avoid requiring full materialization.
+`source_realization_cost()` reports storage bytes, realized output bytes, and a
+conservative peak that includes selection, dtype-conversion, and
+compressed-input buffers.
+`collect_assay()`, `collect_chunks()`, spatial collection, and a finite
+`as_delarr(memory_budget = ...)` ceiling enforce that peak estimate before
+reading; block execution and lazy array sources avoid requiring full
+materialization.
 
 ### Load one BIDS subject
 

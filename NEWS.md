@@ -1,5 +1,12 @@
 # fmridataset 0.10.0 (Development)
 
+- Realization budgets now distinguish storage dtype and bytes from the R
+  output dtype, retained output, temporary selection, conversion, or
+  decompression buffers, and estimated peak working memory. The shared
+  peak-cost contract is
+  enforced by assay, chunk, block, spatial, and finite `delarr` collection
+  paths, with counting sources reporting storage and realized traffic
+  separately.
 - The test suite now runs under testthat edition 3
   (`Config/testthat/edition: 3`), activating the previously inert snapshot
   tests for canonical serialization. `series()` now signals its deprecation

@@ -4,10 +4,19 @@
 \alias{collect_chunks}
 \title{Collect all chunks from a chunk iterator}
 \usage{
-collect_chunks(chunk_iter)
+collect_chunks(
+  chunk_iter,
+  memory_budget = getOption("fmridataset.collect_budget", 2 * 1024^3),
+  force = FALSE
+)
 }
 \arguments{
-\item{chunk_iter}{A chunk iterator object created by chunk_iter()}
+\item{chunk_iter}{A chunk iterator object created by chunk_iter().}
+
+\item{memory_budget}{Maximum estimated peak bytes while retaining the
+collected numerical payloads.}
+
+\item{force}{Collect even when the iterator's estimate exceeds the budget.}
 }
 \value{
 A list containing all chunks from the iterator

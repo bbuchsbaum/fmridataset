@@ -87,7 +87,7 @@ test_that("genuinely incompatible shards are still refused", {
 
   expect_error(row_sharded_source(list(a, memory_source(matrix(1:15, 3, 5)))), "feature count")
   expect_error(
-    row_sharded_source(list(a, memory_source(matrix(1:8, 2, 2), dtype = "float32"))),
+    row_sharded_source(list(a, memory_source(matrix(1:4, 2, 2), dtype = "float32"))),
     "dtype"
   )
   expect_error(row_sharded_source(list(a, a), shard_ids = c("same", "same")), "unique")

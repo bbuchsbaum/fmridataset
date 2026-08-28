@@ -16,9 +16,10 @@ collect_assay(
 
 \item{assay}{Assay name.}
 
-\item{memory_budget}{Maximum output bytes.}
+\item{memory_budget}{Maximum estimated peak bytes, including the retained
+output and source conversion or decompression buffers.}
 
-\item{force}{Allow collection above the budget.}
+\item{force}{Allow collection above the estimated peak budget.}
 }
 \value{
 A dense matrix.

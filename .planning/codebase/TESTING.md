@@ -16,16 +16,20 @@
 ```bash
 # Run all tests
 devtools::test()
-testthat::test_dir("tests/testthat")
+testthat::test_local(".")
 
 # Run a single test file
-testthat::test_file("tests/testthat/test_sampling_frame.R")
+devtools::test(filter = "sampling_frame")
 
 # Run tests matching a pattern
 devtools::test(filter = "backend")
 
 # Run with coverage
 covr::package_coverage()
+
+# Run the repository's explicit correctness and style gates
+lintr::lint_package()
+styler::style_pkg(dry = "fail")
 ```
 
 ## Test File Organization
@@ -212,6 +216,20 @@ browseURL(file.path(getwd(), "coverage.html"))
 **GitHub Actions:**
 - Test coverage workflow: `.github/workflows/test-coverage.yaml`
 - Automatic coverage reporting on PRs
+- Coverage disables source-level `# nocov` marker exclusions so every
+  instrumented line is reported and covr cannot silently fail on missing
+  source-reference endpoints.
+- The all-optional matrix uses `testthat::test_local(".")`; direct
+  `test_dir()` calls do not load this package unless a package name or loader
+  is supplied.
+- `.lintr` enables concrete call/namespace correctness checks. It omits the
+  package-wide object-usage heuristic, which cannot resolve valid functions
+  across this package's source files, and ignores namespace findings only in
+  tests that deliberately exercise internals. Formatting is a separate,
+  read-only `styler::style_file(..., dry = "fail")` gate on changed R-family
+  files (the latest PR commit, or the full pushed range on the protected
+  branch) rather than a CI mutation or a claim that legacy files are all
+  styled.
 
 ## Test Types
 

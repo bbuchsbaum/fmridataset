@@ -19,7 +19,7 @@ plan_blocks(
 
 \item{layout}{One of \code{"balanced"}, \code{"imagewise"}, or \code{"featurewise"}.}
 
-\item{memory_budget}{Hard maximum bytes for one input block.}
+\item{memory_budget}{Hard maximum estimated peak bytes for one input block.}
 
 \item{target_block_bytes}{Preferred block size, capped by \code{memory_budget}.}
 }

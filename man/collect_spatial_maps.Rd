@@ -23,7 +23,8 @@ every other frame axis selection.}
 
 \item{path}{One of \code{"auto"}, \code{"native"}, or \code{"reconstruct"}.}
 
-\item{memory_budget}{Maximum estimated bytes for all returned native maps.}
+\item{memory_budget}{Maximum estimated peak bytes for all returned native
+maps plus the current packed read, conversion, and reconstruction buffers.}
 }
 \value{
 A named list with one native spatial object per observation.

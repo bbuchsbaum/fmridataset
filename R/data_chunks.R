@@ -39,8 +39,14 @@ data_chunk <- function(mat, voxel_ind, row_ind, chunk_num) {
 
 #' @keywords internal
 #' @noRd
-chunk_iter <- function(x, nchunks, get_chunk) {
+chunk_iter <- function(x, nchunks, get_chunk, costs = NULL) {
   chunk_num <- 1
+
+  if (!is.null(costs) &&
+    (!is.data.frame(costs) || nrow(costs) != nchunks ||
+      !all(c("output_bytes", "peak_bytes") %in% names(costs)))) {
+    stop("costs must contain one output_bytes and peak_bytes row per chunk")
+  }
 
   nextEl <- function() {
     if (chunk_num > nchunks) {
@@ -52,9 +58,21 @@ chunk_iter <- function(x, nchunks, get_chunk) {
     }
   }
 
-  iter <- list(nchunks = nchunks, nextElem = nextEl)
+  iter <- list(nchunks = nchunks, nextElem = nextEl, costs = costs)
   class(iter) <- c("chunkiter", "abstractiter", "iter")
   iter
+}
+
+.chunk_cost_table <- function(nrow, ncol, dtype = "float64",
+                              temporary_factor = 0) {
+  n <- max(length(nrow), length(ncol))
+  nrow <- rep_len(as.double(nrow), n)
+  ncol <- rep_len(as.double(ncol), n)
+  output_bytes <- nrow * ncol * .realized_dtype_bytes(dtype)
+  data.frame(
+    output_bytes = output_bytes,
+    peak_bytes = output_bytes * (1 + temporary_factor)
+  )
 }
 
 #' Create Data Chunks for fmri_mem_dataset Objects
@@ -128,13 +146,21 @@ data_chunks.fmri_mem_dataset <- function(x, nchunks = 1, runwise = FALSE, ...) {
 
   maskSeq <- NULL
   if (runwise) {
-    chunk_iter(x, length(x$scans), get_run_chunk)
+    rows <- as.integer(blocklens(x$sampling_frame))
+    costs <- .chunk_cost_table(rows, sum(mask > 0), temporary_factor = 1)
+    chunk_iter(x, length(x$scans), get_run_chunk, costs)
   } else if (nchunks == 1) {
     maskSeq <- one_chunk(x)
-    chunk_iter(x, 1, get_seq_chunk)
+    costs <- .chunk_cost_table(n_timepoints(x), length(maskSeq[[1L]]),
+      temporary_factor = 1
+    )
+    chunk_iter(x, 1, get_seq_chunk, costs)
   } else {
     maskSeq <- arbitrary_chunks(x, nchunks)
-    chunk_iter(x, length(maskSeq), get_seq_chunk)
+    costs <- .chunk_cost_table(n_timepoints(x), lengths(maskSeq),
+      temporary_factor = 1
+    )
+    chunk_iter(x, length(maskSeq), get_seq_chunk, costs)
   }
 }
 
@@ -207,19 +233,27 @@ data_chunks.fmri_file_dataset <- function(x, nchunks = 1, runwise = FALSE, ...) 
 
   # Then create iterator based on strategy
   if (runwise) {
+    rows <- tabulate(blockids(x$sampling_frame))
+    costs <- .chunk_cost_table(rows, sum(get_mask(x) > 0), temporary_factor = 1)
     if (!is.null(x$backend)) {
       # For backend, use number of runs from sampling frame
-      chunk_iter(x, x$nruns, get_run_chunk)
+      chunk_iter(x, x$nruns, get_run_chunk, costs)
     } else {
       # Legacy path uses number of scan files
-      chunk_iter(x, length(x$scans), get_run_chunk)
+      chunk_iter(x, length(x$scans), get_run_chunk, costs)
     }
   } else if (nchunks == 1) {
     maskSeq <- one_chunk(x)
-    chunk_iter(x, 1, get_seq_chunk)
+    costs <- .chunk_cost_table(n_timepoints(x), length(maskSeq[[1L]]),
+      temporary_factor = 1
+    )
+    chunk_iter(x, 1, get_seq_chunk, costs)
   } else {
     maskSeq <- arbitrary_chunks(x, nchunks)
-    chunk_iter(x, length(maskSeq), get_seq_chunk)
+    costs <- .chunk_cost_table(n_timepoints(x), lengths(maskSeq),
+      temporary_factor = 1
+    )
+    chunk_iter(x, length(maskSeq), get_seq_chunk, costs)
   }
 }
 
@@ -251,9 +285,16 @@ data_chunks.matrix_dataset <- function(x, nchunks = 1, runwise = FALSE, ...) {
   }
 
   if (runwise) {
-    chunk_iter(x, length(blocklens(x$sampling_frame)), get_run_chunk)
+    rows <- as.integer(blocklens(x$sampling_frame))
+    costs <- .chunk_cost_table(
+      rows, ncol(x$datamat), .source_dtype_from_data(x$datamat)
+    )
+    chunk_iter(x, length(rows), get_run_chunk, costs)
   } else if (nchunks == 1) {
-    chunk_iter(x, 1, get_one_chunk)
+    costs <- .chunk_cost_table(
+      nrow(x$datamat), ncol(x$datamat), .source_dtype_from_data(x$datamat)
+    )
+    chunk_iter(x, 1, get_one_chunk, costs)
   } else {
     # Check if more chunks requested than voxels
     if (nchunks > ncol(x$datamat)) {
@@ -272,7 +313,10 @@ data_chunks.matrix_dataset <- function(x, nchunks = 1, runwise = FALSE, ...) {
         chunk_num = chunk_num
       )
     }
-    chunk_iter(x, nchunks, get_chunk)
+    costs <- .chunk_cost_table(
+      nrow(x$datamat), lengths(sidx), .source_dtype_from_data(x$datamat)
+    )
+    chunk_iter(x, nchunks, get_chunk, costs)
   }
 }
 
@@ -313,10 +357,41 @@ exec_strategy <- function(strategy = c("voxelwise", "runwise", "chunkwise"), nch
 #'
 #' This function collects all chunks from a chunk iterator into a list.
 #'
-#' @param chunk_iter A chunk iterator object created by chunk_iter()
+#' @param chunk_iter A chunk iterator object created by chunk_iter().
+#' @param memory_budget Maximum estimated peak bytes while retaining the
+#'   collected numerical payloads.
+#' @param force Collect even when the iterator's estimate exceeds the budget.
 #' @return A list containing all chunks from the iterator
 #' @export
-collect_chunks <- function(chunk_iter) {
+collect_chunks <- function(
+  chunk_iter,
+  memory_budget = getOption("fmridataset.collect_budget", 2 * 1024^3),
+  force = FALSE
+) {
+  if (!isTRUE(force)) {
+    if (is.null(chunk_iter$costs)) {
+      .frame_abort(
+        "The chunk iterator does not provide memory-cost estimates.",
+        "fmridataset_error_budget",
+        operation = "collect_chunks()",
+        memory_budget = memory_budget
+      )
+    }
+    retained_before <- c(0, head(cumsum(chunk_iter$costs$output_bytes), -1L))
+    estimated_output <- sum(chunk_iter$costs$output_bytes)
+    estimated_peak <- max(retained_before + chunk_iter$costs$peak_bytes, 0)
+    cost <- structure(
+      list(
+        storage_dtype = "mixed",
+        realized_dtype = "chunk payloads",
+        estimated_output_bytes = estimated_output,
+        estimated_temporary_bytes = max(0, estimated_peak - estimated_output),
+        estimated_peak_bytes = estimated_peak
+      ),
+      class = "source_realization_cost"
+    )
+    .assert_realization_budget(cost, memory_budget, "collect_chunks()")
+  }
   chunks <- list()
   for (i in seq_len(chunk_iter$nchunks)) {
     chunks[[i]] <- chunk_iter$nextElem()
@@ -414,13 +489,21 @@ data_chunks.fmri_study_dataset <- function(x, nchunks = 1, runwise = FALSE, ...)
 
   # Create iterator based on strategy
   if (runwise) {
-    chunk_iter(x, n_runs(x), get_run_chunk)
+    rows <- tabulate(blockids(x$sampling_frame))
+    costs <- .chunk_cost_table(rows, length(voxel_ind), temporary_factor = 1)
+    chunk_iter(x, n_runs(x), get_run_chunk, costs)
   } else if (nchunks == 1) {
     maskSeq <- list(voxel_ind)
-    chunk_iter(x, 1, get_seq_chunk)
+    costs <- .chunk_cost_table(dims$time, length(voxel_ind),
+      temporary_factor = 1
+    )
+    chunk_iter(x, 1, get_seq_chunk, costs)
   } else {
     # Create arbitrary voxel chunks
     maskSeq <- arbitrary_chunks(x, nchunks)
-    chunk_iter(x, length(maskSeq), get_seq_chunk)
+    costs <- .chunk_cost_table(dims$time, lengths(maskSeq),
+      temporary_factor = 1
+    )
+    chunk_iter(x, length(maskSeq), get_seq_chunk, costs)
   }
 }
