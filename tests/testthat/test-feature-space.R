@@ -570,10 +570,8 @@ test_that("basis contracts reject ambiguous or non-identifiable maps", {
   decoder <- cbind(c(1, 0, 1, 0), c(0, 1, 0, 1))
   encoder <- solve(crossprod(decoder), t(decoder))
 
-  expect_error(
-    basis_space(parent, character(), matrix(numeric(), 0, 4)),
-    "at least one component"
-  )
+  # An empty basis is neither ambiguous nor non-identifiable, only empty; see
+  # "an empty basis is a legal space" below.
   expect_error(
     basis_space(parent, c("a", "b"), matrix(1, 2, 3), decoder),
     "encoder"
@@ -929,5 +927,33 @@ test_that("composite neurosurf reconstruction delegates each surface part", {
       rep("duplicate", n_features(x))
     )),
     "exactly once"
+  )
+})
+
+test_that("an empty basis is a legal space", {
+  parent <- volume_space(c(2, 2, 1))
+  decoder <- cbind(c(1, 0, 1, 0), c(0, 1, 0, 1))
+
+  # Every other feature space supports an empty restriction, and an empty
+  # selection is legal on every frame axis; refusing one here made basis_space
+  # the sole exception and broke the uniform feature-space contract.
+  empty <- restrict_space(
+    basis_space_from_decoder(parent, c("a", "b"), decoder),
+    integer(0)
+  )
+
+  expect_equal(n_features(empty), 0L)
+  expect_equal(length(feature_ids(empty)), 0L)
+  expect_true(nzchar(space_digest(empty)))
+  expect_equal(dim(as.matrix(basis_synthesis(empty))), c(4L, 0L))
+  expect_equal(dim(as.matrix(basis_analysis(empty))), c(0L, 4L))
+
+  # Reconstructing from no components is the zero vector over the parent.
+  expect_equal(as.numeric(reconstruct_space(empty, numeric(0))), rep(0, 4))
+
+  # Direct construction agrees with restriction.
+  expect_s3_class(
+    basis_space(parent, character(), matrix(numeric(), 0, 4)),
+    "basis_space"
   )
 })

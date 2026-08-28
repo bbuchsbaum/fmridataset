@@ -778,7 +778,10 @@ parcel_space <- function(parent, parcel_ids, membership, data = NULL,
       "fmridataset_error_space_mismatch"
     )
   }
-  ids <- paste0(atlas$id, ":", parcel_ids)
+  # paste0() recycles a zero-length parcel_ids against the scalar atlas id and
+  # yields "atlas:" rather than character(), so an emptied parcel space failed
+  # its own ID check. Same recycling the volume and composite guards avoid.
+  ids <- if (k) paste0(atlas$id, ":", parcel_ids) else character()
   if (".feature_id" %in% names(data) &&
     !identical(as.character(data$.feature_id), ids)) {
     .frame_abort(
@@ -1091,6 +1094,9 @@ parcel_space_from_atlas <- function(atlas, parent,
 
 .basis_left_inverse_error <- function(encoder, decoder) {
   product <- as.matrix(encoder %*% decoder)
+  if (!nrow(product)) {
+    return(0)
+  }
   max(abs(product - diag(nrow(product))))
 }
 
@@ -1127,13 +1133,10 @@ basis_space <- function(parent, component_ids, encoder, decoder = NULL,
   component_ids <- .validate_stable_ids(
     as.character(component_ids), "component"
   )
+  # An empty basis is legal. Every other feature space supports an empty
+  # restriction, and an empty selection is legal on every frame axis; refusing
+  # one here made restrict_space(basis, integer(0)) the sole exception.
   k <- length(component_ids)
-  if (!k) {
-    .frame_abort(
-      "A basis space must contain at least one component.",
-      "fmridataset_error_space_mismatch"
-    )
-  }
   if (!is.character(basis_type) || length(basis_type) != 1L ||
     is.na(basis_type) || !nzchar(basis_type)) {
     .frame_abort(
@@ -1368,7 +1371,9 @@ restrict_space.basis_space <- function(x, index, ...) {
   # Restricting the component axis changes the least-squares encoder, so it is
   # recomputed from the restricted decoder rather than subset. A decoder-only
   # basis stays decoder-only.
-  if (!is.null(selected_decoder) && !is.null(selected_encoder)) {
+  # solve() cannot invert a 0-by-0 cross-product, and an empty basis has no
+  # least-squares solution to recompute: keep the subset encoder as it is.
+  if (length(index) && !is.null(selected_decoder) && !is.null(selected_encoder)) {
     selected_encoder <- solve(
       crossprod(as.matrix(.collect_linear_operator(selected_decoder))),
       t(as.matrix(.collect_linear_operator(selected_decoder)))
