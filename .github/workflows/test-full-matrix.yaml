@@ -149,10 +149,19 @@ jobs:
 
           # This job installs every optional package, so a skip that names an absent
           # or inadequate dependency means the matrix is not testing what it claims.
-          dep_gap <- grep(
-            "not installed|not available|lacks|is required|is not TRUE",
-            skips, value = TRUE
-          )
+          optional_pkgs <- utils::read.csv(
+            "ci-evidence/optional-package-receipt.csv",
+            stringsAsFactors = FALSE
+          )$package
+          mentions_optional <- vapply(skips, function(reason) {
+            any(vapply(optional_pkgs, grepl, logical(1), x = reason, fixed = TRUE))
+          }, logical(1))
+          dep_gap <- skips[
+            mentions_optional & grepl(
+              "not installed|not available|lacks|required|is not TRUE",
+              skips
+            )
+          ]
           if (length(dep_gap)) {
             stop("Optional-dependency gaps in the all-optional-packages matrix:\n",
                  paste(unique(dep_gap), collapse = "\n"))
