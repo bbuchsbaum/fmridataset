@@ -18,6 +18,9 @@
   (`inst/architecture/API-AUDIENCES.md`). `%||%` is no longer exported;
   counting and fault sources remain only as documented conformance tools for
   companion packages.
+- Made `explain()` bounded for large axes: it now reports counts, source
+  contracts, realization estimates, semantic/schema digests, and sampled IDs
+  without numerical reads. Complete IDs require `ids = "complete"`.
 - Frame views now expose assay descriptors for their visible rectangle:
   sources, shapes, and axis digests remain synchronized through reordered,
   composed, ID-selected, and empty views without reading numerical data.
