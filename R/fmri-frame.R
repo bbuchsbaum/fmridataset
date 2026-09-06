@@ -164,7 +164,7 @@ fmri_frame <- function(assays, observations, features = NULL, space = NULL,
       provenance = provenance,
       schema_version = 1L
     ),
-    class = c("fmri_frame", "fmri_dataset")
+    class = "fmri_frame"
   )
 }
 

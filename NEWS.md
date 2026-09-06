@@ -149,6 +149,27 @@
 
 ## Breaking changes
 
+* Removed the pre-frame dataset architecture. `fmri_dataset()`,
+  `matrix_dataset()`, `fmri_mem_dataset()`, `fmri_file_dataset()`,
+  `fmri_h5_dataset()`, `fmri_zarr_dataset()`, `fmri_study_dataset()`,
+  `latent_dataset()`, `bids_h5_dataset()`, `compress_bids_study()`, the
+  storage-backend protocol and registry (`storage_backend`, `backend_*()`,
+  `register_backend()`), the sampling-frame accessors (`get_TR()`,
+  `blocklens()`, `blockids()`, `n_runs()`, `n_timepoints()`, ...),
+  `data_chunks()` and its execution strategies, `fmri_series()` and the
+  selector API, `fmri_group()` and the group verbs, `read_fmri_config()`, and
+  the vignette data generators are gone. `fmri_frame()` is the only data
+  container; `temporal_schema()` and `as_sampling_frame()` replace the
+  sampling-frame accessors, `collect_assay()`, `plan_blocks()`, and
+  `as_delarr()` replace chunk iteration, and `fmri_collection()` and
+  `fmri_study()` replace the study dataset and group. The last commit carrying
+  the old surface is `3ae565e`; applications that still need it should pin
+  that revision while they migrate. `fmri_frame` objects no longer inherit
+  from `fmri_dataset`.
+* `as_delarr()` now dispatches on `x` rather than `backend`, and is defined for
+  array sources only.
+* `fmrihrf` moved from Imports to Suggests. Only `as_sampling_frame()` needs
+  it, and that function now fails with a structured error when it is absent.
 * Retired the `DelayedArray` bridge. `as_delayed_array()` and its methods, the
   `StorageBackendSeed` and `StudyBackendSeed` classes, and
   `register_delayed_array_support()` are removed. `as_delarr()` provides the

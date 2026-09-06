@@ -293,6 +293,12 @@ as_sampling_frame <- function(x, ...) {
     )
   }
 
+  if (!requireNamespace("fmrihrf", quietly = TRUE)) {
+    .temporal_abort(
+      "Package 'fmrihrf' is required to build a sampling frame. Install it or work from temporal_schema() directly.",
+      package = "fmrihrf"
+    )
+  }
   fmrihrf::sampling_frame(
     blocklens = unname(schema$run_lengths),
     TR = unname(schema$TR)

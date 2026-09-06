@@ -1092,7 +1092,8 @@ delarr_provider_pull.array_source <- function(provider, indices, ...) {
 }
 
 #' @export
-as_delarr.array_source <- function(backend, memory_budget = Inf, ...) {
+as_delarr.array_source <- function(x, memory_budget = Inf, ...) {
+  backend <- x
   .ensure_delarr()
   if (!"delarr_provider" %in% getNamespaceExports("delarr")) {
     .frame_abort(
