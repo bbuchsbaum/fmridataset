@@ -59,3 +59,24 @@ compressed-input buffers to the retained output. It covers numerical
 payloads; fixed R object headers and selector metadata are outside the
 estimate.
 }
+\details{
+\strong{Fingerprint policy.}
+\code{source_fingerprint()} returns the revision fingerprint of a descriptor:
+one SHA-256 string over the serializable descriptor and the physical
+revision evidence a backend can observe without reading values (file sizes
+and modification times, store metadata, or a per-object identity token for
+in-memory sources), combined with selectors and shard composition for
+wrappers. It never hashes array values, it is computed once at
+construction and cached in the descriptor, and it survives serialization.
+Equal fingerprints mean "the same descriptor of the same revision"; they
+never mean equal values, and different fingerprints never mean different
+values. Two independently constructed \code{\link[=memory_source]{memory_source()}} objects with equal
+payloads have different fingerprints by design.
+
+Value identity is a separate, explicit, \code{O(n)} operation: \code{\link[=content_hash]{content_hash()}}.
+File-backed sources compare their captured revision evidence with the
+physical state before every open and read and raise
+\code{fmridataset_error_source_stale} when it differs; genuine backend failures
+raise \code{fmridataset_error_backend_io}. The policy is recorded in
+\code{inst/architecture/ADR-009-source-fingerprints-and-content-hashes.md}.
+}

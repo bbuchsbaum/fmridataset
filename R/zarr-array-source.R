@@ -156,6 +156,13 @@
 #' together therefore permits metadata-only construction and serialization on
 #' workers where Zarr is not installed.
 #'
+#' The fingerprint covers the descriptor: URI, array path, logical shape,
+#' dtype, chunks, and axis order, never the stored values. Opening a handle
+#' re-reads the store metadata and raises `fmridataset_error_source_stale`
+#' (with `source`, `expected`, and `actual` fields) if shape, chunks, or dtype
+#' changed; a store that cannot be opened is `fmridataset_error_backend_io`.
+#' See [content_hash()] to identify values.
+#'
 #' @param uri One local path, file URI, or HTTP(S) location understood by
 #'   `zarr::open_zarr()`.
 #' @param array_path Absolute path of the array within the Zarr hierarchy. The
@@ -268,16 +275,18 @@ source_fingerprint.zarr_array_source <- function(x, ...) x$fingerprint
   if (!identical(metadata$shape, expected_shape) ||
     !identical(metadata$chunks, expected_chunks) ||
     !identical(metadata$dtype, source$dtype)) {
-    .frame_abort(
+    .abort_source_stale(
       "Zarr array metadata changed after the source descriptor was created.",
-      "fmridataset_error_source_stale",
-      operation = "open",
+      source = list(
+        type = "zarr_array_source", uri = source$uri, array_path = source$array_path
+      ),
       expected = list(
         shape = expected_shape,
         chunks = expected_chunks,
         dtype = source$dtype
       ),
-      actual = metadata
+      actual = metadata,
+      operation = "open"
     )
   }
   invisible(TRUE)

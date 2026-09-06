@@ -46,11 +46,19 @@
   paths <- paths[!is.na(paths) & nzchar(paths)]
   current <- .nifti_file_state(paths)
   if (!identical(current, x$file_state)) {
-    .frame_abort(
-      "A NIfTI source file changed after the descriptor was created.",
-      "fmridataset_error_backend_io",
-      operation = "fingerprint_check",
-      files = paths
+    changed <- paths[!vapply(seq_along(paths), function(index) {
+      identical(current[[index]], x$file_state[[index]])
+    }, logical(1))]
+    .abort_source_stale(
+      sprintf(
+        "A NIfTI source file changed after the descriptor was created: %s.",
+        paste(changed, collapse = ", ")
+      ),
+      source = list(type = "nifti_array_source", uri = x$uri, mask_uri = x$mask_uri),
+      expected = x$file_state,
+      actual = current,
+      files = paths,
+      changed = changed
     )
   }
   invisible(TRUE)
@@ -73,6 +81,13 @@
 #' local volume indices into [neuroim2::read_vec()], and restrict the mask to
 #' requested packed features before materialization. Native reads return
 #' full-volume `NeuroVec` objects in requested observation order.
+#'
+#' The fingerprint covers the descriptor and the size and modification time of
+#' every file captured at construction, never the voxel values. Every open,
+#' read, and native read re-observes those files first and raises
+#' `fmridataset_error_source_stale` (with `source`, `expected`, `actual`, and
+#' `changed` fields) if any differ; genuine read failures remain
+#' `fmridataset_error_backend_io`. See [content_hash()] to identify values.
 #'
 #' @param paths One or more NIfTI files with a common spatial grid.
 #' @param mask A NIfTI mask path or a compatible `volume_space`.

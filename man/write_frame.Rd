@@ -29,3 +29,9 @@ These functions provide the semantic-package entry point while delegating
 physical HDF5 work to \code{fmristore}. Reopened assays are reconstructible lazy
 sources; opening a frame does not read assay values.
 }
+\details{
+Neither function computes a content hash. Persistence records semantic
+manifest digests and source fingerprints only; a caller who wants a value
+receipt for the written or reopened arrays requests it explicitly with
+\code{\link[=content_hash]{content_hash()}} and records the result where it is needed.
+}

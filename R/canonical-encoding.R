@@ -122,6 +122,30 @@
   c(.canonical_tag("f"), writeBin(x, raw(), size = 8L, endian = "big"))
 }
 
+# Vectorized form of .canonical_double_bytes() over a whole vector: byte for
+# byte the same stream, without one R call per value. Selector fingerprints
+# hash integer and double vectors as long as a feature axis, and plan
+# fingerprints are recomputed on every execute_block_plan() call, so the
+# per-element encoder was the dominant cost of a fingerprint.
+.canonical_double_vector_bytes <- function(x) {
+  n <- length(x)
+  if (!n) return(raw())
+  nan <- is.nan(x)
+  na <- is.na(x) & !nan
+  regular <- !nan & !na & is.finite(x)
+  positive_inf <- !nan & !na & !regular & x > 0
+  negative_inf <- !nan & !na & !regular & x < 0
+  tag <- rep(.canonical_tag("f"), n)
+  tag[nan] <- .canonical_tag("n")
+  tag[na] <- .canonical_tag("a")
+  tag[positive_inf] <- .canonical_tag("p")
+  tag[negative_inf] <- .canonical_tag("m")
+  payload <- matrix(writeBin(x, raw(), size = 8L, endian = "big"), nrow = 8L)
+  cells <- rbind(tag, payload)
+  keep <- rbind(rep(TRUE, n), matrix(rep(regular, each = 8L), nrow = 8L))
+  cells[keep]
+}
+
 .canonical_attribute_bytes <- function(x) {
   values <- attributes(x)
   if (is.null(values)) return(c(.canonical_tag("A"), .canonical_length(0L)))
@@ -158,17 +182,15 @@
     ),
     integer = c(
       .canonical_tag("i"), .canonical_length(length(x)),
-      unlist(lapply(x, .canonical_int32), use.names = FALSE)
+      .canonical_int32(x)
     ),
     double = c(
       .canonical_tag("d"), .canonical_length(length(x)),
-      unlist(lapply(x, .canonical_double_bytes), use.names = FALSE)
+      .canonical_double_vector_bytes(x)
     ),
     complex = c(
       .canonical_tag("z"), .canonical_length(length(x)),
-      unlist(lapply(x, function(value) {
-        c(.canonical_double_bytes(Re(value)), .canonical_double_bytes(Im(value)))
-      }), use.names = FALSE)
+      .canonical_double_vector_bytes(as.vector(rbind(Re(x), Im(x))))
     ),
     character = c(
       .canonical_tag("c"), .canonical_length(length(x)),

@@ -23,3 +23,11 @@ local volume indices into \code{\link[neuroim2:read_vec]{neuroim2::read_vec()}},
 requested packed features before materialization. Native reads return
 full-volume \code{NeuroVec} objects in requested observation order.
 }
+\details{
+The fingerprint covers the descriptor and the size and modification time of
+every file captured at construction, never the voxel values. Every open,
+read, and native read re-observes those files first and raises
+\code{fmridataset_error_source_stale} (with \code{source}, \code{expected}, \code{actual}, and
+\code{changed} fields) if any differ; genuine read failures remain
+\code{fmridataset_error_backend_io}. See \code{\link[=content_hash]{content_hash()}} to identify values.
+}
