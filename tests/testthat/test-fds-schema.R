@@ -135,6 +135,15 @@ test_that("FDS manifests and bindings preserve lazy frame-view selectors", {
 
   expect_identical(manifest$shape, c(3L, 3L))
   expect_identical(manifest$arrays[["assays/beta"]]$shape, c(3L, 3L))
+  expect_identical(source_shape(assay(view, "beta")$source), c(3L, 3L))
+  expect_identical(
+    assay(view, "beta")$observation_digest,
+    manifest$assays$beta$observation_digest
+  )
+  expect_identical(
+    assay(view, "beta")$feature_digest,
+    manifest$assays$beta$feature_digest
+  )
   expect_s3_class(bindings[["assays/beta"]], "source_view")
   expect_identical(source_shape(bindings[["assays/beta"]]), c(3L, 3L))
 
