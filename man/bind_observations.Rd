@@ -4,10 +4,21 @@
 \alias{bind_observations}
 \title{Bind frames along observations}
 \usage{
-bind_observations(...)
+bind_observations(
+  ...,
+  metadata_policy = c("identical", "merge"),
+  active_assay = NULL
+)
 }
 \arguments{
-\item{...}{Frames with identical feature IDs, spaces, and assay names.}
+\item{...}{Frames with identical feature IDs, spaces, and assay semantics.}
+
+\item{metadata_policy}{Frame-metadata reconciliation. \code{"identical"}
+requires exact equality; \code{"merge"} recursively combines non-conflicting
+unaligned records.}
+
+\item{active_assay}{Optional active assay for the result. Required when
+operands have different active assays.}
 }
 \value{
 A lazily row-bound \code{fmri_frame}.

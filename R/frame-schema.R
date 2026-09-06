@@ -179,6 +179,7 @@ validate_frame_schema <- function(schema) {
 .schema_projection <- function(schema, mode) {
   schema <- unclass(frame_schema(schema))
   if (!identical(mode, "same")) schema$observation$count <- NULL
+  if (identical(mode, "bind")) schema$active_assay <- NULL
   if (identical(mode, "collection")) {
     schema$feature$count <- NULL
     schema$feature$space$digest <- NULL
