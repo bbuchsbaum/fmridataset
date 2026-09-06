@@ -93,7 +93,9 @@ test_that("auxiliary tables are typed and frame table registries reject data fra
     fmri_frame(
       assays = list(signal = matrix(1:6, nrow = 2L)),
       observations = data.frame(.obs_id = c("o1", "o2")),
-      space = index_space(3L),
+      space = index_space(
+        3L, namespace = "metadata-contract", id_policy = "deterministic"
+      ),
       tables = list(files = data.frame(file_id = "f1"))
     ),
     "typed table",

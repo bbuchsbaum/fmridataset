@@ -1,5 +1,6 @@
 make_frame_fixture <- function(instrument = FALSE) {
   observations_data <- tibble::tibble(
+    .obs_id = sprintf("estimate-%03d", seq_len(7L)),
     subject_id = c("sub-01", "sub-01", "sub-02", "sub-02", "sub-02", "sub-03", "sub-03"),
     run_id = c("run-1", "run-1", "run-1", "run-1", "run-2", "run-1", "run-2"),
     stimulus_id = c("stim-1", "stim-2", "stim-1", "stim-3", "stim-2", "stim-1", "stim-3"),

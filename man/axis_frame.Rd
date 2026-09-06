@@ -13,7 +13,10 @@ axis_frame(
   id = NULL,
   axis = c("observation", "feature", "entity", "component"),
   id_col = NULL,
-  metadata = list()
+  metadata = list(),
+  id_policy = c("require", "deterministic", "ephemeral"),
+  id_keys = NULL,
+  id_namespace = NULL
 )
 
 axis_data(x)
@@ -34,6 +37,15 @@ axis_ids(x)
 \item{id_col}{Name of the ID column.}
 
 \item{metadata}{Additional serializable metadata.}
+
+\item{id_policy}{ID policy. \code{"require"} accepts only supplied durable IDs;
+\code{"deterministic"} derives durable IDs from \code{id_keys} and \code{id_namespace};
+\code{"ephemeral"} creates visibly marked session-only IDs that cannot be
+persisted or used for certified semantic identity.}
+
+\item{id_keys}{Columns that uniquely identify rows under deterministic policy.}
+
+\item{id_namespace}{Stable namespace under deterministic policy.}
 
 \item{x}{An \code{axis_frame}.}
 }

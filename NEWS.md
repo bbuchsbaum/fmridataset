@@ -44,6 +44,10 @@
   UTF-8 NFC normalization.
   Added `same_space()` for exact spatial identity; the older compatibility
   names remain exact-identity aliases and never infer alignment from shape.
+- Made axis identity policy explicit. Durable IDs are now supplied or derived
+  deterministically from declared keys; UUID-backed IDs require an explicit
+  `ephemeral` policy, are visibly marked, and are rejected by FDS persistence
+  and semantic certification.
 - Made `explain()` bounded for large axes: it now reports counts, source
   contracts, realization estimates, semantic/schema digests, and sampled IDs
   without numerical reads. Complete IDs require `ids = "complete"`.

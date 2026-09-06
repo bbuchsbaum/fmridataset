@@ -103,6 +103,11 @@ resampling or cross-space alignment is performed implicitly; ambiguous spaces,
 masks, or multi-echo selections produce an error requiring an explicit choice.
 Events remain a keyed auxiliary table rather than being copied onto volumes.
 
+Axis IDs are required by default. Importers can derive reproducible IDs from
+declared keys with `axis_frame(id_policy = "deterministic", ...)`. Exploratory
+session-only IDs require `id_policy = "ephemeral"`; they are visibly marked and
+must be replaced before FDS persistence or semantic certification.
+
 ## What it covers
 
 - **Aligned assays:** keep one or more numerical assays tied to the same

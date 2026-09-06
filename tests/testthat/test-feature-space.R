@@ -1,6 +1,6 @@
 test_that("index_space has namespaced stable feature IDs", {
-  x <- index_space(3)
-  y <- index_space(3)
+  x <- index_space(3, id_policy = "ephemeral")
+  y <- index_space(3, id_policy = "ephemeral")
 
   expect_equal(n_features(x), 3)
   expect_length(feature_ids(x), 3)

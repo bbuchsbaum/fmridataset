@@ -3,7 +3,9 @@ test_that("built-in sources and spaces satisfy reusable conformance", {
   expect_array_source_conformance(memory_source(m), m)
   expect_array_source_conformance(counting_source(memory_source(m)), m)
 
-  expect_feature_space_conformance(index_space(6))
+  expect_feature_space_conformance(index_space(
+    6, namespace = "conformance", id_policy = "deterministic"
+  ))
   expect_feature_space_conformance(volume_space(c(2, 2, 2), support = 1:6))
 })
 
@@ -125,8 +127,14 @@ test_that("row-sharded sources reject ambiguous or incompatible manifests", {
 test_that("frame binding rejects shape-only spatial matches", {
   obs1 <- data.frame(.obs_id = "a")
   obs2 <- data.frame(.obs_id = "b")
-  x <- fmri_frame(list(x = matrix(1:3, 1)), obs1, space = index_space(3))
-  y <- fmri_frame(list(x = matrix(4:6, 1)), obs2, space = index_space(3))
+  first_space <- index_space(
+    3, namespace = "bind-contract", id_policy = "deterministic"
+  )
+  second_space <- index_space(
+    3, namespace = "bind-contract-other", id_policy = "deterministic"
+  )
+  x <- fmri_frame(list(x = matrix(1:3, 1)), obs1, space = first_space)
+  y <- fmri_frame(list(x = matrix(4:6, 1)), obs2, space = second_space)
 
   expect_error(bind_observations(x, y), class = "fmridataset_error_space_mismatch")
 })
