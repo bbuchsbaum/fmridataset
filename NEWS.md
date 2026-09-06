@@ -168,7 +168,9 @@
   `fmri_study()` replace the study dataset and group. The last commit carrying
   the old surface is `3ae565e`; applications that still need it should pin
   that revision while they migrate. `fmri_frame` objects no longer inherit
-  from `fmri_dataset`.
+  from `fmri_dataset`. Serialized 0.x objects are not migrated by this
+  package: load them with the pinned revision, build an `fmri_frame` from the
+  matrix and metadata, and persist it with `write_frame()`.
 * `as_delarr()` now dispatches on `x` rather than `backend`, and is defined for
   array sources only.
 * `fmrihrf` moved from Imports to Suggests. Only `as_sampling_frame()` needs
