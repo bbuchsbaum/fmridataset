@@ -14,6 +14,10 @@
 - `write_frame()` now returns the committed path normalized with forward
   slashes on every platform, and zarr `file://` sources are resolved to native
   filesystem paths before opening, fixing Windows-only failures.
+- Classified the namespace into user, extension, and developer-only audiences
+  (`inst/architecture/API-AUDIENCES.md`). `%||%` is no longer exported;
+  counting and fault sources remain only as documented conformance tools for
+  companion packages.
 - Frame views now expose assay descriptors for their visible rectangle:
   sources, shapes, and axis digests remain synchronized through reordered,
   composed, ID-selected, and empty views without reading numerical data.
