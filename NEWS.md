@@ -22,6 +22,10 @@
   compatibility, observation binding, bounded explanation, FDS validation, and
   downstream protocol checks, with path-specific structured mismatch
   diagnostics.
+- Defined typed semantic, schema, space, source, provenance, and optional
+  content identities under an explicit R-only canonicalization v1 contract.
+  Added `same_space()` for exact spatial identity; the older compatibility
+  names remain exact-identity aliases and never infer alignment from shape.
 - Made `explain()` bounded for large axes: it now reports counts, source
   contracts, realization estimates, semantic/schema digests, and sampled IDs
   without numerical reads. Complete IDs require `ids = "complete"`.

@@ -11,6 +11,8 @@
 \alias{vectorize_space}
 \alias{reconstruct_space}
 \alias{adjacency}
+\alias{same_space}
+\alias{assert_same_space}
 \alias{compatible_space}
 \alias{assert_compatible_space}
 \alias{reconstruct_space.surface_space}
@@ -33,6 +35,10 @@ vectorize_space(x, spatial_object, ...)
 reconstruct_space(x, vector, ...)
 
 adjacency(x, ...)
+
+same_space(x, y, ...)
+
+assert_same_space(x, y, ...)
 
 compatible_space(x, y, ...)
 
