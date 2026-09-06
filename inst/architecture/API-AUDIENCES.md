@@ -65,8 +65,9 @@ The stable extension groups are:
   `restrict_space()`, `vectorize_space()`, `reconstruct_space()`,
   `adjacency()`, exact `same_space()`, the migration alias
   `compatible_space()`, and `space_digest()`;
-- typed `identity_descriptor()` results and the versioned R-only
-  `canonicalization_contract()`;
+- typed `identity_descriptor()` results, the versioned R-only
+  `canonicalization_contract()`, and the explicit O(n) value receipt
+  `content_hash()` with its `content_hash_contract()` (ADR-009);
 - mapping and provenance: `feature_map*()`, `provenance_*()`, the explicit
   `as_provenance_graph()` migration boundary, and their validators and digests;
 - container semantics: `unaligned_record()`, `event_table()`, and

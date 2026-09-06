@@ -183,7 +183,15 @@ test_that("Zarr handles close and reject changed physical metadata", {
     .zarr_provider_close = function(handle) handle$closed <- TRUE,
     .package = "fmridataset",
     {
-      expect_error(source_open(source), class = "fmridataset_error_source_stale")
+      condition <- expect_error(
+        source_open(source),
+        class = "fmridataset_error_source_stale"
+      )
+      expect_false(inherits(condition, "fmridataset_error_backend_io"))
+      expect_identical(condition$source$type, "zarr_array_source")
+      expect_identical(condition$source$uri, source$uri)
+      expect_identical(condition$expected$shape, c(3L, 4L))
+      expect_identical(condition$actual$shape, c(4L, 4L))
       expect_true(runtime$closed)
     }
   )

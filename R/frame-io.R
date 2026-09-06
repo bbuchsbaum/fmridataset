@@ -26,6 +26,11 @@
 #' physical HDF5 work to `fmristore`. Reopened assays are reconstructible lazy
 #' sources; opening a frame does not read assay values.
 #'
+#' Neither function computes a content hash. Persistence records semantic
+#' manifest digests and source fingerprints only; a caller who wants a value
+#' receipt for the written or reopened arrays requests it explicitly with
+#' [content_hash()] and records the result where it is needed.
+#'
 #' @param x An `fmri_frame`.
 #' @param path Destination or source path.
 #' @param format Storage format. The walking-skeleton implementation supports

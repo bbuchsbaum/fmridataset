@@ -43,4 +43,11 @@ The optional \code{zarr} package is needed only when metadata
 must be discovered or data are read. Supplying \code{shape}, \code{dtype}, and \code{chunks}
 together therefore permits metadata-only construction and serialization on
 workers where Zarr is not installed.
+
+The fingerprint covers the descriptor: URI, array path, logical shape,
+dtype, chunks, and axis order, never the stored values. Opening a handle
+re-reads the store metadata and raises \code{fmridataset_error_source_stale}
+(with \code{source}, \code{expected}, and \code{actual} fields) if shape, chunks, or dtype
+changed; a store that cannot be opened is \code{fmridataset_error_backend_io}.
+See \code{\link[=content_hash]{content_hash()}} to identify values.
 }

@@ -108,10 +108,19 @@ test_that("NIfTI sources detect stale files before numerical reads", {
   source <- nifti_array_source(image, mask)
 
   Sys.setFileTime(image, Sys.time() + 2)
-  expect_error(
+  condition <- expect_error(
     source_read(source, 1L, 1L),
-    "changed after the descriptor"
+    "changed after the descriptor",
+    class = "fmridataset_error_source_stale"
   )
+  expect_false(inherits(condition, "fmridataset_error_backend_io"))
+  expect_identical(condition$source$type, "nifti_array_source")
+  expect_identical(condition$source$uri, source$uri)
+  expect_identical(condition$changed, source$uri)
+  expect_identical(condition$expected, source$file_state)
+  expect_false(identical(condition$actual, condition$expected))
+  expect_error(source_open(source), class = "fmridataset_error_source_stale")
+  expect_error(source_read_native(source, 1L), class = "fmridataset_error_source_stale")
 })
 
 test_that("NIfTI source validates spatial agreement and selectors", {

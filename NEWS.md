@@ -1,5 +1,25 @@
 # fmridataset 0.10.0 (Development)
 
+- Made source fingerprint and content-hash policy explicit
+  (`inst/architecture/ADR-009-source-fingerprints-and-content-hashes.md`).
+  `source_fingerprint()` is now a cheap revision fingerprint of the descriptor
+  and its physical revision evidence, computed once at construction and cached,
+  never of array values: `memory_source()` no longer hashes its payload and
+  derives its fingerprint from shape, dtype, chunks, a per-object identity
+  token, and an optional `revision`, so equal-valued memory sources built
+  independently have different fingerprints by design; `identity = "content"`
+  is the explicit opt-in. Sparse entity, lifted, and view fingerprints are
+  cached so repeated calls are O(1), and canonical encoding of numeric vectors
+  is vectorized. Added the exported extension generic `content_hash()` (with
+  `content_hash_contract()`), an explicit O(n) SHA-256 of realized values
+  streamed in bounded, chunk-aligned blocks that agrees across memory copies,
+  storage dtypes, views, and row-bound compositions and is accepted as a
+  content receipt by `identity_descriptor()`. Every file-backed source now
+  raises `fmridataset_error_source_stale` (with `source`, `expected`, and
+  `actual` fields) when its files or store changed after construction; NIfTI
+  previously raised `fmridataset_error_backend_io`, which is now reserved for
+  genuine I/O failures. `plan_blocks()` no longer rejects frames with an empty
+  axis while estimating the per-value cost.
 - Realization budgets now distinguish storage dtype and bytes from the R
   output dtype, retained output, temporary selection, conversion, or
   decompression buffers, and estimated peak working memory. The shared

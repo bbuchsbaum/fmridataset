@@ -87,6 +87,18 @@ expect_array_source_conformance <- function(source, reference) {
   # Out-of-range selections are refused rather than recycled or truncated.
   expect_error(source_read(source, n_row + 1L, 1L))
   expect_error(source_read(source, 1L, n_col + 1L))
+
+  # Content identity is a property of the values, not of the source that
+  # delivers them: every conforming source hashes exactly like an in-memory
+  # copy of its reference, and the result is a legal content receipt.
+  # The fingerprint stays untouched by the O(n) read.
+  content <- content_hash(source)
+  expect_identical(content, content_hash(memory_source(unname(as.matrix(reference)))))
+  expect_identical(
+    identity_descriptor(source, domain = "content", content_digest = content)$digest,
+    content
+  )
+  expect_identical(source_fingerprint(source), descriptor$fingerprint)
 }
 
 expect_feature_space_conformance <- function(space) {

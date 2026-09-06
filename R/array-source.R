@@ -2,6 +2,27 @@
 
 #' Serializable numerical array sources
 #'
+#' @details
+#' **Fingerprint policy.**
+#' `source_fingerprint()` returns the revision fingerprint of a descriptor:
+#' one SHA-256 string over the serializable descriptor and the physical
+#' revision evidence a backend can observe without reading values (file sizes
+#' and modification times, store metadata, or a per-object identity token for
+#' in-memory sources), combined with selectors and shard composition for
+#' wrappers. It never hashes array values, it is computed once at
+#' construction and cached in the descriptor, and it survives serialization.
+#' Equal fingerprints mean "the same descriptor of the same revision"; they
+#' never mean equal values, and different fingerprints never mean different
+#' values. Two independently constructed [memory_source()] objects with equal
+#' payloads have different fingerprints by design.
+#'
+#' Value identity is a separate, explicit, `O(n)` operation: [content_hash()].
+#' File-backed sources compare their captured revision evidence with the
+#' physical state before every open and read and raise
+#' `fmridataset_error_source_stale` when it differs; genuine backend failures
+#' raise `fmridataset_error_backend_io`. The policy is recorded in
+#' `inst/architecture/ADR-009-source-fingerprints-and-content-hashes.md`.
+#'
 #' @param x An array source or object coercible to one.
 #' @param observations Optional observation positions.
 #' @param features Optional feature positions.
@@ -41,6 +62,26 @@ source_capabilities <- function(x, ...) UseMethod("source_capabilities")
 #' @rdname array-source
 #' @export
 source_fingerprint <- function(x, ...) UseMethod("source_fingerprint")
+
+# Structured stale-source failure shared by every file-backed source.
+#
+# A stale source is one whose descriptor no longer matches the physical thing
+# it describes. That is not an I/O failure: the file opened fine, it is simply
+# not the file the descriptor was made from. Both cases used to raise
+# fmridataset_error_backend_io from the NIfTI source, which made callers unable
+# to tell "retry the read" apart from "rebuild the descriptor".
+.abort_source_stale <- function(message, source, expected, actual,
+                                operation = "freshness_check", ...) {
+  .frame_abort(
+    message,
+    "fmridataset_error_source_stale",
+    operation = operation,
+    source = source,
+    expected = expected,
+    actual = actual,
+    ...
+  )
+}
 
 #' @rdname array-source
 #' @export
@@ -412,13 +453,36 @@ validate_array_source <- function(x) {
 
 #' Construct an in-memory array source
 #'
+#' A memory source holds its values in the descriptor, so its revision
+#' fingerprint cannot be derived from a file state. It is instead derived from
+#' the shape, dtype, chunk grid, and a per-object identity token assigned once
+#' at construction, plus the optional caller-supplied `revision`. Construction
+#' therefore never reads or hashes the payload, whatever its size.
+#'
+#' Two independently constructed memory sources with equal values have
+#' different fingerprints by design, and fingerprint equality is never value
+#' equality. A serialization round trip preserves the token, so a descriptor
+#' and its copies agree. Values compared across objects require
+#' [content_hash()]. Set `identity = "content"` to opt into a content-derived
+#' token: the payload is hashed once at construction and equal-valued sources
+#' then share a fingerprint at O(n) cost.
+#'
 #' @param data A two-dimensional matrix or array.
 #' @param dtype Logical storage dtype. Numeric R matrices default to
 #'   `"float64"`.
 #' @param chunks Optional logical chunk shape.
+#' @param revision Optional single string naming the revision of `data`, such
+#'   as a version label or an upstream checksum. It enters the fingerprint and
+#'   is never interpreted.
+#' @param identity `"object"` assigns a fresh identity token; `"content"`
+#'   derives it from [content_hash()] of `data`.
 #' @return A serializable `memory_source`.
+#' @seealso [source_fingerprint()] and [content_hash()] for the fingerprint
+#'   policy.
 #' @export
-memory_source <- function(data, dtype = NULL, chunks = NULL) {
+memory_source <- function(data, dtype = NULL, chunks = NULL, revision = NULL,
+                          identity = c("object", "content")) {
+  identity <- match.arg(identity)
   d <- dim(data)
   if (is.null(d) || length(d) != 2L) {
     .frame_abort("A frame ArraySource must be two dimensional.", "fmridataset_error_alignment")
@@ -427,6 +491,15 @@ memory_source <- function(data, dtype = NULL, chunks = NULL) {
   chunks <- as.integer(chunks %||% pmax(1L, d))
   if (length(chunks) != 2L || any(chunks <= 0L)) {
     .frame_abort("Source chunks must contain two positive integers.", "fmridataset_error_alignment")
+  }
+  if (!is.null(revision) && (!is.character(revision) || length(revision) != 1L ||
+    is.na(revision) || !nzchar(revision))) {
+    .frame_abort(
+      "revision must be NULL or one non-empty string.",
+      "fmridataset_error_source_contract",
+      field = "revision",
+      actual = revision
+    )
   }
   dtype <- dtype %||% .source_dtype_from_data(data)
   .dtype_bytes(dtype)
@@ -437,17 +510,26 @@ memory_source <- function(data, dtype = NULL, chunks = NULL) {
       dtype = dtype,
       chunks = pmin(chunks, pmax(1L, d)),
       capabilities = c("row_slice", "column_slice", "block_slice", "serializable"),
+      identity = NA_character_,
+      identity_basis = identity,
+      revision = revision,
       schema_version = 1L
     ),
     class = c("memory_source", "array_source")
   )
+  out$identity <- if (identical(identity, "content")) {
+    paste0("content:", content_hash(out))
+  } else {
+    paste0("object:", uuid::UUIDgenerate())
+  }
   out$fingerprint <- .canonical_digest(list(
     type = "memory",
     schema_version = out$schema_version,
     shape = out$shape,
     dtype = out$dtype,
     chunks = out$chunks,
-    data = out$data
+    identity = out$identity,
+    revision = out$revision
   ))
   validate_array_source(out)
   out
@@ -525,6 +607,14 @@ source_view <- function(source, observations = NULL, features = NULL) {
     list(source = source, observations = observations, features = features),
     class = c("source_view", "array_source")
   )
+  # Descriptors are immutable, so the fingerprint is computed once here. Views
+  # are what frames hold, and plan_blocks()/execute_block_plan() fingerprint
+  # the frame selection on every call.
+  out$fingerprint <- .canonical_digest(list(
+    source = source_fingerprint(source),
+    observations = observations,
+    features = features
+  ))
   validate_array_source(out)
   out
 }
@@ -544,13 +634,7 @@ source_capabilities.source_view <- function(x, ...) {
   capabilities
 }
 #' @export
-source_fingerprint.source_view <- function(x, ...) {
-  .canonical_digest(list(
-    source = source_fingerprint(x$source),
-    observations = x$observations,
-    features = x$features
-  ))
-}
+source_fingerprint.source_view <- function(x, ...) x$fingerprint
 #' @export
 source_open.source_view <- function(x, ...) {
   structure(list(source = x), class = c("source_view_handle", "array_source_handle"))
@@ -690,6 +774,10 @@ source_close.counting_source <- function(x, ...) {
   .set_source_counter(x, count)
   invisible(TRUE)
 }
+# Opening a counting source counts an open, so closing the handle it returned
+# must count the matching close; the generic handle close is a no-op.
+#' @export
+source_close.counting_source_handle <- function(x, ...) source_close(x$source, ...)
 
 #' Developer tool: inject deterministic source failures
 #'

@@ -2,13 +2,15 @@
 #'
 #' Semantic and schema identities are independent of physical locations.
 #' Source fingerprints identify descriptors and selectors, not array contents.
-#' Content digests are optional backend-supplied receipts and are never inferred
-#' by reading data.
+#' Content digests are optional receipts computed explicitly by
+#' [content_hash()] or supplied by a backend; this function never reads data
+#' to infer one, so the content domain always requires `content_digest`.
 #'
 #' @param x A frame, frame schema, feature space, array source, FDS manifest,
 #'   provenance graph, collection, or study.
 #' @param domain Identity domain. Usually inferred from `x`.
-#' @param content_digest Optional externally computed content digest.
+#' @param content_digest Optional externally computed content digest, such as
+#'   the value of [content_hash()].
 #' @return A serializable typed identity descriptor.
 #' @export
 identity_descriptor <- function(
