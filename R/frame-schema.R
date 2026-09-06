@@ -65,6 +65,12 @@
         columns = .schema_columns(event_data(value)), metadata = value$metadata
       ))
     }
+    if (inherits(value, "fmri_auxiliary_table")) {
+      return(list(
+        type = "auxiliary", key = table_key(value), role = table_role(value),
+        columns = .schema_columns(table_data(value)), metadata = value$metadata
+      ))
+    }
     list(
       type = class(value)[1L], key = attr(value, "key", exact = TRUE),
       columns = if (is.data.frame(value)) .schema_columns(value) else NULL

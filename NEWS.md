@@ -22,6 +22,13 @@
   compatibility, observation binding, bounded explanation, FDS validation, and
   downstream protocol checks, with path-specific structured mismatch
   diagnostics.
+- Made container metadata, typed tables, aligned values, and lineage
+  mechanically distinct. Frame, collection, study, and FDS constructors now
+  require `unaligned_record` metadata semantics and `provenance_graph` lineage;
+  `as_provenance_graph()` converts a list of provenance records into a graph.
+  Added `auxiliary_table()` for keyed files, contrasts, transforms, and other
+  relational tables, and reject axis-length vectors, result diagnostics,
+  arrays, and raw data frames hidden in generic metadata.
 - Defined typed semantic, schema, space, source, provenance, and optional
   content identities under an explicit R-only canonicalization v1 contract.
   Added `same_space()` for exact spatial identity; the older compatibility

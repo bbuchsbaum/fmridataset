@@ -36,8 +36,8 @@
 #' feature-space type and annotation semantics are validated explicitly.
 #'
 #' @param frames A non-empty named list of `fmri_frame` objects or lazy views.
-#' @param metadata Serializable collection metadata.
-#' @param provenance Serializable provenance records.
+#' @param metadata Unaligned collection-level metadata.
+#' @param provenance `NULL` or a validated `provenance_graph`.
 #' @return An `fmri_collection`.
 #' @export
 fmri_collection <- function(frames, metadata = list(), provenance = NULL) {
@@ -63,9 +63,10 @@ fmri_collection <- function(frames, metadata = list(), provenance = NULL) {
       .assert_collection_semantics(frames[[1L]], frames[[i]], ids[[i]])
     }
   }
-  if (inherits(provenance, "provenance_graph")) {
-    validate_provenance_graph(provenance)
-  }
+  metadata <- .normalize_container_metadata(
+    metadata, .collection_alignment_domains(frames)
+  )
+  provenance <- .validate_container_provenance(provenance, "Collection")
   out <- structure(
     list(
       frames = frames,

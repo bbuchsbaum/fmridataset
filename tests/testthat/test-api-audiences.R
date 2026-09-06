@@ -32,8 +32,8 @@
 
 .api_user_exports <- c(
   "active_assay", "adjacency", "append_provenance", "append_source_shards",
-  "apply_feature_validity", "as_fmri_frame", "as_sampling_frame", "assay",
-  "assays", "axis_block",
+  "apply_feature_validity", "as_fmri_frame", "as_provenance_graph",
+  "as_sampling_frame", "assay", "assays", "auxiliary_table", "axis_block",
   "axis_frame", "basis_analysis", "basis_projection_info", "basis_space",
   "basis_space_from_decoder", "basis_space_from_fmrilatent", "basis_synthesis",
   "bind_observations", "block_apply", "collect_assay", "collect_spatial_maps",
@@ -57,10 +57,11 @@
   "restrict_space", "select_features", "space", "space_digest", "sparse_relation",
   "spatial_map", "study_frame", "study_frames", "study_ids", "study_link",
   "study_links", "study_table", "study_tables", "surface_space",
-  "surface_space_from_neurosurf", "temporal_schema", "validity_coverage",
+  "surface_space_from_neurosurf", "table_data", "table_key", "table_role",
+  "temporal_schema", "unaligned_record", "validity_coverage",
   "validity_entity", "validity_entity_ids", "validity_mask_bank", "validity_matrix",
   "validity_space", "vectorize_space", "volume_space", "write_frame",
-  "zarr_array_source"
+  "validate_auxiliary_table", "validate_unaligned_record", "zarr_array_source"
 )
 
 test_that("every ordinary export has one documented audience", {
