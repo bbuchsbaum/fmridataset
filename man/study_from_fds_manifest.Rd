@@ -7,7 +7,7 @@
 study_from_fds_manifest(manifest, representations, bindings = list())
 }
 \arguments{
-\item{manifest}{A valid FDS v1 study manifest.}
+\item{manifest}{A valid FDS v2 study manifest.}
 
 \item{representations}{Named lazy frames or collections matching the
 representation manifests.}

@@ -5,35 +5,34 @@
 \title{Describe a typed link between study representations}
 \usage{
 frame_link(
-  from,
-  to,
-  type = c("derived_from", "mapped_from", "corresponds_to", "aligned_from"),
+  source,
+  target,
+  type = c("derivation", "mapping", "correspondence", "alignment"),
   map = NULL,
-  from_axis = c("observation", "feature"),
-  to_axis = c("observation", "feature"),
+  source_axis = c("observation", "feature"),
+  target_axis = c("observation", "feature"),
   metadata = list(),
-  feature_map = NULL
+  operator = NULL
 )
 }
 \arguments{
-\item{from}{Source representation name.}
+\item{source}{Source representation name.}
 
-\item{to}{Target representation name.}
+\item{target}{Target representation name.}
 
 \item{type}{Link type: derivation, feature mapping, correspondence, or
 alignment.}
 
-\item{map}{Optional scalar table with \code{.from_id} and \code{.to_id} columns.}
+\item{map}{Optional scalar table with \code{.source_id} and \code{.target_id} columns.}
 
-\item{from_axis}{Axis addressed by \code{.from_id}.}
+\item{source_axis}{Axis addressed by \code{.source_id}.}
 
-\item{to_axis}{Axis addressed by \code{.to_id}.}
+\item{target_axis}{Axis addressed by \code{.target_id}.}
 
 \item{metadata}{Serializable link metadata.}
 
-\item{feature_map}{Optional typed feature map. This is valid only for a
-feature-to-feature \code{"mapped_from"} link and is persisted in the link's
-metadata without changing the v1 descriptor shape.}
+\item{operator}{Optional typed feature operator. This is valid only for a
+feature-to-feature mapping or alignment and remains a first-class field.}
 }
 \value{
 A \code{frame_link} descriptor.

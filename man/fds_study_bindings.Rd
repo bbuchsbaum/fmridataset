@@ -7,7 +7,7 @@
 fds_study_bindings(x)
 }
 \arguments{
-\item{x}{An \code{fmri_study} or filtered study view.}
+\item{x}{An \code{fmri_study}.}
 }
 \value{
 A named list of shared entity-block payloads. Representation arrays

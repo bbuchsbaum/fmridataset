@@ -7,14 +7,14 @@
 filter_entities(x, entity, predicate)
 }
 \arguments{
-\item{x}{An \code{fmri_study} or filtered view.}
+\item{x}{An \code{fmri_study}.}
 
 \item{entity}{Bare or quoted shared entity name.}
 
 \item{predicate}{A scalar-metadata predicate evaluated on that entity table.}
 }
 \value{
-A lazy \code{fmri_study_view}.
+A self-contained \code{fmri_study} whose numerical sources remain lazy.
 }
 \description{
 Filter every study representation through one shared entity selection

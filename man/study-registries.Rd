@@ -20,7 +20,7 @@ study_table(x, name)
 events(x, name = "events")
 }
 \arguments{
-\item{x}{An \code{fmri_study} or filtered view.}
+\item{x}{An \code{fmri_study}.}
 
 \item{name}{Stable link or table name.}
 }

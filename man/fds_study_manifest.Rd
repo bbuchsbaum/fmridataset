@@ -3,14 +3,14 @@
 \name{fds_study_manifest}
 \alias{fds_study_manifest}
 \alias{validate_fds_study_manifest}
-\title{Construct and validate an FDS v1 study manifest}
+\title{Construct and validate an FDS v2 study manifest}
 \usage{
 fds_study_manifest(x)
 
 validate_fds_study_manifest(manifest)
 }
 \arguments{
-\item{x}{An \code{fmri_study} or filtered study view.}
+\item{x}{An \code{fmri_study}.}
 
 \item{manifest}{An FDS study manifest.}
 }
