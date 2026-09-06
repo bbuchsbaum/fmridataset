@@ -18,6 +18,10 @@
   (`inst/architecture/API-AUDIENCES.md`). `%||%` is no longer exported;
   counting and fault sources remain only as documented conformance tools for
   companion packages.
+- Added one zero-I/O canonical frame schema (`frame_schema()`) for collection
+  compatibility, observation binding, bounded explanation, FDS validation, and
+  downstream protocol checks, with path-specific structured mismatch
+  diagnostics.
 - Made `explain()` bounded for large axes: it now reports counts, source
   contracts, realization estimates, semantic/schema digests, and sampled IDs
   without numerical reads. Complete IDs require `ids = "complete"`.
