@@ -179,7 +179,16 @@ validate_frame_schema <- function(schema) {
 .schema_projection <- function(schema, mode) {
   schema <- unclass(frame_schema(schema))
   if (!identical(mode, "same")) schema$observation$count <- NULL
-  if (identical(mode, "bind")) schema$active_assay <- NULL
+  if (identical(mode, "bind")) {
+    schema$active_assay <- NULL
+    # Bound observation blocks are aligned by component ID, not by column
+    # position, so component order is not part of the bind contract. Identity
+    # (the set of IDs) still is.
+    schema$observation$blocks <- lapply(schema$observation$blocks, function(block) {
+      block$component_ids <- sort(block$component_ids)
+      block
+    })
+  }
   if (identical(mode, "collection")) {
     schema$feature$count <- NULL
     schema$feature$space$digest <- NULL

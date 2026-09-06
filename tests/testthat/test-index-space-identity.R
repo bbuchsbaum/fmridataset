@@ -36,15 +36,29 @@ test_that("a namespaced space is not compatible with an unnamespaced one", {
   )
 })
 
-test_that("generated IDs remain unique across independently-built spaces", {
-  a <- index_space(3)
-  b <- index_space(3)
+test_that("shape alone cannot establish feature identity", {
+  expect_error(index_space(3), class = "fmridataset_error_identity")
+})
+
+test_that("ephemeral IDs remain unique across independently-built spaces", {
+  a <- index_space(3, id_policy = "ephemeral")
+  b <- index_space(3, id_policy = "ephemeral")
 
   expect_false(identical(feature_ids(a), feature_ids(b)))
   expect_false(compatible_space(a, b)$compatible)
-  # The namespace is carried inside the generated IDs, so identity survives
-  # without the digest needing a separate copy of it.
-  expect_match(feature_ids(a)[1], "^feature-")
+  expect_false(ids_are_durable(a))
+  # The namespace is carried inside the generated IDs and visibly marked, so
+  # identity survives without the digest needing a separate copy of it.
+  expect_match(feature_ids(a)[1], "^ephemeral-feature-")
+})
+
+test_that("deterministic IDs are reproducible from the namespace", {
+  a <- index_space(3, namespace = "atlas", id_policy = "deterministic")
+  b <- index_space(3, namespace = "atlas", id_policy = "deterministic")
+
+  expect_identical(feature_ids(a), feature_ids(b))
+  expect_true(compatible_space(a, b)$compatible)
+  expect_true(ids_are_durable(a))
 })
 
 test_that("restriction preserves compatibility", {

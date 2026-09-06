@@ -152,10 +152,15 @@ plan_blocks <- function(
   target_block_bytes <- .validate_budget_scalar(target_block_bytes, "target_block_bytes")
   selection <- .frame_selection(x)
   descriptor <- assay(selection$base, assay)
-  unit_cost <- source_realization_cost(
-    descriptor$source,
-    observations = 1L,
-    features = 1L
+  # The per-value cost depends on the dtype and source traits, not on the
+  # selection, so derive it from a unit shape. Probing the source with a
+  # one-by-one selector would be out of bounds on a frame emptied on an axis.
+  traits <- .source_cost_traits(descriptor$source)
+  unit_cost <- .realization_cost_from_shape(
+    c(1L, 1L),
+    source_dtype(descriptor$source),
+    already_realized = traits$already_realized,
+    compressed = traits$compressed
   )
   output_dtype_bytes <- unit_cost$estimated_output_bytes
   peak_dtype_bytes <- unit_cost$estimated_peak_bytes

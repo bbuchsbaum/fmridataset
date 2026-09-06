@@ -2,3 +2,137 @@ url: https://bbuchsbaum.github.io/fmridataset/
 template:
   bootstrap: 5
   package: albersdown
+
+reference:
+- title: Frames
+  desc: >
+    The canonical observation-by-feature container, its accessors, lazy views,
+    explanation, binding, and coercion.
+  contents:
+  - fmri_frame
+  - frame-accessors
+  - aligned_assay_set
+  - filter_obs
+  - select_features
+  - bind_observations
+  - explain
+  - spatial_map
+  - block_apply
+  - collect_assay
+  - as_fmri_frame
+  - matches("^frame_schema|^compare_frame_schema|^validate_against_schema|^validate_frame_schema")
+
+- title: Axes, identity, and metadata
+  desc: >
+    Axis frames, blocks, durable ID policy, typed metadata records, typed
+    tables, and the identity contract.
+  contents:
+  - axis_frame
+  - matches("^axis_")
+  - matches("^block_component")
+  - feature_axis
+  - ids_are_durable
+  - unaligned_record
+  - validate_unaligned_record
+  - auxiliary_table
+  - validate_auxiliary_table
+  - matches("^table_")
+  - identity_descriptor
+  - canonicalization_contract
+  - matches("^canonical_")
+
+- title: Temporal contract
+  contents:
+  - temporal-schema
+  - matches("temporal_schema|as_sampling_frame")
+
+- title: Feature spaces
+  desc: >
+    Volume, surface, parcel, basis, composite, and index spaces, their
+    generics, and spatial compatibility.
+  contents:
+  - feature-space
+  - index_space
+  - volume_space
+  - matches("^surface_space")
+  - matches("^parcel")
+  - matches("^basis")
+  - matches("^composite")
+  - matches("space_digest|compatible_space|same_space|restrict_space|vectorize_space|reconstruct_space|parent_space|native_shape|n_features|feature_data|feature_ids|adjacency")
+  - matches("^nifti_source_space")
+
+- title: Feature maps and provenance
+  contents:
+  - matches("^feature_map")
+  - map_features
+  - feature_mapped_source
+  - matches("^provenance")
+  - as_provenance_graph
+  - append_provenance
+
+- title: Entities, relations, hierarchy, and validity
+  contents:
+  - matches("^entity")
+  - matches("^entities$")
+  - matches("relation")
+  - matches("^hierarchy")
+  - matches("^mask_bank|^mask_values|^n_masks|^validate_mask_bank")
+  - matches("validity")
+  - matches("^event")
+  - matches("^events$")
+  - validate_event_table
+
+- title: Collections and studies
+  contents:
+  - fmri_collection
+  - matches("^collection")
+  - validate_fmri_collection
+  - fmri_study
+  - matches("^study")
+  - validate_fmri_study
+  - frame_link
+  - compose_frame_links
+  - upgrade_frame_link
+  - filter_entities
+
+- title: Array sources and bounded execution
+  desc: >
+    The serializable ArraySource protocol, in-memory, NIfTI, sharded, and Zarr
+    sources, realization budgets, block planning, and spatial execution.
+  contents:
+  - array-source
+  - matches("^source_")
+  - memory_source
+  - nifti_array_source
+  - zarr_array_source
+  - matches("^row_")
+  - matches("shard")
+  - locate_source_rows
+  - validate_array_source
+  - as_delarr
+  - plan_blocks
+  - block_manifest
+  - execute_block_plan
+  - execute_spatial
+  - execution_path
+  - collect_spatial_maps
+
+- title: Persistence and import
+  desc: FDS manifests, HDF5 persistence through fmristore, and the BIDS on-ramp.
+  contents:
+  - write_frame
+  - open_frame
+  - matches("^fds_")
+  - validate_fds_manifest
+  - validate_fds_study_manifest
+  - frame_from_fds_manifest
+  - upgrade_fds_study_manifest
+  - read_bids_bold
+
+- title: Conformance tools
+  desc: Developer-only instruments for certifying zero-I/O, lifecycle, and failure laws.
+  contents:
+  - counting_source
+  - source_counts
+  - reset_source_counts
+  - fault_source

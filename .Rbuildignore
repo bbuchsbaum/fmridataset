@@ -48,3 +48,5 @@
 ^bids_plan\.md$
 ^fmrilatent_plan\.md$
 ^vignettes/.*\.html$
+^\.ruff_cache$
+^_problems$

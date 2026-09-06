@@ -75,11 +75,14 @@ test_that("blocks with different component identities are refused", {
   a <- bind_frame(c("o1", "o2"), c("translation", "rotation"))
   b <- bind_frame(c("o3", "o4"), c("translation", "scaling"))
 
-  expect_error(
+  # Component identity is a schema contract: the structured schema error
+  # names the path to the block whose components differ.
+  err <- expect_error(
     bind_observations(a, b),
-    class = "fmridataset_error_alignment"
+    class = "fmridataset_error_schema"
   )
-  expect_error(bind_observations(a, b), "scaling")
+  expect_match(err$field, "component_ids")
+  expect_true("scaling" %in% err$actual || "scaling" %in% err$expected)
 })
 
 test_that("bind is order-insensitive for component alignment", {
@@ -119,35 +122,48 @@ test_that("frames disagreeing on feature metadata are refused", {
   expect_error(bind_observations(a, b), "feature metadata")
 })
 
-test_that("frames disagreeing on tables or metadata are refused", {
+test_that("frames disagreeing on unkeyed tables or metadata are refused", {
+  notes <- function(value) {
+    auxiliary_table(tibble::tibble(onset = value), role = "notes")
+  }
   a <- bind_frame(c("o1", "o2"), c("translation", "rotation"),
-    tables = list(events = tibble::tibble(onset = 1)),
+    tables = list(notes = notes(1)),
     metadata = list(source = "from-A")
   )
   b_tables <- bind_frame(c("o3", "o4"), c("translation", "rotation"),
-    tables = list(events = tibble::tibble(onset = 99)),
+    tables = list(notes = notes(99)),
     metadata = list(source = "from-A")
   )
   b_meta <- bind_frame(c("o5", "o6"), c("translation", "rotation"),
-    tables = list(events = tibble::tibble(onset = 1)),
+    tables = list(notes = notes(1)),
     metadata = list(source = "from-B")
   )
 
-  expect_error(bind_observations(a, b_tables), "tables")
+  expect_error(
+    bind_observations(a, b_tables),
+    class = "fmridataset_error_table"
+  )
+  expect_error(bind_observations(a, b_tables), "differs across operands")
+  expect_error(
+    bind_observations(a, b_meta),
+    class = "fmridataset_error_alignment"
+  )
   expect_error(bind_observations(a, b_meta), "metadata")
 })
 
 test_that("frames that agree on all annotations still bind", {
+  notes <- auxiliary_table(tibble::tibble(onset = 1), role = "notes")
   a <- bind_frame(c("o1", "o2"), c("translation", "rotation"),
-    tables = list(events = tibble::tibble(onset = 1)),
+    tables = list(notes = notes),
     metadata = list(source = "shared")
   )
   b <- bind_frame(c("o3", "o4"), c("translation", "rotation"),
-    tables = list(events = tibble::tibble(onset = 1)),
+    tables = list(notes = notes),
     metadata = list(source = "shared")
   )
 
   ab <- bind_observations(a, b)
   expect_equal(observation_ids(ab), c("o1", "o2", "o3", "o4"))
   expect_equal(features(ab)$parcel, c("a", "a", "b", "b"))
+  expect_identical(table_data(ab$tables$notes), table_data(notes))
 })

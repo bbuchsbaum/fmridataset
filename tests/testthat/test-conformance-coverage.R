@@ -89,7 +89,10 @@ test_that("HDF5 extension sources conform against stored values", {
 # -------------------------------------------------------------- feature spaces
 
 test_that("index and volume spaces conform", {
-  expect_feature_space_conformance(index_space(6))
+  expect_feature_space_conformance(index_space(6, id_policy = "ephemeral"))
+  expect_feature_space_conformance(
+    index_space(6, namespace = "conformance", id_policy = "deterministic")
+  )
   expect_feature_space_conformance(index_space(6, ids = sprintf("f%d", 1:6)))
   expect_feature_space_conformance(volume_space(c(2, 2, 2), support = 1:6))
 })
