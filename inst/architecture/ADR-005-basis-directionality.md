@@ -55,9 +55,11 @@ The rank restriction is no longer a silent exclusion. It applies only to the
 exact-inverse path, where it is a genuine mathematical requirement, and callers
 who do not need projection have a documented way through.
 
-`basis_synthesis()` gives the 0.11 shim a real accessor for
-`get_spatial_loadings()`, and gives `fmrireg` something to migrate its four
-hand-rolled `@loadings` fallbacks onto.
+`basis_synthesis()` is the accessor consumers migrate onto in place of the
+removed `get_spatial_loadings()`, including `fmrireg`'s hand-rolled
+`@loadings` fallbacks. (Amended 2026-09-06: the "0.11 shim" mentioned in the
+original text was never built; the legacy accessors were removed, see
+ADR-001.)
 
 Pseudo-inverses were deliberately not adopted. A Moore-Penrose encoder would
 satisfy the shape requirement while failing the left-inverse property the

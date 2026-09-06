@@ -79,10 +79,12 @@ disagree, and the disagreement is made explicit rather than papered over.
 
 ## Consequences
 
-The 0.11 compatibility shim can implement `get_TR()`, `blockids()`,
-`get_run_lengths()`, `n_timepoints()`, and the runwise branch of `data_chunks()`
-as thin readers over `temporal_schema()`, against a contract rather than a
-convention.
+Consumers that need run structure read it from `temporal_schema()` directly,
+against a contract rather than a convention. (Amended 2026-09-06: the "0.11
+compatibility shim" this decision anticipated was never built. The legacy
+accessors it would have reimplemented, `get_TR()`, `blockids()`,
+`get_run_lengths()`, `n_timepoints()`, and `data_chunks()`, were removed with
+the rest of the pre-frame architecture; see ADR-001.)
 
 Frames that carry no run information remain first-class. Beta estimates, parcel
 summaries, and latent scores have no acquisition structure, and

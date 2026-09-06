@@ -88,5 +88,6 @@ dependency contract.
 - surface, CIFTI, or multi-echo import;
 - union masks;
 - confound compilation;
-- replacement of the legacy `compress_bids_study()` HDF5 workflow;
+- a BIDS-to-HDF5 archive workflow (the former `compress_bids_study()` was
+  removed with the pre-frame architecture; persistence is `write_frame()`);
 - revival of the abandoned conversational `bids()` facade.
