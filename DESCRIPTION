@@ -26,6 +26,7 @@ Imports:
     neuroim2,
     rlang,
     stats,
+    stringi (>= 1.8.0),
     tibble,
     utils,
     uuid

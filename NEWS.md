@@ -38,6 +38,10 @@
   arrays, and raw data frames hidden in generic metadata.
 - Defined typed semantic, schema, space, source, provenance, and optional
   content identities under an explicit R-only canonicalization v1 contract.
+  The package-owned tagged binary encoder now publishes exact golden bytes and
+  SHA-256 vectors for numeric, Unicode, factor, dimension, sparse, and nested
+  values; `stringi` is the sole added hard dependency for platform-independent
+  UTF-8 NFC normalization.
   Added `same_space()` for exact spatial identity; the older compatibility
   names remain exact-identity aliases and never infer alignment from shape.
 - Made `explain()` bounded for large axes: it now reports counts, source
