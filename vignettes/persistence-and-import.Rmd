@@ -180,9 +180,10 @@ identical(content_hash(a), content_hash(stacked))
 A fingerprint says *same descriptor, same revision*. A content hash says *same
 numbers*. Neither implies the other. If you want equal-valued memory sources
 to share a fingerprint, opt in with `identity = "content"` and pay the hashing
-cost once, visibly, at construction. A `revision` label also enters the
-fingerprint, so relabeled data gets a new fingerprint without any hashing,
-but it does not replace the per-object token.
+cost once, visibly, at construction. A `revision` label replaces the
+per-object token, so two memory sources built independently under the same
+revision share a fingerprint without any hashing: the caller is asserting
+that they are the same source in the same revision.
 
 ```{r fingerprint-opt-in}
 identical(

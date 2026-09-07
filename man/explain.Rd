@@ -15,7 +15,9 @@ explain(x, ids = c("sample", "none", "complete"), sample_size = 3L)
 }
 \value{
 A bounded serializable execution summary. No assay or aligned-block
-values are read.
+values are read. \code{ids_durable} reports whether the observation axis and
+the feature space carry durable IDs; when it is \code{FALSE} the semantic
+digest is \code{NULL} because ephemeral IDs cannot enter an FDS manifest.
 }
 \description{
 \code{explain()} returns a bounded, serializable summary of the visible frame.

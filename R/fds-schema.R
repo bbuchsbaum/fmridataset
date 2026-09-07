@@ -144,10 +144,23 @@ fds_frame_manifest <- function(x) {
   }
   observation <- observation_axis(x)
   feature <- feature_axis(x)
-  if (!ids_are_durable(observation) || !ids_are_durable(feature)) {
+  ephemeral <- c(
+    if (!ids_are_durable(observation)) "observation",
+    if (!ids_are_durable(feature)) "feature"
+  )
+  if (length(ephemeral)) {
+    remedy <- c(
+      observation = "build the observation axis with supplied IDs or id_policy = \"deterministic\"",
+      feature = "pass a feature space (space = ...) with supplied or deterministic IDs instead of letting fmri_frame() mint an ephemeral index_space"
+    )
     .identity_abort(
-      "FDS persistence and semantic certification reject ephemeral axis IDs; reconstruct the axis with required or deterministic IDs first.",
-      field = "axes", policy = "ephemeral"
+      sprintf(
+        "FDS persistence and semantic certification reject ephemeral axis IDs; the %s axis %s ephemeral IDs. To fix: %s.",
+        paste(ephemeral, collapse = " and "),
+        if (length(ephemeral) > 1L) "carry" else "carries",
+        paste(remedy[ephemeral], collapse = "; ")
+      ),
+      field = "axes", policy = "ephemeral", axes = ephemeral
     )
   }
   observation_digest <- .axis_digest(observation)

@@ -363,8 +363,17 @@ validity_masked_source <- function(source, observation_mask_id, bank) {
     ),
     class = c("validity_masked_source", "array_source")
   )
+  # Hashing the mask bank is O(masks x features); do it once here (ADR-009).
+  out$fingerprint <- .validity_masked_fingerprint(out)
   validate_array_source(out)
   out
+}
+.validity_masked_fingerprint <- function(x) {
+  .canonical_digest(list(
+    type = "validity_masked_source", source = source_fingerprint(x$source),
+    assignments = x$observation_mask_id, bank = mask_bank_digest(x$bank),
+    schema_version = x$schema_version
+  ))
 }
 
 #' @export
@@ -381,11 +390,7 @@ source_capabilities.validity_masked_source <- function(x, ...) {
 }
 #' @export
 source_fingerprint.validity_masked_source <- function(x, ...) {
-  .canonical_digest(list(
-    type = "validity_masked_source", source = source_fingerprint(x$source),
-    assignments = x$observation_mask_id, bank = mask_bank_digest(x$bank),
-    schema_version = x$schema_version
-  ))
+  x$fingerprint %||% .validity_masked_fingerprint(x)
 }
 #' @export
 source_open.validity_masked_source <- function(x, ...) {

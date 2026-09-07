@@ -278,8 +278,21 @@ feature_mapped_source <- function(source, map,
     ),
     class = c("feature_mapped_source", "array_source")
   )
+  # The map digest canonicalizes the operator, which is O(features) work.
+  # ADR-009: wrappers combine cached child fingerprints once, at construction;
+  # plan_blocks() and execute_block_plan() fingerprint on every call.
+  out$fingerprint <- .feature_mapped_fingerprint(out)
   validate_array_source(out)
   out
+}
+.feature_mapped_fingerprint <- function(x) {
+  .canonical_digest(list(
+    type = "feature_mapped_source",
+    schema_version = x$schema_version,
+    source = source_fingerprint(x$source),
+    map = feature_map_digest(x$map),
+    rule = x$rule
+  ))
 }
 
 #' @export
@@ -296,13 +309,7 @@ source_capabilities.feature_mapped_source <- function(x, ...) {
 }
 #' @export
 source_fingerprint.feature_mapped_source <- function(x, ...) {
-  .canonical_digest(list(
-    type = "feature_mapped_source",
-    schema_version = x$schema_version,
-    source = source_fingerprint(x$source),
-    map = feature_map_digest(x$map),
-    rule = x$rule
-  ))
+  x$fingerprint %||% .feature_mapped_fingerprint(x)
 }
 #' @export
 source_open.feature_mapped_source <- function(x, ...) {

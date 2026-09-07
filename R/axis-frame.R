@@ -143,6 +143,11 @@
 axis_block <- function(data, components = NULL, role = "continuous",
                        units = NULL, metadata = list()) {
   .assert_block_shape(data)
+  .assert_no_runtime_state(
+    metadata, .alignment_abort,
+    "Axis block metadata cannot contain runtime functions, environments, or external pointers.",
+    field = "metadata"
+  )
   n_component <- .block_shape(data)[[2L]]
   if (is.null(components)) {
     components <- data.frame(
@@ -231,6 +236,11 @@ axis_frame <- function(data, blocks = list(), id = NULL,
   data <- data[c(id_col, setdiff(names(data), id_col))]
 
   .assert_aligned_blocks(blocks, nrow(data), what = "Axis")
+  .assert_no_runtime_state(
+    metadata, .alignment_abort,
+    "Axis metadata cannot contain runtime functions, environments, or external pointers.",
+    field = "metadata"
+  )
 
   structure(
     list(
@@ -239,10 +249,19 @@ axis_frame <- function(data, blocks = list(), id = NULL,
       id_col = id_col,
       axis = axis,
       id_policy = policy_value$descriptor,
-      metadata = metadata
+      metadata = metadata,
+      # Axis frames are immutable values, so the digest of their IDs is
+      # computed once here. Every consumer that keys on the axis (assay
+      # descriptors, views, manifests, explain()) reads it back instead of
+      # re-hashing an axis as long as a feature space on each access.
+      id_digest = .axis_id_digest(id)
     ),
     class = "axis_frame"
   )
+}
+
+.axis_id_digest <- function(ids) {
+  list(n = length(ids), sha256 = .canonical_digest(ids))
 }
 
 #' @param x An `axis_frame`.

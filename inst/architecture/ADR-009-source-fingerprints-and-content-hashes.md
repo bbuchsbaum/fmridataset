@@ -131,10 +131,16 @@ through stale and I/O errors from the reads it issues.
 - Memory-source fingerprints are per object; consumers that compared
   fingerprints across independently constructed equal matrices must compare
   content hashes instead.
-- Semantic digests that canonicalize an object containing a memory source
-  (for example an entity block supplied as a `memory_source` rather than a
-  matrix) include that source's identity token and are per object as well.
-  Supply matrices for semantic blocks, or compare content hashes.
+- `fds_manifest_digest()` is source-free: two frames that differ only in
+  the identity tokens of their memory sources, including an entity block
+  supplied as a `memory_source` rather than a matrix, have equal manifest
+  digests. `entity_registry_digest()` canonicalizes the registry object
+  itself, so it does include such a block's identity token and is per object;
+  `bind_observations()` therefore compares registries semantically (names,
+  keys, scalar data, block components, and block values, by fingerprint first
+  and by realized values only when fingerprints differ) rather than by that
+  digest. Supply matrices for entity blocks whose registry digest must agree
+  across independently built frames, or compare content hashes.
 - NIfTI stale detection changed class from `fmridataset_error_backend_io` to
   `fmridataset_error_source_stale`.
 - `content_hash()` joins the extension API; `content_hash_contract()`

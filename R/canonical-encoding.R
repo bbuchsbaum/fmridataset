@@ -146,6 +146,43 @@
   cells[keep]
 }
 
+# Vectorized form of .canonical_string_bytes() over a whole character vector:
+# byte for byte the same stream, without one R call per string. Axis IDs are
+# hashed as character vectors as long as a feature axis (ADR-007 keeps IDs as
+# plain strings), and axis digests, manifests, and explain() all hash them,
+# so the per-element encoder was the dominant cost of every semantic digest.
+# Element sizes are computed up front and the tags, big-endian lengths, and
+# UTF-8 payloads are placed by index into one preallocated raw vector.
+.canonical_string_vector_bytes <- function(x) {
+  n <- length(x)
+  if (!n) return(raw())
+  missing_value <- is.na(x)
+  present <- which(!missing_value)
+  if (!length(present)) return(rep(.canonical_tag("0"), n))
+  strings <- enc2utf8(x[present])
+  lengths <- nchar(strings, type = "bytes")
+  if (any(lengths > .Machine$integer.max)) {
+    .identity_abort("Canonical values exceed the v1 32-bit length limit.",
+                    field = "length")
+  }
+  sizes <- rep(1L, n)
+  sizes[present] <- 5L + lengths
+  starts <- c(1L, cumsum(sizes)[-n] + 1L)
+  out <- raw(sum(sizes))
+  out[starts] <- .canonical_tag("1")
+  out[starts[missing_value]] <- .canonical_tag("0")
+  present_starts <- starts[present]
+  out[rep(present_starts, each = 4L) + rep(1:4, times = length(present))] <-
+    writeBin(as.integer(lengths), raw(), size = 4L, endian = "big")
+  payload_index <- sequence(lengths, from = present_starts + 5L)
+  # writeBin(useBytes = TRUE) emits every string's stored bytes followed by
+  # one nul terminator; R strings cannot contain nul, so dropping the
+  # terminators leaves exactly the concatenated UTF-8 payloads.
+  terminated <- writeBin(strings, raw(), useBytes = TRUE)
+  out[payload_index] <- terminated[-cumsum(lengths + 1L)]
+  out
+}
+
 .canonical_attribute_bytes <- function(x) {
   values <- attributes(x)
   if (is.null(values)) return(c(.canonical_tag("A"), .canonical_length(0L)))
@@ -194,7 +231,7 @@
     ),
     character = c(
       .canonical_tag("c"), .canonical_length(length(x)),
-      unlist(lapply(x, .canonical_string_bytes), use.names = FALSE)
+      .canonical_string_vector_bytes(x)
     ),
     raw = c(.canonical_tag("r"), .canonical_length(length(x)), x),
     list = c(

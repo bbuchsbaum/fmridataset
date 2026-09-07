@@ -1,5 +1,31 @@
 # fmridataset 0.10.0 (Development)
 
+- Fixed a set of review findings. `bind_observations()` now compares entity
+  registries semantically (names, keys, scalar data, block components, and
+  block values, by fingerprint first and by realized values only when
+  fingerprints differ), so frames reopened from FDS bind with each other and
+  with their in-memory originals. Feature-mapped, validity-masked, fault,
+  and row-sharded sources compute their fingerprints once at construction, as
+  ADR-009 promises, instead of re-hashing the operator or mask bank on every
+  `plan_blocks()` and `execute_block_plan()` call. `validate_array_source()`
+  resolves protocol methods from the caller's scope, so an extension class
+  defined inside `local()` or a test block validates. Canonical encoding of
+  character vectors is vectorized (byte-for-byte unchanged; the golden
+  vectors still hold) and axis frames cache the digest of their IDs, which
+  makes `explain()`, `assays()` on a view, and manifest digests of wide
+  frames orders of magnitude faster. `explain()` reports `ids_durable` and a
+  `NULL` semantic digest for a frame with ephemeral IDs instead of aborting,
+  while `identity_descriptor(domain = "semantic")` still refuses and names
+  the ephemeral axis. Runtime state (functions, environments) in axis,
+  axis-block, and assay metadata is rejected at construction. Every selection
+  over an empty axis now has the one form `all`, so plans over an empty frame
+  and its `integer()` subset agree, and `Inf`, `-Inf`, or magnitudes past the
+  integer range are rejected as selectors with structured reasons
+  (`non_finite`, `out_of_bounds`) rather than a bare coercion error.
+  FDS manifests written by earlier 0.10 development builds, before the
+  `id_policy` and typed-metadata fields, are not readable by this build and
+  must be rewritten from the source data; the schema version stays 1 because
+  no build with the earlier layout was released.
 - Added `source_error()`, an exported constructor for the stale, I/O, and
   contract conditions an array source may signal, so storage packages fail
   the way built-in sources fail. `validate_array_source()` now names the
