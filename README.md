@@ -1,5 +1,11 @@
 # fmridataset
 
+[![R-CMD-check](https://github.com/bbuchsbaum/fmridataset/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/bbuchsbaum/fmridataset/actions/workflows/R-CMD-check.yaml)
+[![test-full-matrix](https://github.com/bbuchsbaum/fmridataset/actions/workflows/test-full-matrix.yaml/badge.svg)](https://github.com/bbuchsbaum/fmridataset/actions/workflows/test-full-matrix.yaml)
+[![lint](https://github.com/bbuchsbaum/fmridataset/actions/workflows/lint.yaml/badge.svg)](https://github.com/bbuchsbaum/fmridataset/actions/workflows/lint.yaml)
+[![pkgcheck](https://github.com/bbuchsbaum/fmridataset/actions/workflows/pkgcheck.yaml/badge.svg)](https://github.com/bbuchsbaum/fmridataset/actions/workflows/pkgcheck.yaml)
+[![Codecov](https://codecov.io/gh/bbuchsbaum/fmridataset/branch/main/graph/badge.svg)](https://codecov.io/gh/bbuchsbaum/fmridataset)
+
 [Changelog](NEWS.md) ·
 [Canonical data model](inst/architecture/ADR-001-canonical-data-model.md) ·
 [API audiences](inst/architecture/API-AUDIENCES.md) ·
