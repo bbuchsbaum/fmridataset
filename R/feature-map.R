@@ -183,9 +183,21 @@ feature_map_from_target <- function(target) {
     ))
   }
   if (inherits(target, "basis_space")) {
+    encoder <- basis_analysis(target)
+    if (is.null(encoder)) {
+      .feature_map_abort(
+        paste(
+          "target is a synthesis-only basis_space with no analysis operator,",
+          "so no canonical parent-to-basis map exists. Supply an explicit",
+          "feature_map(), or construct the basis with an encoder."
+        ),
+        field = "target",
+        direction = "analysis"
+      )
+    }
     return(feature_map(
       from = parent_space(target), to = target,
-      operator = basis_analysis(target), map_type = target$basis_type,
+      operator = encoder, map_type = target$basis_type,
       traits = list(linear = TRUE, representational = TRUE),
       provenance = c(
         list(target_space = space_digest(target)),

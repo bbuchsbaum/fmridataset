@@ -115,3 +115,23 @@ test_that("a synthesis-only basis works as a frame's feature space", {
   expect_equal(collect_assay(frame), scores)
   expect_equal(feature_ids(frame[, "c2"]), "c2")
 })
+
+test_that("a synthesis-only basis refuses to derive a canonical map with a clear reason", {
+  basis <- basis_space_from_decoder(
+    basis_parent(), c("c1", "c2"), rank_deficient_decoder(),
+    encoder = "none"
+  )
+  frame <- fmri_frame(
+    assays = list(signal = matrix(seq_len(10), nrow = 2)),
+    observations = data.frame(.obs_id = c("o1", "o2")),
+    space = basis_parent()
+  )
+
+  err <- expect_error(
+    feature_map_from_target(basis),
+    class = "fmridataset_error_feature_map"
+  )
+  expect_match(conditionMessage(err), "synthesis-only")
+  expect_identical(err$field, "target")
+  expect_error(map_features(frame, target = basis), "synthesis-only")
+})
