@@ -1617,6 +1617,9 @@ adjacency.basis_space <- function(x, ...) NULL
 #' @param tolerance Left-inverse validation tolerance.
 #' @return A `basis_space`.
 #' @examples
+#' \donttest{
+#' # Loading fmrilatent itself takes several seconds, so this full
+#' # integration example is wrapped in \donttest{}.
 #' if (requireNamespace("fmrilatent", quietly = TRUE)) {
 #'   parent <- volume_space(c(2, 2, 1), support = 1:4, template = "toy-native")
 #'   decoder <- Matrix::Matrix(
@@ -1634,6 +1637,7 @@ adjacency.basis_space <- function(x, ...) NULL
 #'   )
 #'   x <- basis_space_from_fmrilatent(latent, parent = parent)
 #'   basis_projection_info(x)
+#' }
 #' }
 #' @export
 basis_space_from_fmrilatent <- function(x, parent, component_ids = NULL,

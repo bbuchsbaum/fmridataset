@@ -35,6 +35,9 @@ and offsets. This adapter extracts only its spatial synthesis dictionary and
 constructs the corresponding least-squares feature-space algebra.
 }
 \examples{
+\donttest{
+# Loading fmrilatent itself takes several seconds, so this full
+# integration example is wrapped in \donttest{}.
 if (requireNamespace("fmrilatent", quietly = TRUE)) {
   parent <- volume_space(c(2, 2, 1), support = 1:4, template = "toy-native")
   decoder <- Matrix::Matrix(
@@ -52,5 +55,6 @@ if (requireNamespace("fmrilatent", quietly = TRUE)) {
   )
   x <- basis_space_from_fmrilatent(latent, parent = parent)
   basis_projection_info(x)
+}
 }
 }
