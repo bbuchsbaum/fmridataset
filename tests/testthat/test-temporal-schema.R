@@ -40,6 +40,7 @@ test_that("uneven runs and a single run are described correctly", {
 })
 
 test_that("a sampling frame round-trips through fmrihrf", {
+  skip_if_not_installed("fmrihrf")
   frame <- temporal_frame(rep(c("r1", "r2"), each = 3))
   sf <- as_sampling_frame(frame)
 
@@ -53,6 +54,7 @@ test_that("a sampling frame round-trips through fmrihrf", {
 })
 
 test_that("TR may differ between runs but not within one", {
+  skip_if_not_installed("fmrihrf")
   varying <- temporal_frame(rep(c("a", "b"), each = 3), TR = rep(c(2, 3), each = 3))
   schema <- temporal_schema(varying)
   expect_equal(unname(schema$TR), c(2, 3))
@@ -133,6 +135,7 @@ test_that("a reordered view is legal but cannot become a sampling frame", {
 })
 
 test_that("a contiguity-preserving subset still converts", {
+  skip_if_not_installed("fmrihrf")
   frame <- temporal_frame(rep(c("r1", "r2"), each = 3))
   kept <- frame[c(1, 2, 4, 5), ]
 
@@ -143,6 +146,7 @@ test_that("a contiguity-preserving subset still converts", {
 })
 
 test_that("a single-run subset converts", {
+  skip_if_not_installed("fmrihrf")
   frame <- temporal_frame(rep(c("r1", "r2"), each = 3))
   one_run <- frame[4:6, ]
 
