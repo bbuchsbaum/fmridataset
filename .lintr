@@ -1,21 +1,15 @@
-linters: linters_with_defaults(
-    line_length_linter(120),
-    object_length_linter(40),
-    cyclocomp_linter(15),
-    # object_name_linter disabled: the package uses deliberate domain
-    # abbreviations (TR), cross-ecosystem conventions (rowData, nextEl),
-    # and mixed exported generics (get_TR, as.matrix_dataset) that no single
-    # naming style can model. Renaming would break the public API.
-    object_name_linter = NULL,
-    assignment_linter = NULL,
-    pipe_continuation_linter = NULL
-  )
+linters:
+  # namespace_linter treats deliberate qualified calls as style findings;
+  # R CMD check remains the gate for undeclared package usage.
+  linters_with_tags("correctness")[c(
+    "duplicate_argument_linter",
+    "equals_na_linter",
+    "missing_argument_linter",
+    "package_hooks_linter",
+    "sprintf_linter"
+  )]
 exclusions: list(
     "tests/testthat.R",
     "data-raw",
-    "inst/doc",
-    # Test code legitimately references testthat globals and uses <<- mock
-    # counters; vignette chunks use illustrative `...` pseudo-code bodies.
-    "tests" = list(object_usage_linter = Inf, object_length_linter = Inf),
-    "vignettes" = list(object_usage_linter = Inf)
+    "inst/doc"
   )

@@ -1,16 +1,18 @@
-.axis_digest <- function(x) .canonical_digest(axis_ids(x))
+# The digest of an axis's ordered IDs. Axis frames cache it at construction
+# (see axis_frame()); the cached value is trusted only when it still describes
+# an axis of the current length, and anything else is hashed on demand.
+.axis_digest <- function(x) {
+  ids <- axis_ids(x)
+  cached <- x$id_digest
+  if (is.list(cached) && identical(cached$n, length(ids)) &&
+    is.character(cached$sha256) && length(cached$sha256) == 1L) {
+    return(cached$sha256)
+  }
+  .canonical_digest(ids)
+}
 
 .frame_assay_source <- function(x, name) {
-  source <- assay(x, name)$source
-  if (inherits(x, "fmri_view")) {
-    source_view(
-      source,
-      observations = x$observation_index,
-      features = x$feature_index
-    )
-  } else {
-    source
-  }
+  assay(x, name)$source
 }
 
 #' Construct a strictly aligned assay set
@@ -19,6 +21,12 @@
 #' @param observations Observation axis.
 #' @param features Feature axis.
 #' @return An `aligned_assay_set`.
+#' @examples
+#' sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+#' obs <- axis_frame(data.frame(.obs_id = sprintf("vol-%d", 1:4)), axis = "observation")
+#' feat <- feature_axis(feature_data(sp), space = sp)
+#' bold <- matrix(rnorm(4 * n_features(sp)), nrow = 4)
+#' aligned_assay_set(list(bold = bold), obs, feat)
 #' @export
 aligned_assay_set <- function(assays, observations, features) {
   if (!is.list(assays) || !length(assays) || is.null(names(assays)) || any(!nzchar(names(assays)))) {
@@ -32,9 +40,18 @@ aligned_assay_set <- function(assays, observations, features) {
   feature_digest <- .axis_digest(features)
   out <- lapply(names(assays), function(nm) {
     value <- assays[[nm]]
+    .assert_assay_dimnames(value, nm, observations, features)
     source <- if (inherits(value, "aligned_assay")) value$source else as_array_source(value)
     validate_array_source(source)
     annotation <- if (is.list(value) && !inherits(value, "array_source")) value else list()
+    .assert_no_runtime_state(
+      annotation$metadata %||% list(), .alignment_abort,
+      sprintf(
+        "Assay '%s' metadata cannot contain runtime functions, environments, or external pointers.",
+        nm
+      ),
+      field = "metadata", assay = nm
+    )
     if (!identical(as.integer(source_shape(source)), as.integer(expected))) {
       .frame_abort(
         sprintf("Assay '%s' shape does not match the frame axes.", nm),
@@ -72,11 +89,21 @@ aligned_assay_set <- function(assays, observations, features) {
 #' @param entities A named `entity_registry` or entries normalizable by
 #'   `entity_registry()`.
 #' @param relations Named relation registry.
-#' @param tables Named auxiliary tables.
+#' @param tables Named typed tables created by `event_table()` or
+#'   `auxiliary_table()`.
 #' @param active_assay Active assay name.
-#' @param metadata Frame metadata.
-#' @param provenance Serializable provenance records.
+#' @param metadata Unaligned frame-level record. Aligned values belong on an
+#'   axis, entity, block, assay, relation, typed table, or linked frame.
+#' @param provenance `NULL` or a validated `provenance_graph`.
 #' @return An `fmri_frame`.
+#' @examples
+#' sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(4 * n_features(sp)), nrow = 4)),
+#'   observations = data.frame(.obs_id = sprintf("vol-%d", 1:4)),
+#'   space = sp
+#' )
+#' frame
 #' @export
 fmri_frame <- function(assays, observations, features = NULL, space = NULL,
                        entities = list(), relations = list(), tables = list(),
@@ -98,11 +125,26 @@ fmri_frame <- function(assays, observations, features = NULL, space = NULL,
   }
 
   if (inherits(features, "spatial_axis_frame")) {
+    # A spatial feature axis already carries its space. Silently preferring it
+    # over an explicit `space` argument discarded contradictory input, which is
+    # exactly the ambiguity the frame contract says to reject early.
+    if (!is.null(space) && !isTRUE(compatible_space(features$space, space)$compatible)) {
+      .frame_abort(
+        paste(
+          "features already carries a feature space that disagrees with the",
+          "space argument; supply only one."
+        ),
+        "fmridataset_error_space_mismatch"
+      )
+    }
     feature_axis_value <- features
     space <- features$space
   } else {
     if (is.null(space)) {
-      space <- index_space(shape[2L])
+      # Shape alone cannot establish feature identity. Exploratory construction
+      # remains possible only as an explicitly ephemeral space; persistence and
+      # semantic certification reject it until a durable domain is supplied.
+      space <- index_space(shape[2L], id_policy = "ephemeral")
     }
     if (is.null(features)) features <- feature_data(space)
     feature_axis_value <- feature_axis(features, space = space)
@@ -121,22 +163,18 @@ fmri_frame <- function(assays, observations, features = NULL, space = NULL,
     .frame_abort("active_assay is not present in assays.", "fmridataset_error_alignment")
   }
   entities <- entity_registry(entities)
-  if (inherits(provenance, "provenance_graph")) {
-    validate_provenance_graph(provenance)
-  }
-  if (.source_contains_runtime_state(provenance)) {
-    .frame_abort(
-      "Frame provenance cannot contain runtime state.",
-      "fmridataset_error_feature_map",
-      field = "provenance"
-    )
-  }
   relations <- .resolve_relation_registry(
     relation_registry(relations),
     observations,
     feature_axis_value,
     entities
   )
+  tables <- .validate_table_registry(tables, "Frame")
+  metadata <- .normalize_container_metadata(
+    metadata,
+    .frame_alignment_domains(observations, feature_axis_value, entities)
+  )
+  provenance <- .validate_container_provenance(provenance, "Frame")
 
   structure(
     list(
@@ -151,16 +189,38 @@ fmri_frame <- function(assays, observations, features = NULL, space = NULL,
       provenance = provenance,
       schema_version = 1L
     ),
-    class = c("fmri_frame", "fmri_dataset")
+    class = "fmri_frame"
   )
 }
 
 #' Frame accessors
 #'
+#' Generic accessors for the components of an `fmri_frame` or `fmri_view`:
+#' its assays, active assay, observation and feature axes and IDs, block
+#' registries, and dimensions.
+#'
 #' @param x An `fmri_frame` or `fmri_view`.
 #' @param resolve Whether to append reachable, namespaced entity annotations or
 #'   lazily lifted entity blocks.
 #' @param ... Additional method arguments.
+#' @return `assays()` returns a named `aligned_assay_set` list and `assay()`
+#'   one `aligned_assay` from it. `active_assay()` returns a single assay
+#'   name. `observation_axis()` returns an `axis_frame`; `observations()` and
+#'   `features()` return a data frame of the corresponding metadata.
+#'   `observation_ids()` and `feature_ids()` return character vectors of
+#'   stable IDs. `obs_blocks()` and `feature_blocks()` return named lists of
+#'   `axis_block`s. `dim()` returns a length-2 integer vector, and `nrow()`
+#'   and `ncol()` return single integers.
+#' @examples
+#' sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(4 * n_features(sp)), nrow = 4)),
+#'   observations = data.frame(.obs_id = sprintf("vol-%d", 1:4)),
+#'   space = sp
+#' )
+#' names(assays(frame))
+#' active_assay(frame)
+#' dim(frame)
 #' @name frame-accessors
 NULL
 
@@ -231,6 +291,11 @@ observation_ids.fmri_frame <- function(x, ...) axis_ids(observation_axis(x))
 #' @export
 feature_ids.fmri_frame <- function(x, ...) axis_ids(feature_axis(x))
 
+#' @export
+ids_are_durable.fmri_frame <- function(x) {
+  ids_are_durable(observation_axis(x)) && ids_are_durable(feature_axis(x)$space)
+}
+
 #' @rdname frame-accessors
 #' @export
 obs_blocks <- function(x, resolve = FALSE, ...) UseMethod("obs_blocks")
@@ -251,6 +316,14 @@ feature_blocks.fmri_frame <- function(x, ...) axis_blocks(feature_axis(x))
 #' @param x An object with spatial identity.
 #' @param ... Additional arguments.
 #' @return A `FeatureSpace`.
+#' @examples
+#' sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(4 * n_features(sp)), nrow = 4)),
+#'   observations = data.frame(.obs_id = sprintf("vol-%d", 1:4)),
+#'   space = sp
+#' )
+#' space(frame)
 #' @export
 space <- function(x, ...) UseMethod("space")
 #' @export
@@ -279,40 +352,54 @@ print.fmri_frame <- function(x, ...) {
   invisible(x)
 }
 
+# The normalized selection a frame or view applies to its base frame's assay
+# sources. A plain frame selects everything; a view carries its composed
+# selections. Nothing here expands an axis.
 .frame_selection <- function(x) {
   if (inherits(x, "fmri_view")) {
-    list(base = x$base, observations = x$observation_index, features = x$feature_index)
-  } else {
-    list(base = x, observations = seq_len(nrow(x)), features = seq_len(ncol(x)))
+    return(list(base = x$base, observations = x$observation, features = x$feature))
   }
+  list(
+    base = x,
+    observations = .selection_all(nrow(x)),
+    features = .selection_all(ncol(x))
+  )
 }
 
 #' Collect one frame assay under an explicit memory budget
 #'
 #' @param x An `fmri_frame` or view.
 #' @param assay Assay name.
-#' @param memory_budget Maximum output bytes.
-#' @param force Allow collection above the budget.
+#' @param memory_budget Maximum estimated peak bytes, including the retained
+#'   output and source conversion or decompression buffers.
+#' @param force Allow collection above the estimated peak budget.
 #' @return A dense matrix.
+#' @examples
+#' sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(4 * n_features(sp)), nrow = 4)),
+#'   observations = data.frame(.obs_id = sprintf("vol-%d", 1:4)),
+#'   space = sp
+#' )
+#' collect_assay(frame)
 #' @export
 collect_assay <- function(x, assay = active_assay(x),
                           memory_budget = getOption("fmridataset.collect_budget", 2 * 1024^3),
                           force = FALSE) {
   selection <- .frame_selection(x)
   descriptor <- assay(selection$base, assay)
-  bytes <- length(selection$observations) * length(selection$features) * .dtype_bytes(descriptor$dtype)
-  if (!isTRUE(force) && bytes > memory_budget) {
-    .frame_abort(
-      sprintf("Collecting this assay requires %s bytes, above memory_budget.", format(bytes, scientific = FALSE)),
-      "fmridataset_error_budget",
-      required_bytes = bytes,
-      memory_budget = memory_budget
-    )
-  }
+  observations <- .selection_index(selection$observations)
+  features <- .selection_index(selection$features)
+  cost <- source_realization_cost(
+    descriptor$source,
+    observations = observations,
+    features = features
+  )
+  .assert_realization_budget(cost, memory_budget, "collect_assay()", force)
   source_read(
     descriptor$source,
-    observations = selection$observations,
-    features = selection$features
+    observations = observations,
+    features = features
   )
 }
 
@@ -324,6 +411,14 @@ collect_assay <- function(x, assay = active_assay(x),
 #' @param assay Assay name.
 #' @param ... Additional arguments passed to `FUN`.
 #' @return A list of block results.
+#' @examples
+#' sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(4 * n_features(sp)), nrow = 4)),
+#'   observations = data.frame(.obs_id = sprintf("vol-%d", 1:4)),
+#'   space = sp
+#' )
+#' block_apply(frame, function(mat, ids) colMeans(mat), block_size = 4L)
 #' @export
 block_apply <- function(x, FUN, block_size = 4096L, assay = active_assay(x), ...) {
   block_size <- as.integer(block_size)
@@ -346,6 +441,14 @@ block_apply <- function(x, FUN, block_size = 4096L, assay = active_assay(x), ...
 #' @param observation Observation ID or one integer position.
 #' @param assay Assay name.
 #' @return A reconstructed spatial object.
+#' @examples
+#' sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(4 * n_features(sp)), nrow = 4)),
+#'   observations = data.frame(.obs_id = sprintf("vol-%d", 1:4)),
+#'   space = sp
+#' )
+#' spatial_map(frame, observation = 1L)
 #' @export
 spatial_map <- function(x, observation, assay = active_assay(x)) {
   index <- .normalize_frame_selector(observation, observation_ids(x), "observation")
@@ -355,27 +458,266 @@ spatial_map <- function(x, observation, assay = active_assay(x)) {
   collect_spatial_maps(x, observations = index, assay = assay)[[1L]]
 }
 
-#' Explain a frame without reading assay values
+.explain_ids <- function(values, mode, sample_size) {
+  if (identical(mode, "complete")) {
+    return(list(mode = mode, values = values))
+  }
+  if (identical(mode, "none") || !length(values) || sample_size == 0L) {
+    return(list(mode = mode, values = values[integer()]))
+  }
+  leading <- seq_len(min(sample_size, length(values)))
+  trailing <- seq.int(max(1L, length(values) - sample_size + 1L), length(values))
+  list(mode = mode, values = values[unique(c(leading, trailing))])
+}
+
+.explain_source_type <- function(source) {
+  while (inherits(source, "counting_source") || inherits(source, "fault_source")) {
+    source <- source$source
+  }
+  class(source)[1L]
+}
+
+#' Explain a frame without reading numerical values
+#'
+#' `explain()` returns a bounded, serializable summary of the visible frame.
+#' Axis IDs are sampled by default so inspecting a large study does not create
+#' another large object. Set `ids = "complete"` only when every visible ID is
+#' required.
+#'
+#' The schema digest describes column, block, assay, relation, entity, table,
+#' and space contracts. The semantic digest covers the complete source-free FDS
+#' manifest. Physical source fingerprints are reported separately.
 #'
 #' @param x An `fmri_frame` or view.
-#' @return A serializable execution summary.
+#' @param ids One of `"sample"`, `"none"`, or `"complete"`.
+#' @param sample_size Number of IDs sampled from each end of each axis.
+#' @return A bounded serializable execution summary. No assay or aligned-block
+#'   values are read. `ids_durable` reports whether the observation axis and
+#'   the feature space carry durable IDs; when it is `FALSE` the semantic
+#'   digest is `NULL` because ephemeral IDs cannot enter an FDS manifest.
+#' @examples
+#' sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(4 * n_features(sp)), nrow = 4)),
+#'   observations = data.frame(.obs_id = sprintf("vol-%d", 1:4)),
+#'   space = sp
+#' )
+#' summary <- explain(frame)
+#' summary$shape
 #' @export
-explain <- function(x) {
+explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) {
+  if (!inherits(x, "fmri_frame")) {
+    .frame_abort("x must be an fmri_frame or view.", "fmridataset_error_alignment")
+  }
+  ids <- match.arg(ids)
+  sample_size <- as.integer(sample_size)
+  if (length(sample_size) != 1L || is.na(sample_size) || sample_size < 0L) {
+    .frame_abort("sample_size must be one non-negative integer.", "fmridataset_error_alignment")
+  }
+  assay_values <- assays(x)
+  assay_summary <- lapply(assay_values, function(value) {
+    source <- value$source
+    shape <- source_shape(source)
+    cost <- source_realization_cost(source)
+    list(
+      source_type = .explain_source_type(source),
+      shape = shape,
+      dtype = value$dtype,
+      chunks = source_chunks(source),
+      capabilities = source_capabilities(source),
+      fingerprint = source_fingerprint(source),
+      realization_bytes = cost$estimated_output_bytes,
+      peak_bytes = cost$estimated_peak_bytes
+    )
+  })
+  observation_values <- observation_ids(x)
+  feature_values <- feature_ids(x)
+  spatial <- space(x)
+  # explain() inspects; it does not certify. A frame built without a durable
+  # space or observation policy has ephemeral IDs, which the FDS manifest
+  # rejects, so the semantic digest is reported as absent rather than
+  # aborting the whole summary. identity_descriptor() still refuses.
+  durable <- ids_are_durable(observation_axis(x)) && ids_are_durable(spatial)
+  semantic <- if (durable) fds_manifest_digest(fds_frame_manifest(x)) else NULL
+  selection <- .frame_selection(x)
   list(
     class = class(x)[1L],
-    shape = dim(x),
-    assays = lapply(assays(x), function(a) {
-      list(
-        dtype = a$dtype,
-        chunks = source_chunks(a$source),
-        capabilities = source_capabilities(a$source),
-        fingerprint = source_fingerprint(a$source)
+    schema_version = x$schema_version %||% x$base$schema_version,
+    shape = stats::setNames(as.integer(dim(x)), c("observation", "feature")),
+    active_assay = active_assay(x),
+    ids_durable = durable,
+    selection = list(
+      observation = .selection_summary(selection$observations),
+      feature = .selection_summary(selection$features)
+    ),
+    counts = list(
+      assays = length(assay_values),
+      observation_blocks = length(obs_blocks(x)),
+      feature_blocks = length(feature_blocks(x)),
+      entities = length(entities(x)),
+      relations = length(relations(x)),
+      tables = length(x$tables %||% x$base$tables)
+    ),
+    digests = list(
+      schema = frame_schema_digest(x),
+      semantic = semantic,
+      observation = .axis_digest(observation_axis(x)),
+      feature = .axis_digest(feature_axis(x))
+    ),
+    axes = list(
+      observation = list(
+        count = length(observation_values),
+        ids = .explain_ids(observation_values, ids, sample_size)
+      ),
+      feature = list(
+        count = length(feature_values),
+        ids = .explain_ids(feature_values, ids, sample_size)
       )
-    }),
-    observation_ids = observation_ids(x),
-    feature_ids = feature_ids(x),
-    space_digest = space_digest(space(x))
+    ),
+    space = list(
+      type = class(spatial)[1L],
+      features = n_features(spatial),
+      digest = space_digest(spatial)
+    ),
+    assays = assay_summary,
+    realization = list(
+      active_assay_bytes = assay_summary[[active_assay(x)]]$realization_bytes,
+      all_assays_bytes = sum(vapply(
+        assay_summary, function(value) value$realization_bytes, numeric(1)
+      ))
+    )
   )
+}
+
+# A matrix passed as an assay may carry dimnames. The axis IDs are
+# authoritative, so the dimnames are dropped -- but dropping them silently when
+# they NAME DIFFERENT THINGS hides a real mix-up, which is the ambiguous input
+# the frame contract says to reject early. Matching or absent dimnames are fine.
+.assert_assay_dimnames <- function(value, name, observations, features) {
+  if (!is.matrix(value)) {
+    return(invisible(TRUE))
+  }
+  dn <- dimnames(value)
+  if (is.null(dn)) {
+    return(invisible(TRUE))
+  }
+  check <- function(candidate, expected, axis) {
+    if (is.null(candidate) || identical(candidate, expected)) {
+      return(invisible(TRUE))
+    }
+    .frame_abort(
+      sprintf(
+        "Assay '%s' has %s dimnames that disagree with the %s IDs; drop them or align them.",
+        name, axis, axis
+      ),
+      "fmridataset_error_alignment",
+      assay = name,
+      axis = axis,
+      expected = expected,
+      actual = candidate
+    )
+  }
+  check(dn[[1L]], axis_ids(observations), "observation")
+  check(dn[[2L]], axis_ids(features), "feature")
+  invisible(TRUE)
+}
+
+.assert_bind_agreement <- function(reference, candidate, what) {
+  if (isTRUE(all.equal(reference, candidate))) {
+    return(invisible(TRUE))
+  }
+  .frame_abort(
+    sprintf(
+      "Frames disagree on %s; bind_observations() cannot choose between them.",
+      what
+    ),
+    "fmridataset_error_alignment",
+    field = what
+  )
+}
+
+# The bound frame keeps the first frame's feature blocks. That is only sound
+# when every other frame carries the same components and the same values;
+# otherwise the bind would silently discard annotations.
+.assert_feature_blocks_agree <- function(reference, candidate) {
+  ref_blocks <- axis_blocks(reference)
+  cand_blocks <- axis_blocks(candidate)
+  for (nm in names(ref_blocks)) {
+    ref <- ref_blocks[[nm]]
+    cand <- cand_blocks[[nm]]
+    label <- sprintf("feature block %s", encodeString(nm, quote = "\""))
+    .assert_bind_agreement(
+      block_components(ref), block_components(cand), paste(label, "components")
+    )
+    ref_data <- axis_block_data(ref)
+    cand_data <- axis_block_data(cand)
+    if (inherits(ref_data, "array_source") && inherits(cand_data, "array_source") &&
+      identical(source_fingerprint(ref_data), source_fingerprint(cand_data))) {
+      next
+    }
+    .assert_bind_agreement(
+      .realized_block_matrix(ref_data), .realized_block_matrix(cand_data),
+      paste(label, "values")
+    )
+  }
+  invisible(TRUE)
+}
+
+.realized_block_matrix <- function(data) {
+  if (inherits(data, "array_source")) data <- source_read(data)
+  unname(as.matrix(data))
+}
+
+# Return a block's data with its component axis permuted into `proto`'s
+# component order, refusing any block whose component identities differ.
+# Binding rbinds these positionally, so a block whose components are merely
+# ordered differently would otherwise file each frame's values under the
+# previous frame's labels.
+.aligned_block_data <- function(block, proto, block_name) {
+  ref <- block_components(proto)
+  cur <- block_components(block)
+  ref_ids <- ref$.component_id
+  cur_ids <- cur$.component_id
+
+  if (length(cur_ids) != length(ref_ids) || !setequal(cur_ids, ref_ids)) {
+    .frame_abort(
+      sprintf(
+        "Block %s has different components across bound frames (%s vs %s).",
+        encodeString(block_name, quote = "\""),
+        paste(ref_ids, collapse = ", "),
+        paste(cur_ids, collapse = ", ")
+      ),
+      "fmridataset_error_alignment",
+      block = block_name,
+      expected = ref_ids,
+      actual = cur_ids
+    )
+  }
+
+  perm <- match(ref_ids, cur_ids)
+  reordered <- cur[perm, , drop = FALSE]
+  if (!isTRUE(all.equal(as.data.frame(reordered), as.data.frame(ref)))) {
+    .frame_abort(
+      sprintf(
+        "Block %s has conflicting component metadata across bound frames.",
+        encodeString(block_name, quote = "\"")
+      ),
+      "fmridataset_error_alignment",
+      block = block_name
+    )
+  }
+
+  .permute_block_columns(axis_block_data(block), perm)
+}
+
+.permute_block_columns <- function(data, perm) {
+  if (identical(perm, seq_along(perm))) {
+    return(data)
+  }
+  if (inherits(data, "array_source")) {
+    return(source_view(data, features = perm))
+  }
+  data[, perm, drop = FALSE]
 }
 
 .bind_axis_frames <- function(xs) {
@@ -386,51 +728,384 @@ explain <- function(x) {
       .frame_abort("Bound axes must have identical block names.", "fmridataset_error_alignment")
     }
     blocks <- lapply(block_names, function(nm) {
-      values <- lapply(xs, function(x) axis_block_data(x$blocks[[nm]]))
-      if (any(vapply(values, inherits, logical(1), what = "array_source"))) {
-        source <- row_bound_source(lapply(values, as_array_source))
-      } else {
-        source <- do.call(rbind, values)
-      }
       proto <- first$blocks[[nm]]
+      # Block data is row-bound positionally, so the component axes must be
+      # brought into a common order FIRST. Aligning by component ID rather than
+      # by column position is what keeps values under the label they belong to.
+      values <- lapply(xs, function(x) .aligned_block_data(x$blocks[[nm]], proto, nm))
+      # Every value is a validated two-dimensional block (ADR-008), so a
+      # positional rbind() is exact: it cannot flatten trailing dimensions.
+      source <- .bind_block_values(values, block = nm)
       axis_block(source, proto$components, proto$role, proto$units, proto$metadata)
     })
     names(blocks) <- block_names
   } else {
     blocks <- list()
   }
-  data <- do.call(rbind, lapply(xs, axis_data))
-  axis_frame(data, blocks = blocks, id = data[[first$id_col]], axis = first$axis, id_col = first$id_col)
+  # rbind() reports mismatched axis metadata as bare base-R conditions
+  # ("numbers of columns of arguments do not match", "names do not match
+  # previous names"), which name neither the frame nor the column. Check first
+  # so the failure arrives as a structured alignment error that says what
+  # differs.
+  values <- lapply(xs, axis_data)
+  reference <- names(values[[1L]])
+  for (i in seq_along(values)[-1L]) {
+    candidate <- names(values[[i]])
+    if (!identical(candidate, reference)) {
+      .frame_abort(
+        sprintf(
+          "Bound axes have different metadata columns (%s vs %s).",
+          paste(reference, collapse = ", "),
+          paste(candidate, collapse = ", ")
+        ),
+        "fmridataset_error_alignment",
+        expected = reference,
+        actual = candidate
+      )
+    }
+  }
+  data <- do.call(rbind, values)
+  out <- axis_frame(
+    data, blocks = blocks, id = data[[first$id_col]], axis = first$axis,
+    id_col = first$id_col, metadata = first$metadata
+  )
+  policies <- lapply(xs, axis_id_policy)
+  out$id_policy <- if (all(vapply(
+    policies, identical, logical(1), policies[[1L]]
+  ))) policies[[1L]] else .id_policy("require")
+  out
+}
+
+.frame_container_value <- function(x, name) x[[name]] %||% x$base[[name]]
+
+.merge_unaligned_records <- function(values, path = "metadata") {
+  out <- unclass(values[[1L]])
+  if (length(values) == 1L) {
+    return(structure(out, class = c("unaligned_record", "list")))
+  }
+  for (value in values[-1L]) {
+    value <- unclass(value)
+    for (name in names(value)) {
+      child_path <- paste(path, name, sep = ".")
+      if (!name %in% names(out)) {
+        out[[name]] <- value[[name]]
+      } else if (inherits(out[[name]], "unaligned_record") &&
+                 inherits(value[[name]], "unaligned_record")) {
+        out[[name]] <- .merge_unaligned_records(
+          list(out[[name]], value[[name]]), child_path
+        )
+      } else if (!identical(out[[name]], value[[name]])) {
+        .frame_abort(
+          sprintf("Cannot merge conflicting frame metadata at '%s'.", child_path),
+          "fmridataset_error_alignment", field = child_path
+        )
+      }
+    }
+  }
+  structure(out, class = c("unaligned_record", "list"))
+}
+
+.reconcile_frame_metadata <- function(xs, policy) {
+  values <- lapply(xs, .frame_container_value, name = "metadata")
+  if (identical(policy, "identical")) {
+    if (!all(vapply(values, identical, logical(1), values[[1L]]))) {
+      .frame_abort(
+        "Bound frame metadata differ; use metadata_policy = 'merge' for a conflict-free record merge.",
+        "fmridataset_error_alignment", field = "metadata"
+      )
+    }
+    return(values[[1L]])
+  }
+  .merge_unaligned_records(values)
+}
+
+.table_row_equal <- function(x, i, y, j) {
+  all(vapply(names(x), function(name) {
+    identical(x[[name]][i], y[[name]][j])
+  }, logical(1)))
+}
+
+.merge_typed_table <- function(values, name) {
+  prototype <- values[[1L]]
+  keys <- vapply(values, function(value) table_key(value) %||% NA_character_,
+                 character(1), USE.NAMES = FALSE)
+  if (anyNA(keys) || any(!nzchar(keys))) {
+    if (!all(vapply(values, identical, logical(1), prototype))) {
+      .table_abort(
+        sprintf(
+          "Bound table '%s' has no declared key and differs across operands.",
+          name
+        ),
+        paste0("tables.", name)
+      )
+    }
+    return(prototype)
+  }
+  if (any(keys != keys[[1L]])) {
+    .table_abort(
+      sprintf("Bound table '%s' declares inconsistent keys.", name),
+      paste0("tables.", name, ".key")
+    )
+  }
+  rows <- table_data(prototype)
+  key <- keys[[1L]]
+  if (length(values) > 1L) {
+    for (value in values[-1L]) {
+      incoming <- table_data(value)
+      positions <- match(as.character(incoming[[key]]), as.character(rows[[key]]))
+      overlap <- which(!is.na(positions))
+      if (length(overlap)) {
+        equal <- vapply(overlap, function(i) {
+          .table_row_equal(incoming, i, rows, positions[[i]])
+        }, logical(1))
+        if (!all(equal)) {
+          .table_abort(
+            sprintf("Bound table '%s' contains conflicting rows for declared keys.", name),
+            paste0("tables.", name),
+            keys = as.character(incoming[[key]][overlap[!equal]])
+          )
+        }
+      }
+      append <- which(is.na(positions))
+      if (length(append)) rows <- rbind(rows, incoming[append, , drop = FALSE])
+    }
+  }
+  if (inherits(prototype, "fmri_event_table")) {
+    event_table(rows, key = key, metadata = prototype$metadata)
+  } else {
+    auxiliary_table(
+      rows, key = key, role = table_role(prototype),
+      metadata = prototype$metadata
+    )
+  }
+}
+
+.merge_frame_tables <- function(xs) {
+  registries <- lapply(xs, .frame_container_value, name = "tables")
+  first_names <- names(registries[[1L]])
+  if (!all(vapply(registries, function(value) {
+    identical(names(value), first_names)
+  }, logical(1)))) {
+    .table_abort(
+      "Bound frames must have identical typed-table names.",
+      "tables"
+    )
+  }
+  out <- lapply(first_names, function(name) {
+    .merge_typed_table(lapply(registries, `[[`, name), name)
+  })
+  names(out) <- first_names
+  out
+}
+
+.merge_bind_provenance <- function(xs) {
+  graphs <- lapply(xs, .frame_container_value, name = "provenance")
+  records <- list()
+  parents <- character()
+  for (graph in graphs) {
+    if (is.null(graph)) next
+    current <- provenance_records(graph)
+    for (id in names(current)) {
+      if (!is.null(records[[id]]) && !identical(records[[id]], current[[id]])) {
+        .provenance_abort("A provenance record ID has conflicting content.")
+      }
+      records[[id]] <- current[[id]]
+    }
+    parents <- c(parents, provenance_tips(graph))
+  }
+  bind <- provenance_record(
+    "bind_observations",
+    parents = unique(parents),
+    inputs = list(observation_ids = lapply(xs, observation_ids)),
+    parameters = list(operand_count = length(xs)),
+    outputs = list(
+      observation_ids = unlist(lapply(xs, observation_ids), use.names = FALSE),
+      feature_ids = feature_ids(xs[[1L]])
+    )
+  )
+  provenance_graph(c(records, list(bind)))
+}
+
+.flatten_bound_sources <- function(sources) {
+  unlist(lapply(sources, function(source) {
+    if (inherits(source, "row_bound_source")) {
+      .flatten_bound_sources(source$sources)
+    } else {
+      list(source)
+    }
+  }), recursive = FALSE)
+}
+
+.bind_assay_sources <- function(sources) {
+  flattened <- .flatten_bound_sources(sources)
+  nonempty <- vapply(
+    flattened, function(source) source_shape(source)[[1L]] > 0L, logical(1)
+  )
+  if (!any(nonempty)) {
+    return(source_view(flattened[[1L]], observations = integer()))
+  }
+  flattened <- flattened[nonempty]
+  if (length(flattened) == 1L) flattened[[1L]] else row_bound_source(flattened)
+}
+
+# The bound frame keeps the first frame's entity registry. Two registries
+# agree when they describe the same entities: the same names, keys, types,
+# scalar data, and blocks with the same components and values. Comparing
+# entity_registry_digest() instead was too strict: an entity block reopened
+# from FDS is an array source whose fingerprint is per file, so two frames
+# reopened from equal data, or a reopened frame and its in-memory original,
+# were refused although every value agreed. Block data is compared by
+# fingerprint first and by realized values only when fingerprints differ,
+# the same rule .assert_feature_blocks_agree() applies to feature blocks.
+.assert_entity_registries_agree <- function(reference, candidate) {
+  refuse <- function(detail, ...) {
+    .entity_abort(
+      paste("Frames have incompatible entity registries:", detail),
+      operation = "bind_observations", ...
+    )
+  }
+  ref_names <- sort(names(reference))
+  cand_names <- sort(names(candidate))
+  if (!identical(ref_names, cand_names)) {
+    refuse(
+      sprintf(
+        "entity names differ (%s vs %s).",
+        paste(ref_names, collapse = ", "), paste(cand_names, collapse = ", ")
+      ),
+      expected = ref_names, actual = cand_names
+    )
+  }
+  agrees <- function(x, y) isTRUE(all.equal(x, y))
+  for (nm in ref_names) {
+    ref <- reference[[nm]]
+    cand <- candidate[[nm]]
+    if (!identical(entity_key(ref), entity_key(cand)) ||
+      !identical(ref$entity_type, cand$entity_type)) {
+      refuse(sprintf("entity '%s' declares a different key or type.", nm), entity = nm)
+    }
+    if (!agrees(entity_data(ref), entity_data(cand))) {
+      refuse(sprintf("entity '%s' has different entity data.", nm), entity = nm)
+    }
+    if (!agrees(ref$metadata, cand$metadata)) {
+      refuse(sprintf("entity '%s' has different metadata.", nm), entity = nm)
+    }
+    ref_blocks <- entity_blocks(ref)
+    cand_blocks <- entity_blocks(cand)
+    if (!identical(sort(names(ref_blocks)), sort(names(cand_blocks)))) {
+      refuse(sprintf("entity '%s' has different block names.", nm), entity = nm)
+    }
+    for (block in names(ref_blocks)) {
+      ref_block <- ref_blocks[[block]]
+      cand_block <- cand_blocks[[block]]
+      if (!agrees(block_components(ref_block), block_components(cand_block)) ||
+        !identical(ref_block$role, cand_block$role) ||
+        !identical(ref_block$units, cand_block$units) ||
+        !agrees(ref_block$metadata, cand_block$metadata)) {
+        refuse(
+          sprintf("entity '%s' block '%s' has different components or annotations.", nm, block),
+          entity = nm, block = block
+        )
+      }
+      ref_data <- axis_block_data(ref_block)
+      cand_data <- axis_block_data(cand_block)
+      if (inherits(ref_data, "array_source") && inherits(cand_data, "array_source") &&
+        identical(source_fingerprint(ref_data), source_fingerprint(cand_data))) {
+        next
+      }
+      if (!agrees(.realized_block_matrix(ref_data), .realized_block_matrix(cand_data))) {
+        refuse(
+          sprintf("entity '%s' block '%s' has different values.", nm, block),
+          entity = nm, block = block
+        )
+      }
+    }
+  }
+  invisible(TRUE)
 }
 
 #' Bind frames along observations
 #'
-#' @param ... Frames with identical feature IDs, spaces, and assay names.
+#' @param ... Frames with identical feature IDs, spaces, and assay semantics.
+#' @param metadata_policy Frame-metadata reconciliation. `"identical"`
+#'   requires exact equality; `"merge"` recursively combines non-conflicting
+#'   unaligned records.
+#' @param active_assay Optional active assay for the result. Required when
+#'   operands have different active assays.
 #' @return A lazily row-bound `fmri_frame`.
+#' @examples
+#' sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+#' make <- function(prefix) {
+#'   fmri_frame(
+#'     assays = list(bold = matrix(rnorm(4 * n_features(sp)), nrow = 4)),
+#'     observations = data.frame(.obs_id = sprintf("%s-%d", prefix, 1:4)),
+#'     space = sp
+#'   )
+#' }
+#' bound <- bind_observations(make("a"), make("b"))
+#' dim(bound)
 #' @export
-bind_observations <- function(...) {
+bind_observations <- function(...,
+                              metadata_policy = c("identical", "merge"),
+                              active_assay = NULL) {
   xs <- list(...)
   if (!length(xs)) .frame_abort("At least one frame is required.", "fmridataset_error_alignment")
+  if (!all(vapply(xs, inherits, logical(1), "fmri_frame"))) {
+    .frame_abort("Every bound operand must be an fmri_frame or view.",
+                 "fmridataset_error_alignment")
+  }
+  metadata_policy <- match.arg(metadata_policy)
   first <- xs[[1L]]
   for (x in xs[-1L]) {
     assert_compatible_space(space(first), space(x))
-    if (!identical(feature_ids(first), feature_ids(x)) || !identical(names(assays(first)), names(assays(x)))) {
-      .frame_abort("Frames have incompatible feature or assay identities.", "fmridataset_error_alignment")
-    }
-    if (!identical(entity_registry_digest(first), entity_registry_digest(x))) {
-      .entity_abort(
-        "Frames have incompatible entity registries.",
-        operation = "bind_observations"
-      )
-    }
+    .assert_entity_registries_agree(entities(first), entities(x))
+    validate_against_schema(x, first, mode = "bind")
+    # The schema check compares contracts. The bound frame also keeps the first
+    # frame's feature annotations, which is only sound when the others agree on
+    # the values themselves. Frame metadata and typed tables follow the explicit
+    # policies below instead.
+    .assert_bind_agreement(
+      axis_data(feature_axis(first)), axis_data(feature_axis(x)),
+      "feature metadata"
+    )
+    .assert_feature_blocks_agree(feature_axis(first), feature_axis(x))
   }
   relation_values <- .bind_relation_registries(lapply(xs, relations))
   obs <- .bind_axis_frames(lapply(xs, observation_axis))
   if (anyDuplicated(axis_ids(obs))) {
     .frame_abort("Observation IDs collide across frames.", "fmridataset_error_alignment")
   }
+  active_values <- vapply(xs, function(value) active_assay(value), character(1))
+  if (is.null(active_assay)) {
+    if (any(active_values != active_values[[1L]])) {
+      .frame_abort(
+        "Bound frames have different active assays; supply active_assay explicitly.",
+        "fmridataset_error_alignment", field = "active_assay"
+      )
+    }
+    active_assay <- active_values[[1L]]
+  } else if (!is.character(active_assay) || length(active_assay) != 1L ||
+             is.na(active_assay) || !active_assay %in% names(assays(first))) {
+    .frame_abort(
+      "active_assay must name one assay shared by all bound frames.",
+      "fmridataset_error_alignment", field = "active_assay"
+    )
+  }
+  metadata <- .reconcile_frame_metadata(xs, metadata_policy)
+  tables <- .merge_frame_tables(xs)
+  provenance <- .merge_bind_provenance(xs)
   assay_sources <- lapply(names(assays(first)), function(nm) {
-    row_bound_source(lapply(xs, function(x) .frame_assay_source(x, nm)))
+    prototype <- assay(first, nm)
+    structure(
+      list(
+        source = .bind_assay_sources(lapply(
+          xs, function(x) .frame_assay_source(x, nm)
+        )),
+        role = prototype$role,
+        units = prototype$units,
+        metadata = prototype$metadata
+      ),
+      class = "aligned_assay"
+    )
   })
   names(assay_sources) <- names(assays(first))
   fmri_frame(
@@ -439,9 +1114,9 @@ bind_observations <- function(...) {
     features = feature_axis(first),
     entities = entities(first),
     relations = relation_values,
-    tables = first$tables,
-    active_assay = active_assay(first),
-    metadata = first$metadata,
-    provenance = first$provenance
+    tables = tables,
+    active_assay = active_assay,
+    metadata = metadata,
+    provenance = provenance
   )
 }

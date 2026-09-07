@@ -1,0 +1,366 @@
+---
+title: "Frames: aligned fMRI data with explicit identity"
+output:
+  rmarkdown::html_vignette:
+    toc: yes
+    toc_depth: 2
+    css: albers.css
+    includes:
+      in_header: albers-header.txt
+vignette: >
+  %\VignetteIndexEntry{Frames: aligned fMRI data with explicit identity}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+resource_files:
+- albers.css
+- albers.js
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+An fMRI analysis moves the same numbers through many hands: a preprocessing
+pipeline, a mask, a model, a parcellation, a file on disk. At each step the
+rows and columns of the array still mean something, and that meaning is easy
+to lose. `fmridataset` keeps it. Its one data container, the `fmri_frame`,
+holds an observation-by-feature array together with what each observation and
+each feature *is*, and refuses operations that would silently break that link.
+
+This vignette builds a frame from a small synthetic matrix and walks through
+the everyday operations: selecting by ID and by metadata, reading values
+lazily, inspecting a frame without reading it, describing its run structure,
+and binding frames together. It ends with the short list of promises every
+frame keeps.
+
+```{r}
+library(fmridataset)
+```
+
+## Build a frame
+
+A frame needs three things: at least one assay (the numbers), observation
+metadata with a stable ID per row, and a feature space that says what the
+columns are. Here the columns are the voxels of a tiny 3 by 3 by 2 volume,
+and the rows are eight volumes acquired in two runs.
+
+```{r build}
+set.seed(1)
+voxels <- volume_space(dim = c(3, 3, 2), affine = diag(4), template = "toy")
+n_obs <- 8L
+signal <- matrix(
+  round(rnorm(n_obs * n_features(voxels)), 2),
+  nrow = n_obs, ncol = n_features(voxels)
+)
+
+frame <- fmri_frame(
+  assays = list(bold = signal),
+  observations = data.frame(
+    .obs_id = sprintf("vol-%02d", seq_len(n_obs)),
+    run_id = rep(c("run-1", "run-2"), each = 4),
+    TR = 2,
+    motion = round(runif(n_obs), 2)
+  ),
+  space = voxels
+)
+frame
+```
+
+The `.obs_id` column supplies the observation IDs. The volume space supplies
+the feature IDs, one per voxel in its support, and derives a feature table
+from them.
+
+```{r metadata}
+observations(frame)
+head(features(frame), 3)
+```
+
+Nothing about the matrix itself was trusted for identity. If `signal` had
+carried row names that disagreed with `.obs_id`, construction would have
+failed rather than picking one.
+
+## Select by ID or by metadata
+
+Square-bracket selection takes IDs on either axis and returns a *view*: a
+lightweight object that remembers which rows and columns of the parent frame
+it stands for. The requested order is kept on every axis.
+
+```{r select-id}
+view <- frame[c("vol-08", "vol-01"), c("voxel-5", "voxel-2")]
+view
+observation_ids(view)
+feature_ids(view)
+collect_assay(view)
+```
+
+Metadata predicates do the same job when you know a property rather than an
+ID. `filter_obs()` evaluates an expression against the observation table and
+`select_features()` against the feature table.
+
+```{r select-metadata}
+run_2 <- filter_obs(frame, run_id == "run-2")
+observation_ids(run_2)
+
+still <- filter_obs(frame, motion < 0.5)
+observation_ids(still)
+
+top_slice <- select_features(frame, k == 2)
+feature_ids(top_slice)
+```
+
+Views compose. Selecting from a view produces another view over the same base
+frame, and the feature space follows along: the space of `top_slice` is the
+same volume restricted to the nine voxels of its upper slice.
+
+```{r select-compose}
+corner <- top_slice[, c("voxel-18", "voxel-10")]
+space(corner)$support
+```
+
+Selectors that could mean two things are rejected. Duplicated IDs, unknown
+IDs, and mixed positive and negative positions all raise a structured error
+instead of a guess.
+
+```{r select-errors, error = TRUE}
+frame[c("vol-01", "vol-01"), ]
+frame[, "voxel-99"]
+```
+
+## Views are lazy
+
+A view stores a selection, not values. To see that nothing is read until you
+ask, wrap the matrix in a `counting_source()`, the package's read
+instrumentation for conformance tests, and build a frame over it.
+
+```{r lazy}
+counted <- counting_source(signal)
+lazy <- fmri_frame(
+  assays = list(bold = counted),
+  observations = observations(frame),
+  space = voxels
+)
+
+subset <- filter_obs(lazy, run_id == "run-1")[, c("voxel-1", "voxel-2")]
+source_counts(counted)$reads
+
+values <- collect_assay(subset)
+dim(values)
+source_counts(counted)[c("reads", "values")]
+```
+
+Filtering and subsetting issued no reads. `collect_assay()` issued one, and
+it read exactly the eight values the view stands for, not the full matrix.
+The same holds for file-backed sources, where the difference is a small
+selection against a large volume on disk.
+
+`collect_assay()` also checks an estimated memory cost against a budget before
+it reads anything, so a request that would not fit fails early and cheaply.
+
+```{r budget, error = TRUE}
+collect_assay(frame, memory_budget = 10)
+```
+
+## Inspect without reading
+
+`explain()` returns a bounded, serializable summary of a frame or view. It
+reports the shape, the identities of the axes and space, the sources behind
+each assay, and what realizing them would cost. It never reads assay values.
+
+```{r explain}
+report <- explain(frame)
+report$shape
+report$space
+report$assays$bold[c("source_type", "dtype", "chunks", "realization_bytes")]
+```
+
+The digests are typed. The schema digest covers the column and space
+contracts, the semantic digest covers the whole source-free manifest, and the
+assay fingerprint identifies the physical source. None of them hashes the
+numbers; `vignette("persistence-and-import")` explains when you want one that
+does.
+
+```{r explain-digests}
+substr(unlist(report$digests), 1, 12)
+```
+
+## Run structure is metadata
+
+A frame carries no acquisition timing of its own. When its observations are
+volumes acquired in runs, that is a fact recorded in the observation table,
+under a small validated contract: a run column, an optional `TR` in seconds
+that is constant within each run, and an optional logical `censor` column.
+`temporal_schema()` derives the description from those columns each time it is
+asked, so it can never go stale.
+
+```{r temporal}
+has_temporal_schema(frame)
+schema <- temporal_schema(frame)
+schema
+schema$run_lengths
+```
+
+The run column is discovered rather than assumed: a relation to a run entity
+wins, then `scan_id`, then `run_id`, and an explicit `run_col` overrides all
+three. When the `fmrihrf` package is installed, `as_sampling_frame()` builds the
+run-length encoded `sampling_frame` that design and modelling code consumes.
+
+```{r sampling-frame, eval = requireNamespace("fmrihrf", quietly = TRUE)}
+as_sampling_frame(frame)
+```
+
+Because the schema follows the observation order, a filtered view still
+describes itself correctly.
+
+```{r temporal-view}
+temporal_schema(still)
+```
+
+A view whose runs are interleaved is a legal frame, but a sampling frame is a
+run-length encoding and cannot represent it. The conversion refuses rather
+than reordering behind your back.
+
+```{r temporal-interleaved, error = TRUE}
+interleaved <- frame[c("vol-01", "vol-05", "vol-02"), ]
+temporal_schema(interleaved)$contiguous
+as_sampling_frame(interleaved)
+```
+
+Frames without run structure, such as a matrix of beta estimates, are
+first-class; for them `has_temporal_schema()` is simply `FALSE`.
+
+## Durable and ephemeral IDs
+
+Every axis has a declared ID policy. The default, `require`, means the caller
+supplied the IDs, as `.obs_id` did above. Both axes of `frame` are durable.
+
+```{r durable}
+ids_are_durable(frame)
+axis_id_policy(observation_axis(frame))$policy
+```
+
+Importers that mint IDs from declared keys use the `deterministic` policy,
+which derives a SHA-256 ID from a namespace and the typed key values. The same
+keys always produce the same IDs, so two independent imports of the same data
+agree.
+
+```{r deterministic}
+scans <- axis_frame(
+  data.frame(subject = "01", run = rep(1:2, each = 4), volume = rep(1:4, 2)),
+  axis = "observation",
+  id_policy = "deterministic",
+  id_namespace = "study:v1",
+  id_keys = c("subject", "run", "volume")
+)
+substr(axis_ids(scans)[1:2], 1, 24)
+axis_id_policy(scans)[c("policy", "namespace", "keys")]
+```
+
+For quick exploratory work you can ask for `ephemeral` IDs. They are UUIDs
+with a visible `ephemeral-` prefix, and a frame that carries them cannot be
+persisted or given a certified semantic identity until a durable axis
+replaces them. Omitting `space` gives the feature axis the same treatment.
+
+```{r ephemeral, error = TRUE}
+scratch <- fmri_frame(
+  assays = list(bold = signal),
+  observations = axis_frame(data.frame(x = seq_len(n_obs)), id_policy = "ephemeral")
+)
+substr(observation_ids(scratch)[1], 1, 14)
+ids_are_durable(scratch)
+fds_frame_manifest(scratch)
+```
+
+## Bind frames along observations
+
+`bind_observations()` stacks frames that share a feature space. The result is
+lazy: assay values stay in their original sources and are routed by row when
+read. Observation order follows the operand order, IDs must not collide, and
+the spaces must be the same space, not merely the same size.
+
+```{r bind}
+run_1 <- filter_obs(frame, run_id == "run-1")
+both <- bind_observations(run_2, run_1)
+both
+observation_ids(both)
+temporal_schema(both)$run_lengths
+```
+
+Frame-level metadata is reconciled by an explicit policy. The default demands
+equality; `"merge"` combines records recursively and fails only on genuine
+conflict.
+
+```{r bind-metadata, error = TRUE}
+site_a <- fmri_frame(
+  assays = list(bold = signal[1:4, ]),
+  observations = observations(frame)[1:4, ],
+  space = voxels,
+  metadata = list(site = "A", scanner = list(vendor = "X"))
+)
+site_b <- fmri_frame(
+  assays = list(bold = signal[5:8, ]),
+  observations = observations(frame)[5:8, ],
+  space = voxels,
+  metadata = list(site = "A", scanner = list(field = "3T"))
+)
+
+bind_observations(site_a, site_b)
+
+merged <- bind_observations(site_a, site_b, metadata_policy = "merge")
+str(unclass(merged$metadata$scanner))
+```
+
+Every bind appends a provenance record naming its inputs, so a bound frame can
+say where its rows came from.
+
+```{r bind-provenance}
+merged$provenance
+```
+
+A frame over a different volume, even one with identical dimensions, is
+refused.
+
+```{r bind-space, error = TRUE}
+other_volume <- volume_space(dim = c(3, 3, 2), affine = diag(4), template = "other")
+elsewhere <- fmri_frame(
+  assays = list(bold = signal[1:4, ]),
+  observations = observations(frame)[1:4, ],
+  space = other_volume
+)
+bind_observations(site_a, elsewhere)
+```
+
+## What a frame promises
+
+These are the contracts from the package's canonical data model
+(`inst/architecture/ADR-001-canonical-data-model.md`), stated as the behavior
+you can rely on.
+
+- **Two axes, always.** An assay is observations by features. Factors and
+  continuous variables are annotations on an axis, never a third dimension.
+- **Every assay shares the axes.** All assays in a frame have the same
+  observation IDs and the same feature IDs, in the same order.
+- **IDs are stable and explicit.** Subsetting, reordering, and binding carry
+  IDs through unchanged. Nothing regenerates them, and nothing aligns by
+  position.
+- **Spatial identity is semantic.** Two spaces are the same when their class,
+  digest, and ordered feature IDs agree. Matching dimensions are not evidence.
+- **Ambiguity fails early.** Duplicated selectors, conflicting dimnames,
+  disagreeing metadata, and colliding IDs raise structured errors rather than
+  being resolved by a rule you did not choose.
+- **Execution is lazy and bounded.** Views read nothing, and a bind never
+  reads assay values; it reads a feature or entity block backed by an array
+  source only when the operands' block fingerprints differ and the values
+  must be compared. Realization goes through an explicit budget, and
+  `explain()` tells you the cost first.
+- **Descriptors, not handles.** A frame contains serializable descriptors of
+  its sources, never open files, environments, or closures, so it can be
+  serialized and rebuilt elsewhere.
+
+`vignette("feature-spaces")` covers the feature-space types and how to move a
+frame between them. `vignette("persistence-and-import")` covers the FDS
+manifest, HDF5 round trips, identity, and BIDS import.

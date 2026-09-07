@@ -40,3 +40,10 @@ evidence of spatial compatibility. Statistical execution plans and
 covariance models remain the responsibility of packages such as
 \code{fmrigds}.
 }
+\examples{
+src <- index_space(4, ids = paste0("v", 1:4), namespace = "map-source")
+tgt <- index_space(2, ids = paste0("p", 1:2), namespace = "map-target")
+op <- matrix(c(0.5, 0.5, 0, 0, 0, 0, 0.5, 0.5), nrow = 2, byrow = TRUE)
+m <- feature_map(src, tgt, op, map_type = "toy_aggregation")
+feature_map_operator(m)
+}

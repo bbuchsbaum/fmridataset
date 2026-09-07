@@ -124,6 +124,15 @@
     ),
     class = c("row_index_source", "array_source")
   )
+  # Combine the child's cached fingerprint once, at construction. Lifted entity
+  # blocks are rebuilt on every resolved access, and each rebuild used to
+  # re-hash the child on every fingerprint call.
+  out$fingerprint <- .canonical_digest(list(
+    type = "row_index_source",
+    schema_version = out$schema_version,
+    source = source_fingerprint(source),
+    rows = out$rows
+  ))
   validate_array_source(out)
   out
 }
@@ -140,6 +149,15 @@
     ),
     class = c("sparse_entity_source", "array_source")
   )
+  # Sparse entity blocks are metadata-sized and immutable, so their
+  # fingerprint is content-derived and computed exactly once here. It used to
+  # be recomputed over the whole Matrix on every source_fingerprint() call,
+  # including through every wrapper that composed it.
+  out$fingerprint <- .canonical_digest(list(
+    type = "sparse_entity_source",
+    schema_version = out$schema_version,
+    data = data
+  ))
   validate_array_source(out)
   out
 }
@@ -159,17 +177,11 @@ source_chunks.sparse_entity_source <- function(x, ...) pmax(1L, source_shape(x))
 
 #' @export
 source_capabilities.sparse_entity_source <- function(x, ...) {
-  c("row_slice", "column_slice", "block_slice", "serializable")
+  c("row_slice", "column_slice", "block_slice", "serializable", .pushdown_capabilities())
 }
 
 #' @export
-source_fingerprint.sparse_entity_source <- function(x, ...) {
-  .canonical_digest(list(
-    type = "sparse_entity_source",
-    schema_version = x$schema_version,
-    data = x$data
-  ))
-}
+source_fingerprint.sparse_entity_source <- function(x, ...) x$fingerprint
 
 #' @export
 source_open.sparse_entity_source <- function(x, ...) {
@@ -207,18 +219,11 @@ source_chunks.row_index_source <- function(x, ...) {
 
 #' @export
 source_capabilities.row_index_source <- function(x, ...) {
-  c("row_slice", "column_slice", "block_slice", "serializable")
+  c("row_slice", "column_slice", "block_slice", "serializable", .pushdown_capabilities())
 }
 
 #' @export
-source_fingerprint.row_index_source <- function(x, ...) {
-  .canonical_digest(list(
-    type = "row_index_source",
-    schema_version = x$schema_version,
-    source = source_fingerprint(x$source),
-    rows = x$rows
-  ))
-}
+source_fingerprint.row_index_source <- function(x, ...) x$fingerprint
 
 #' @export
 source_open.row_index_source <- function(x, ...) {
@@ -234,7 +239,10 @@ source_read.row_index_source <- function(x, observations = NULL,
   shape <- source_shape(x)
   observations <- .normalize_source_index(observations, shape[[1L]])
   features <- .normalize_source_index(features, shape[[2L]])
-  out <- matrix(NA, nrow = length(observations), ncol = length(features))
+  # Typed by the declared dtype: matrix(NA, ...) is logical, so a lift with no
+  # present rows used to return a logical matrix while source_dtype() reported
+  # the child's dtype.
+  out <- .realized_na_matrix(source_dtype(x), length(observations), length(features))
   if (!length(observations) || !length(features)) {
     return(out)
   }

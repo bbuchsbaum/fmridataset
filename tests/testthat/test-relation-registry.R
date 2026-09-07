@@ -195,7 +195,7 @@ test_that("sparse relations validate edge identities and weights", {
   )
   expect_error(
     sparse_relation(
-      dplyr::bind_rows(edges[1L, ], edges[1L, ]),
+      rbind(edges[1L, ], edges[1L, ]),
       "observation", "stimulus",
       weight = "score"
     ),
@@ -319,7 +319,7 @@ test_that("relation constructors reject malformed descriptors", {
       "observation", "feature"
     )
   )
-  registry$edge$data <- dplyr::bind_rows(registry$edge$data, registry$edge$data)
+  registry$edge$data <- rbind(registry$edge$data, registry$edge$data)
   expect_error(
     validate_relation_registry(registry),
     "duplicate",

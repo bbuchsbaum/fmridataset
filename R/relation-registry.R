@@ -3,10 +3,7 @@
 }
 
 .one_relation_string <- function(x, field) {
-  if (!is.character(x) || length(x) != 1L || is.na(x) || !nzchar(x)) {
-    .relation_abort(sprintf("%s must be one non-empty string.", field), field = field)
-  }
-  x
+  .assert_one_string(x, field, .relation_abort)
 }
 
 #' Describe a symbolic foreign-key relation
@@ -23,6 +20,9 @@
 #' @param allow_missing Whether missing foreign-key values are permitted.
 #' @param metadata Additional serializable metadata.
 #' @return A serializable `key_relation` descriptor.
+#' @examples
+#' rel <- key_relation("stimulus_id", target = "stimulus", source = "observation")
+#' rel$key
 #' @export
 key_relation <- function(key, target = NULL, source = "observation",
                          allow_missing = FALSE, metadata = list()) {
@@ -44,23 +44,14 @@ key_relation <- function(key, target = NULL, source = "observation",
     ),
     class = c("key_relation", "fmri_relation")
   )
-  if (.source_contains_runtime_state(out)) {
-    .relation_abort("Relations cannot contain runtime state.", field = "runtime_state")
-  }
+  .assert_no_runtime_state(out, .relation_abort, "Relations cannot contain runtime state.")
   out
 }
 
 .validate_sparse_scalar_data <- function(data) {
-  non_scalar <- vapply(data, function(value) {
-    is.list(value) || !is.null(dim(value)) || length(value) != nrow(data)
-  }, logical(1))
-  if (any(non_scalar)) {
-    .relation_abort(
-      "Sparse relation columns must contain scalar values.",
-      field = "data",
-      columns = names(data)[non_scalar]
-    )
-  }
+  .assert_scalar_columns(
+    data, .relation_abort, "Sparse relation columns must contain scalar values."
+  )
 }
 
 #' Describe an explicit sparse or many-to-many relation
@@ -74,6 +65,18 @@ key_relation <- function(key, target = NULL, source = "observation",
 #' @param directed Whether edge direction is semantically meaningful.
 #' @param metadata Additional serializable metadata.
 #' @return A serializable `sparse_relation` descriptor.
+#' @examples
+#' edges <- sparse_relation(
+#'   data = tibble::tibble(
+#'     .from_id = c("obs-1", "obs-2"),
+#'     .to_id = c("stim-1", "stim-2"),
+#'     weight = c(0.7, 0.3)
+#'   ),
+#'   from = "observation",
+#'   to = "entity:stimulus",
+#'   weight = "weight"
+#' )
+#' edges$from
 #' @export
 sparse_relation <- function(data, from, to, from_col = ".from_id",
                             to_col = ".to_id", weight = NULL,
@@ -134,9 +137,7 @@ sparse_relation <- function(data, from, to, from_col = ".from_id",
     ),
     class = c("sparse_relation", "fmri_relation")
   )
-  if (.source_contains_runtime_state(out)) {
-    .relation_abort("Relations cannot contain runtime state.", field = "runtime_state")
-  }
+  .assert_no_runtime_state(out, .relation_abort, "Relations cannot contain runtime state.")
   out
 }
 
@@ -146,6 +147,11 @@ sparse_relation <- function(data, from, to, from_col = ".from_id",
 #'   descriptors.
 #' @param ... Alternatively, named relation descriptors.
 #' @return A named `relation_registry`.
+#' @examples
+#' registry <- relation_registry(
+#'   observation_stimulus = key_relation("stimulus_id", target = "stimulus")
+#' )
+#' relation_names(registry)
 #' @export
 relation_registry <- function(relations = list(), ...) {
   dots <- list(...)
@@ -163,11 +169,11 @@ relation_registry <- function(relations = list(), ...) {
     .relation_abort("relations must be a named list.", field = "relations")
   }
   if (length(relations)) {
+    .assert_unique_names(
+      relations, .relation_abort,
+      "Relation registries must be named with unique, non-empty values."
+    )
     names_value <- names(relations)
-    if (is.null(names_value) || anyNA(names_value) || any(!nzchar(names_value)) ||
-      anyDuplicated(names_value)) {
-      .relation_abort("Relation registries must be named with unique, non-empty values.", field = "names")
-    }
     valid <- vapply(relations, inherits, logical(1), "fmri_relation")
     if (!all(valid)) {
       .relation_abort(
@@ -373,6 +379,11 @@ relation_registry <- function(relations = list(), ...) {
 #' @param entities Optional `entity_registry`.
 #' @return Invisibly returns `x`; contextual validation also enforces all
 #'   foreign-key and edge identities.
+#' @examples
+#' registry <- relation_registry(
+#'   observation_stimulus = key_relation("stimulus_id", target = "stimulus")
+#' )
+#' validate_relation_registry(registry)
 #' @export
 validate_relation_registry <- function(x, observations = NULL, features = NULL,
                                        entities = NULL) {
@@ -380,11 +391,11 @@ validate_relation_registry <- function(x, observations = NULL, features = NULL,
     .relation_abort("x must be a relation_registry.", field = "class")
   }
   if (length(x)) {
+    .assert_unique_names(
+      x, .relation_abort,
+      "Relation registries must be named with unique, non-empty values."
+    )
     names_value <- names(x)
-    if (is.null(names_value) || anyNA(names_value) || any(!nzchar(names_value)) ||
-      anyDuplicated(names_value)) {
-      .relation_abort("Relation registries must be named with unique, non-empty values.", field = "names")
-    }
     valid <- vapply(x, inherits, logical(1), "fmri_relation")
     if (!all(valid)) {
       .relation_abort("Every relation registry entry must be an fmri_relation.", field = "relations")
@@ -403,9 +414,9 @@ validate_relation_registry <- function(x, observations = NULL, features = NULL,
     validate_entity_registry(entities)
     .resolve_relation_registry(x, observations, features, entities)
   }
-  if (.source_contains_runtime_state(x)) {
-    .relation_abort("Relation registries cannot contain runtime state.", field = "runtime_state")
-  }
+  .assert_no_runtime_state(
+    x, .relation_abort, "Relation registries cannot contain runtime state."
+  )
   invisible(x)
 }
 
@@ -416,6 +427,13 @@ validate_relation_registry <- function(x, observations = NULL, features = NULL,
 #' @param ... Additional method arguments.
 #' @return `relations()` returns the registry; `relation()` returns one
 #'   descriptor; `relation_names()` returns registry names.
+#' @examples
+#' registry <- relation_registry(
+#'   observation_stimulus = key_relation("stimulus_id", target = "stimulus")
+#' )
+#' relations(registry)
+#' relation(registry, "observation_stimulus")
+#' relation_names(registry)
 #' @name relation-accessors
 NULL
 
@@ -447,6 +465,11 @@ relation_names <- function(x) names(relations(x))
 #'
 #' @param x A frame, view, or relation registry.
 #' @return A hexadecimal digest over the normalized registry.
+#' @examples
+#' registry <- relation_registry(
+#'   observation_stimulus = key_relation("stimulus_id", target = "stimulus")
+#' )
+#' relation_registry_digest(registry)
 #' @export
 relation_registry_digest <- function(x) {
   x <- relations(x)

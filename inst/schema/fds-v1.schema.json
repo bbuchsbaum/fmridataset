@@ -68,10 +68,21 @@
   "$defs": {
     "axis": {
       "type": "object",
-      "required": ["ids", "id_column", "data", "blocks", "metadata"],
+      "required": ["ids", "id_column", "id_policy", "data", "blocks", "metadata"],
       "properties": {
         "ids": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
         "id_column": {"type": "string", "minLength": 1},
+        "id_policy": {
+          "type": "object",
+          "required": ["policy", "namespace", "keys", "durable", "schema_version"],
+          "properties": {
+            "policy": {"enum": ["require", "deterministic"]},
+            "namespace": {},
+            "keys": {"type": "array", "items": {"type": "string"}},
+            "durable": {"const": true},
+            "schema_version": {"const": 1}
+          }
+        },
         "data": {},
         "blocks": {"type": "object"},
         "metadata": {"type": "object"}

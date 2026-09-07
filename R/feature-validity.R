@@ -44,6 +44,14 @@
 #' @param space Exact feature space addressed by mask columns.
 #' @param metadata Serializable metadata.
 #' @return A serializable `mask_bank`.
+#' @examples
+#' space <- index_space(6, ids = paste0("f", 1:6), namespace = "validity-ex")
+#' masks <- rbind(
+#'   c(TRUE, TRUE, FALSE, TRUE, FALSE, TRUE),
+#'   c(TRUE, FALSE, FALSE, TRUE, TRUE, TRUE)
+#' )
+#' bank <- mask_bank(masks, space)
+#' n_masks(bank)
 #' @export
 mask_bank <- function(masks, space, metadata = list()) {
   if (!inherits(space, "feature_space")) {
@@ -92,6 +100,15 @@ mask_bank <- function(masks, space, metadata = list()) {
 #' @param mask Optional mask ID or integer position.
 #' @return The validated bank, number of masks, unpacked logical masks, or
 #'   deterministic digest.
+#' @examples
+#' space <- index_space(6, ids = paste0("f", 1:6), namespace = "validity-ex")
+#' masks <- rbind(
+#'   c(TRUE, TRUE, FALSE, TRUE, FALSE, TRUE),
+#'   c(TRUE, FALSE, FALSE, TRUE, TRUE, TRUE)
+#' )
+#' bank <- mask_bank(masks, space)
+#' mask_values(bank)
+#' mask_bank_digest(bank)
 #' @name mask-bank-accessors
 NULL
 
@@ -163,6 +180,17 @@ mask_bank_digest <- function(x) {
 #' @param space Exact feature space addressed by validity columns.
 #' @param metadata Serializable relation metadata.
 #' @return An `entity_feature_validity` relation descriptor.
+#' @examples
+#' space <- index_space(4, ids = paste0("f", 1:4), namespace = "validity-ex")
+#' validity <- entity_feature_validity(
+#'   entity = "subject", entity_ids = c("sub-1", "sub-2"),
+#'   masks = rbind(
+#'     c(TRUE, TRUE, FALSE, TRUE),
+#'     c(TRUE, FALSE, FALSE, TRUE)
+#'   ),
+#'   space = space
+#' )
+#' validity_entity(validity)
 #' @export
 entity_feature_validity <- function(entity, entity_ids, masks, space,
                                     metadata = list()) {
@@ -203,6 +231,18 @@ entity_feature_validity <- function(entity, entity_ids, masks, space,
 #' @param name Relation name when `x` is a frame or view.
 #' @return The validated descriptor, entity name/IDs, mask bank, feature space,
 #'   or expanded entity-by-feature logical matrix.
+#' @examples
+#' space <- index_space(4, ids = paste0("f", 1:4), namespace = "validity-ex")
+#' validity <- entity_feature_validity(
+#'   entity = "subject", entity_ids = c("sub-1", "sub-2"),
+#'   masks = rbind(
+#'     c(TRUE, TRUE, FALSE, TRUE),
+#'     c(TRUE, FALSE, FALSE, TRUE)
+#'   ),
+#'   space = space
+#' )
+#' validity_entity_ids(validity)
+#' validity_matrix(validity)
 #' @name feature-validity-accessors
 NULL
 
@@ -297,6 +337,31 @@ validity_matrix <- function(x, name = NULL) {
 #' @param x An `fmri_frame` or view.
 #' @param name Validity relation name.
 #' @return Observation-by-feature logical validity matrix.
+#' @examples
+#' space <- index_space(4, ids = paste0("f", 1:4), namespace = "validity-ex")
+#' subjects <- entity_frame(
+#'   data.frame(subject_id = c("sub-1", "sub-2")),
+#'   key = "subject_id"
+#' )
+#' validity <- entity_feature_validity(
+#'   entity = "subject", entity_ids = c("sub-1", "sub-2"),
+#'   masks = rbind(
+#'     c(TRUE, TRUE, FALSE, TRUE),
+#'     c(TRUE, FALSE, FALSE, TRUE)
+#'   ),
+#'   space = space
+#' )
+#' frame <- fmri_frame(
+#'   assays = list(signal = matrix(1:8, nrow = 2)),
+#'   observations = data.frame(.obs_id = c("o1", "o2"), subject_id = c("sub-1", "sub-2")),
+#'   space = space,
+#'   entities = list(subject = subjects),
+#'   relations = list(
+#'     observation_subject = key_relation("subject_id"),
+#'     subject_feature_validity = validity
+#'   )
+#' )
+#' observation_validity(frame)
 #' @export
 observation_validity <- function(x, name = NULL) {
   value <- .validity_relation(x, name)
@@ -321,6 +386,31 @@ observation_validity <- function(x, name = NULL) {
 #' @param name Validity relation name.
 #' @param domain Weight unique entities or frame observations.
 #' @return Named fraction-valid vector over frame features.
+#' @examples
+#' space <- index_space(4, ids = paste0("f", 1:4), namespace = "validity-ex")
+#' subjects <- entity_frame(
+#'   data.frame(subject_id = c("sub-1", "sub-2")),
+#'   key = "subject_id"
+#' )
+#' validity <- entity_feature_validity(
+#'   entity = "subject", entity_ids = c("sub-1", "sub-2"),
+#'   masks = rbind(
+#'     c(TRUE, TRUE, FALSE, TRUE),
+#'     c(TRUE, FALSE, FALSE, TRUE)
+#'   ),
+#'   space = space
+#' )
+#' frame <- fmri_frame(
+#'   assays = list(signal = matrix(1:8, nrow = 2)),
+#'   observations = data.frame(.obs_id = c("o1", "o2"), subject_id = c("sub-1", "sub-2")),
+#'   space = space,
+#'   entities = list(subject = subjects),
+#'   relations = list(
+#'     observation_subject = key_relation("subject_id"),
+#'     subject_feature_validity = validity
+#'   )
+#' )
+#' validity_coverage(frame)
 #' @export
 validity_coverage <- function(x, name = NULL,
                               domain = c("entity", "observation")) {
@@ -341,6 +431,15 @@ validity_coverage <- function(x, name = NULL,
 #' @param observation_mask_id One mask-bank ID per source row.
 #' @param bank Compatible `mask_bank`.
 #' @return A serializable `validity_masked_source`.
+#' @examples
+#' space <- index_space(4, ids = paste0("f", 1:4), namespace = "validity-ex")
+#' bank <- mask_bank(
+#'   rbind(c(TRUE, TRUE, FALSE, TRUE), c(TRUE, FALSE, FALSE, TRUE)),
+#'   space
+#' )
+#' src <- memory_source(matrix(1:8, nrow = 2))
+#' masked <- validity_masked_source(src, bank$mask_ids[c(1, 2)], bank)
+#' source_read(masked)
 #' @export
 validity_masked_source <- function(source, observation_mask_id, bank) {
   source <- as_array_source(source)
@@ -363,8 +462,17 @@ validity_masked_source <- function(source, observation_mask_id, bank) {
     ),
     class = c("validity_masked_source", "array_source")
   )
+  # Hashing the mask bank is O(masks x features); do it once here (ADR-009).
+  out$fingerprint <- .validity_masked_fingerprint(out)
   validate_array_source(out)
   out
+}
+.validity_masked_fingerprint <- function(x) {
+  .canonical_digest(list(
+    type = "validity_masked_source", source = source_fingerprint(x$source),
+    assignments = x$observation_mask_id, bank = mask_bank_digest(x$bank),
+    schema_version = x$schema_version
+  ))
 }
 
 #' @export
@@ -377,15 +485,11 @@ source_dtype.validity_masked_source <- function(x, ...) {
 source_chunks.validity_masked_source <- function(x, ...) as.integer(x$chunks)
 #' @export
 source_capabilities.validity_masked_source <- function(x, ...) {
-  c("row_slice", "column_slice", "block_slice", "serializable")
+  c("row_slice", "column_slice", "block_slice", "serializable", .pushdown_capabilities())
 }
 #' @export
 source_fingerprint.validity_masked_source <- function(x, ...) {
-  .canonical_digest(list(
-    type = "validity_masked_source", source = source_fingerprint(x$source),
-    assignments = x$observation_mask_id, bank = mask_bank_digest(x$bank),
-    schema_version = x$schema_version
-  ))
+  x$fingerprint %||% .validity_masked_fingerprint(x)
 }
 #' @export
 source_open.validity_masked_source <- function(x, ...) {
@@ -427,6 +531,32 @@ source_close.validity_masked_source <- function(x, ...) invisible(TRUE)
 #' @param name Validity relation name.
 #' @param assays Assay names to mask. Defaults to all assays.
 #' @return A new frame with lazy `NA` masking and derivation provenance.
+#' @examples
+#' space <- index_space(4, ids = paste0("f", 1:4), namespace = "validity-ex")
+#' subjects <- entity_frame(
+#'   data.frame(subject_id = c("sub-1", "sub-2")),
+#'   key = "subject_id"
+#' )
+#' validity <- entity_feature_validity(
+#'   entity = "subject", entity_ids = c("sub-1", "sub-2"),
+#'   masks = rbind(
+#'     c(TRUE, TRUE, FALSE, TRUE),
+#'     c(TRUE, FALSE, FALSE, TRUE)
+#'   ),
+#'   space = space
+#' )
+#' frame <- fmri_frame(
+#'   assays = list(signal = matrix(1:8, nrow = 2)),
+#'   observations = data.frame(.obs_id = c("o1", "o2"), subject_id = c("sub-1", "sub-2")),
+#'   space = space,
+#'   entities = list(subject = subjects),
+#'   relations = list(
+#'     observation_subject = key_relation("subject_id"),
+#'     subject_feature_validity = validity
+#'   )
+#' )
+#' masked_frame <- apply_feature_validity(frame)
+#' collect_assay(masked_frame)
 #' @export
 apply_feature_validity <- function(x, name = NULL, assays = NULL) {
   value <- .validity_relation(x, name)

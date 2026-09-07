@@ -19,7 +19,7 @@ plan_blocks(
 
 \item{layout}{One of \code{"balanced"}, \code{"imagewise"}, or \code{"featurewise"}.}
 
-\item{memory_budget}{Hard maximum bytes for one input block.}
+\item{memory_budget}{Hard maximum estimated peak bytes for one input block.}
 
 \item{target_block_bytes}{Preferred block size, capped by \code{memory_budget}.}
 }
@@ -31,4 +31,13 @@ A serializable \code{frame_block_plan}.
 a serializable, metadata-only execution plan. \code{"imagewise"} blocks retain
 complete feature rows, \code{"featurewise"} blocks retain complete observation
 columns, and \code{"balanced"} blocks scale both axes in the source chunk ratio.
+}
+\examples{
+frame <- fmri_frame(
+  assays = list(signal = memory_source(matrix(seq_len(20), 5, 4))),
+  observations = data.frame(.obs_id = sprintf("obs-\%d", 1:5)),
+  active_assay = "signal"
+)
+plan <- plan_blocks(frame, memory_budget = 10 * 1024^2)
+plan
 }

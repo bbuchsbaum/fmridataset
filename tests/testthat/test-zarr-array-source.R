@@ -53,7 +53,7 @@ test_that("Zarr sources discover physical metadata without retaining handles", {
   )
 })
 
-test_that("Zarr source reads preserve arbitrary order and duplicates", {
+test_that("Zarr source reads preserve arbitrary order and reject repeats", {
   reference <- matrix(as.double(1:42), 6, 7)
   runtime <- .fake_zarr_runtime(reference, c(2, 3))
   source <- zarr_array_source(
@@ -83,8 +83,12 @@ test_that("Zarr source reads preserve arbitrary order and duplicates", {
     .zarr_provider_close = function(handle) handle$closed <- TRUE,
     .package = "fmridataset",
     {
-      rows <- c(6L, 1L, 2L, 6L, 4L)
-      cols <- c(7L, 2L, 1L, 2L)
+      rows <- c(6L, 1L, 2L, 4L)
+      cols <- c(7L, 2L, 1L)
+      expect_error(
+        source_read(source, c(6L, 1L, 6L), cols),
+        class = "fmridataset_error_alignment"
+      )
       expect_equal(
         source_read(source, rows, cols),
         reference[rows, cols, drop = FALSE],
@@ -183,7 +187,15 @@ test_that("Zarr handles close and reject changed physical metadata", {
     .zarr_provider_close = function(handle) handle$closed <- TRUE,
     .package = "fmridataset",
     {
-      expect_error(source_open(source), class = "fmridataset_error_source_stale")
+      condition <- expect_error(
+        source_open(source),
+        class = "fmridataset_error_source_stale"
+      )
+      expect_false(inherits(condition, "fmridataset_error_backend_io"))
+      expect_identical(condition$source$type, "zarr_array_source")
+      expect_identical(condition$source$uri, source$uri)
+      expect_identical(condition$expected$shape, c(3L, 4L))
+      expect_identical(condition$actual$shape, c(4L, 4L))
       expect_true(runtime$closed)
     }
   )
@@ -283,8 +295,8 @@ test_that("Zarr source reads a real current-driver store", {
 
   source <- zarr_array_source(path)
   expect_array_source_conformance(source, reference)
-  rows <- c(6L, 1L, 2L, 6L)
-  features <- c(7L, 2L, 1L, 2L)
+  rows <- c(6L, 1L, 2L, 5L)
+  features <- c(7L, 2L, 1L, 4L)
   expect_equal(
     source_read(source, rows, features),
     reference[rows, features, drop = FALSE],
@@ -294,5 +306,62 @@ test_that("Zarr source reads a real current-driver store", {
     delarr::collect(as_delarr(source)[rows, features]),
     reference[rows, features, drop = FALSE],
     tolerance = 0
+  )
+})
+
+test_that("Zarr reads consume range selections as one chunk-aligned request", {
+  reference <- matrix(as.double(1:42), 6, 7)
+  runtime <- .fake_zarr_runtime(reference, c(2, 3))
+  source <- zarr_array_source(
+    "fixture.zarr",
+    shape = dim(reference),
+    dtype = "float64",
+    chunks = c(2, 3)
+  )
+
+  with_mocked_bindings(
+    .zarr_provider_open = function(uri, array_path) {
+      runtime$closed <- FALSE
+      runtime
+    },
+    .zarr_provider_metadata = function(handle) {
+      list(shape = handle$shape, chunks = handle$chunks, dtype = handle$dtype)
+    },
+    .zarr_provider_read = function(handle, selection) {
+      handle$reads[[length(handle$reads) + 1L]] <- selection
+      handle$data[
+        seq.int(selection[[1L]][[1L]], selection[[1L]][[2L]]),
+        seq.int(selection[[2L]][[1L]], selection[[2L]][[2L]]),
+        drop = FALSE
+      ]
+    },
+    .zarr_provider_close = function(handle) handle$closed <- TRUE,
+    .package = "fmridataset",
+    {
+      # A range view pushes its bounds down as one read; nesting a range in a
+      # range stays one read over the composed bounds.
+      ranged <- source_view(source, observations = 2:5, features = 3:7)
+      expect_equal(source_read(ranged), reference[2:5, 3:7, drop = FALSE], tolerance = 0)
+      expect_identical(runtime$reads, list(list(c(2L, 5L), c(3L, 7L))))
+
+      runtime$reads <- list()
+      nested <- source_view(ranged, observations = 2:3, features = 2:4)
+      expect_equal(source_read(nested), reference[3:4, 4:6, drop = FALSE], tolerance = 0)
+      expect_identical(runtime$reads, list(list(c(3L, 4L), c(4L, 6L))))
+
+      # A select-all axis is one read of the whole axis.
+      runtime$reads <- list()
+      expect_equal(source_read(source_view(source, observations = 4L)), reference[4L, , drop = FALSE], tolerance = 0)
+      expect_identical(runtime$reads, list(list(c(4L, 4L), c(1L, 7L))))
+
+      # Arbitrary positions are the only form decomposed into runs.
+      runtime$reads <- list()
+      expect_equal(
+        source_read(source, c(6L, 1L, 2L), NULL),
+        reference[c(6L, 1L, 2L), , drop = FALSE],
+        tolerance = 0
+      )
+      expect_identical(runtime$reads, list(list(c(1L, 2L), c(1L, 7L)), list(c(6L, 6L), c(1L, 7L))))
+    }
   )
 })

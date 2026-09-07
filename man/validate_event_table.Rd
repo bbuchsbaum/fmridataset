@@ -15,3 +15,10 @@ validate_event_table(x)
 \description{
 Validate a keyed event table
 }
+\examples{
+et <- event_table(
+  data.frame(event_id = c("e1", "e2"), onset = c(0, 10)),
+  key = "event_id"
+)
+validate_event_table(et)
+}

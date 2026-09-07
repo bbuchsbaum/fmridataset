@@ -46,11 +46,19 @@
   paths <- paths[!is.na(paths) & nzchar(paths)]
   current <- .nifti_file_state(paths)
   if (!identical(current, x$file_state)) {
-    .frame_abort(
-      "A NIfTI source file changed after the descriptor was created.",
-      "fmridataset_error_backend_io",
-      operation = "fingerprint_check",
-      files = paths
+    changed <- paths[!vapply(seq_along(paths), function(index) {
+      identical(current[[index]], x$file_state[[index]])
+    }, logical(1))]
+    .abort_source_stale(
+      sprintf(
+        "A NIfTI source file changed after the descriptor was created: %s.",
+        paste(changed, collapse = ", ")
+      ),
+      source = list(type = "nifti_array_source", uri = x$uri, mask_uri = x$mask_uri),
+      expected = x$file_state,
+      actual = current,
+      files = paths,
+      changed = changed
     )
   }
   invisible(TRUE)
@@ -74,10 +82,25 @@
 #' requested packed features before materialization. Native reads return
 #' full-volume `NeuroVec` objects in requested observation order.
 #'
+#' The fingerprint covers the descriptor and the size and modification time of
+#' every file captured at construction, never the voxel values. Every open,
+#' read, and native read re-observes those files first and raises
+#' `fmridataset_error_source_stale` (with `source`, `expected`, `actual`, and
+#' `changed` fields) if any differ; genuine read failures remain
+#' `fmridataset_error_backend_io`. See [content_hash()] to identify values.
+#'
 #' @param paths One or more NIfTI files with a common spatial grid.
 #' @param mask A NIfTI mask path or a compatible `volume_space`.
 #' @param chunks Optional logical observation-by-feature chunk hint.
 #' @return A serializable `nifti_array_source`.
+#' @examples
+#' # A small NIfTI fixture shipped with neuroim2 stands in for real data.
+#' path <- system.file("extdata", "global_mask_v4.nii", package = "neuroim2")
+#' if (nzchar(path)) {
+#'   src <- nifti_array_source(path, path)
+#'   source_shape(src)
+#'   source_dtype(src)
+#' }
 #' @export
 nifti_array_source <- function(paths, mask, chunks = NULL) {
   if (!is.character(paths) || !length(paths) || anyNA(paths) || any(!nzchar(paths))) {
@@ -192,8 +215,11 @@ nifti_array_source <- function(paths, mask, chunks = NULL) {
       shape = as.integer(shape),
       dtype = dtypes[[1L]],
       chunks = chunks,
+      # Volumes are read by index list and features through an explicit
+      # mask, so every selector form is consumed natively.
       capabilities = c(
-        "row_slice", "column_slice", "block_slice", "native_read", "serializable"
+        "row_slice", "column_slice", "block_slice", "native_read", "serializable",
+        .pushdown_capabilities()
       ),
       file_state = state,
       schema_version = 1L
@@ -220,6 +246,13 @@ nifti_array_source <- function(paths, mask, chunks = NULL) {
 #' @param x A `nifti_array_source`.
 #' @param template Optional template or native-space label.
 #' @return A compatible `volume_space`.
+#' @examples
+#' path <- system.file("extdata", "global_mask_v4.nii", package = "neuroim2")
+#' if (nzchar(path)) {
+#'   src <- nifti_array_source(path, path)
+#'   spatial <- nifti_source_space(src, template = "fixture")
+#'   n_features(spatial)
+#' }
 #' @export
 nifti_source_space <- function(x, template = NULL) {
   if (!inherits(x, "nifti_array_source")) {

@@ -16,17 +16,30 @@ collect_spatial_maps(
 \item{x}{An \code{fmri_frame} or view.}
 
 \item{observations}{Observation IDs or integer positions. The requested
-order and duplicates are preserved.}
+order is preserved. Duplicated selectors are rejected, as they are on
+every other frame axis selection.}
 
 \item{assay}{Assay name.}
 
 \item{path}{One of \code{"auto"}, \code{"native"}, or \code{"reconstruct"}.}
 
-\item{memory_budget}{Maximum estimated bytes for all returned native maps.}
+\item{memory_budget}{Maximum estimated peak bytes for all returned native
+maps plus the current packed read, conversion, and reconstruction buffers.}
 }
 \value{
 A named list with one native spatial object per observation.
 }
 \description{
 Collect spatial maps through native or reconstructed reads
+}
+\examples{
+sp <- volume_space(dim = c(2L, 2L, 1L), affine = diag(4), support = 1:4)
+frame <- fmri_frame(
+  assays = list(signal = memory_source(matrix(seq_len(12), 3, 4))),
+  observations = data.frame(.obs_id = sprintf("obs-\%d", 1:3)),
+  space = sp,
+  active_assay = "signal"
+)
+maps <- collect_spatial_maps(frame, observations = c(1L, 2L))
+names(maps)
 }

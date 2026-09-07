@@ -33,3 +33,7 @@ A key relation does not duplicate a mapping. It declares that one scalar
 column on an observation, feature, or entity table references the stable
 IDs of one entity frame.
 }
+\examples{
+rel <- key_relation("stimulus_id", target = "stimulus", source = "observation")
+rel$key
+}

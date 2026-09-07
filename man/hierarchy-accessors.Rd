@@ -31,3 +31,27 @@ returns stable integer grouping codes; \code{hierarchy_levels()} and
 \description{
 Access derived hierarchy index data
 }
+\examples{
+subject <- entity_frame(
+  data = tibble::tibble(subject_id = c("sub-1", "sub-2")),
+  key = "subject_id"
+)
+observations <- tibble::tibble(
+  .obs_id = paste0("obs-", 1:4),
+  subject_id = c("sub-1", "sub-1", "sub-2", "sub-2")
+)
+frame <- fmri_frame(
+  assays = list(beta = memory_source(matrix(as.double(1:12), 4, 3))),
+  observations = observations,
+  entities = list(subject = subject),
+  relations = list(
+    observation_subject = key_relation("subject_id", target = "subject")
+  )
+)
+idx <- hierarchy_index(frame, levels = "subject")
+hierarchy_ids(idx)
+hierarchy_groups(idx)
+hierarchy_levels(idx)
+hierarchy_relations(idx)
+hierarchy_complete(idx)
+}

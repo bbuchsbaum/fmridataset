@@ -187,6 +187,25 @@
 #'   key-relation name used for its incoming edge. This is required when an edge
 #'   is ambiguous.
 #' @return An `fmri_hierarchy_index`.
+#' @examples
+#' subject <- entity_frame(
+#'   data = tibble::tibble(subject_id = c("sub-1", "sub-2")),
+#'   key = "subject_id"
+#' )
+#' observations <- tibble::tibble(
+#'   .obs_id = paste0("obs-", 1:4),
+#'   subject_id = c("sub-1", "sub-1", "sub-2", "sub-2")
+#' )
+#' frame <- fmri_frame(
+#'   assays = list(beta = memory_source(matrix(as.double(1:12), 4, 3))),
+#'   observations = observations,
+#'   entities = list(subject = subject),
+#'   relations = list(
+#'     observation_subject = key_relation("subject_id", target = "subject")
+#'   )
+#' )
+#' idx <- hierarchy_index(frame, levels = "subject")
+#' hierarchy_ids(idx)
 #' @export
 hierarchy_index <- function(x, levels, relations = NULL) {
   if (!inherits(x, "fmri_frame")) {
@@ -249,9 +268,9 @@ hierarchy_index <- function(x, levels, relations = NULL) {
     ),
     class = "fmri_hierarchy_index"
   )
-  if (.source_contains_runtime_state(out)) {
-    .hierarchy_abort("Hierarchy indices cannot contain runtime state.")
-  }
+  .assert_no_runtime_state(
+    out, .hierarchy_abort, "Hierarchy indices cannot contain runtime state."
+  )
   out
 }
 
@@ -262,6 +281,29 @@ hierarchy_index <- function(x, levels, relations = NULL) {
 #'   returns stable integer grouping codes; `hierarchy_levels()` and
 #'   `hierarchy_relations()` return named character vectors;
 #'   `hierarchy_complete()` returns a logical vector.
+#' @examples
+#' subject <- entity_frame(
+#'   data = tibble::tibble(subject_id = c("sub-1", "sub-2")),
+#'   key = "subject_id"
+#' )
+#' observations <- tibble::tibble(
+#'   .obs_id = paste0("obs-", 1:4),
+#'   subject_id = c("sub-1", "sub-1", "sub-2", "sub-2")
+#' )
+#' frame <- fmri_frame(
+#'   assays = list(beta = memory_source(matrix(as.double(1:12), 4, 3))),
+#'   observations = observations,
+#'   entities = list(subject = subject),
+#'   relations = list(
+#'     observation_subject = key_relation("subject_id", target = "subject")
+#'   )
+#' )
+#' idx <- hierarchy_index(frame, levels = "subject")
+#' hierarchy_ids(idx)
+#' hierarchy_groups(idx)
+#' hierarchy_levels(idx)
+#' hierarchy_relations(idx)
+#' hierarchy_complete(idx)
 #' @name hierarchy-accessors
 NULL
 
@@ -304,6 +346,25 @@ hierarchy_complete <- function(x) {
 #'
 #' @param x An `fmri_hierarchy_index`.
 #' @return A SHA-256 digest.
+#' @examples
+#' subject <- entity_frame(
+#'   data = tibble::tibble(subject_id = c("sub-1", "sub-2")),
+#'   key = "subject_id"
+#' )
+#' observations <- tibble::tibble(
+#'   .obs_id = paste0("obs-", 1:4),
+#'   subject_id = c("sub-1", "sub-1", "sub-2", "sub-2")
+#' )
+#' frame <- fmri_frame(
+#'   assays = list(beta = memory_source(matrix(as.double(1:12), 4, 3))),
+#'   observations = observations,
+#'   entities = list(subject = subject),
+#'   relations = list(
+#'     observation_subject = key_relation("subject_id", target = "subject")
+#'   )
+#' )
+#' idx <- hierarchy_index(frame, levels = "subject")
+#' hierarchy_digest(idx)
 #' @export
 hierarchy_digest <- function(x) {
   .assert_hierarchy_index(x)

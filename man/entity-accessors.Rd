@@ -27,3 +27,13 @@ entity_names(x)
 \description{
 Access entities from a frame or registry
 }
+\examples{
+subjects <- entity_frame(
+  data = tibble::tibble(subject_id = c("sub-1", "sub-2")),
+  key = "subject_id"
+)
+registry <- entity_registry(subject = subjects)
+entities(registry)
+entity(registry, "subject")
+entity_names(registry)
+}

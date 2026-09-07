@@ -3,7 +3,9 @@ test_that("built-in sources and spaces satisfy reusable conformance", {
   expect_array_source_conformance(memory_source(m), m)
   expect_array_source_conformance(counting_source(memory_source(m)), m)
 
-  expect_feature_space_conformance(index_space(6))
+  expect_feature_space_conformance(index_space(
+    6, namespace = "conformance", id_policy = "deterministic"
+  ))
   expect_feature_space_conformance(volume_space(c(2, 2, 2), support = 1:6))
 })
 
@@ -62,14 +64,18 @@ test_that("row-sharded sources expose stable manifests and exact row mappings", 
     )
   )
   expect_identical(
-    locate_source_rows(source, c(8L, 1L, 6L, 1L)),
+    locate_source_rows(source, c(8L, 1L, 6L, 2L)),
     data.frame(
       .request_position = 1:4,
-      .observation = c(8L, 1L, 6L, 1L),
+      .observation = c(8L, 1L, 6L, 2L),
       .shard_index = c(3L, 1L, 3L, 1L),
       .shard_id = c("sub-02_run-1", "sub-01_run-1", "sub-02_run-1", "sub-01_run-1"),
-      .local_observation = c(3L, 1L, 1L, 1L)
+      .local_observation = c(3L, 1L, 1L, 2L)
     )
+  )
+  expect_error(
+    locate_source_rows(source, c(8L, 1L, 8L)),
+    class = "fmridataset_error_alignment"
   )
 })
 
@@ -81,8 +87,8 @@ test_that("row-sharded reads touch only selected shards once", {
   )
   children <- lapply(matrices, function(x) counting_source(memory_source(x)))
   source <- row_sharded_source(children, shard_ids = c("a", "b", "c"))
-  observations <- c(8L, 1L, 6L, 1L)
-  features <- c(4L, 1L, 4L)
+  observations <- c(8L, 1L, 6L, 2L)
+  features <- c(4L, 1L, 2L)
   reference <- do.call(rbind, matrices)[observations, features, drop = FALSE]
 
   expect_equal(source_read(source, observations, features), reference)
@@ -110,12 +116,12 @@ test_that("row-sharded sources reject ambiguous or incompatible manifests", {
   a <- memory_source(matrix(1:12, 3, 4))
   wrong_features <- memory_source(matrix(1:15, 3, 5))
   wrong_dtype <- memory_source(matrix(1:8, 2, 4), dtype = "float32")
-  empty <- memory_source(matrix(numeric(), 0, 4))
 
   expect_error(row_sharded_source(list(a, a), shard_ids = c("same", "same")), "unique")
   expect_error(row_sharded_source(list(a, wrong_features)), "feature count")
   expect_error(row_sharded_source(list(a, wrong_dtype)), "dtype")
-  expect_error(row_sharded_source(list(empty)), "zero observations")
+  # An empty shard is neither ambiguous nor incompatible, only empty; see
+  # test-row-sharded-empty-shards.R for its routing contract.
   expect_error(
     row_sharded_source(list(a), shard_data = data.frame(.start = 1L)),
     "reserved"
@@ -125,8 +131,14 @@ test_that("row-sharded sources reject ambiguous or incompatible manifests", {
 test_that("frame binding rejects shape-only spatial matches", {
   obs1 <- data.frame(.obs_id = "a")
   obs2 <- data.frame(.obs_id = "b")
-  x <- fmri_frame(list(x = matrix(1:3, 1)), obs1, space = index_space(3))
-  y <- fmri_frame(list(x = matrix(4:6, 1)), obs2, space = index_space(3))
+  first_space <- index_space(
+    3, namespace = "bind-contract", id_policy = "deterministic"
+  )
+  second_space <- index_space(
+    3, namespace = "bind-contract-other", id_policy = "deterministic"
+  )
+  x <- fmri_frame(list(x = matrix(1:3, 1)), obs1, space = first_space)
+  y <- fmri_frame(list(x = matrix(4:6, 1)), obs2, space = second_space)
 
   expect_error(bind_observations(x, y), class = "fmridataset_error_space_mismatch")
 })

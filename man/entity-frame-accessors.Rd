@@ -25,3 +25,15 @@ The stable key name, entity IDs, scalar data, or aligned blocks.
 \description{
 Entity-frame accessors
 }
+\examples{
+embedding <- axis_block(matrix(as.double(1:8), 2, 4), role = "embedding")
+x <- entity_frame(
+  data = tibble::tibble(stimulus_id = c("stim-1", "stim-2")),
+  key = "stimulus_id",
+  blocks = list(semantic = embedding)
+)
+entity_key(x)
+entity_ids(x)
+entity_data(x)
+entity_blocks(x)
+}

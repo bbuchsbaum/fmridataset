@@ -41,8 +41,14 @@ register methods rather than redefining the concepts.
 
 - Development begins at 0.10.0. The divergent historical `v0.9.0` tag is not
   rewritten.
-- Legacy constructors and classes remain migration adapters throughout the
-  0.x transition and are removed from the 1.0 public API.
+- The pre-frame 0.x architecture (dataset constructors, storage backends and
+  registry, sampling-frame accessors, chunk iteration, series and selectors,
+  groups, BIDS HDF5 wrappers, and config I/O) was removed from the package
+  during 0.10 development rather than carried as adapters. The last commit
+  carrying that surface is `3ae565e`. Consumers migrate directly to
+  `fmri_frame`, `fmri_collection`, and `fmri_study`; the package ships no
+  compatibility layer and no serialized-object upgrader for 0.x classes
+  (amended 2026-09-06).
 - HDF5 is the certified 1.0 persistent backend. Zarr remains experimental
   until it independently passes the same conformance gates.
 - `DelayedArray` is optional interoperability, not an internal execution path.

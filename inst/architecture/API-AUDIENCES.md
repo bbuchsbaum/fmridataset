@@ -1,0 +1,104 @@
+# API audiences
+
+`fmridataset` exposes one package namespace with three documented audiences.
+This classification is normative for 1.0 review and generated namespace tests.
+
+## User API
+
+The ordinary user surface covers:
+
+- frame, collection, and study construction;
+- canonical source-to-target study links and explicit link composition;
+- typed unaligned metadata records, typed event/auxiliary tables, and explicit
+  legacy-lineage migration with `as_provenance_graph()`;
+- observation, feature, entity, relation, assay, and space inspection;
+- the derived observation-axis temporal contract (`temporal_schema()`,
+  `has_temporal_schema()`, `as_sampling_frame()`);
+- lazy filtering, feature mapping, binding, and validity policies;
+- bounded numerical and spatial realization;
+- NIfTI, HDF5, Zarr, atlas, surface, and latent interoperability, and the
+  narrow `read_bids_bold()` on-ramp;
+- FDS inspection and persistence, with explicit schema upgrades
+  (`upgrade_frame_link()`, `upgrade_fds_study_manifest()`) for provisional
+  version-one study descriptors written by earlier development builds.
+
+There is no legacy migration surface for the pre-frame 0.x architecture. It
+was removed rather than adapted; see `NEWS.md` for the boundary revision.
+
+## Extension API
+
+Backend, spatial, mapping, relation, and codec implementers may rely on:
+
+- `ArraySource` generics, descriptors, validators, and lifecycle rules;
+- `FeatureSpace` generics and compatibility laws;
+- the metadata-only `frame_schema()` contract and mode-specific schema
+  validation used by collections, binding, FDS codecs, and consumers;
+- feature-map, provenance, entity, relation, validity, and hierarchy contracts;
+- FDS manifests, bindings, validators, digests, and reconstruction helpers;
+- block planning and source composition required by storage implementations.
+
+An extension object is a serializable descriptor. Open file handles and caches
+are runtime products of `source_open()` and must never become semantic state.
+Methods must preserve requested order, reject ambiguous identity, and return
+non-dropping two-dimensional blocks.
+
+Selectors reach a source method as `NULL` (everything), an integer position
+vector, or a logical mask, already checked against the selection law of
+ADR-010 at the `source_read()` and `source_read_native()` generics: positions
+are whole, in bounds, and never repeated. A source may declare the selector
+forms it consumes natively as `pushdown:all`, `pushdown:range`, and
+`pushdown:positions` capability strings; the selection algebra itself is
+internal and exports no constructor.
+
+Observation binding is schema-driven. It never selects container metadata,
+tables, active-assay state, or lineage from an arbitrary operand: metadata
+uses an explicit equality/merge policy, keyed tables are unioned with conflict
+detection, active-assay differences require a caller choice, and provenance
+graphs are joined under a new bind record.
+
+Study links are source-to-target descriptors. Their maps use `.source_id` and
+`.target_id`; typed feature operators occupy the first-class `operator` field
+and map in the same direction. Provisional version-one `*_from` links and FDS
+study v1 manifests are rejected by current validators and must cross the
+explicit upgrade boundary. `filter_entities()` returns a self-contained study
+with compact entities, tables, links, and lazy source views rather than an
+object whose public fields expose hidden base state.
+
+The stable extension groups are:
+
+- source protocol: `as_array_source()`, `source_descriptor()`,
+  `validate_array_source()`, `source_realization_cost()`, the
+  `source_*()` lifecycle generics, and `source_error()` for signalling the
+  protocol's stale, I/O, and contract conditions from an extension;
+- spatial protocol: `n_features()`, `feature_ids()`, `native_shape()`,
+  `restrict_space()`, `vectorize_space()`, `reconstruct_space()`,
+  `adjacency()`, exact `same_space()`, the migration alias
+  `compatible_space()`, and `space_digest()`;
+- typed `identity_descriptor()` results, the versioned R-only
+  `canonicalization_contract()`, and the explicit O(n) value receipt
+  `content_hash()` with its `content_hash_contract()` (ADR-009);
+- mapping and provenance: `feature_map*()`, `provenance_*()`, the explicit
+  `as_provenance_graph()` migration boundary, and their validators and digests;
+- container semantics: `unaligned_record()`, `event_table()`, and
+  `auxiliary_table()` keep unaligned records, relational rows, aligned arrays,
+  and lineage mechanically distinct;
+- semantic registries: entity, relation, hierarchy, validity, and mask-bank
+  constructors, validators, and digests;
+- storage protocol: FDS manifests, bindings, validation, reconstruction, and
+  source-composition/block-planning helpers.
+
+Constructor and validator laws are executable in
+`tests/testthat/helper-frame-conformance.R`, `test-frame-properties.R`,
+`test-array-source.R`, `test-feature-space.R`, `test-feature-map.R`, and the
+FDS tests. Downstream protocol checks run against `fmristore`, `multidesign`,
+and `fmrigds` before an extension-surface change is accepted.
+
+## Developer-only API
+
+`counting_source()`, `source_counts()`, `reset_source_counts()`, and
+`fault_source()` remain exported so companion packages can certify zero-I/O,
+lifecycle, atomic-write, and failure-cleanup laws. They are test instruments,
+not application storage or provenance.
+
+Synthetic vignette helpers, runtime handle classes, internal registries,
+codec internals, error constructors, and `%||%` are not public API.

@@ -28,3 +28,13 @@ deterministic digest.
 \description{
 Validate and inspect a mask bank
 }
+\examples{
+space <- index_space(6, ids = paste0("f", 1:6), namespace = "validity-ex")
+masks <- rbind(
+  c(TRUE, TRUE, FALSE, TRUE, FALSE, TRUE),
+  c(TRUE, FALSE, FALSE, TRUE, TRUE, TRUE)
+)
+bank <- mask_bank(masks, space)
+mask_values(bank)
+mask_bank_digest(bank)
+}

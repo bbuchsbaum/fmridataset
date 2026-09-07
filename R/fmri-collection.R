@@ -2,127 +2,19 @@
   .frame_abort(message, "fmridataset_error_collection", ...)
 }
 
-.collection_column_schema <- function(data) {
-  lapply(data, function(value) {
-    list(
-      class = class(value),
-      typeof = typeof(value),
-      levels = if (is.factor(value)) levels(value) else NULL,
-      ordered = is.ordered(value)
-    )
-  })
-}
-
-.collection_data_shape <- function(data) {
-  if (inherits(data, "array_source")) {
-    return(source_shape(data))
-  }
-  shape <- dim(data)
-  if (is.null(shape)) c(length(data), 1L) else as.integer(shape)
-}
-
-.collection_block_signature <- function(blocks) {
-  lapply(blocks, function(block) {
-    shape <- .collection_data_shape(axis_block_data(block))
-    list(
-      trailing_shape = if (length(shape) > 1L) shape[-1L] else 1L,
-      components = block_components(block),
-      role = block$role,
-      units = block$units,
-      metadata = block$metadata
-    )
-  })
-}
-
-.collection_entity_signature <- function(registry) {
-  lapply(registry, function(value) {
-    list(
-      key = entity_key(value),
-      entity_type = value$entity_type,
-      data = .collection_column_schema(entity_data(value)),
-      blocks = .collection_block_signature(entity_blocks(value))
-    )
-  })
-}
-
-.collection_relation_signature <- function(registry) {
-  lapply(registry, function(value) {
-    if (inherits(value, "key_relation")) {
-      return(list(
-        type = "key",
-        key = value$key,
-        source = value$source,
-        target = value$target,
-        allow_missing = value$allow_missing,
-        metadata = value$metadata
-      ))
-    }
-    list(
-      type = "sparse",
-      from = value$from,
-      to = value$to,
-      from_col = value$from_col,
-      to_col = value$to_col,
-      weight = value$weight,
-      directed = value$directed,
-      data = .collection_column_schema(value$data),
-      metadata = value$metadata
-    )
-  })
-}
-
-.collection_assay_signature <- function(frame) {
-  list(
-    names = names(assays(frame)),
-    active = active_assay(frame),
-    annotations = lapply(assays(frame), function(value) {
-      list(role = value$role, units = value$units, metadata = value$metadata)
-    })
-  )
-}
-
-.collection_frame_signature <- function(frame) {
-  list(
-    assays = .collection_assay_signature(frame),
-    observation = .collection_column_schema(observations(frame)),
-    observation_blocks = .collection_block_signature(obs_blocks(frame)),
-    feature_space_type = class(space(frame))[[1L]],
-    feature = .collection_column_schema(features(frame)),
-    feature_blocks = .collection_block_signature(feature_blocks(frame)),
-    entities = .collection_entity_signature(entities(frame)),
-    relations = .collection_relation_signature(relations(frame))
-  )
-}
-
 .assert_collection_semantics <- function(reference, candidate, frame_id) {
-  labels <- c(
-    assays = "assay",
-    observation = "observation",
-    observation_blocks = "observation block",
-    feature_space_type = "feature space",
-    feature = "feature annotation",
-    feature_blocks = "feature block",
-    entities = "entity",
-    relations = "relation"
+  report <- compare_frame_schema(candidate, reference, mode = "collection")
+  if (!report$compatible) .collection_abort(
+    sprintf("Frame '%s' has an incompatible schema at '%s'.", frame_id, report$path),
+    frame = frame_id, field = report$path,
+    expected = report$expected, actual = report$actual
   )
-  for (field in names(labels)) {
-    if (!identical(reference[[field]], candidate[[field]])) {
-      .collection_abort(
-        sprintf(
-          "Frame '%s' has an incompatible %s schema.",
-          frame_id, labels[[field]]
-        ),
-        frame = frame_id,
-        field = field
-      )
-    }
-  }
   invisible(TRUE)
 }
 
 .collection_frame_descriptor <- function(frame) {
   list(
-    signature = .collection_frame_signature(frame),
+    signature = frame_schema(frame),
     observation_ids = observation_ids(frame),
     feature_ids = feature_ids(frame),
     observation_data = observations(frame),
@@ -144,21 +36,28 @@
 #' feature-space type and annotation semantics are validated explicitly.
 #'
 #' @param frames A non-empty named list of `fmri_frame` objects or lazy views.
-#' @param metadata Serializable collection metadata.
-#' @param provenance Serializable provenance records.
+#' @param metadata Unaligned collection-level metadata.
+#' @param provenance `NULL` or a validated `provenance_graph`.
 #' @return An `fmri_collection`.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' collection <- fmri_collection(list(sub01 = frame, sub02 = frame))
+#' collection_ids(collection)
 #' @export
 fmri_collection <- function(frames, metadata = list(), provenance = NULL) {
   if (!is.list(frames) || !length(frames)) {
     .collection_abort("frames must be a non-empty named list.", field = "frames")
   }
+  .assert_unique_names(
+    frames, .collection_abort,
+    "Collection frame names must be unique, non-missing stable IDs."
+  )
   ids <- names(frames)
-  if (is.null(ids) || anyNA(ids) || any(!nzchar(ids)) || anyDuplicated(ids)) {
-    .collection_abort(
-      "Collection frame names must be unique, non-missing stable IDs.",
-      field = "names"
-    )
-  }
   valid <- vapply(frames, inherits, logical(1), "fmri_frame")
   if (!all(valid)) {
     .collection_abort(
@@ -166,15 +65,15 @@ fmri_collection <- function(frames, metadata = list(), provenance = NULL) {
       frames = ids[!valid]
     )
   }
-  signatures <- lapply(frames, .collection_frame_signature)
-  if (length(signatures) > 1L) {
-    for (i in 2:length(signatures)) {
-      .assert_collection_semantics(signatures[[1L]], signatures[[i]], ids[[i]])
+  if (length(frames) > 1L) {
+    for (i in 2:length(frames)) {
+      .assert_collection_semantics(frames[[1L]], frames[[i]], ids[[i]])
     }
   }
-  if (inherits(provenance, "provenance_graph")) {
-    validate_provenance_graph(provenance)
-  }
+  metadata <- .normalize_container_metadata(
+    metadata, .collection_alignment_domains(frames)
+  )
+  provenance <- .validate_container_provenance(provenance, "Collection")
   out <- structure(
     list(
       frames = frames,
@@ -184,11 +83,10 @@ fmri_collection <- function(frames, metadata = list(), provenance = NULL) {
     ),
     class = "fmri_collection"
   )
-  if (.source_contains_runtime_state(out)) {
-    .collection_abort(
-      "Collections cannot contain runtime functions, environments, or external pointers."
-    )
-  }
+  .assert_no_runtime_state(
+    out, .collection_abort,
+    "Collections cannot contain runtime functions, environments, or external pointers."
+  )
   out
 }
 
@@ -196,6 +94,15 @@ fmri_collection <- function(frames, metadata = list(), provenance = NULL) {
 #'
 #' @param x An `fmri_collection`.
 #' @return `x`, invisibly, or a structured collection error.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' collection <- fmri_collection(list(sub01 = frame, sub02 = frame))
+#' validate_fmri_collection(collection)
 #' @export
 validate_fmri_collection <- function(x) {
   required <- c("frames", "metadata", "provenance", "schema_version")
@@ -213,6 +120,16 @@ validate_fmri_collection <- function(x) {
 #' @param x An `fmri_collection`.
 #' @param id One stable frame ID.
 #' @return The named frame list, one frame, or the stable frame IDs.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' collection <- fmri_collection(list(sub01 = frame, sub02 = frame))
+#' collection_ids(collection)
+#' collection_frame(collection, "sub01")
 #' @name collection-accessors
 NULL
 
@@ -248,27 +165,14 @@ length.fmri_collection <- function(x) length(x$frames)
 #' @export
 names.fmri_collection <- function(x) names(x$frames)
 
+# Collection frame selectors follow the package-wide normalization law
+# (R/axis-selection.R) with the collection's own error class. Emptiness is a
+# container invariant checked by the caller, not a selector rule.
 .normalize_collection_selector <- function(i, ids) {
-  if (is.character(i)) {
-    if (anyNA(i) || any(!i %in% ids) || anyDuplicated(i)) {
-      .collection_abort("Collection frame selector contains unknown or duplicate IDs.")
-    }
-    return(match(i, ids))
-  }
-  if (is.logical(i)) {
-    if (length(i) != length(ids) || anyNA(i)) {
-      .collection_abort("Logical collection selectors must match collection length.")
-    }
-    return(which(i))
-  }
-  if (!is.numeric(i) || anyNA(i) || any(i != as.integer(i))) {
-    .collection_abort("Collection selectors must contain frame IDs or integer positions.")
-  }
-  i <- as.integer(i)
-  if (any(i < 1L | i > length(ids)) || anyDuplicated(i)) {
-    .collection_abort("Collection selector is out of bounds or duplicated.")
-  }
-  i
+  .selection_expand(.normalize_selection(
+    i, length(ids),
+    ids = ids, axis = "collection frame", abort = .collection_abort
+  ))
 }
 
 #' @export
@@ -279,7 +183,10 @@ names.fmri_collection <- function(x) names(x$frames)
   }
   i <- .normalize_collection_selector(i, names(x$frames))
   if (!length(i)) {
-    .collection_abort("An fmri_collection cannot be empty after subsetting.")
+    .collection_abort(
+      "An fmri_collection cannot be empty after subsetting.",
+      reason = "empty_collection"
+    )
   }
   fmri_collection(
     x$frames[i],
@@ -307,6 +214,16 @@ names.fmri_collection <- function(x) names(x$frames)
 #' @return `collection_space_data()` returns one metadata row per frame;
 #'   `collection_common_space()` returns whether every feature space is exactly
 #'   compatible with the first.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' collection <- fmri_collection(list(sub01 = frame, sub02 = frame))
+#' collection_space_data(collection)
+#' collection_common_space(collection)
 #' @name collection-spaces
 NULL
 
@@ -344,6 +261,15 @@ collection_common_space <- function(x) {
 #'
 #' @param x An `fmri_collection`.
 #' @return A SHA-256 digest computed without reading numerical arrays.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' collection <- fmri_collection(list(sub01 = frame, sub02 = frame))
+#' collection_digest(collection)
 #' @export
 collection_digest <- function(x) {
   validate_fmri_collection(x)

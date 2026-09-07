@@ -27,3 +27,8 @@ A \code{provenance_record}.
 \description{
 Create a content-addressed provenance record
 }
+\examples{
+r <- provenance_record("normalize", inputs = list(method = "zscore"))
+r$operation
+r$id
+}

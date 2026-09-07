@@ -14,7 +14,7 @@ and provenance are explicit and validated.
 | 0.10.0 | Core axes, spaces, sources, frames, views, and walking skeleton |
 | 0.11.0 | Sharded execution, atomic HDF5 storage, entities, collections, studies |
 | 0.12.0 | Design compiler, full spatial algebra, frame-native group analysis |
-| 1.0.0 | Legacy removal, API/schema freeze, full-scale certification |
+| 1.0.0 | API/schema freeze, full-scale certification (legacy removal landed during 0.10, 2026-09-06) |
 
 The remote `v0.9.0` tag is historical and is not an ancestor of the current
 main line. It is preserved, not rewritten. Older milestone documents under

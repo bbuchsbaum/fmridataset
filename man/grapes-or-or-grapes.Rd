@@ -7,7 +7,19 @@
 \usage{
 x \%||\% y
 }
+\arguments{
+\item{x}{A value to test for \code{NULL}.}
+
+\item{y}{The fallback value returned when \code{x} is \code{NULL}.}
+}
+\value{
+\code{y} if \code{x} is \code{NULL}; otherwise \code{x}.
+}
 \description{
 If x is NULL, return y; otherwise return x
+}
+\examples{
+fmridataset:::`\%||\%`(NULL, 1)
+fmridataset:::`\%||\%`(2, 1)
 }
 \keyword{internal}

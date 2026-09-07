@@ -29,3 +29,16 @@ A \code{surface_space}.
 extracts its stable topology, coordinates, hemisphere, and world transform
 into the backend-neutral identity required by an \code{fmri_frame}.
 }
+\examples{
+if (requireNamespace("neurosurf", quietly = TRUE)) {
+  old_rgl <- Sys.getenv("RGL_USE_NULL", unset = NA)
+  Sys.setenv(RGL_USE_NULL = "TRUE")
+  vertices <- matrix(c(0, 0, 0, 1, 0, 0, 0, 1, 0), ncol = 3, byrow = TRUE)
+  geom <- neurosurf::SurfaceGeometry(
+    vertices, matrix(c(0, 1, 2), nrow = 1), hemi = "lh", label = "pial"
+  )
+  x <- surface_space_from_neurosurf(geom, template = "toy-surface")
+  feature_ids(x)
+  if (is.na(old_rgl)) Sys.unsetenv("RGL_USE_NULL") else Sys.setenv(RGL_USE_NULL = old_rgl)
+}
+}

@@ -2,8 +2,8 @@ Package: fmridataset
 Type: Package
 Title: Spatially Typed Annotated fMRI Datasets
 Version: 0.10.0.9000
-Authors@R: person("Bradley", "Buchsbaum", 
-                  email = "bbuchsbaum@gmail.com", 
+Authors@R: person("Bradley", "Buchsbaum",
+                  email = "bbuchsbaum@gmail.com",
                   role = c("aut", "cre"),
                   comment = c(ORCID = "0000-0001-5800-9890"))
 Description: Provides spatially typed, annotated observation-by-feature
@@ -15,59 +15,50 @@ License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
-Depends: 
+Depends:
     R (>= 4.3.0)
 Imports:
-    assertthat,
-    cachem,
-    deflist,
     delarr (>= 0.1.0.9000),
     digest,
-    fmrihrf,
     fs,
-    lifecycle,
-    memoise,
     Matrix,
     methods,
     neuroim2,
-    purrr,
     rlang,
+    stats,
+    stringi (>= 1.8.0),
     tibble,
     utils,
     uuid
 Suggests:
     albersdown,
-    arrow,
-    bench,
     bidser (>= 0.5.0),
     blosc,
-    crayon,
-    devtools,
-    dplyr,
+    fmrihrf,
     fmrilatent,
     fmrigds,
     fmristore (>= 0.1.0.9000),
-    foreach,
-    ggplot2,
     hdf5r,
-    iterators,
     jsonlite,
     knitr,
-    microbenchmark,
-    mockery,
     multidesign,
     neuroatlas,
     neurosurf,
     rmarkdown,
     testthat (>= 3.0.0),
     withr,
-    yaml,
     zarr (>= 0.4.2)
 VignetteBuilder: knitr
-Remotes: bbuchsbaum/delarr, bbuchsbaum/albersdown, bbuchsbaum/fmrigds,
-    bbuchsbaum/fmrilatent, bbuchsbaum/fmristore, bbuchsbaum/multidesign,
-    bbuchsbaum/neuroatlas, bbuchsbaum/neurosurf
+Remotes: bbuchsbaum/delarr@e8bdf22462897049230202a5287e6f1ef88b524a,
+    bbuchsbaum/albersdown@54a7432e551413fd15253544d361295d3d65f2b5,
+    bbuchsbaum/fmrigds@67cc585c53ecb74db3b9a405b0fcb67b26c4eb3c,
+    bbuchsbaum/fmrilatent@ceaad61acea6fd6326d6978a0aad23090ec28b18,
+    bbuchsbaum/fmristore@e7fbbfca181ebd118acee150774a4f58640e039d,
+    bbuchsbaum/multidesign@2ed3f30cdce1d96541bb84b34e0826cc0b8a298a,
+    bbuchsbaum/neuroatlas@9e469f21d6c3248910d9e2d57ce18e945b8bd16c,
+    bbuchsbaum/neurosurf@1c4dc595876a619545670122d1dd4244e19ae3e0
 Additional_repositories: https://bbuchsbaum.r-universe.dev
 URL: https://github.com/bbuchsbaum/fmridataset, https://bbuchsbaum.github.io/fmridataset/
 BugReports: https://github.com/bbuchsbaum/fmridataset/issues
 Config/Needs/website: albersdown
+Config/testthat/edition: 3

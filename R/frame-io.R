@@ -26,18 +26,36 @@
 #' physical HDF5 work to `fmristore`. Reopened assays are reconstructible lazy
 #' sources; opening a frame does not read assay values.
 #'
+#' Neither function computes a content hash. Persistence records semantic
+#' manifest digests and source fingerprints only; a caller who wants a value
+#' receipt for the written or reopened arrays requests it explicitly with
+#' [content_hash()] and records the result where it is needed.
+#'
 #' @param x An `fmri_frame`.
 #' @param path Destination or source path.
 #' @param format Storage format. The walking-skeleton implementation supports
 #'   `"hdf5"`.
 #' @param ... Arguments passed to the physical store implementation.
-#' @return `write_frame()` invisibly returns the committed path. `open_frame()`
-#'   returns an `fmri_frame`.
+#' @return `write_frame()` invisibly returns the committed path, normalized
+#'   with forward slashes on every platform. `open_frame()` returns an
+#'   `fmri_frame`.
+#' @examples
+#' if (requireNamespace("fmristore", quietly = TRUE)) {
+#'   src <- memory_source(matrix(seq_len(6), nrow = 2))
+#'   obs <- tibble::tibble(.obs_id = c("o1", "o2"))
+#'   space <- index_space(3, id_policy = "deterministic", namespace = "demo")
+#'   frame <- fmri_frame(list(beta = src), obs, space = space)
+#'   path <- tempfile(fileext = ".h5")
+#'   committed <- write_frame(frame, path)
+#'   reopened <- open_frame(committed)
+#'   collect_assay(reopened, "beta")
+#' }
 #' @export
 write_frame <- function(x, path, format = "hdf5", ...) {
   format <- match.arg(format, "hdf5")
   .require_frame_store("write_frame_h5")
-  fmristore::write_frame_h5(x, path, ...)
+  committed <- fmristore::write_frame_h5(x, path, ...)
+  invisible(normalizePath(committed, winslash = "/", mustWork = TRUE))
 }
 
 #' @rdname write_frame

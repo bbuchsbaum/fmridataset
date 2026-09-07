@@ -3,12 +3,7 @@
 }
 
 .one_map_string <- function(x, field) {
-  if (!is.character(x) || length(x) != 1L || is.na(x) || !nzchar(x)) {
-    .feature_map_abort(sprintf("%s must be one non-empty string.", field),
-      field = field
-    )
-  }
-  x
+  .assert_one_string(x, field, .feature_map_abort)
 }
 
 .validate_serializable_list <- function(x, field) {
@@ -38,6 +33,12 @@
 #' @param provenance Serializable derivation metadata for the map itself.
 #' @param metadata Additional serializable metadata.
 #' @return A serializable `feature_map` descriptor.
+#' @examples
+#' src <- index_space(4, ids = paste0("v", 1:4), namespace = "map-source")
+#' tgt <- index_space(2, ids = paste0("p", 1:2), namespace = "map-target")
+#' op <- matrix(c(0.5, 0.5, 0, 0, 0, 0, 0.5, 0.5), nrow = 2, byrow = TRUE)
+#' m <- feature_map(src, tgt, op, map_type = "toy_aggregation")
+#' feature_map_operator(m)
 #' @export
 feature_map <- function(from, to, operator, map_type = "linear",
                         traits = list(linear = TRUE), provenance = list(),
@@ -49,14 +50,11 @@ feature_map <- function(from, to, operator, map_type = "linear",
   }
   map_type <- .one_map_string(map_type, "map_type")
   traits <- .validate_serializable_list(traits, "traits")
-  if (length(traits) &&
-    (is.null(names(traits)) || anyNA(names(traits)) ||
-      any(!nzchar(names(traits))) || anyDuplicated(names(traits)))) {
-    .feature_map_abort(
-      "traits must be named with unique non-empty values.",
-      field = "traits"
-    )
-  }
+  .assert_unique_names(
+    traits, .feature_map_abort,
+    "traits must be named with unique non-empty values.",
+    field = "traits"
+  )
   provenance <- .validate_serializable_list(provenance, "provenance")
   metadata <- .validate_serializable_list(metadata, "metadata")
   operator <- tryCatch(
@@ -85,11 +83,7 @@ feature_map <- function(from, to, operator, map_type = "linear",
     ),
     class = "feature_map"
   )
-  if (.source_contains_runtime_state(out)) {
-    .feature_map_abort("Feature maps must be serializable.",
-      field = "runtime_state"
-    )
-  }
+  .assert_no_runtime_state(out, .feature_map_abort, "Feature maps must be serializable.")
   out
 }
 
@@ -98,6 +92,14 @@ feature_map <- function(from, to, operator, map_type = "linear",
 #' @param x A `feature_map`.
 #' @return `validate_feature_map()` returns `x` invisibly. The accessors return
 #'   the source space, target space, linear operator, or deterministic digest.
+#' @examples
+#' src <- index_space(4, ids = paste0("v", 1:4), namespace = "map-source")
+#' tgt <- index_space(2, ids = paste0("p", 1:2), namespace = "map-target")
+#' op <- matrix(c(0.5, 0.5, 0, 0, 0, 0, 0.5, 0.5), nrow = 2, byrow = TRUE)
+#' m <- feature_map(src, tgt, op, map_type = "toy_aggregation")
+#' feature_map_source_space(m)
+#' feature_map_target_space(m)
+#' feature_map_digest(m)
 #' @name feature-map-accessors
 NULL
 
@@ -180,6 +182,14 @@ print.feature_map <- function(x, ...) {
 #'
 #' @param target A parent-linked `parcel_space` or `basis_space`.
 #' @return A `feature_map` from `parent_space(target)` to `target`.
+#' @examples
+#' parent <- volume_space(c(2, 2, 1), support = 1:4, template = "toy")
+#' membership <- Matrix::sparseMatrix(
+#'   i = 1:4, j = c(1L, 1L, 2L, 2L), x = 1, dims = c(4L, 2L)
+#' )
+#' target <- parcel_space(parent, c("left", "right"), membership, atlas = "toy")
+#' m <- feature_map_from_target(target)
+#' feature_map_target_space(m)
 #' @export
 feature_map_from_target <- function(target) {
   if (inherits(target, "parcel_space")) {
@@ -195,9 +205,21 @@ feature_map_from_target <- function(target) {
     ))
   }
   if (inherits(target, "basis_space")) {
+    encoder <- basis_analysis(target)
+    if (is.null(encoder)) {
+      .feature_map_abort(
+        paste(
+          "target is a synthesis-only basis_space with no analysis operator,",
+          "so no canonical parent-to-basis map exists. Supply an explicit",
+          "feature_map(), or construct the basis with an encoder."
+        ),
+        field = "target",
+        direction = "analysis"
+      )
+    }
     return(feature_map(
       from = parent_space(target), to = target,
-      operator = basis_analysis(target), map_type = target$basis_type,
+      operator = encoder, map_type = target$basis_type,
       traits = list(linear = TRUE, representational = TRUE),
       provenance = c(
         list(target_space = space_digest(target)),
@@ -240,6 +262,13 @@ feature_map_from_target <- function(target) {
 #' @param rule Transformation rule. `"linear"` maps ordinary values;
 #'   `"independent_variance"` maps diagonal variances with squared weights.
 #' @return A serializable `feature_mapped_source`.
+#' @examples
+#' src <- index_space(4, ids = paste0("v", 1:4), namespace = "map-source")
+#' tgt <- index_space(2, ids = paste0("p", 1:2), namespace = "map-target")
+#' op <- matrix(c(0.5, 0.5, 0, 0, 0, 0, 0.5, 0.5), nrow = 2, byrow = TRUE)
+#' m <- feature_map(src, tgt, op, map_type = "toy_aggregation")
+#' fs <- feature_mapped_source(memory_source(matrix(1:12, nrow = 3)), m)
+#' dim(source_read(fs))
 #' @export
 feature_mapped_source <- function(source, map,
                                   rule = c("linear", "independent_variance")) {
@@ -278,8 +307,21 @@ feature_mapped_source <- function(source, map,
     ),
     class = c("feature_mapped_source", "array_source")
   )
+  # The map digest canonicalizes the operator, which is O(features) work.
+  # ADR-009: wrappers combine cached child fingerprints once, at construction;
+  # plan_blocks() and execute_block_plan() fingerprint on every call.
+  out$fingerprint <- .feature_mapped_fingerprint(out)
   validate_array_source(out)
   out
+}
+.feature_mapped_fingerprint <- function(x) {
+  .canonical_digest(list(
+    type = "feature_mapped_source",
+    schema_version = x$schema_version,
+    source = source_fingerprint(x$source),
+    map = feature_map_digest(x$map),
+    rule = x$rule
+  ))
 }
 
 #' @export
@@ -290,17 +332,13 @@ source_dtype.feature_mapped_source <- function(x, ...) x$dtype
 source_chunks.feature_mapped_source <- function(x, ...) as.integer(x$chunks)
 #' @export
 source_capabilities.feature_mapped_source <- function(x, ...) {
-  c("row_slice", "column_slice", "block_slice", "serializable")
+  # Observations are forwarded to the child; any feature selector resolves to
+  # the operator rows it names, so every form is consumed directly.
+  c("row_slice", "column_slice", "block_slice", "serializable", .pushdown_capabilities())
 }
 #' @export
 source_fingerprint.feature_mapped_source <- function(x, ...) {
-  .canonical_digest(list(
-    type = "feature_mapped_source",
-    schema_version = x$schema_version,
-    source = source_fingerprint(x$source),
-    map = feature_map_digest(x$map),
-    rule = x$rule
-  ))
+  x$fingerprint %||% .feature_mapped_fingerprint(x)
 }
 #' @export
 source_open.feature_mapped_source <- function(x, ...) {
@@ -334,7 +372,41 @@ source_read.feature_mapped_source <- function(x, observations = NULL,
   )
   operator <- operator[, contributing, drop = FALSE]
   if (identical(x$rule, "independent_variance")) operator <- operator^2
-  unname(as.matrix(values %*% Matrix::t(operator)))
+  .feature_map_apply_operator(values, operator)
+}
+
+# Apply a target-by-source operator to an observation-by-source block.
+#
+# `contributing` prunes source columns that are zero for EVERY requested target
+# feature, so which columns reach this product depends on the request. A plain
+# `values %*% t(operator)` therefore gave a target feature different values for
+# different requests: a zero weight still multiplies, and `0 * NA` is `NA`, so a
+# non-finite source value leaked into targets that do not depend on it whenever
+# some other requested target did.
+#
+# A weight of zero means the source feature is not part of the target, so it
+# must not contribute at all. Compute the product over finite values only, then
+# restore non-finiteness exactly where a target's own non-zero weights touch a
+# non-finite source value. The result then depends only on the operator row for
+# that target, which makes reads independent of request shape and of block size.
+.feature_map_apply_operator <- function(values, operator) {
+  values <- as.matrix(values)
+  unusable <- !is.finite(values)
+
+  if (!any(unusable)) {
+    return(unname(as.matrix(values %*% Matrix::t(operator))))
+  }
+
+  finite_values <- values
+  finite_values[unusable] <- 0
+  result <- unname(as.matrix(finite_values %*% Matrix::t(operator)))
+
+  # One hit means this target genuinely weights a non-finite source value.
+  hits <- unname(as.matrix(
+    (unusable * 1) %*% Matrix::t(operator != 0)
+  ))
+  result[hits > 0] <- NA_real_
+  result
 }
 #' @export
 source_read_native.feature_mapped_source <- function(x, observations = NULL, ...) {
@@ -353,6 +425,10 @@ source_close.feature_mapped_source <- function(x, ...) invisible(TRUE)
 #' @param parents IDs of direct parent records.
 #' @param inputs,parameters,outputs,software,metadata Serializable record data.
 #' @return A `provenance_record`.
+#' @examples
+#' r <- provenance_record("normalize", inputs = list(method = "zscore"))
+#' r$operation
+#' r$id
 #' @export
 provenance_record <- function(operation, parents = character(), inputs = list(),
                               parameters = list(), outputs = list(),
@@ -426,6 +502,12 @@ provenance_record <- function(operation, parents = character(), inputs = list(),
 #' @param x A `provenance_graph`.
 #' @param records One or more records appended to `x`.
 #' @return A validated `provenance_graph`, its records, tips, or digest.
+#' @examples
+#' r1 <- provenance_record("load", inputs = list(path = "toy.nii"))
+#' g <- provenance_graph(r1)
+#' r2 <- provenance_record("normalize", parents = r1$id)
+#' g <- append_provenance(g, r2)
+#' provenance_tips(g)
 #' @name provenance-graph
 NULL
 
@@ -540,12 +622,26 @@ print.provenance_graph <- function(x, ...) {
   invisible(x)
 }
 
-.as_provenance_graph <- function(x) {
-  if (is.null(x)) {
-    return(provenance_graph())
-  }
-  if (inherits(x, "provenance_graph")) {
-    return(provenance_graph(x))
+#' Coerce serializable lineage to a provenance graph
+#'
+#' Canonical containers accept only `NULL` or a validated `provenance_graph`.
+#' Any other serializable lineage value is wrapped, unchanged, in a single
+#' `legacy_provenance` record so that its origin remains inspectable rather
+#' than being silently reinterpreted.
+#'
+#' @param x `NULL`, a `provenance_graph`, or a serializable lineage value.
+#' @return A validated `provenance_graph`.
+#' @examples
+#' g <- as_provenance_graph(NULL)
+#' provenance_tips(g)
+#' g2 <- as_provenance_graph(list(note = "legacy value"))
+#' provenance_tips(g2)
+#' @export
+as_provenance_graph <- function(x) {
+  if (is.null(x)) return(provenance_graph())
+  if (inherits(x, "provenance_graph")) return(provenance_graph(x))
+  if (.source_contains_runtime_state(x)) {
+    .provenance_abort("Provenance cannot contain runtime state.")
   }
   provenance_graph(provenance_record(
     "legacy_provenance",
@@ -553,6 +649,8 @@ print.provenance_graph <- function(x, ...) {
     metadata = list(migrated = TRUE)
   ))
 }
+
+.as_provenance_graph <- as_provenance_graph
 
 .relations_without_feature_domain <- function(x) {
   keep <- vapply(x, function(value) {
@@ -588,6 +686,23 @@ print.provenance_graph <- function(x, ...) {
 #' @param assay_rules Named rules for every assay: `"linear"` or
 #'   `"independent_variance"`. Unnamed scalar rules are recycled.
 #' @return A new linked-domain `fmri_frame` whose assays remain lazy.
+#' @examples
+#' parent <- volume_space(c(2, 2, 1), support = 1:4, template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(signal = matrix(1:12, nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("o", 1:3)),
+#'   space = parent
+#' )
+#' parcels <- parcel_space(
+#'   parent,
+#'   parcel_ids = c("left", "right"),
+#'   membership = Matrix::sparseMatrix(
+#'     i = 1:4, j = c(1L, 1L, 2L, 2L), x = 1, dims = c(4L, 2L)
+#'   ),
+#'   atlas = "toy-atlas"
+#' )
+#' parcel_frame <- map_features(frame, target = parcels)
+#' dim(collect_assay(parcel_frame))
 #' @export
 map_features <- function(x, target = NULL, map = NULL,
                          assay_rules = "linear") {

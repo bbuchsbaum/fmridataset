@@ -48,3 +48,9 @@ A \code{surface_space}.
 \description{
 Construct a packed cortical surface feature space
 }
+\examples{
+surface_space(
+  vertex_ids = c("L-1", "L-2", "L-3"),
+  hemisphere = rep("left", 3)
+)
+}

@@ -27,8 +27,8 @@ test_that("NIfTI sources expose serializable pushdown contracts", {
 test_that("NIfTI sources push observation and packed-feature selections", {
   fixture <- .nifti_source_fixture()
   source <- nifti_array_source(c(fixture$path, fixture$path), fixture$path)
-  observations <- c(8L, 1L, 5L, 1L)
-  features <- c(3L, 1L, 3L)
+  observations <- c(8L, 1L, 5L, 2L)
+  features <- c(3L, 1L, 2L)
 
   full <- suppressWarnings(neuroim2::read_vec(
     c(fixture$path, fixture$path),
@@ -60,8 +60,8 @@ test_that("NIfTI sources push observation and packed-feature selections", {
     }
   )
   expect_length(calls, 2L)
-  expect_identical(lapply(calls, `[[`, "indices"), list(c(4L, 1L), c(1L, 1L)))
-  expect_identical(vapply(calls, `[[`, integer(1), "active_features"), c(2L, 2L))
+  expect_identical(lapply(calls, `[[`, "indices"), list(c(4L, 1L), c(1L, 2L)))
+  expect_identical(vapply(calls, `[[`, integer(1), "active_features"), c(3L, 3L))
 
   plan <- as_delarr(source)
   restored <- unserialize(serialize(plan, NULL))
@@ -108,10 +108,19 @@ test_that("NIfTI sources detect stale files before numerical reads", {
   source <- nifti_array_source(image, mask)
 
   Sys.setFileTime(image, Sys.time() + 2)
-  expect_error(
+  condition <- expect_error(
     source_read(source, 1L, 1L),
-    "changed after the descriptor"
+    "changed after the descriptor",
+    class = "fmridataset_error_source_stale"
   )
+  expect_false(inherits(condition, "fmridataset_error_backend_io"))
+  expect_identical(condition$source$type, "nifti_array_source")
+  expect_identical(condition$source$uri, source$uri)
+  expect_identical(condition$changed, source$uri)
+  expect_identical(condition$expected, source$file_state)
+  expect_false(identical(condition$actual, condition$expected))
+  expect_error(source_open(source), class = "fmridataset_error_source_stale")
+  expect_error(source_read_native(source, 1L), class = "fmridataset_error_source_stale")
 })
 
 test_that("NIfTI source validates spatial agreement and selectors", {

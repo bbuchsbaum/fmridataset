@@ -16,3 +16,9 @@ assigns deterministic shard IDs.
 \description{
 Bind compatible sources along observations
 }
+\examples{
+a <- memory_source(matrix(1:4, nrow = 2))
+b <- memory_source(matrix(5:8, nrow = 2))
+src <- row_bound_source(list(a, b))
+source_shape(src)
+}

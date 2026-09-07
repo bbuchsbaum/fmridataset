@@ -20,3 +20,11 @@ An \code{fmri_event_table}.
 Event rows retain their natural cardinality and are not expanded to acquired
 volumes. Entity-key columns are validated against a study when attached.
 }
+\examples{
+et <- event_table(
+  data.frame(event_id = c("e1", "e2"), onset = c(0, 10), duration = c(2, 2)),
+  key = "event_id"
+)
+event_data(et)
+event_key(et)
+}

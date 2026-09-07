@@ -19,3 +19,9 @@ Companion packages implement methods for legacy or domain-specific objects.
 The generic is owned by \code{fmridataset} so conversions have one canonical
 destination and do not introduce competing frame classes.
 }
+\examples{
+src <- memory_source(matrix(seq_len(6), nrow = 2))
+obs <- tibble::tibble(.obs_id = c("o1", "o2"))
+fr <- fmri_frame(list(beta = src), obs)
+identical(as_fmri_frame(fr), fr)
+}

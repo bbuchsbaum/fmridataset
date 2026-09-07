@@ -24,3 +24,11 @@ global-to-local row routing inspectable and serializable. Reads are grouped
 by touched shard, so an arbitrary ordered selector is issued at most once to
 each selected child.
 }
+\examples{
+shards <- list(
+  memory_source(matrix(1:4, nrow = 2)),
+  memory_source(matrix(5:8, nrow = 2))
+)
+src <- row_sharded_source(shards)
+source_shape(src)
+}

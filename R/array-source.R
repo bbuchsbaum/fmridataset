@@ -2,11 +2,45 @@
 
 #' Serializable numerical array sources
 #'
+#' @details
+#' **Fingerprint policy.**
+#' `source_fingerprint()` returns the revision fingerprint of a descriptor:
+#' one SHA-256 string over the serializable descriptor and the physical
+#' revision evidence a backend can observe without reading values (file sizes
+#' and modification times, store metadata, or a per-object identity token for
+#' in-memory sources), combined with selectors and shard composition for
+#' wrappers. It never hashes array values, it is computed once at
+#' construction and cached in the descriptor, and it survives serialization.
+#' Equal fingerprints mean "the same descriptor of the same revision"; they
+#' never mean equal values, and different fingerprints never mean different
+#' values. Two independently constructed [memory_source()] objects with equal
+#' payloads have different fingerprints by design.
+#'
+#' Value identity is a separate, explicit, `O(n)` operation: [content_hash()].
+#' File-backed sources compare their captured revision evidence with the
+#' physical state before every open and read and raise
+#' `fmridataset_error_source_stale` when it differs; genuine backend failures
+#' raise `fmridataset_error_backend_io`. The policy is recorded in
+#' `inst/architecture/ADR-009-source-fingerprints-and-content-hashes.md`.
+#'
 #' @param x An array source or object coercible to one.
-#' @param observations Optional observation positions.
-#' @param features Optional feature positions.
+#' @param observations Optional observation selector: `NULL` for every
+#'   observation, integer positions in request order, or a logical mask.
+#'   Selectors follow the package's normalization law: positions must be
+#'   whole numbers, may reorder, may be negative but not mixed with positive,
+#'   drop zero, must be in bounds, and may not repeat an element; masks must
+#'   match the axis length with no `NA`; an empty selection is legal. The law
+#'   is checked at the generic before a method is dispatched.
+#' @param features Optional feature selector, under the same law.
 #' @param ... Additional method arguments.
 #' @name array-source
+#' @examples
+#' src <- memory_source(matrix(seq_len(6), nrow = 2))
+#' source_shape(src)
+#' source_dtype(src)
+#' handle <- source_open(src)
+#' source_read(handle, observations = 1)
+#' source_close(handle)
 NULL
 
 #' @rdname array-source
@@ -42,6 +76,26 @@ source_capabilities <- function(x, ...) UseMethod("source_capabilities")
 #' @export
 source_fingerprint <- function(x, ...) UseMethod("source_fingerprint")
 
+# Structured stale-source failure shared by every file-backed source.
+#
+# A stale source is one whose descriptor no longer matches the physical thing
+# it describes. That is not an I/O failure: the file opened fine, it is simply
+# not the file the descriptor was made from. Both cases used to raise
+# fmridataset_error_backend_io from the NIfTI source, which made callers unable
+# to tell "retry the read" apart from "rebuild the descriptor".
+.abort_source_stale <- function(message, source, expected, actual,
+                                operation = "freshness_check", ...) {
+  .frame_abort(
+    message,
+    "fmridataset_error_source_stale",
+    operation = operation,
+    source = source,
+    expected = expected,
+    actual = actual,
+    ...
+  )
+}
+
 #' @rdname array-source
 #' @export
 source_open <- function(x, ...) UseMethod("source_open")
@@ -49,13 +103,35 @@ source_open <- function(x, ...) UseMethod("source_open")
 #' @rdname array-source
 #' @export
 source_read <- function(x, observations = NULL, features = NULL, ...) {
+  .assert_source_selectors(x, observations, features)
   UseMethod("source_read")
 }
 
 #' @rdname array-source
 #' @export
 source_read_native <- function(x, observations = NULL, ...) {
+  .assert_source_selectors(x, observations)
   UseMethod("source_read_native")
+}
+
+# The selection law is enforced at the generic, before dispatch, so every
+# source -- including extension sources the package does not implement --
+# rejects repeated, missing, fractional, mixed-sign, and out-of-bounds
+# selectors identically. Methods still receive the caller's NULL, integer, or
+# logical selector and expand it themselves; UseMethod() forwards the original
+# arguments, so this is a check rather than a rewrite.
+.assert_source_selectors <- function(x, observations = NULL, features = NULL) {
+  if (is.null(observations) && is.null(features)) {
+    return(invisible(TRUE))
+  }
+  shape <- source_shape(x)
+  if (!is.null(observations)) {
+    .normalize_selection(observations, shape[[1L]], axis = "observation")
+  }
+  if (!is.null(features)) {
+    .normalize_selection(features, shape[[2L]], axis = "feature")
+  }
+  invisible(TRUE)
 }
 
 #' @rdname array-source
@@ -93,6 +169,195 @@ source_close <- function(x, ...) UseMethod("source_close")
   unname(sizes[[dtype]])
 }
 
+# Width of one value once R holds it, as opposed to its width in storage.
+#
+# Budgets exist to bound what a read will occupy in memory, and every read
+# realizes an R vector: a float32 assay becomes R doubles, a uint8 assay becomes
+# R doubles. Budgeting against the storage width therefore under-counts by the
+# dtype ratio -- 2x for float32, 8x for uint8 -- and lets a collection exceed
+# the ceiling the caller asked for. This is the shared cost basis; storage width
+# (.dtype_bytes) remains the right measure for I/O accounting.
+.realized_dtype_bytes <- function(dtype) {
+  .dtype_bytes(dtype) # validates the dtype and its error message
+  switch(dtype,
+    logical = 4,
+    complex64 = ,
+    complex128 = 16,
+    8
+  )
+}
+
+# The R storage mode a dtype is realized into. Shares its mapping with
+# .realized_dtype_bytes() so that the accumulator a read allocates and the
+# budget charged for it always describe the same value.
+.realized_dtype_mode <- function(dtype) {
+  .dtype_bytes(dtype)
+  switch(dtype,
+    logical = "logical",
+    complex64 = ,
+    complex128 = "complex",
+    "double"
+  )
+}
+
+.source_cost_traits <- function(x) {
+  if (inherits(x, "memory_source")) {
+    return(list(already_realized = TRUE, compressed = FALSE))
+  }
+  if (inherits(x, "nifti_array_source")) {
+    return(list(
+      already_realized = FALSE,
+      compressed = any(grepl("\\.gz$", x$uri, ignore.case = TRUE))
+    ))
+  }
+  if (inherits(x, "zarr_array_source")) {
+    # Zarr chunks may be compressed even though compression metadata is kept by
+    # the physical store rather than the logical ArraySource descriptor.
+    return(list(already_realized = FALSE, compressed = TRUE))
+  }
+  if (inherits(x, c("source_view", "counting_source", "fault_source")) &&
+    inherits(x$source, "array_source")) {
+    return(.source_cost_traits(x$source))
+  }
+  list(already_realized = FALSE, compressed = FALSE)
+}
+
+.realization_cost_from_shape <- function(shape, dtype,
+                                         already_realized = FALSE,
+                                         compressed = FALSE) {
+  shape <- as.integer(shape)
+  values <- prod(as.double(shape))
+  storage_width <- .dtype_bytes(dtype)
+  realized_width <- .realized_dtype_bytes(dtype)
+  storage_bytes <- values * storage_width
+  output_bytes <- values * realized_width
+  conversion_buffer_bytes <- if (isTRUE(already_realized) ||
+    storage_width == realized_width) {
+    0
+  } else {
+    output_bytes
+  }
+  # Non-memory readers commonly hold selected values while copying into the
+  # final R matrix. Keep that intermediate distinct from dtype conversion so
+  # equal-width and converted sources are both represented conservatively.
+  selection_buffer_bytes <- if (isTRUE(already_realized)) 0 else output_bytes
+  decompression_buffer_bytes <- if (isTRUE(compressed)) storage_bytes else 0
+  temporary_bytes <- selection_buffer_bytes + conversion_buffer_bytes +
+    decompression_buffer_bytes
+
+  structure(
+    list(
+      shape = shape,
+      values = values,
+      storage_dtype = dtype,
+      storage_bytes = storage_bytes,
+      realized_dtype = .realized_dtype_mode(dtype),
+      realized_dtype_bytes = realized_width,
+      estimated_output_bytes = output_bytes,
+      selection_buffer_bytes = selection_buffer_bytes,
+      conversion_buffer_bytes = conversion_buffer_bytes,
+      decompression_buffer_bytes = decompression_buffer_bytes,
+      estimated_temporary_bytes = temporary_bytes,
+      estimated_peak_bytes = output_bytes + temporary_bytes
+    ),
+    class = "source_realization_cost"
+  )
+}
+
+#' Estimate the memory cost of realizing an array-source selection
+#'
+#' The estimate distinguishes source storage from the R object returned by a
+#' read. Numeric source dtypes, including float16 and float32, are realized as
+#' R doubles. The conservative peak estimate adds selection, conversion, and
+#' compressed-input buffers to the retained output. It covers numerical
+#' payloads; fixed R object headers and selector metadata are outside the
+#' estimate.
+#'
+#' @param x An array source or object coercible to one.
+#' @return A `source_realization_cost` list containing storage and realized
+#'   dtypes, storage and output bytes, temporary buffer components, and the
+#'   estimated peak bytes.
+#' @rdname array-source
+#' @export
+source_realization_cost <- function(x, observations = NULL, features = NULL) {
+  x <- as_array_source(x)
+  shape <- source_shape(x)
+  observations <- .normalize_source_index(observations, shape[[1L]])
+  features <- .normalize_source_index(features, shape[[2L]])
+  traits <- .source_cost_traits(x)
+  .realization_cost_from_shape(
+    c(length(observations), length(features)),
+    source_dtype(x),
+    already_realized = traits$already_realized,
+    compressed = traits$compressed
+  )
+}
+
+.assert_realization_budget <- function(cost, memory_budget, operation,
+                                       force = FALSE) {
+  if (isTRUE(force)) {
+    return(invisible(cost))
+  }
+  if (!is.numeric(memory_budget) || length(memory_budget) != 1L ||
+    is.na(memory_budget) || memory_budget <= 0) {
+    .frame_abort(
+      "memory_budget must be one positive number.",
+      "fmridataset_error_budget",
+      operation = operation,
+      memory_budget = memory_budget
+    )
+  }
+  if (cost$estimated_peak_bytes > memory_budget) {
+    .frame_abort(
+      sprintf(
+        paste0(
+          "%s is estimated to retain %s output bytes and peak at %s bytes ",
+          "(%s source values realized as R %s), above memory_budget of %s bytes."
+        ),
+        operation,
+        format(cost$estimated_output_bytes, scientific = FALSE),
+        format(cost$estimated_peak_bytes, scientific = FALSE),
+        cost$storage_dtype,
+        cost$realized_dtype,
+        format(memory_budget, scientific = FALSE)
+      ),
+      "fmridataset_error_budget",
+      operation = operation,
+      storage_dtype = cost$storage_dtype,
+      realized_dtype = cost$realized_dtype,
+      estimated_output_bytes = cost$estimated_output_bytes,
+      estimated_temporary_bytes = cost$estimated_temporary_bytes,
+      estimated_peak_bytes = cost$estimated_peak_bytes,
+      required_bytes = cost$estimated_peak_bytes,
+      memory_budget = memory_budget
+    )
+  }
+  invisible(cost)
+}
+
+# Accumulator for a composed read, typed by the declared dtype.
+#
+# Composing sources used to preallocate matrix(NA_real_, ...) regardless of
+# dtype, so reading a logical assay through row_bound_source() or
+# row_sharded_source() returned doubles while source_dtype() still reported
+# "logical" - the descriptor and the data disagreed.
+.realized_na_matrix <- function(dtype, nrow, ncol) {
+  fill <- switch(.realized_dtype_mode(dtype),
+    logical = NA,
+    complex = NA_complex_,
+    NA_real_
+  )
+  matrix(fill, nrow = nrow, ncol = ncol)
+}
+
+# Zero-extent result of the same type.
+.realized_empty_matrix <- function(dtype, nrow, ncol) {
+  matrix(
+    vector(mode = .realized_dtype_mode(dtype), length = 0L),
+    nrow = nrow, ncol = ncol
+  )
+}
+
 .source_contains_runtime_state <- function(x) {
   if (is.environment(x) || is.function(x) || typeof(x) == "externalptr") {
     return(TRUE)
@@ -116,6 +381,10 @@ source_close <- function(x, ...) UseMethod("source_close")
 #' @return `source_descriptor()` returns a plain serializable contract list.
 #'   `validate_array_source()` invisibly returns `x` or raises a structured
 #'   source-contract error.
+#' @examples
+#' src <- memory_source(matrix(seq_len(6), nrow = 2))
+#' source_descriptor(src)
+#' validate_array_source(src)
 #' @export
 source_descriptor <- function(x) {
   if (!inherits(x, "array_source")) {
@@ -134,10 +403,32 @@ source_descriptor <- function(x) {
   )
 }
 
+# source_descriptor() dispatches from this namespace, which cannot see methods
+# a caller defined in a local scope. Validation dispatches the descriptor
+# generics from the caller's scope instead, so a class whose methods are
+# visible where validate_array_source() was called is certified there; other
+# entry points still need those methods visible globally or registered.
+.source_descriptor_from <- function(x, envir) {
+  frame <- new.env(parent = envir)
+  frame$.source <- x
+  dispatch <- function(generic) {
+    eval(as.call(list(generic, quote(.source))), envir = frame)
+  }
+  list(
+    shape = dispatch(source_shape),
+    dtype = dispatch(source_dtype),
+    chunks = dispatch(source_chunks),
+    capabilities = dispatch(source_capabilities),
+    fingerprint = dispatch(source_fingerprint)
+  )
+}
+
 #' @rdname source_descriptor
 #' @export
 validate_array_source <- function(x) {
-  descriptor <- source_descriptor(x)
+  caller <- parent.frame()
+  .assert_source_methods(x, envir = caller)
+  descriptor <- .source_descriptor_from(x, caller)
   shape <- descriptor$shape
   if (!is.numeric(shape) || length(shape) != 2L || anyNA(shape) ||
     any(shape < 0) || any(shape != as.integer(shape))) {
@@ -204,32 +495,52 @@ validate_array_source <- function(x) {
   invisible(x)
 }
 
-.normalize_source_index <- function(index, n) {
-  if (is.null(index)) {
-    return(seq_len(n))
-  }
-  if (is.logical(index)) {
-    if (length(index) != n || anyNA(index)) {
-      .frame_abort("Logical source selectors must match the axis length and contain no NA.", "fmridataset_error_alignment")
-    }
-    return(which(index))
-  }
-  index <- as.integer(index)
-  if (anyNA(index) || any(index < 1L | index > n)) {
-    .frame_abort("Source selector is out of bounds.", "fmridataset_error_alignment")
-  }
-  index
+# Positional selector for a raw source read: the one normalization law
+# (R/axis-selection.R) applied to an axis without IDs, expanded to the integer
+# vector a backend indexes with. `all` expands to a compact base-R sequence.
+.normalize_source_index <- function(index, n, axis = "source") {
+  .selection_expand(.normalize_selection(index, n, ids = NULL, axis = axis))
 }
 
 #' Construct an in-memory array source
+#'
+#' A memory source holds its values in the descriptor, so its revision
+#' fingerprint cannot be derived from a file state. It is instead derived from
+#' the shape, dtype, chunk grid, and a per-object identity token assigned once
+#' at construction, plus the optional caller-supplied `revision`. Construction
+#' therefore never reads or hashes the payload, whatever its size.
+#'
+#' Two independently constructed memory sources with equal values have
+#' different fingerprints by design, and fingerprint equality is never value
+#' equality. A serialization round trip preserves the token, so a descriptor
+#' and its copies agree. Values compared across objects require
+#' [content_hash()]. Set `identity = "content"` to opt into a content-derived
+#' token: the payload is hashed once at construction and equal-valued sources
+#' then share a fingerprint at O(n) cost.
 #'
 #' @param data A two-dimensional matrix or array.
 #' @param dtype Logical storage dtype. Numeric R matrices default to
 #'   `"float64"`.
 #' @param chunks Optional logical chunk shape.
+#' @param revision Optional single string naming the revision of `data`, such
+#'   as a version label or an upstream checksum. It is never interpreted, but
+#'   it replaces the per-object identity token, so two sources built
+#'   independently under the same revision share a fingerprint: the caller is
+#'   asserting they are the same source in the same revision.
+#' @param identity `"object"` assigns a fresh identity token (unless
+#'   `revision` is supplied); `"content"` derives it from [content_hash()] of
+#'   `data`.
 #' @return A serializable `memory_source`.
+#' @seealso [source_fingerprint()] and [content_hash()] for the fingerprint
+#'   policy.
+#' @examples
+#' src <- memory_source(matrix(seq_len(6), nrow = 2))
+#' source_shape(src)
+#' source_dtype(src)
 #' @export
-memory_source <- function(data, dtype = NULL, chunks = NULL) {
+memory_source <- function(data, dtype = NULL, chunks = NULL, revision = NULL,
+                          identity = c("object", "content")) {
+  identity <- match.arg(identity)
   d <- dim(data)
   if (is.null(d) || length(d) != 2L) {
     .frame_abort("A frame ArraySource must be two dimensional.", "fmridataset_error_alignment")
@@ -239,6 +550,15 @@ memory_source <- function(data, dtype = NULL, chunks = NULL) {
   if (length(chunks) != 2L || any(chunks <= 0L)) {
     .frame_abort("Source chunks must contain two positive integers.", "fmridataset_error_alignment")
   }
+  if (!is.null(revision) && (!is.character(revision) || length(revision) != 1L ||
+    is.na(revision) || !nzchar(revision))) {
+    .frame_abort(
+      "revision must be NULL or one non-empty string.",
+      "fmridataset_error_source_contract",
+      field = "revision",
+      actual = revision
+    )
+  }
   dtype <- dtype %||% .source_dtype_from_data(data)
   .dtype_bytes(dtype)
   out <- structure(
@@ -247,18 +567,35 @@ memory_source <- function(data, dtype = NULL, chunks = NULL) {
       shape = d,
       dtype = dtype,
       chunks = pmin(chunks, pmax(1L, d)),
-      capabilities = c("row_slice", "column_slice", "block_slice", "serializable"),
+      capabilities = c(
+        "row_slice", "column_slice", "block_slice", "serializable",
+        .pushdown_capabilities()
+      ),
+      identity = NA_character_,
+      identity_basis = identity,
+      revision = revision,
       schema_version = 1L
     ),
     class = c("memory_source", "array_source")
   )
+  # A caller-supplied revision is an assertion of identity: two memory sources
+  # constructed independently under the same revision are the same source in
+  # the same revision, so they share the token instead of each minting one.
+  out$identity <- if (identical(identity, "content")) {
+    paste0("content:", content_hash(out))
+  } else if (!is.null(revision)) {
+    paste0("revision:", revision)
+  } else {
+    paste0("object:", uuid::UUIDgenerate())
+  }
   out$fingerprint <- .canonical_digest(list(
     type = "memory",
     schema_version = out$schema_version,
     shape = out$shape,
     dtype = out$dtype,
     chunks = out$chunks,
-    data = out$data
+    identity = out$identity,
+    revision = out$revision
   ))
   validate_array_source(out)
   out
@@ -322,26 +659,66 @@ source_close.array_source_handle <- function(x, ...) invisible(TRUE)
 
 #' Construct a lazy view over an array source
 #'
+#' A view stores its selectors in the package's normalized selection form
+#' rather than as expanded position vectors: a select-all axis stores no
+#' vector, one contiguous run stores its bounds, and only an arbitrary subset
+#' stores positions. A view over a view composes into one view over the root
+#' source. Selectors follow the package-wide normalization law: logical masks
+#' must match the axis length without `NA`; numeric positions must be whole
+#' numbers, may reorder, may be negative (but not mixed with positive), drop
+#' zero, must be in bounds, and may not repeat an element; an empty selection
+#' is legal. Fingerprints hash the normalized form, so equal selections agree
+#' however they were expressed and a select-all view fingerprints in constant
+#' time.
+#'
 #' @param source An `array_source`.
 #' @param observations Stored observation selector.
 #' @param features Stored feature selector.
 #' @return A serializable source view.
+#' @examples
+#' src <- memory_source(matrix(seq_len(6), nrow = 2))
+#' view <- source_view(src, observations = 1)
+#' source_shape(view)
 #' @export
 source_view <- function(source, observations = NULL, features = NULL) {
   source <- as_array_source(source)
   shape <- source_shape(source)
-  observations <- .normalize_source_index(observations, shape[1L])
-  features <- .normalize_source_index(features, shape[2L])
+  observations <- .normalize_selection(
+    observations, shape[[1L]], axis = "observation"
+  )
+  features <- .normalize_selection(features, shape[[2L]], axis = "feature")
+  if (inherits(source, "source_view")) {
+    observations <- .selection_compose(observations, source$observations)
+    features <- .selection_compose(features, source$features)
+    source <- source$source
+  }
   out <- structure(
-    list(source = source, observations = observations, features = features),
+    list(
+      source = source,
+      observations = observations,
+      features = features,
+      schema_version = 2L
+    ),
     class = c("source_view", "array_source")
   )
+  # Descriptors are immutable, so the fingerprint is computed once here. Views
+  # are what frames hold, and plan_blocks()/execute_block_plan() fingerprint
+  # the frame selection on every call.
+  out$fingerprint <- .canonical_digest(list(
+    type = "source_view",
+    schema_version = out$schema_version,
+    source = source_fingerprint(source),
+    observations = .selection_descriptor(observations),
+    features = .selection_descriptor(features)
+  ))
   validate_array_source(out)
   out
 }
 
 #' @export
-source_shape.source_view <- function(x, ...) c(length(x$observations), length(x$features))
+source_shape.source_view <- function(x, ...) {
+  c(.selection_length(x$observations), .selection_length(x$features))
+}
 #' @export
 source_dtype.source_view <- function(x, ...) source_dtype(x$source)
 #' @export
@@ -349,31 +726,29 @@ source_chunks.source_view <- function(x, ...) pmin(source_chunks(x$source), pmax
 #' @export
 source_capabilities.source_view <- function(x, ...) {
   capabilities <- source_capabilities(x$source)
-  if (!identical(x$features, seq_len(source_shape(x$source)[2L]))) {
+  if (!.selection_is_all(x$features)) {
     capabilities <- setdiff(capabilities, "native_read")
   }
   capabilities
 }
 #' @export
-source_fingerprint.source_view <- function(x, ...) {
-  .canonical_digest(list(
-    source = source_fingerprint(x$source),
-    observations = x$observations,
-    features = x$features
-  ))
-}
+source_fingerprint.source_view <- function(x, ...) x$fingerprint
 #' @export
 source_open.source_view <- function(x, ...) {
   structure(list(source = x), class = c("source_view_handle", "array_source_handle"))
 }
 #' @export
 source_read.source_view <- function(x, observations = NULL, features = NULL, ...) {
-  observations <- .normalize_source_index(observations, length(x$observations))
-  features <- .normalize_source_index(features, length(x$features))
+  observations <- .normalize_selection(
+    observations, .selection_length(x$observations), axis = "observation"
+  )
+  features <- .normalize_selection(
+    features, .selection_length(x$features), axis = "feature"
+  )
   source_read(
     x$source,
-    observations = x$observations[observations],
-    features = x$features[features],
+    observations = .selection_index(.selection_compose(observations, x$observations)),
+    features = .selection_index(.selection_compose(features, x$features)),
     ...
   )
 }
@@ -386,23 +761,40 @@ source_read_native.source_view <- function(x, observations = NULL, ...) {
       operation = "native_read"
     )
   }
-  observations <- .normalize_source_index(observations, length(x$observations))
-  source_read_native(x$source, observations = x$observations[observations], ...)
+  observations <- .normalize_selection(
+    observations, .selection_length(x$observations), axis = "observation"
+  )
+  source_read_native(
+    x$source,
+    observations = .selection_index(.selection_compose(observations, x$observations)),
+    ...
+  )
 }
 #' @export
 source_close.source_view <- function(x, ...) invisible(TRUE)
 
-#' Instrument an array source
+#' Developer tool: instrument an array source
 #'
 #' `counting_source()` records numerical reads without placing a mutable
-#' environment inside the source descriptor.
+#' environment inside the source descriptor. It is exported for backend and
+#' downstream conformance suites, not as an application data source.
 #'
+#' This is developer-only test instrumentation. The counter registry is
+#' process-local, is not persisted with the descriptor, and must not be used as
+#' provenance or as an execution receipt.
 #' @param source An array source.
 #' @return A serializable instrumented source.
+#' @examples
+#' src <- counting_source(memory_source(matrix(seq_len(6), nrow = 2)))
+#' source_read(src, observations = 1)
+#' source_counts(src)$reads
 #' @export
 counting_source <- function(source) {
   id <- uuid::UUIDgenerate()
-  .source_counter_registry[[id]] <- list(reads = 0, values = 0, bytes = 0, opens = 0, closes = 0)
+  .source_counter_registry[[id]] <- list(
+    reads = 0, values = 0, bytes = 0, storage_bytes = 0,
+    output_bytes = 0, opens = 0, closes = 0
+  )
   out <- structure(
     list(source = as_array_source(source), counter_id = id),
     class = c("counting_source", "array_source")
@@ -433,7 +825,10 @@ source_counts <- function(x) .source_counter(x)
 #' @rdname counting_source
 #' @export
 reset_source_counts <- function(x) {
-  .set_source_counter(x, list(reads = 0, values = 0, bytes = 0, opens = 0, closes = 0))
+  .set_source_counter(x, list(
+    reads = 0, values = 0, bytes = 0, storage_bytes = 0,
+    output_bytes = 0, opens = 0, closes = 0
+  ))
 }
 
 #' @export
@@ -460,9 +855,13 @@ source_read.counting_source <- function(x, observations = NULL, features = NULL,
   features <- .normalize_source_index(features, shape[2L])
   count <- .source_counter(x)
   n <- length(observations) * length(features)
+  storage_bytes <- n * .dtype_bytes(source_dtype(x))
+  output_bytes <- n * .realized_dtype_bytes(source_dtype(x))
   count$reads <- count$reads + 1
   count$values <- count$values + n
-  count$bytes <- count$bytes + n * .dtype_bytes(source_dtype(x))
+  count$bytes <- count$bytes + output_bytes
+  count$storage_bytes <- count$storage_bytes + storage_bytes
+  count$output_bytes <- count$output_bytes + output_bytes
   .set_source_counter(x, count)
   source_read(x$source, observations = observations, features = features, ...)
 }
@@ -470,9 +869,13 @@ source_read.counting_source <- function(x, observations = NULL, features = NULL,
 source_read_native.counting_source <- function(x, observations = NULL, ...) {
   value <- source_read_native(x$source, observations = observations, ...)
   count <- .source_counter(x)
+  storage_bytes <- length(value) * .dtype_bytes(source_dtype(x))
+  output_bytes <- length(value) * .realized_dtype_bytes(source_dtype(x))
   count$reads <- count$reads + 1
   count$values <- count$values + length(value)
-  count$bytes <- count$bytes + length(value) * .dtype_bytes(source_dtype(x))
+  count$bytes <- count$bytes + output_bytes
+  count$storage_bytes <- count$storage_bytes + storage_bytes
+  count$output_bytes <- count$output_bytes + output_bytes
   .set_source_counter(x, count)
   value
 }
@@ -483,13 +886,25 @@ source_close.counting_source <- function(x, ...) {
   .set_source_counter(x, count)
   invisible(TRUE)
 }
+# Opening a counting source counts an open, so closing the handle it returned
+# must count the matching close; the generic handle close is a no-op.
+#' @export
+source_close.counting_source_handle <- function(x, ...) source_close(x$source, ...)
 
-#' Inject deterministic source failures
+#' Developer tool: inject deterministic source failures
 #'
+#' This source is exported solely for deterministic backend, codec, cleanup,
+#' and recovery conformance tests.
+#'
+#' This is developer-only test instrumentation. Never persist a `fault_source`
+#' as study data or use one in an analysis plan.
 #' @param source An array source.
 #' @param stage One of `"open"`, `"read"`, `"native_read"`, or `"close"`.
 #' @param message Failure message.
 #' @return A serializable fault-injecting source.
+#' @examples
+#' src <- fault_source(memory_source(matrix(seq_len(6), nrow = 2)), stage = "read")
+#' tryCatch(source_read(src), error = function(e) conditionMessage(e))
 #' @export
 fault_source <- function(source, stage = c("read", "open", "native_read", "close"),
                          message = NULL) {
@@ -498,8 +913,18 @@ fault_source <- function(source, stage = c("read", "open", "native_read", "close
     list(source = as_array_source(source), stage = stage, message = message %||% paste("Injected", stage, "failure")),
     class = c("fault_source", "array_source")
   )
+  out$fingerprint <- .fault_source_fingerprint(out)
   validate_array_source(out)
   out
+}
+
+.fault_source_fingerprint <- function(x) {
+  .canonical_digest(list(
+    type = "fault_source",
+    source = source_fingerprint(x$source),
+    stage = x$stage,
+    message = x$message
+  ))
 }
 
 .fault_maybe <- function(x, stage) {
@@ -523,12 +948,7 @@ source_chunks.fault_source <- function(x, ...) source_chunks(x$source)
 source_capabilities.fault_source <- function(x, ...) source_capabilities(x$source)
 #' @export
 source_fingerprint.fault_source <- function(x, ...) {
-  .canonical_digest(list(
-    type = "fault_source",
-    source = source_fingerprint(x$source),
-    stage = x$stage,
-    message = x$message
-  ))
+  x$fingerprint %||% .fault_source_fingerprint(x)
 }
 #' @export
 source_open.fault_source <- function(x, ...) {
@@ -564,6 +984,13 @@ source_close.fault_source <- function(x, ...) {
 #' @param shard_data Optional scalar metadata with one row per shard. Names used
 #'   by the shard manifest are reserved.
 #' @return A serializable `row_sharded_source`.
+#' @examples
+#' shards <- list(
+#'   memory_source(matrix(1:4, nrow = 2)),
+#'   memory_source(matrix(5:8, nrow = 2))
+#' )
+#' src <- row_sharded_source(shards)
+#' source_shape(src)
 #' @export
 row_sharded_source <- function(sources, shard_ids = NULL, shard_data = NULL) {
   if (!is.list(sources) || !length(sources)) {
@@ -572,13 +999,13 @@ row_sharded_source <- function(sources, shard_ids = NULL, shard_data = NULL) {
   sources <- lapply(sources, as_array_source)
   invisible(lapply(sources, validate_array_source))
   shapes <- lapply(sources, source_shape)
+  # Empty shards are permitted. They make two consecutive boundaries equal, and
+  # findInterval() resolves a row to the last boundary at or below it, so an
+  # empty shard is simply never routed to. Rejecting them made
+  # bind_observations() refuse a zero-observation frame, which is legal
+  # everywhere else in the model - such frames subset, collect, plan, and FDS
+  # round-trip - and which binding should treat as an identity.
   rows <- vapply(shapes, `[[`, integer(1), 1L)
-  if (any(rows == 0L)) {
-    .frame_abort(
-      "Row-sharded sources cannot contain shards with zero observations.",
-      "fmridataset_error_alignment"
-    )
-  }
   n_feature <- vapply(shapes, `[[`, integer(1), 2L)
   if (length(unique(n_feature)) != 1L) {
     .frame_abort("Row-sharded sources must have the same feature count.", "fmridataset_error_alignment")
@@ -619,8 +1046,24 @@ row_sharded_source <- function(sources, shard_ids = NULL, shard_data = NULL) {
     ),
     class = c("row_sharded_source", "row_bound_source", "array_source")
   )
+  # Combine the shards' cached fingerprints once (ADR-009); a composition of
+  # many shards is fingerprinted on every plan and every explain().
+  out$fingerprint <- .row_sharded_fingerprint(out)
   validate_array_source(out)
   out
+}
+
+.row_sharded_fingerprint <- function(x) {
+  .canonical_digest(list(
+    type = "row_sharded_source",
+    schema_version = x$schema_version,
+    shape = x$shape,
+    dtype = x$dtype,
+    boundaries = x$boundaries,
+    shard_ids = x$shard_ids,
+    shard_data = x$shard_data,
+    sources = lapply(x$sources, source_fingerprint)
+  ))
 }
 
 .shard_manifest_reserved <- c(
@@ -652,6 +1095,9 @@ row_sharded_source <- function(sources, shard_ids = NULL, shard_data = NULL) {
 #' @param x A `row_sharded_source`.
 #' @return A data frame describing stable IDs, logical row ranges, source
 #'   fingerprints, and user-supplied shard metadata.
+#' @examples
+#' shards <- list(memory_source(matrix(1:4, nrow = 2)), memory_source(matrix(5:8, nrow = 2)))
+#' shard_manifest(row_sharded_source(shards))
 #' @export
 shard_manifest <- function(x) {
   if (!inherits(x, "row_sharded_source")) {
@@ -674,6 +1120,9 @@ shard_manifest <- function(x) {
 #' @param x A `row_sharded_source`.
 #' @param observations Logical observation positions in requested order.
 #' @return A data frame mapping each request position to a shard and local row.
+#' @examples
+#' shards <- list(memory_source(matrix(1:4, nrow = 2)), memory_source(matrix(5:8, nrow = 2)))
+#' locate_source_rows(row_sharded_source(shards), observations = c(1, 3))
 #' @export
 locate_source_rows <- function(x, observations = NULL) {
   if (!inherits(x, "row_sharded_source")) {
@@ -704,6 +1153,10 @@ locate_source_rows <- function(x, observations = NULL) {
 #'   match existing shard metadata.
 #' @return A new `row_sharded_source`; `x` and its child descriptors are not
 #'   modified.
+#' @examples
+#' src <- row_sharded_source(list(memory_source(matrix(1:4, nrow = 2))))
+#' grown <- append_source_shards(src, list(memory_source(matrix(5:8, nrow = 2))))
+#' source_shape(grown)
 #' @export
 append_source_shards <- function(x, sources, shard_ids = NULL, shard_data = NULL) {
   if (!inherits(x, "row_sharded_source")) {
@@ -755,16 +1208,7 @@ source_capabilities.row_sharded_source <- function(x, ...) {
 }
 #' @export
 source_fingerprint.row_sharded_source <- function(x, ...) {
-  .canonical_digest(list(
-    type = "row_sharded_source",
-    schema_version = x$schema_version,
-    shape = x$shape,
-    dtype = x$dtype,
-    boundaries = x$boundaries,
-    shard_ids = x$shard_ids,
-    shard_data = x$shard_data,
-    sources = lapply(x$sources, source_fingerprint)
-  ))
+  x$fingerprint %||% .row_sharded_fingerprint(x)
 }
 #' @export
 source_open.row_sharded_source <- function(x, ...) {
@@ -775,10 +1219,10 @@ source_read.row_sharded_source <- function(x, observations = NULL, features = NU
   observations <- .normalize_source_index(observations, x$shape[[1L]])
   features <- .normalize_source_index(features, x$shape[[2L]])
   if (!length(observations) || !length(features)) {
-    return(matrix(numeric(), nrow = length(observations), ncol = length(features)))
+    return(.realized_empty_matrix(x$dtype, length(observations), length(features)))
   }
   location <- locate_source_rows(x, observations)
-  out <- matrix(NA_real_, nrow = length(observations), ncol = length(features))
+  out <- .realized_na_matrix(x$dtype, length(observations), length(features))
   for (shard in unique(location$.shard_index)) {
     at <- which(location$.shard_index == shard)
     out[at, ] <- source_read(
@@ -806,6 +1250,11 @@ source_close.row_sharded_source <- function(x, ...) invisible(TRUE)
 #' @param sources A non-empty list of two-dimensional array sources.
 #' @return A serializable `row_sharded_source`. This compatibility constructor
 #'   assigns deterministic shard IDs.
+#' @examples
+#' a <- memory_source(matrix(1:4, nrow = 2))
+#' b <- memory_source(matrix(5:8, nrow = 2))
+#' src <- row_bound_source(list(a, b))
+#' source_shape(src)
 #' @export
 row_bound_source <- function(sources) {
   row_sharded_source(sources)
@@ -826,7 +1275,7 @@ source_capabilities.row_bound_source <- function(x, ...) {
 }
 #' @export
 source_fingerprint.row_bound_source <- function(x, ...) {
-  .canonical_digest(list(
+  x$fingerprint %||% .canonical_digest(list(
     type = "row_bound_source",
     shape = x$shape,
     dtype = x$dtype,
@@ -843,10 +1292,10 @@ source_read.row_bound_source <- function(x, observations = NULL, features = NULL
   observations <- .normalize_source_index(observations, x$shape[1L])
   features <- .normalize_source_index(features, x$shape[2L])
   if (!length(observations) || !length(features)) {
-    return(matrix(numeric(), nrow = length(observations), ncol = length(features)))
+    return(.realized_empty_matrix(x$dtype, length(observations), length(features)))
   }
   subject <- findInterval(observations - 1L, x$boundaries[-length(x$boundaries)])
-  out <- matrix(NA_real_, nrow = length(observations), ncol = length(features))
+  out <- .realized_na_matrix(x$dtype, length(observations), length(features))
   for (s in unique(subject)) {
     at <- which(subject == s)
     local <- observations[at] - x$boundaries[s]
@@ -871,6 +1320,15 @@ delarr_provider_pull.array_source <- function(provider, indices, ...) {
       operation = "provider_read"
     )
   }
+  memory_budget <- attr(provider, "fmridataset.memory_budget", exact = TRUE)
+  if (!is.null(memory_budget)) {
+    cost <- source_realization_cost(
+      provider,
+      observations = indices[[1L]],
+      features = indices[[2L]]
+    )
+    .assert_realization_budget(cost, memory_budget, "delarr provider pull")
+  }
   source_read(
     provider,
     observations = indices[[1L]],
@@ -880,7 +1338,8 @@ delarr_provider_pull.array_source <- function(provider, indices, ...) {
 }
 
 #' @export
-as_delarr.array_source <- function(backend, ...) {
+as_delarr.array_source <- function(x, memory_budget = Inf, ...) {
+  backend <- x
   .ensure_delarr()
   if (!"delarr_provider" %in% getNamespaceExports("delarr")) {
     .frame_abort(
@@ -891,6 +1350,9 @@ as_delarr.array_source <- function(backend, ...) {
   }
   shape <- source_shape(backend)
   chunks <- source_chunks(backend)
+  cost <- source_realization_cost(backend)
+  .assert_realization_budget(cost, memory_budget, "delarr realization")
+  attr(backend, "fmridataset.memory_budget") <- memory_budget
   delarr::delarr_provider(
     provider = backend,
     dims = shape,

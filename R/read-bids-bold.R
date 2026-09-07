@@ -512,7 +512,7 @@ read_bids_bold <- function(path, subject, task = NULL, session = NULL,
                            derivative = "fmriprep",
                            mask = "intersection", events = TRUE,
                            chunks = NULL) {
-  .bids_require()
+  bidser_version <- .bids_require()
   if (!is.character(path) || length(path) != 1L || is.na(path) ||
     !nzchar(path) || !dir.exists(path)) {
     .bids_abort("path must name an existing BIDS directory.", field = "path")
@@ -564,7 +564,7 @@ read_bids_bold <- function(path, subject, task = NULL, session = NULL,
     ),
     software = list(
       fmridataset = as.character(utils::packageVersion("fmridataset")),
-      bidser = as.character(utils::packageVersion("bidser"))
+      bidser = bidser_version
     )
   ))
 

@@ -30,3 +30,14 @@ operations use a source's native-image capability only when the frame view
 retains the complete feature domain; otherwise they reconstruct maps from
 packed assay values through the frame's feature space.
 }
+\examples{
+sp <- volume_space(dim = c(2L, 2L, 1L), affine = diag(4), support = 1:4)
+frame <- fmri_frame(
+  assays = list(signal = memory_source(matrix(seq_len(12), 3, 4))),
+  observations = data.frame(.obs_id = sprintf("obs-\%d", 1:3)),
+  space = sp,
+  active_assay = "signal"
+)
+execution_path(frame, operation = "matrix")
+execution_path(frame, operation = "spatial")
+}

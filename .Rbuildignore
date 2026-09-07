@@ -38,6 +38,7 @@
 ^cran-comments\.md$
 ^fmridataset_.*\.tar\.gz$
 ^\.covr_result\.rds$
+^cobertura\.xml$
 ^python$
 ^shared$
 ^\.beads$
@@ -47,3 +48,5 @@
 ^bids_plan\.md$
 ^fmrilatent_plan\.md$
 ^vignettes/.*\.html$
+^\.ruff_cache$
+^_problems$

@@ -24,7 +24,8 @@
 
 ## 1.0: freeze and certification
 
-- legacy top-level API removal after the 0.12 migration release;
+- (done early, 2026-09-06: the legacy top-level API was removed during 0.10
+  rather than after a 0.12 migration release; see ADR-001 and STATE.md);
 - unified user and developer documentation;
 - reverse-dependency and cross-platform validation;
 - controlled full-scale HDF5 performance and failure certification;

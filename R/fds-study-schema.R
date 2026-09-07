@@ -1,6 +1,6 @@
 .fds_study_schema <- list(
-  id = "org.fmridataset.fds-study/v1",
-  version = 1L
+  id = "org.fmridataset.fds-study/v2",
+  version = 2L
 )
 
 .fds_study_representation_manifest <- function(value) {
@@ -17,39 +17,30 @@
 }
 
 .fds_study_entity_arrays <- function(registry) {
-  arrays <- list()
-  for (entity_name in entity_names(registry)) {
-    value <- registry[[entity_name]]
-    for (block_name in names(entity_blocks(value))) {
-      key <- paste0("entities/", entity_name, "/blocks/", block_name)
-      data <- axis_block_data(entity_blocks(value)[[block_name]])
-      shape <- if (inherits(data, "array_source")) source_shape(data) else dim(data)
-      extra_axes <- if (length(shape) > 2L) {
-        paste0("dimension:", key, ":", seq.int(3L, length(shape)))
-      } else {
-        character()
-      }
-      arrays[[key]] <- .fds_array_descriptor(
-        key,
-        c(paste0("entity:", entity_name), paste0("component:", key), extra_axes),
-        data
-      )
-    }
-  }
-  arrays
+  .fds_entity_block_arrays(registry)
 }
 
-#' Construct and validate an FDS v1 study manifest
+#' Construct and validate an FDS v2 study manifest
 #'
 #' Study manifests retain shared entities, typed links, relational tables, and
 #' the semantic manifests of every frame or collection member. Numerical
 #' sources remain separate bindings so physical storage packages do not own or
 #' reinterpret study semantics.
 #'
-#' @param x An `fmri_study` or filtered study view.
+#' @param x An `fmri_study`.
 #' @param manifest An FDS study manifest.
 #' @return `fds_study_manifest()` returns a serializable source-free manifest;
 #'   `validate_fds_study_manifest()` returns `manifest` invisibly.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' study <- fmri_study(list(main = frame))
+#' manifest <- fds_study_manifest(study)
+#' names(manifest$representations)
 #' @export
 fds_study_manifest <- function(x) {
   validate_fmri_study(x)
@@ -60,7 +51,6 @@ fds_study_manifest <- function(x) {
     .fds_entity_manifest(entity_values[[name]], name)
   })
   names(entity_manifests) <- entity_names(entity_values)
-  base <- .study_base(x)
   manifest <- list(
     schema = .fds_study_schema,
     object_type = "fmri_study",
@@ -69,8 +59,8 @@ fds_study_manifest <- function(x) {
     entities = entity_manifests,
     links = study_links(x),
     tables = study_tables(x),
-    metadata = base$metadata,
-    provenance = base$provenance,
+    metadata = x$metadata,
+    provenance = x$provenance,
     extensions = list()
   )
   validate_fds_study_manifest(manifest)
@@ -79,21 +69,21 @@ fds_study_manifest <- function(x) {
 
 #' Extract canonical study representations for persistence
 #'
-#' Filtered study views are compacted against their visible shared entities so
-#' the persisted object is a self-contained study rather than a view retaining
-#' references to filtered-out registry rows.
-#'
-#' @param x An `fmri_study` or filtered study view.
+#' @param x An `fmri_study`.
 #' @return Named frames and collections matching `fds_study_manifest(x)`.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' study <- fmri_study(list(main = frame))
+#' names(fds_study_representations(study))
 #' @export
 fds_study_representations <- function(x) {
   validate_fmri_study(x)
-  values <- study_frames(x, contextual = FALSE)
-  if (!inherits(x, "fmri_study_view")) {
-    return(values)
-  }
-  shared <- entities(x)
-  lapply(values, .contextualize_study_frame, shared = shared)
+  study_frames(x, contextual = FALSE)
 }
 
 .validate_study_array_declarations <- function(arrays) {
@@ -103,11 +93,11 @@ fds_study_representations <- function(x) {
   if (!length(arrays)) {
     return(invisible(TRUE))
   }
+  .assert_unique_names(
+    arrays, .fds_schema_abort, "Study arrays must have unique non-empty names.",
+    field = "arrays"
+  )
   array_names <- names(arrays)
-  if (is.null(array_names) || anyNA(array_names) || any(!nzchar(array_names)) ||
-    anyDuplicated(array_names)) {
-    .fds_schema_abort("Study arrays must have unique non-empty names.", "arrays")
-  }
   for (name in array_names) {
     value <- arrays[[name]]
     if (!is.list(value) ||
@@ -143,12 +133,38 @@ fds_study_representations <- function(x) {
     !is.list(value$members) || !length(value$members)) {
     .fds_schema_abort("Study representation type is unsupported or invalid.", paste0("representations.", name))
   }
+  .assert_unique_names(
+    value$members, .fds_schema_abort,
+    "Collection members require unique stable names.",
+    field = paste0("representations.", name, ".members")
+  )
   member_names <- names(value$members)
-  if (is.null(member_names) || anyNA(member_names) || any(!nzchar(member_names)) ||
-    anyDuplicated(member_names)) {
-    .fds_schema_abort("Collection members require unique stable names.", paste0("representations.", name, ".members"))
-  }
   for (member_name in member_names) validate_fds_manifest(value$members[[member_name]])
+  tryCatch(
+    .validate_container_provenance(value$provenance, "FDS collection representation"),
+    error = function(error) {
+      .fds_schema_abort(conditionMessage(error), paste0("representations.", name, ".provenance"))
+    }
+  )
+  member_domains <- integer()
+  for (member_name in member_names) {
+    member <- value$members[[member_name]]
+    sizes <- c(
+      observation = length(member$axes$observation$ids),
+      feature = length(member$axes$feature$ids)
+    )
+    sizes <- sizes[sizes > 1L]
+    if (length(sizes)) {
+      names(sizes) <- paste0("member:", member_name, ":", names(sizes))
+      member_domains <- c(member_domains, sizes)
+    }
+  }
+  tryCatch(
+    validate_unaligned_record(value$metadata, member_domains),
+    error = function(error) {
+      .fds_schema_abort(conditionMessage(error), paste0("representations.", name, ".metadata"))
+    }
+  )
   invisible(TRUE)
 }
 
@@ -185,62 +201,62 @@ fds_study_representations <- function(x) {
         )
       }
     )
-    if (!all(c(value$from, value$to) %in% names(representations))) {
+    if (!all(c(value$source, value$target) %in% names(representations))) {
       .fds_schema_abort(
         sprintf("Study link '%s' has an unknown endpoint.", name),
         paste0("links.", name)
       )
     }
     if (!is.null(value$map)) {
-      from_ids <- .study_manifest_axis_ids(
-        representations[[value$from]], value$from_axis, value$from
+      source_ids <- .study_manifest_axis_ids(
+        representations[[value$source]], value$source_axis, value$source
       )
-      to_ids <- .study_manifest_axis_ids(
-        representations[[value$to]], value$to_axis, value$to
+      target_ids <- .study_manifest_axis_ids(
+        representations[[value$target]], value$target_axis, value$target
       )
-      if (any(!value$map$.from_id %in% from_ids) ||
-        any(!value$map$.to_id %in% to_ids)) {
+      if (any(!value$map$.source_id %in% source_ids) ||
+          any(!value$map$.target_id %in% target_ids)) {
         .fds_schema_abort(
           sprintf("Study link '%s' map contains unknown axis IDs.", name),
           paste0("links.", name, ".map")
         )
       }
     }
-    typed_map <- value$metadata$feature_map
+    typed_map <- value$operator
     if (!is.null(typed_map)) {
       tryCatch(
         {
           validate_feature_map(typed_map)
-          if (!identical(value$type, "mapped_from") ||
-            !identical(value$from_axis, "feature") ||
-            !identical(value$to_axis, "feature")) {
+          if (!value$type %in% c("mapping", "alignment") ||
+              !identical(value$source_axis, "feature") ||
+              !identical(value$target_axis, "feature")) {
             .fds_schema_abort(
-              sprintf("Study link '%s' uses a feature_map outside a feature mapped_from link.", name),
-              paste0("links.", name, ".metadata.feature_map")
+              sprintf("Study link '%s' uses an operator outside a feature mapping or alignment.", name),
+              paste0("links.", name, ".operator")
             )
           }
-          from_representation <- representations[[value$from]]
-          to_representation <- representations[[value$to]]
-          if (identical(from_representation$type, "fmri_collection") ||
-            identical(to_representation$type, "fmri_collection")) {
+          source_representation <- representations[[value$source]]
+          target_representation <- representations[[value$target]]
+          if (identical(source_representation$type, "fmri_collection") ||
+              identical(target_representation$type, "fmri_collection")) {
             .fds_schema_abort(
-              sprintf("Study link '%s' feature_map endpoints must be single frames.", name),
-              paste0("links.", name, ".metadata.feature_map")
+              sprintf("Study link '%s' operator endpoints must be single frames.", name),
+              paste0("links.", name, ".operator")
             )
           }
           assert_compatible_space(
             feature_map_source_space(typed_map),
-            to_representation$manifest$axes$feature$space
+            source_representation$manifest$axes$feature$space
           )
           assert_compatible_space(
             feature_map_target_space(typed_map),
-            from_representation$manifest$axes$feature$space
+            target_representation$manifest$axes$feature$space
           )
         },
         error = function(error) {
           .fds_schema_abort(
             paste0("Invalid study feature map: ", conditionMessage(error)),
-            paste0("links.", name, ".metadata.feature_map")
+            paste0("links.", name, ".operator")
           )
         }
       )
@@ -265,24 +281,18 @@ validate_fds_study_manifest <- function(manifest) {
   if (!identical(manifest$object_type, "fmri_study")) {
     .fds_schema_abort("FDS study manifests require object_type fmri_study.", "object_type")
   }
-  if (inherits(manifest$provenance, "provenance_graph")) {
-    tryCatch(
-      validate_provenance_graph(manifest$provenance),
-      error = function(error) {
-        .fds_schema_abort(
-          paste0("Invalid provenance graph: ", conditionMessage(error)),
-          "provenance"
-        )
-      }
-    )
-  }
+  tryCatch(
+    .validate_container_provenance(manifest$provenance, "FDS study manifest"),
+    error = function(error) {
+      .fds_schema_abort(conditionMessage(error), "provenance")
+    }
+  )
   representations <- manifest$representations
-  representation_names <- names(representations)
   if (!is.list(representations) || !length(representations) ||
-    is.null(representation_names) || anyNA(representation_names) ||
-    any(!nzchar(representation_names)) || anyDuplicated(representation_names)) {
+    !.has_unique_names(representations)) {
     .fds_schema_abort("Study representations require unique stable names.", "representations")
   }
+  representation_names <- names(representations)
   for (name in representation_names) {
     .validate_study_representation_manifest(representations[[name]], name)
   }
@@ -298,20 +308,109 @@ validate_fds_study_manifest <- function(manifest) {
       )
     }
   )
-  if (.source_contains_runtime_state(manifest)) {
-    .fds_schema_abort(
-      "FDS study manifests cannot contain runtime functions, environments, or external pointers.",
-      "runtime_state"
-    )
+  metadata_domains <- integer()
+  for (name in names(manifest$entities)) {
+    size <- length(manifest$entities[[name]]$ids)
+    if (size > 1L) metadata_domains[[paste0("entity:", name)]] <- size
   }
+  for (name in representation_names) {
+    representation <- representations[[name]]
+    if (identical(representation$type, "fmri_frame")) {
+      observation_size <- length(representation$manifest$axes$observation$ids)
+      feature_size <- length(representation$manifest$axes$feature$ids)
+      if (observation_size > 1L) {
+        metadata_domains[[paste0("representation:", name, ":observation")]] <-
+          observation_size
+      }
+      if (feature_size > 1L) {
+        metadata_domains[[paste0("representation:", name, ":feature")]] <-
+          feature_size
+      }
+    } else {
+      for (member_name in names(representation$members)) {
+        member <- representation$members[[member_name]]
+        observation_size <- length(member$axes$observation$ids)
+        feature_size <- length(member$axes$feature$ids)
+        if (observation_size > 1L) {
+          metadata_domains[[paste0(
+            "representation:", name, ":member:", member_name, ":observation"
+          )]] <- observation_size
+        }
+        if (feature_size > 1L) {
+          metadata_domains[[paste0(
+            "representation:", name, ":member:", member_name, ":feature"
+          )]] <- feature_size
+        }
+      }
+    }
+  }
+  tryCatch(
+    validate_unaligned_record(manifest$metadata, metadata_domains),
+    error = function(error) {
+      .fds_schema_abort(conditionMessage(error), "metadata")
+    }
+  )
+  .assert_no_runtime_state(
+    manifest, .fds_schema_abort,
+    "FDS study manifests cannot contain runtime functions, environments, or external pointers."
+  )
   invisible(manifest)
+}
+
+#' Upgrade a provisional FDS study manifest
+#'
+#' Converts an FDS study v1 manifest, including its reverse-direction
+#' provisional frame links, to the canonical v2 schema. Canonical v2 manifests
+#' are validated and returned unchanged.
+#'
+#' @param manifest An FDS study v1 or v2 manifest.
+#' @return A validated FDS study v2 manifest.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' study <- fmri_study(list(main = frame))
+#' manifest <- fds_study_manifest(study)
+#' identical(upgrade_fds_study_manifest(manifest), manifest)
+#' @export
+upgrade_fds_study_manifest <- function(manifest) {
+  if (!is.list(manifest) || is.null(manifest$schema)) {
+    .fds_schema_abort("The FDS study manifest has no schema descriptor.", "schema")
+  }
+  if (identical(manifest$schema, .fds_study_schema)) {
+    validate_fds_study_manifest(manifest)
+    return(manifest)
+  }
+  legacy_schema <- list(id = "org.fmridataset.fds-study/v1", version = 1L)
+  if (!identical(manifest$schema, legacy_schema)) {
+    .fds_schema_abort("Unsupported FDS study schema identity or version.", "schema")
+  }
+  if (!is.list(manifest$links)) {
+    .fds_schema_abort("Study links must be a named list.", "links")
+  }
+  manifest$links <- lapply(manifest$links, upgrade_frame_link)
+  manifest$schema <- .fds_study_schema
+  validate_fds_study_manifest(manifest)
+  manifest
 }
 
 #' Extract shared study-level physical bindings
 #'
-#' @param x An `fmri_study` or filtered study view.
+#' @param x An `fmri_study`.
 #' @return A named list of shared entity-block payloads. Representation arrays
 #'   remain owned by their individual frame bindings.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' study <- fmri_study(list(main = frame))
+#' fds_study_bindings(study)
 #' @export
 fds_study_bindings <- function(x) {
   manifest <- fds_study_manifest(x)
@@ -430,11 +529,24 @@ fds_study_bindings <- function(x) {
 
 #' Reconstruct a study from semantic and physical components
 #'
-#' @param manifest A valid FDS v1 study manifest.
+#' @param manifest A valid FDS v2 study manifest.
 #' @param representations Named lazy frames or collections matching the
 #'   representation manifests.
 #' @param bindings Named physical bindings for shared study arrays.
 #' @return An `fmri_study`.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' study <- fmri_study(list(main = frame))
+#' manifest <- fds_study_manifest(study)
+#' rebuilt <- study_from_fds_manifest(
+#'   manifest, list(main = frame), fds_study_bindings(study)
+#' )
+#' study_ids(rebuilt)
 #' @export
 study_from_fds_manifest <- function(manifest, representations, bindings = list()) {
   validate_fds_study_manifest(manifest)
@@ -469,6 +581,16 @@ study_from_fds_manifest <- function(manifest, representations, bindings = list()
 #'
 #' @param manifest A valid FDS study manifest.
 #' @return A stable hexadecimal digest over source-free study semantics.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' study <- fmri_study(list(main = frame))
+#' manifest <- fds_study_manifest(study)
+#' fds_study_manifest_digest(manifest)
 #' @export
 fds_study_manifest_digest <- function(manifest) {
   validate_fds_study_manifest(manifest)

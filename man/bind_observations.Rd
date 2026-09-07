@@ -4,14 +4,37 @@
 \alias{bind_observations}
 \title{Bind frames along observations}
 \usage{
-bind_observations(...)
+bind_observations(
+  ...,
+  metadata_policy = c("identical", "merge"),
+  active_assay = NULL
+)
 }
 \arguments{
-\item{...}{Frames with identical feature IDs, spaces, and assay names.}
+\item{...}{Frames with identical feature IDs, spaces, and assay semantics.}
+
+\item{metadata_policy}{Frame-metadata reconciliation. \code{"identical"}
+requires exact equality; \code{"merge"} recursively combines non-conflicting
+unaligned records.}
+
+\item{active_assay}{Optional active assay for the result. Required when
+operands have different active assays.}
 }
 \value{
 A lazily row-bound \code{fmri_frame}.
 }
 \description{
 Bind frames along observations
+}
+\examples{
+sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+make <- function(prefix) {
+  fmri_frame(
+    assays = list(bold = matrix(rnorm(4 * n_features(sp)), nrow = 4)),
+    observations = data.frame(.obs_id = sprintf("\%s-\%d", prefix, 1:4)),
+    space = sp
+  )
+}
+bound <- bind_observations(make("a"), make("b"))
+dim(bound)
 }

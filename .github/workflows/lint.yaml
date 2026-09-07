@@ -15,6 +15,8 @@ concurrency:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -33,5 +35,6 @@ jobs:
         run: |
           lints <- lintr::lint_package()
           for (x in lints) print(x)
+          cat(sprintf("Correctness lint findings: %d\n", length(lints)))
           quit(status = length(lints) > 0)
         shell: Rscript {0}

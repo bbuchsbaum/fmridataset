@@ -20,15 +20,25 @@ fmri_study(
 
 \item{links}{Named \code{frame_link} descriptors.}
 
-\item{tables}{Named relational tables, including \code{event_table} objects.}
+\item{tables}{Named typed relational tables.}
 
-\item{metadata}{Serializable study metadata.}
+\item{metadata}{Unaligned study-level metadata.}
 
-\item{provenance}{Serializable provenance records.}
+\item{provenance}{\code{NULL} or a validated \code{provenance_graph}.}
 }
 \value{
 An \code{fmri_study}.
 }
 \description{
 Construct a linked fMRI study
+}
+\examples{
+voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+frame <- fmri_frame(
+  assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+  observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+  space = voxels
+)
+study <- fmri_study(list(main = frame))
+study_ids(study)
 }

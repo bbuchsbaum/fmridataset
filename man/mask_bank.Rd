@@ -19,3 +19,12 @@ A serializable \code{mask_bank}.
 \description{
 Construct a deduplicated, bit-packed bank of feature masks
 }
+\examples{
+space <- index_space(6, ids = paste0("f", 1:6), namespace = "validity-ex")
+masks <- rbind(
+  c(TRUE, TRUE, FALSE, TRUE, FALSE, TRUE),
+  c(TRUE, FALSE, FALSE, TRUE, TRUE, TRUE)
+)
+bank <- mask_bank(masks, space)
+n_masks(bank)
+}

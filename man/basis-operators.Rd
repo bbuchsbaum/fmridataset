@@ -26,3 +26,10 @@ These names deliberately avoid colliding with
 \description{
 Inspect basis-space operators
 }
+\examples{
+parent <- volume_space(c(2, 1, 1), support = 1:2)
+x <- basis_space(parent, c("c1", "c2"), diag(2), diag(2))
+basis_analysis(x)
+basis_synthesis(x)
+basis_projection_info(x)
+}

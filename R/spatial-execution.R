@@ -1,6 +1,5 @@
 .has_complete_feature_selection <- function(x) {
-  selection <- .frame_selection(x)
-  identical(selection$features, seq_len(ncol(selection$base)))
+  .selection_is_all(.frame_selection(x)$features)
 }
 
 #' Select a matrix or spatial execution path
@@ -16,6 +15,16 @@
 #' @param path For spatial operations, one of `"auto"`, `"native"`, or
 #'   `"reconstruct"`.
 #' @return One of `"matrix"`, `"native"`, or `"reconstruct"`.
+#' @examples
+#' sp <- volume_space(dim = c(2L, 2L, 1L), affine = diag(4), support = 1:4)
+#' frame <- fmri_frame(
+#'   assays = list(signal = memory_source(matrix(seq_len(12), 3, 4))),
+#'   observations = data.frame(.obs_id = sprintf("obs-%d", 1:3)),
+#'   space = sp,
+#'   active_assay = "signal"
+#' )
+#' execution_path(frame, operation = "matrix")
+#' execution_path(frame, operation = "spatial")
 #' @export
 execution_path <- function(
   x,
@@ -76,22 +85,54 @@ execution_path <- function(
   .native_realization_values(space(x)) * 8 * as.double(n_map)
 }
 
-.assert_spatial_budget <- function(x, n_map, memory_budget) {
-  memory_budget <- .validate_budget_scalar(memory_budget, "memory_budget")
-  bytes <- .spatial_output_bytes(x, n_map)
-  if (bytes > memory_budget) {
-    .frame_abort(
-      sprintf(
-        "Spatial realization requires at least %s bytes, above memory_budget.",
-        format(bytes, scientific = FALSE)
-      ),
-      "fmridataset_error_budget",
-      required_bytes = bytes,
-      memory_budget = memory_budget,
-      n_map = n_map
+.spatial_realization_cost <- function(x, n_map, assay, path) {
+  selection <- .frame_selection(x)
+  descriptor <- assay(selection$base, assay)
+  traits <- .source_cost_traits(descriptor$source)
+  packed <- if (n_map > 0L && .selection_length(selection$observations)) {
+    source_realization_cost(
+      descriptor$source,
+      observations = .selection_element(selection$observations, 1L),
+      features = .selection_index(selection$features)
+    )
+  } else {
+    .realization_cost_from_shape(
+      c(0L, .selection_length(selection$features)),
+      descriptor$dtype,
+      already_realized = traits$already_realized,
+      compressed = traits$compressed
     )
   }
-  invisible(bytes)
+  output_per_map <- .spatial_output_bytes(x, 1L)
+  output_bytes <- output_per_map * as.double(n_map)
+
+  # Reconstruction holds the packed row and its read buffers while allocating
+  # the native map. The native fast path additionally holds the source-native
+  # map while vectorizing and rebuilding the returned object.
+  temporary_bytes <- packed$estimated_peak_bytes
+  if (identical(path, "native") && n_map > 0L) {
+    temporary_bytes <- temporary_bytes + output_per_map
+  }
+  structure(
+    list(
+      storage_dtype = descriptor$dtype,
+      storage_bytes = packed$storage_bytes,
+      realized_dtype = "double native map",
+      realized_dtype_bytes = 8,
+      estimated_output_bytes = output_bytes,
+      packed_read_peak_bytes = packed$estimated_peak_bytes,
+      native_input_bytes = if (identical(path, "native")) output_per_map else 0,
+      estimated_temporary_bytes = temporary_bytes,
+      estimated_peak_bytes = output_bytes + temporary_bytes
+    ),
+    class = "source_realization_cost"
+  )
+}
+
+.assert_spatial_budget <- function(x, n_map, assay, path, memory_budget) {
+  cost <- .spatial_realization_cost(x, n_map, assay, path)
+  .assert_realization_budget(cost, memory_budget, "spatial realization")
+  invisible(cost)
 }
 
 .one_native_map <- function(value) {
@@ -114,10 +155,11 @@ execution_path <- function(
 .read_one_spatial_map <- function(x, position, assay, path) {
   selection <- .frame_selection(x)
   descriptor <- assay(selection$base, assay)
+  observation <- .selection_element(selection$observations, position)
   if (path == "native") {
     native <- .one_native_map(source_read_native(
       descriptor$source,
-      observations = selection$observations[[position]]
+      observations = observation
     ))
     return(reconstruct_space(
       space(x),
@@ -126,8 +168,8 @@ execution_path <- function(
   }
   values <- source_read(
     descriptor$source,
-    observations = selection$observations[[position]],
-    features = selection$features
+    observations = observation,
+    features = .selection_index(selection$features)
   )
   reconstruct_space(space(x), as.numeric(values))
 }
@@ -136,11 +178,23 @@ execution_path <- function(
 #'
 #' @param x An `fmri_frame` or view.
 #' @param observations Observation IDs or integer positions. The requested
-#'   order and duplicates are preserved.
+#'   order is preserved. Duplicated selectors are rejected, as they are on
+#'   every other frame axis selection.
 #' @param assay Assay name.
 #' @param path One of `"auto"`, `"native"`, or `"reconstruct"`.
-#' @param memory_budget Maximum estimated bytes for all returned native maps.
+#' @param memory_budget Maximum estimated peak bytes for all returned native
+#'   maps plus the current packed read, conversion, and reconstruction buffers.
 #' @return A named list with one native spatial object per observation.
+#' @examples
+#' sp <- volume_space(dim = c(2L, 2L, 1L), affine = diag(4), support = 1:4)
+#' frame <- fmri_frame(
+#'   assays = list(signal = memory_source(matrix(seq_len(12), 3, 4))),
+#'   observations = data.frame(.obs_id = sprintf("obs-%d", 1:3)),
+#'   space = sp,
+#'   active_assay = "signal"
+#' )
+#' maps <- collect_spatial_maps(frame, observations = c(1L, 2L))
+#' names(maps)
 #' @export
 collect_spatial_maps <- function(
   x,
@@ -155,7 +209,9 @@ collect_spatial_maps <- function(
     "observation"
   )
   selected_path <- execution_path(x, operation = "spatial", assay = assay, path = path)
-  .assert_spatial_budget(x, length(positions), memory_budget)
+  .assert_spatial_budget(
+    x, length(positions), assay, selected_path, memory_budget
+  )
   out <- lapply(
     positions,
     function(position) .read_one_spatial_map(x, position, assay, selected_path)
@@ -176,8 +232,18 @@ collect_spatial_maps <- function(
 #' @param ... Additional arguments passed to `FUN`.
 #' @param assay Assay name.
 #' @param path One of `"auto"`, `"native"`, or `"reconstruct"`.
-#' @param memory_budget Maximum estimated bytes for one input spatial map.
+#' @param memory_budget Maximum estimated peak bytes for one input spatial map
+#'   plus its packed read, conversion, and reconstruction buffers.
 #' @return A list of callback results in requested observation order.
+#' @examples
+#' sp <- volume_space(dim = c(2L, 2L, 1L), affine = diag(4), support = 1:4)
+#' frame <- fmri_frame(
+#'   assays = list(signal = memory_source(matrix(seq_len(12), 3, 4))),
+#'   observations = data.frame(.obs_id = sprintf("obs-%d", 1:3)),
+#'   space = sp,
+#'   active_assay = "signal"
+#' )
+#' execute_spatial(frame, c(1L, 2L), function(map, observation_id) observation_id)
 #' @export
 execute_spatial <- function(
   x,
@@ -197,7 +263,9 @@ execute_spatial <- function(
     "observation"
   )
   selected_path <- execution_path(x, operation = "spatial", assay = assay, path = path)
-  .assert_spatial_budget(x, min(1L, length(positions)), memory_budget)
+  .assert_spatial_budget(
+    x, min(1L, length(positions)), assay, selected_path, memory_budget
+  )
   ids <- observation_ids(x)
   lapply(positions, function(position) {
     FUN(

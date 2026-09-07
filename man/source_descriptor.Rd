@@ -22,3 +22,8 @@ A valid canonical source is two-dimensional, has an explicit supported
 dtype and chunk grid, advertises serializable block slicing, provides a
 stable non-empty fingerprint, and contains no runtime handles or closures.
 }
+\examples{
+src <- memory_source(matrix(seq_len(6), nrow = 2))
+source_descriptor(src)
+validate_array_source(src)
+}

@@ -15,3 +15,11 @@ A hexadecimal digest over the normalized registry.
 \description{
 Compute a stable entity-registry digest
 }
+\examples{
+subjects <- entity_frame(
+  data = tibble::tibble(subject_id = c("sub-1", "sub-2")),
+  key = "subject_id"
+)
+registry <- entity_registry(subject = subjects)
+entity_registry_digest(registry)
+}

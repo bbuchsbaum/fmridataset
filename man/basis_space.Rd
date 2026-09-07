@@ -46,3 +46,8 @@ its optional decoder maps coefficients back to the parent. Fitting and
 model-specific offsets remain the responsibility of packages such as
 \code{fmrilatent}.
 }
+\examples{
+parent <- volume_space(c(2, 1, 1), support = 1:2)
+x <- basis_space(parent, c("c1", "c2"), diag(2), diag(2))
+n_features(x)
+}

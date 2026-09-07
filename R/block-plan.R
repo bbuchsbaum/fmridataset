@@ -14,11 +14,13 @@
 .frame_plan_fingerprint <- function(x, assay) {
   selection <- .frame_selection(x)
   descriptor <- assay(selection$base, assay)
+  # The normalized selection is hashed, not an expanded axis, so planning a
+  # select-all frame costs the same whatever its size.
   .canonical_digest(list(
     assay = assay,
     source = source_fingerprint(descriptor$source),
-    observations = selection$observations,
-    features = selection$features
+    observations = .selection_descriptor(selection$observations),
+    features = .selection_descriptor(selection$features)
   ))
 }
 
@@ -65,7 +67,14 @@
 }
 
 .axis_block_ranges <- function(n, block_size, prefix) {
-  if (n == 0L) {
+  # A zero-length axis anywhere in the frame makes .plan_block_shape() return
+  # c(0L, 0L), so the OTHER axis arrives here with block_size 0 and a non-zero
+  # length. seq.int(1L, n, by = 0L) then raised a base-R
+  # "invalid '(to - from)/by'" for any frame that a filter_obs() or
+  # select_features() had emptied - legal frames that subset, collect, and
+  # round-trip correctly everywhere else. There is nothing to read, so the
+  # axis contributes no ranges and the plan holds no blocks.
+  if (n == 0L || block_size < 1L) {
     out <- data.frame(start = integer(), end = integer(), size = integer())
   } else {
     start <- seq.int(1L, n, by = block_size)
@@ -76,7 +85,8 @@
   out
 }
 
-.block_grid <- function(shape, block_shape, dtype_bytes, layout) {
+.block_grid <- function(shape, block_shape, output_dtype_bytes,
+                        peak_dtype_bytes, layout) {
   observation <- .axis_block_ranges(shape[[1L]], block_shape[[1L]], "observation")
   feature <- .axis_block_ranges(shape[[2L]], block_shape[[2L]], "feature")
   if (!nrow(observation) || !nrow(feature)) {
@@ -88,6 +98,8 @@
       .feature_start = integer(),
       .feature_end = integer(),
       .n_feature = integer(),
+      .output_bytes = numeric(),
+      .peak_bytes = numeric(),
       .bytes = numeric()
     ))
   }
@@ -105,7 +117,11 @@
     .feature_end = feature[[".feature_end"]][index$feature],
     .n_feature = feature[[".feature_size"]][index$feature]
   )
-  out$.bytes <- as.double(out$.n_observation) * out$.n_feature * dtype_bytes
+  n_value <- as.double(out$.n_observation) * out$.n_feature
+  out$.output_bytes <- n_value * output_dtype_bytes
+  out$.peak_bytes <- n_value * peak_dtype_bytes
+  # Compatibility alias: .bytes is the quantity constrained by memory_budget.
+  out$.bytes <- out$.peak_bytes
   out
 }
 
@@ -119,9 +135,17 @@
 #' @param x An `fmri_frame` or lazy view.
 #' @param assay Assay name.
 #' @param layout One of `"balanced"`, `"imagewise"`, or `"featurewise"`.
-#' @param memory_budget Hard maximum bytes for one input block.
+#' @param memory_budget Hard maximum estimated peak bytes for one input block.
 #' @param target_block_bytes Preferred block size, capped by `memory_budget`.
 #' @return A serializable `frame_block_plan`.
+#' @examples
+#' frame <- fmri_frame(
+#'   assays = list(signal = memory_source(matrix(seq_len(20), 5, 4))),
+#'   observations = data.frame(.obs_id = sprintf("obs-%d", 1:5)),
+#'   active_assay = "signal"
+#' )
+#' plan <- plan_blocks(frame, memory_budget = 10 * 1024^2)
+#' plan
 #' @export
 plan_blocks <- function(
   x,
@@ -138,27 +162,45 @@ plan_blocks <- function(
   target_block_bytes <- .validate_budget_scalar(target_block_bytes, "target_block_bytes")
   selection <- .frame_selection(x)
   descriptor <- assay(selection$base, assay)
-  dtype_bytes <- .dtype_bytes(descriptor$dtype)
-  capacity <- floor(min(memory_budget, target_block_bytes) / dtype_bytes)
+  # The per-value cost depends on the dtype and source traits, not on the
+  # selection, so derive it from a unit shape. Probing the source with a
+  # one-by-one selector would be out of bounds on a frame emptied on an axis.
+  traits <- .source_cost_traits(descriptor$source)
+  unit_cost <- .realization_cost_from_shape(
+    c(1L, 1L),
+    source_dtype(descriptor$source),
+    already_realized = traits$already_realized,
+    compressed = traits$compressed
+  )
+  output_dtype_bytes <- unit_cost$estimated_output_bytes
+  peak_dtype_bytes <- unit_cost$estimated_peak_bytes
+  capacity <- floor(min(memory_budget, target_block_bytes) / peak_dtype_bytes)
   if (capacity < 1) {
     .frame_abort(
       "The block memory budget cannot hold one assay value.",
       "fmridataset_error_budget",
       dtype = descriptor$dtype,
-      dtype_bytes = dtype_bytes,
+      dtype_bytes = output_dtype_bytes,
+      output_dtype_bytes = output_dtype_bytes,
+      peak_dtype_bytes = peak_dtype_bytes,
       memory_budget = memory_budget
     )
   }
   shape <- as.integer(dim(x))
   chunks <- pmin(source_chunks(descriptor$source), pmax(1L, shape))
   block_shape <- .plan_block_shape(shape, chunks, layout, capacity)
-  blocks <- .block_grid(shape, block_shape, dtype_bytes, layout)
-  max_block_bytes <- if (nrow(blocks)) max(blocks$.bytes) else 0
-  if (max_block_bytes > memory_budget) {
+  blocks <- .block_grid(
+    shape, block_shape, output_dtype_bytes, peak_dtype_bytes, layout
+  )
+  max_output_bytes <- if (nrow(blocks)) max(blocks$.output_bytes) else 0
+  max_peak_bytes <- if (nrow(blocks)) max(blocks$.peak_bytes) else 0
+  if (max_peak_bytes > memory_budget) {
     .frame_abort(
       "The planned block exceeds memory_budget.",
       "fmridataset_error_budget",
-      planned_bytes = max_block_bytes,
+      planned_bytes = max_peak_bytes,
+      estimated_output_bytes = max_output_bytes,
+      estimated_peak_bytes = max_peak_bytes,
       memory_budget = memory_budget
     )
   }
@@ -169,16 +211,21 @@ plan_blocks <- function(
       layout = layout,
       shape = shape,
       dtype = descriptor$dtype,
-      dtype_bytes = dtype_bytes,
+      dtype_bytes = output_dtype_bytes,
+      output_dtype_bytes = output_dtype_bytes,
+      peak_dtype_bytes = peak_dtype_bytes,
       source_chunks = as.integer(chunks),
       source_capabilities = source_capabilities(descriptor$source),
       selection_fingerprint = .frame_plan_fingerprint(x, assay),
       block_shape = block_shape,
       blocks = blocks,
       n_blocks = nrow(blocks),
-      max_block_bytes = max_block_bytes,
+      max_block_bytes = max_peak_bytes,
+      max_output_bytes = max_output_bytes,
+      max_peak_bytes = max_peak_bytes,
       total_values = prod(as.double(shape)),
-      total_bytes = prod(as.double(shape)) * dtype_bytes,
+      total_bytes = prod(as.double(shape)) * output_dtype_bytes,
+      total_output_bytes = prod(as.double(shape)) * output_dtype_bytes,
       memory_budget = memory_budget,
       target_block_bytes = target_block_bytes
     ),
@@ -190,6 +237,14 @@ plan_blocks <- function(
 #'
 #' @param plan A `frame_block_plan`.
 #' @return A data frame containing logical block bounds and byte estimates.
+#' @examples
+#' frame <- fmri_frame(
+#'   assays = list(signal = memory_source(matrix(seq_len(20), 5, 4))),
+#'   observations = data.frame(.obs_id = sprintf("obs-%d", 1:5)),
+#'   active_assay = "signal"
+#' )
+#' plan <- plan_blocks(frame, memory_budget = 10 * 1024^2)
+#' block_manifest(plan)
 #' @export
 block_manifest <- function(plan) {
   if (!inherits(plan, "frame_block_plan")) {
@@ -207,6 +262,16 @@ block_manifest <- function(plan) {
 #' @param ... Additional arguments passed to `FUN`.
 #' @param assay Assay name; defaults to the planned assay.
 #' @return A list containing one result per planned block.
+#' @examples
+#' frame <- fmri_frame(
+#'   assays = list(signal = memory_source(matrix(seq_len(20), 5, 4))),
+#'   observations = data.frame(.obs_id = sprintf("obs-%d", 1:5)),
+#'   active_assay = "signal"
+#' )
+#' plan <- plan_blocks(frame, memory_budget = 10 * 1024^2)
+#' execute_block_plan(frame, plan, function(values, observation_ids, feature_ids, block) {
+#'   sum(values)
+#' })
 #' @export
 execute_block_plan <- function(x, plan, FUN, ..., assay = plan$assay) {
   if (!inherits(plan, "frame_block_plan")) {

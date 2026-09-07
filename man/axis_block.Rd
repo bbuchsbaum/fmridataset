@@ -22,8 +22,9 @@ block_components(x)
 block_component_ids(x)
 }
 \arguments{
-\item{data}{A matrix, array, lazy array, or serializable array source. Its
-first dimension is aligned with the owning axis.}
+\item{data}{A matrix, two-dimensional lazy array, or serializable array
+source. Its first dimension is aligned with the owning axis and its second
+dimension indexes \code{components}.}
 
 \item{components}{Component metadata. The \code{.component_id} column is
 generated when absent.}
@@ -41,5 +42,18 @@ generated when absent.}
 An \code{axis_block}.
 }
 \description{
-Construct an axis-aligned multivariate block
+A block is two-dimensional: rows are the elements of the owning axis and
+columns are named components. Arrays with more than two dimensions are
+rejected because a trailing axis without typed metadata would be an
+anonymous semantic dimension; represent higher-order structure as named
+components, as several blocks, or as an assay.
+}
+\examples{
+b <- axis_block(
+  matrix(1:6, 3, 2),
+  components = data.frame(.component_id = c("x", "y")),
+  role = "continuous"
+)
+dim(axis_block_data(b))
+block_component_ids(b)
 }

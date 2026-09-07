@@ -1,8 +1,41 @@
+.canonicalization_contract <- list(
+  id = "org.fmridataset.r-canonical/v1",
+  version = 1L,
+  algorithm = "sha256",
+  encoding = "fmridataset-tagged-binary",
+  unicode = "NFC",
+  byte_order = "big-endian",
+  named_field_order = "lexicographic",
+  sequence_order = "preserved",
+  negative_zero = "preserved",
+  nan = "canonical-payload",
+  portability = "R-only"
+)
+
 .canonical_digest <- function(x) {
-  digest::digest(x, algo = "sha256", serialize = TRUE)
+  canonical_sha256(x)
 }
 
+#' Identity and canonicalization contract
+#'
+#' Canonicalization version 1 hashes normalized R objects with SHA-256 over a
+#' package-owned tagged binary encoding. It is stable for supported package
+#' operations and round trips, but is deliberately R-only rather than a
+#' cross-language wire encoding.
+#'
+#' @return A serializable canonicalization descriptor.
+#' @examples
+#' contract <- canonicalization_contract()
+#' contract$algorithm
+#' @export
+canonicalization_contract <- function() .canonicalization_contract
+
 #' Feature-space contract
+#'
+#' Every feature-space class (such as [volume_space()], [surface_space()],
+#' [parcel_space()], [basis_space()], [composite_space()], and
+#' [index_space()]) implements this shared generic contract for feature
+#' count, stable identity, restriction, vectorization, and reconstruction.
 #'
 #' @param x A feature-space object.
 #' @param y A second feature-space object.
@@ -10,6 +43,22 @@
 #' @param spatial_object A native spatial object to vectorize.
 #' @param vector A feature vector to reconstruct.
 #' @param ... Additional arguments for methods.
+#' @return `n_features()` returns a single integer; `feature_ids()` returns a
+#'   character vector of stable feature identifiers; `native_shape()` returns
+#'   the class-specific native dimensions; `feature_data()` returns a tibble
+#'   of per-feature metadata; `space_digest()` returns a content digest
+#'   string; `restrict_space()` and `reconstruct_space()` return an object of
+#'   the same feature-space class; `vectorize_space()` returns a numeric
+#'   vector; `adjacency()` returns a sparse adjacency matrix or `NULL`;
+#'   `same_space()` and `compatible_space()` return a `space_compatibility`
+#'   list; `assert_same_space()` and `assert_compatible_space()` return the
+#'   compatibility report invisibly and signal an error when incompatible.
+#' @examples
+#' x <- index_space(3, ids = c("a", "b", "c"))
+#' n_features(x)
+#' feature_ids(x)
+#' y <- restrict_space(x, 1:2)
+#' same_space(x, x)$same
 #' @name feature-space
 NULL
 
@@ -51,13 +100,14 @@ adjacency <- function(x, ...) UseMethod("adjacency")
 
 #' @rdname feature-space
 #' @export
-compatible_space <- function(x, y, ...) {
+same_space <- function(x, y, ...) {
   same_class <- identical(class(x), class(y))
   same_digest <- identical(space_digest(x), space_digest(y))
   same_ids <- identical(feature_ids(x), feature_ids(y))
   ok <- same_class && same_digest && same_ids
   structure(
     list(
+      same = ok,
       compatible = ok,
       same_class = same_class,
       same_digest = same_digest,
@@ -72,8 +122,8 @@ compatible_space <- function(x, y, ...) {
 
 #' @rdname feature-space
 #' @export
-assert_compatible_space <- function(x, y, ...) {
-  report <- compatible_space(x, y, ...)
+assert_same_space <- function(x, y, ...) {
+  report <- same_space(x, y, ...)
   if (!isTRUE(report$compatible)) {
     .frame_abort(
       report$reason,
@@ -84,22 +134,66 @@ assert_compatible_space <- function(x, y, ...) {
   invisible(report)
 }
 
+#' @rdname feature-space
+#' @export
+compatible_space <- function(x, y, ...) same_space(x, y, ...)
+
+#' @rdname feature-space
+#' @export
+assert_compatible_space <- function(x, y, ...) assert_same_space(x, y, ...)
+
 #' Construct a generic indexed feature space
 #'
 #' @param n Number of features.
 #' @param ids Optional stable feature IDs.
-#' @param namespace Namespace used for generated IDs.
+#' @param namespace Stable namespace used for deterministic IDs.
 #' @param data Optional feature metadata.
+#' @param id_policy ID policy used when `ids` is absent. The default requires
+#'   explicit IDs; deterministic IDs additionally require `namespace`.
 #' @return An `index_space`.
+#' @examples
+#' index_space(3, ids = c("a", "b", "c"))
+#' index_space(2, namespace = "roi", id_policy = "deterministic")
 #' @export
-index_space <- function(n, ids = NULL, namespace = NULL, data = NULL) {
+index_space <- function(n, ids = NULL, namespace = NULL, data = NULL,
+                        id_policy = c("require", "deterministic", "ephemeral")) {
   n <- as.integer(n)
   if (length(n) != 1L || is.na(n) || n < 0L) {
     .frame_abort("n must be one non-negative integer.", "fmridataset_error_space_mismatch")
   }
-  namespace <- namespace %||% uuid::UUIDgenerate()
-  if (is.null(ids)) {
-    ids <- sprintf("feature-%s-%06d", namespace, seq_len(n))
+  id_policy <- match.arg(id_policy)
+  if (is.null(ids) && identical(id_policy, "require")) {
+    .identity_abort(
+      "index_space ID policy 'require' requires supplied `ids`.",
+      field = "ids", policy = id_policy
+    )
+  }
+  if (identical(id_policy, "deterministic")) {
+    if (!is.character(namespace) || length(namespace) != 1L ||
+        is.na(namespace) || !nzchar(namespace)) {
+      .identity_abort(
+        "Deterministic index_space IDs require one non-empty `namespace`.",
+        field = "namespace", policy = id_policy
+      )
+    }
+    generated <- sprintf("feature-%s-%06d", namespace, seq_len(n))
+    if (!is.null(ids) && !identical(as.character(ids), generated)) {
+      .identity_abort(
+        "Supplied feature IDs do not match the deterministic namespace and indices.",
+        field = "ids", policy = id_policy
+      )
+    }
+    ids <- generated
+  }
+  if (identical(id_policy, "ephemeral")) {
+    if (!is.null(ids)) {
+      .identity_abort(
+        "Ephemeral index_space policy generates its own visibly marked IDs.",
+        field = "ids", policy = id_policy
+      )
+    }
+    namespace <- paste0("ephemeral-", uuid::UUIDgenerate())
+    ids <- sprintf("ephemeral-feature-%s-%06d", namespace, seq_len(n))
   }
   ids <- .validate_stable_ids(as.character(ids), "feature")
   if (length(ids) != n) {
@@ -116,6 +210,7 @@ index_space <- function(n, ids = NULL, namespace = NULL, data = NULL) {
       n = n,
       ids = ids,
       namespace = namespace,
+      id_policy = .id_policy(id_policy, namespace),
       data = data,
       schema_version = 1L
     ),
@@ -128,6 +223,10 @@ n_features.index_space <- function(x, ...) x$n
 #' @export
 feature_ids.index_space <- function(x, ...) x$ids
 #' @export
+axis_id_policy.index_space <- function(x) x$id_policy %||% .id_policy("require")
+#' @export
+ids_are_durable.index_space <- function(x) isTRUE(axis_id_policy(x)$durable)
+#' @export
 native_shape.index_space <- function(x, ...) x$n
 #' @export
 feature_data.index_space <- function(x, ...) x$data
@@ -137,17 +236,21 @@ space_digest.index_space <- function(x, ...) {
     type = "index_space",
     schema_version = x$schema_version,
     namespace = x$namespace,
+    id_policy = axis_id_policy(x),
     ids = x$ids
   ))
 }
 #' @export
 restrict_space.index_space <- function(x, index, ...) {
-  index_space(
+  out <- index_space(
     length(index),
     ids = x$ids[index],
     namespace = x$namespace,
-    data = x$data[index, , drop = FALSE]
+    data = x$data[index, , drop = FALSE],
+    id_policy = "require"
   )
+  out$id_policy <- axis_id_policy(x)
+  out
 }
 #' @export
 vectorize_space.index_space <- function(x, spatial_object, ...) {
@@ -176,6 +279,8 @@ adjacency.index_space <- function(x, ...) NULL
 #' @param units Spatial units.
 #' @param metadata Additional serializable metadata.
 #' @return A `volume_space`.
+#' @examples
+#' volume_space(c(2, 2, 2), affine = diag(4), support = 1:4)
 #' @export
 volume_space <- function(dim, affine = diag(4), support = NULL,
                          template = NULL, units = "mm", metadata = list()) {
@@ -370,6 +475,11 @@ adjacency.volume_space <- function(x, ...) {
 #'   the `neurosurf::SurfaceGeometry` convention.
 #' @param metadata Additional serializable metadata.
 #' @return A `surface_space`.
+#' @examples
+#' surface_space(
+#'   vertex_ids = c("L-1", "L-2", "L-3"),
+#'   hemisphere = rep("left", 3)
+#' )
 #' @export
 surface_space <- function(vertex_ids, hemisphere, support = NULL,
                           topology = NULL, geometry = NULL,
@@ -613,6 +723,18 @@ adjacency.surface_space <- function(x, ...) {
 #' @param vertex_ids Optional stable full-mesh vertex IDs.
 #' @param support,medial_wall,template,units,metadata Passed to [surface_space()].
 #' @return A `surface_space`.
+#' @examples
+#' if (requireNamespace("neurosurf", quietly = TRUE)) {
+#'   old_rgl <- Sys.getenv("RGL_USE_NULL", unset = NA)
+#'   Sys.setenv(RGL_USE_NULL = "TRUE")
+#'   vertices <- matrix(c(0, 0, 0, 1, 0, 0, 0, 1, 0), ncol = 3, byrow = TRUE)
+#'   geom <- neurosurf::SurfaceGeometry(
+#'     vertices, matrix(c(0, 1, 2), nrow = 1), hemi = "lh", label = "pial"
+#'   )
+#'   x <- surface_space_from_neurosurf(geom, template = "toy-surface")
+#'   feature_ids(x)
+#'   if (is.na(old_rgl)) Sys.unsetenv("RGL_USE_NULL") else Sys.setenv(RGL_USE_NULL = old_rgl)
+#' }
 #' @export
 surface_space_from_neurosurf <- function(geometry, vertex_ids = NULL,
                                          support = NULL,
@@ -739,6 +861,13 @@ surface_space_from_neurosurf <- function(geometry, vertex_ids = NULL,
 #'   The default blends overlapping parcel values by row-normalized membership.
 #' @param metadata Additional serializable metadata.
 #' @return A `parcel_space`.
+#' @examples
+#' parent <- volume_space(c(3, 2, 1), support = 1:6)
+#' membership <- Matrix::sparseMatrix(
+#'   i = 1:6, j = c(1, 1, 1, 2, 2, 2), x = 1, dims = c(6L, 2L)
+#' )
+#' x <- parcel_space(parent, c(10L, 20L), membership, atlas = "toy-atlas")
+#' n_features(x)
 #' @export
 parcel_space <- function(parent, parcel_ids, membership, data = NULL,
                          atlas, aggregation = c("mean", "sum"),
@@ -771,7 +900,10 @@ parcel_space <- function(parent, parcel_ids, membership, data = NULL,
       "fmridataset_error_space_mismatch"
     )
   }
-  ids <- paste0(atlas$id, ":", parcel_ids)
+  # paste0() recycles a zero-length parcel_ids against the scalar atlas id and
+  # yields "atlas:" rather than character(), so an emptied parcel space failed
+  # its own ID check. Same recycling the volume and composite guards avoid.
+  ids <- if (k) paste0(atlas$id, ":", parcel_ids) else character()
   if (".feature_id" %in% names(data) &&
     !identical(as.character(data$.feature_id), ids)) {
     .frame_abort(
@@ -821,6 +953,14 @@ parcel_space <- function(parent, parcel_ids, membership, data = NULL,
 #'   `basis_space`.
 #' @return `parent_space()` returns the parent feature space;
 #'   `parcel_membership()` and `parcel_aggregation()` return sparse operators.
+#' @examples
+#' parent <- volume_space(c(3, 2, 1), support = 1:6)
+#' membership <- Matrix::sparseMatrix(
+#'   i = 1:6, j = c(1, 1, 1, 2, 2, 2), x = 1, dims = c(6L, 2L)
+#' )
+#' x <- parcel_space(parent, c(10L, 20L), membership, atlas = "toy-atlas")
+#' parent_space(x)
+#' parcel_membership(x)
 #' @name parcel-operators
 NULL
 
@@ -930,6 +1070,40 @@ adjacency.parcel_space <- function(x, ...) {
 #' @param aggregation Aggregation method passed to [parcel_space()].
 #' @param metadata Serializable metadata passed to [parcel_space()].
 #' @return A `parcel_space` aligned to `parent`.
+#' @examples
+#' \donttest{
+#' # Loading neuroatlas and neurosurf alone takes several seconds, so this
+#' # example runs under --run-donttest rather than on every check.
+#' if (requireNamespace("neuroatlas", quietly = TRUE) &&
+#'   requireNamespace("neurosurf", quietly = TRUE)) {
+#'   old_rgl <- Sys.getenv("RGL_USE_NULL", unset = NA)
+#'   Sys.setenv(RGL_USE_NULL = "TRUE")
+#'   left <- matrix(c(0, 0, 0, 1, 0, 0, 0, 1, 0), ncol = 3, byrow = TRUE)
+#'   right <- sweep(left, 2, c(0, 0, 1), "+")
+#'   faces <- matrix(c(0, 1, 2), nrow = 1)
+#'   lh <- neurosurf::SurfaceGeometry(left, faces, "lh")
+#'   rh <- neurosurf::SurfaceGeometry(right, faces, "rh")
+#'   atlas <- list(
+#'     name = "toy-surface",
+#'     lh_atlas = neurosurf::NeuroSurface(lh, 1:3, c(1, 1, 0)),
+#'     rh_atlas = neurosurf::NeuroSurface(rh, 1:3, c(2, 2, 0)),
+#'     ids = 1:2, labels = c("A", "B"), orig_labels = c("A", "B"),
+#'     hemi = c("left", "right"), network = NULL, cmap = NULL,
+#'     surf_type = "pial", surface_space = "toy"
+#'   )
+#'   class(atlas) <- c("toy", "surfatlas", "atlas")
+#'   parent <- surface_space(
+#'     vertex_ids = c(paste0("L-", 1:3), paste0("R-", 1:3)),
+#'     hemisphere = rep(c("left", "right"), each = 3),
+#'     topology = rbind(c(1, 2, 3), c(4, 5, 6)),
+#'     geometry = rbind(left, right),
+#'     template = "toy"
+#'   )
+#'   x <- parcel_space_from_atlas(atlas, parent)
+#'   feature_ids(x)
+#'   if (is.na(old_rgl)) Sys.unsetenv("RGL_USE_NULL") else Sys.setenv(RGL_USE_NULL = old_rgl)
+#' }
+#' }
 #' @export
 parcel_space_from_atlas <- function(atlas, parent,
                                     aggregation = c("mean", "sum"),
@@ -1084,6 +1258,9 @@ parcel_space_from_atlas <- function(atlas, parent,
 
 .basis_left_inverse_error <- function(encoder, decoder) {
   product <- as.matrix(encoder %*% decoder)
+  if (!nrow(product)) {
+    return(0)
+  }
   max(abs(product - diag(nrow(product))))
 }
 
@@ -1106,6 +1283,10 @@ parcel_space_from_atlas <- function(atlas, parent,
 #'   `encoder %*% decoder` is the component-space identity.
 #' @param metadata Additional serializable metadata.
 #' @return A `basis_space`.
+#' @examples
+#' parent <- volume_space(c(2, 1, 1), support = 1:2)
+#' x <- basis_space(parent, c("c1", "c2"), diag(2), diag(2))
+#' n_features(x)
 #' @export
 basis_space <- function(parent, component_ids, encoder, decoder = NULL,
                         data = NULL, basis_type = "linear_basis",
@@ -1120,13 +1301,10 @@ basis_space <- function(parent, component_ids, encoder, decoder = NULL,
   component_ids <- .validate_stable_ids(
     as.character(component_ids), "component"
   )
+  # An empty basis is legal. Every other feature space supports an empty
+  # restriction, and an empty selection is legal on every frame axis; refusing
+  # one here made restrict_space(basis, integer(0)) the sole exception.
   k <- length(component_ids)
-  if (!k) {
-    .frame_abort(
-      "A basis space must contain at least one component.",
-      "fmridataset_error_space_mismatch"
-    )
-  }
   if (!is.character(basis_type) || length(basis_type) != 1L ||
     is.na(basis_type) || !nzchar(basis_type)) {
     .frame_abort(
@@ -1149,9 +1327,27 @@ basis_space <- function(parent, component_ids, encoder, decoder = NULL,
       "fmridataset_error_space_mismatch"
     )
   }
-  encoder <- .validate_linear_operator(
-    encoder, c(k, n_features(parent)), "encoder"
-  )
+  # A basis carries an analysis operator (parent -> components), a synthesis
+  # operator (components -> parent), or both. Requiring the encoder excluded
+  # exactly the case latent_dataset serves: loadings are a synthesis
+  # dictionary, and ICA or dictionary-learning fits are frequently
+  # rank-deficient or non-orthogonal, so no exact left inverse exists. Such a
+  # basis can reconstruct voxels from scores, which is all that path ever
+  # needed; it simply cannot project new voxel data into the components.
+  if (is.null(encoder) && is.null(decoder)) {
+    .frame_abort(
+      paste(
+        "A basis space needs an encoder, a decoder, or both;",
+        "with neither it cannot relate components to the parent space."
+      ),
+      "fmridataset_error_space_mismatch"
+    )
+  }
+  if (!is.null(encoder)) {
+    encoder <- .validate_linear_operator(
+      encoder, c(k, n_features(parent)), "encoder"
+    )
+  }
   if (!is.null(decoder)) {
     decoder <- .validate_linear_operator(
       decoder, c(n_features(parent), k), "decoder"
@@ -1176,7 +1372,7 @@ basis_space <- function(parent, component_ids, encoder, decoder = NULL,
   data <- data[c(".feature_id", setdiff(names(data), ".feature_id"))]
 
   inverse_error <- NULL
-  if (!is.null(decoder)) {
+  if (!is.null(encoder) && !is.null(decoder)) {
     inverse_error <- .basis_left_inverse_error(
       .collect_linear_operator(encoder),
       .collect_linear_operator(decoder)
@@ -1201,7 +1397,7 @@ basis_space <- function(parent, component_ids, encoder, decoder = NULL,
       basis_type = basis_type,
       provenance = provenance,
       projection = list(
-        left_inverse_validated = !is.null(decoder),
+        left_inverse_validated = !is.null(encoder) && !is.null(decoder),
         left_inverse_error = inverse_error,
         tolerance = tolerance
       ),
@@ -1219,22 +1415,48 @@ basis_space <- function(parent, component_ids, encoder, decoder = NULL,
 #'
 #' @param parent,component_ids,decoder,data,basis_type,provenance,tolerance,metadata
 #'   Passed to [basis_space()].
+#' @param encoder Either `"least_squares"` to construct and validate the exact
+#'   unregularized left inverse, or `"none"` for a synthesis-only basis.
 #' @return A `basis_space`.
+#' @examples
+#' parent <- volume_space(c(2, 1, 1), support = 1:2)
+#' x <- basis_space_from_decoder(parent, c("c1", "c2"), diag(2))
+#' basis_synthesis(x)
 #' @export
 basis_space_from_decoder <- function(parent, component_ids, decoder,
                                      data = NULL,
                                      basis_type = "linear_basis",
                                      provenance = list(), tolerance = 1e-8,
-                                     metadata = list()) {
+                                     metadata = list(),
+                                     encoder = c("least_squares", "none")) {
+  encoder <- match.arg(encoder)
   decoder <- .validate_linear_operator(
     decoder, c(n_features(parent), length(component_ids)), "decoder"
   )
+  if (identical(encoder, "none")) {
+    return(basis_space(
+      parent = parent,
+      component_ids = component_ids,
+      encoder = NULL,
+      decoder = decoder,
+      data = data,
+      basis_type = basis_type,
+      provenance = provenance,
+      tolerance = tolerance,
+      metadata = metadata
+    ))
+  }
   dense <- as.matrix(.collect_linear_operator(decoder))
   decomposition <- svd(dense, nu = ncol(dense), nv = ncol(dense))
   rank_threshold <- max(dim(dense)) * max(decomposition$d) * .Machine$double.eps
   if (!length(decomposition$d) || any(decomposition$d <= rank_threshold)) {
     .frame_abort(
-      "decoder must have full column rank for an exact least-squares encoder.",
+      paste(
+        "decoder must have full column rank for an exact least-squares encoder.",
+        "Rank-deficient dictionaries, as ICA and dictionary learning routinely",
+        "produce, have no exact left inverse; pass encoder = \"none\" for a",
+        "synthesis-only basis that reconstructs but does not project."
+      ),
       "fmridataset_error_space_mismatch"
     )
   }
@@ -1261,6 +1483,12 @@ basis_space_from_decoder <- function(parent, component_ids, decoder,
 #'   synthesis operator; `basis_projection_info()` returns validation metadata.
 #'   These names deliberately avoid colliding with
 #'   `fmrilatent::basis_decoder()`, which constructs model-level decoders.
+#' @examples
+#' parent <- volume_space(c(2, 1, 1), support = 1:2)
+#' x <- basis_space(parent, c("c1", "c2"), diag(2), diag(2))
+#' basis_analysis(x)
+#' basis_synthesis(x)
+#' basis_projection_info(x)
 #' @name basis-operators
 NULL
 
@@ -1313,8 +1541,17 @@ restrict_space.basis_space <- function(x, index, ...) {
   } else {
     .subset_linear_operator(x$decoder, features = index)
   }
-  selected_encoder <- .subset_linear_operator(x$encoder, observations = index)
-  if (!is.null(selected_decoder)) {
+  selected_encoder <- if (is.null(x$encoder)) {
+    NULL
+  } else {
+    .subset_linear_operator(x$encoder, observations = index)
+  }
+  # Restricting the component axis changes the least-squares encoder, so it is
+  # recomputed from the restricted decoder rather than subset. A decoder-only
+  # basis stays decoder-only.
+  # solve() cannot invert a 0-by-0 cross-product, and an empty basis has no
+  # least-squares solution to recompute: keep the subset encoder as it is.
+  if (length(index) && !is.null(selected_decoder) && !is.null(selected_encoder)) {
     selected_encoder <- solve(
       crossprod(as.matrix(.collect_linear_operator(selected_decoder))),
       t(as.matrix(.collect_linear_operator(selected_decoder)))
@@ -1334,6 +1571,16 @@ restrict_space.basis_space <- function(x, index, ...) {
 }
 #' @export
 vectorize_space.basis_space <- function(x, spatial_object, ...) {
+  if (is.null(x$encoder)) {
+    .frame_abort(
+      paste(
+        "This basis space has no encoder, so parent data cannot be projected",
+        "into its components. It was built from a synthesis dictionary alone;",
+        "reconstruct_space() still works."
+      ),
+      "fmridataset_error_space_mismatch"
+    )
+  }
   parent_values <- vectorize_space(x$parent, spatial_object, ...)
   encoder <- .collect_linear_operator(x$encoder)
   as.numeric(encoder %*% parent_values)
@@ -1373,6 +1620,29 @@ adjacency.basis_space <- function(x, ...) NULL
 #' @param provenance Additional serializable provenance.
 #' @param tolerance Left-inverse validation tolerance.
 #' @return A `basis_space`.
+#' @examples
+#' \donttest{
+#' # Loading fmrilatent itself takes several seconds, so this full
+#' # integration example is wrapped in \donttest{}.
+#' if (requireNamespace("fmrilatent", quietly = TRUE)) {
+#'   parent <- volume_space(c(2, 2, 1), support = 1:4, template = "toy-native")
+#'   decoder <- Matrix::Matrix(
+#'     matrix(c(1, 0, 0, 1, 1, 1, 2, -1), nrow = 4, byrow = TRUE),
+#'     sparse = TRUE
+#'   )
+#'   scores <- Matrix::Matrix(matrix(c(1, 0, 0, 1, 2, -1), nrow = 3, byrow = TRUE))
+#'   mask <- neuroim2::LogicalNeuroVol(
+#'     array(TRUE, dim = c(2, 2, 1)), neuroim2::NeuroSpace(c(2, 2, 1))
+#'   )
+#'   latent <- fmrilatent::LatentNeuroVec(
+#'     basis = scores, loadings = decoder,
+#'     space = neuroim2::NeuroSpace(c(2, 2, 1, 3)), mask = mask,
+#'     offset = rep(10, 4), meta = list(family = "toy_pca")
+#'   )
+#'   x <- basis_space_from_fmrilatent(latent, parent = parent)
+#'   basis_projection_info(x)
+#' }
+#' }
 #' @export
 basis_space_from_fmrilatent <- function(x, parent, component_ids = NULL,
                                         data = NULL, provenance = list(),
@@ -1476,9 +1746,20 @@ basis_space_from_fmrilatent <- function(x, parent, component_ids = NULL,
   do.call(
     rbind,
     lapply(seq_along(parts), function(part_index) {
+      # data.frame() recycles the scalar `part` against a zero-length
+      # part_index and reports "arguments imply differing number of rows",
+      # so an emptied part has to build its own zero-row frame. Same
+      # zero-length recycling the volume_space feature_ids() guard avoids.
+      n <- n_features(parts[[part_index]])
+      if (!n) {
+        return(data.frame(
+          part = character(), part_index = integer(),
+          stringsAsFactors = FALSE
+        ))
+      }
       data.frame(
         part = names(parts)[[part_index]],
-        part_index = seq_len(n_features(parts[[part_index]])),
+        part_index = seq_len(n),
         stringsAsFactors = FALSE
       )
     })
@@ -1525,7 +1806,14 @@ basis_space_from_fmrilatent <- function(x, parent, component_ids = NULL,
     )
   }
   expected_keys <- unlist(lapply(names(parts), function(part_name) {
-    paste(part_name, seq_len(n_features(parts[[part_name]])), sep = "::")
+    # paste() recycles the scalar name against a zero-length index and yields
+    # "part::" rather than character(), which made an emptied composite fail
+    # its own "every child feature exactly once" check.
+    n <- n_features(parts[[part_name]])
+    if (!n) {
+      return(character())
+    }
+    paste(part_name, seq_len(n), sep = "::")
   }), use.names = FALSE)
   if (!setequal(keys, expected_keys)) {
     .frame_abort(
@@ -1550,6 +1838,13 @@ basis_space_from_fmrilatent <- function(x, parent, component_ids = NULL,
 #' @param route Optional internal routing table with `part` and `part_index`
 #'   columns. By default, all child features are concatenated in part order.
 #' @return A `composite_space`.
+#' @examples
+#' parts <- list(
+#'   left = index_space(2, ids = c("l1", "l2")),
+#'   right = index_space(2, ids = c("r1", "r2"))
+#' )
+#' x <- composite_space(parts, composite_type = "bilateral")
+#' feature_ids(x)
 #' @export
 composite_space <- function(parts, composite_type = "composite",
                             metadata = list(), route = NULL) {
@@ -1589,6 +1884,14 @@ composite_space <- function(parts, composite_type = "composite",
 #' @return `composite_parts()` returns the ordered named child spaces;
 #'   `composite_part_names()` returns their names; and `composite_part()`
 #'   returns one child space.
+#' @examples
+#' parts <- list(
+#'   left = index_space(2, ids = c("l1", "l2")),
+#'   right = index_space(2, ids = c("r1", "r2"))
+#' )
+#' x <- composite_space(parts)
+#' composite_part_names(x)
+#' composite_part(x, "left")
 #' @name composite-parts
 NULL
 

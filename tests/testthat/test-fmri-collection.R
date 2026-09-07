@@ -63,11 +63,13 @@
     counting_source(memory_source(values / 10 + .1))
   )
   names(sources) <- assay_names
+  feature_info <- feature_data(feature_space)
+  feature_info$parcel <- "native"
   frame <- fmri_frame(
     assays = sources,
     observations = axis_frame(observations_data, blocks = list(motion = motion)),
     features = feature_axis(
-      dplyr::mutate(feature_data(feature_space), parcel = "native"),
+      feature_info,
       space = feature_space
     ),
     entities = list(subject = subject_entity),
@@ -197,7 +199,7 @@ test_that("collection rejects incompatible assay and axis semantics", {
   )
   expect_error(
     fmri_collection(list(a = reference, b = bad_block)),
-    "observation block",
+    "schema.observation.blocks.motion.component_ids",
     class = "fmridataset_error_collection"
   )
 })
@@ -221,12 +223,12 @@ test_that("collection validates entity, relation, and feature-domain schemas", {
 
   expect_error(
     fmri_collection(list(a = reference, b = bad_entity)),
-    "entity",
+    "schema.entities.subject.columns",
     class = "fmridataset_error_collection"
   )
   expect_error(
     fmri_collection(list(a = reference, b = bad_space_type)),
-    "feature space",
+    "schema.feature.columns",
     class = "fmridataset_error_collection"
   )
   expect_error(
@@ -255,6 +257,6 @@ test_that("collection constructor requires stable unique frame names", {
   expect_error(
     fmri_collection(list(frame = frame), metadata = list(cache = new.env())),
     "runtime",
-    class = "fmridataset_error_collection"
+    class = "fmridataset_error_metadata"
   )
 })

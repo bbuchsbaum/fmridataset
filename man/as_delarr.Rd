@@ -2,32 +2,35 @@
 % Please edit documentation in R/as_delarr.R
 \name{as_delarr}
 \alias{as_delarr}
-\alias{as_delarr.matrix_backend}
-\alias{as_delarr.nifti_backend}
-\alias{as_delarr.study_backend}
 \alias{as_delarr.default}
-\title{Convert backend to a delarr lazy matrix}
+\title{Convert an array source to a lazy delarr array}
 \usage{
-as_delarr(backend, ...)
+as_delarr(x, memory_budget = Inf, ...)
 
-\method{as_delarr}{matrix_backend}(backend, ...)
-
-\method{as_delarr}{nifti_backend}(backend, ...)
-
-\method{as_delarr}{study_backend}(backend, ...)
-
-\method{as_delarr}{default}(backend, ...)
+\method{as_delarr}{default}(x, memory_budget = Inf, ...)
 }
 \arguments{
-\item{backend}{A storage backend object}
+\item{x}{An array source, or another object with an \code{as_delarr()} method.}
 
-\item{...}{Passed to methods}
+\item{memory_budget}{Maximum realized bytes permitted for a single pull.
+\code{Inf} disables the check.}
+
+\item{...}{Additional arguments passed to methods.}
 }
 \value{
-A \code{delarr} lazy matrix
+A \code{delarr} lazy array whose pulls route through \code{\link[=source_read]{source_read()}}.
 }
 \description{
-Provides a lightweight S3 interface that defers materialization of backend
-data. The returned object is compatible with \code{delarr::collect()} as well as
-base \code{as.matrix()} for realization.
+\code{as_delarr()} wraps a serializable \link[=array-source]{array source} as a
+\code{delarr} provider so that bounded, chunk-aware execution can be delegated
+to \code{delarr} without materializing the assay. The realization budget is
+enforced before any provider is created.
+}
+\examples{
+src <- memory_source(matrix(seq_len(6), nrow = 2))
+lazy <- as_delarr(src)
+dim(lazy)
+}
+\seealso{
+\link{array-source} for the source protocol.
 }

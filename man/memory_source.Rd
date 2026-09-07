@@ -4,7 +4,13 @@
 \alias{memory_source}
 \title{Construct an in-memory array source}
 \usage{
-memory_source(data, dtype = NULL, chunks = NULL)
+memory_source(
+  data,
+  dtype = NULL,
+  chunks = NULL,
+  revision = NULL,
+  identity = c("object", "content")
+)
 }
 \arguments{
 \item{data}{A two-dimensional matrix or array.}
@@ -13,10 +19,42 @@ memory_source(data, dtype = NULL, chunks = NULL)
 \code{"float64"}.}
 
 \item{chunks}{Optional logical chunk shape.}
+
+\item{revision}{Optional single string naming the revision of \code{data}, such
+as a version label or an upstream checksum. It is never interpreted, but
+it replaces the per-object identity token, so two sources built
+independently under the same revision share a fingerprint: the caller is
+asserting they are the same source in the same revision.}
+
+\item{identity}{\code{"object"} assigns a fresh identity token (unless
+\code{revision} is supplied); \code{"content"} derives it from \code{\link[=content_hash]{content_hash()}} of
+\code{data}.}
 }
 \value{
 A serializable \code{memory_source}.
 }
 \description{
-Construct an in-memory array source
+A memory source holds its values in the descriptor, so its revision
+fingerprint cannot be derived from a file state. It is instead derived from
+the shape, dtype, chunk grid, and a per-object identity token assigned once
+at construction, plus the optional caller-supplied \code{revision}. Construction
+therefore never reads or hashes the payload, whatever its size.
+}
+\details{
+Two independently constructed memory sources with equal values have
+different fingerprints by design, and fingerprint equality is never value
+equality. A serialization round trip preserves the token, so a descriptor
+and its copies agree. Values compared across objects require
+\code{\link[=content_hash]{content_hash()}}. Set \code{identity = "content"} to opt into a content-derived
+token: the payload is hashed once at construction and equal-valued sources
+then share a fingerprint at O(n) cost.
+}
+\examples{
+src <- memory_source(matrix(seq_len(6), nrow = 2))
+source_shape(src)
+source_dtype(src)
+}
+\seealso{
+\code{\link[=source_fingerprint]{source_fingerprint()}} and \code{\link[=content_hash]{content_hash()}} for the fingerprint
+policy.
 }
