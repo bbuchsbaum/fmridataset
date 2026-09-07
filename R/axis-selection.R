@@ -10,7 +10,8 @@
 #   all        every element of an axis of length n, in order; stores no vector
 #   range      one contiguous ascending run start..end; stores two integers
 #   positions  an explicit unique, order-preserving integer vector, which is
-#              also the form of an empty selection
+#              also the form of an empty selection on a non-empty axis; every
+#              selection over an empty axis is `all`
 #
 # Construction canonicalizes: positions that spell out the whole axis become
 # `all`, and positions that form one ascending run become `range`, so equal
@@ -41,7 +42,7 @@
   start <- as.integer(start)
   end <- as.integer(end)
   if (end < start) {
-    return(.new_axis_selection("positions", n, positions = integer()))
+    return(.selection_positions(n, integer()))
   }
   if (start == 1L && end == n) {
     return(.selection_all(n))
@@ -50,10 +51,16 @@
 }
 
 # Canonicalizing constructor for validated positions: unique, in bounds.
+# Positions that spell out the whole axis become `all`; on an empty axis the
+# empty vector is exactly that, so every selection over a zero-length axis has
+# the one form `all` and plans over `fz` and `fz[integer(), ]` agree.
 .selection_positions <- function(n, positions) {
   n <- as.integer(n)
   positions <- as.integer(positions)
   len <- length(positions)
+  if (n == 0L) {
+    return(.selection_all(n))
+  }
   if (len && !is.unsorted(positions, strictly = TRUE) &&
     positions[[len]] - positions[[1L]] == len - 1L) {
     return(.selection_range(n, positions[[1L]], positions[[len]]))
@@ -278,11 +285,29 @@
       axis = axis, reason = "missing"
     )
   }
-  if (is.double(index) && any(index != trunc(index))) {
-    abort(
-      sprintf("%s positions must be whole numbers.", axis),
-      axis = axis, reason = "non_integer"
-    )
+  if (is.double(index)) {
+    # Coercing Inf or a value past the integer range yields NA with a
+    # warning and then a bare "missing value where TRUE/FALSE needed"; reject
+    # both before coercion with the law's own structured reasons.
+    if (any(is.infinite(index))) {
+      abort(
+        sprintf("%s positions must be finite.", axis),
+        axis = axis, reason = "non_finite", actual = index[is.infinite(index)]
+      )
+    }
+    if (any(abs(index) > .Machine$integer.max)) {
+      abort(
+        sprintf("%s selector is out of bounds.", axis),
+        axis = axis, reason = "out_of_bounds", axis_length = n,
+        actual = index[abs(index) > .Machine$integer.max]
+      )
+    }
+    if (any(index != trunc(index))) {
+      abort(
+        sprintf("%s positions must be whole numbers.", axis),
+        axis = axis, reason = "non_integer"
+      )
+    }
   }
   index <- as.integer(index)
   negative <- index < 0L

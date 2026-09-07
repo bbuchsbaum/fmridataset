@@ -1,4 +1,15 @@
-.axis_digest <- function(x) .canonical_digest(axis_ids(x))
+# The digest of an axis's ordered IDs. Axis frames cache it at construction
+# (see axis_frame()); the cached value is trusted only when it still describes
+# an axis of the current length, and anything else is hashed on demand.
+.axis_digest <- function(x) {
+  ids <- axis_ids(x)
+  cached <- x$id_digest
+  if (is.list(cached) && identical(cached$n, length(ids)) &&
+    is.character(cached$sha256) && length(cached$sha256) == 1L) {
+    return(cached$sha256)
+  }
+  .canonical_digest(ids)
+}
 
 .frame_assay_source <- function(x, name) {
   assay(x, name)$source
@@ -33,6 +44,14 @@ aligned_assay_set <- function(assays, observations, features) {
     source <- if (inherits(value, "aligned_assay")) value$source else as_array_source(value)
     validate_array_source(source)
     annotation <- if (is.list(value) && !inherits(value, "array_source")) value else list()
+    .assert_no_runtime_state(
+      annotation$metadata %||% list(), .alignment_abort,
+      sprintf(
+        "Assay '%s' metadata cannot contain runtime functions, environments, or external pointers.",
+        nm
+      ),
+      field = "metadata", assay = nm
+    )
     if (!identical(as.integer(source_shape(source)), as.integer(expected))) {
       .frame_abort(
         sprintf("Assay '%s' shape does not match the frame axes.", nm),
@@ -473,7 +492,9 @@ spatial_map <- function(x, observation, assay = active_assay(x)) {
 #' @param ids One of `"sample"`, `"none"`, or `"complete"`.
 #' @param sample_size Number of IDs sampled from each end of each axis.
 #' @return A bounded serializable execution summary. No assay or aligned-block
-#'   values are read.
+#'   values are read. `ids_durable` reports whether the observation axis and
+#'   the feature space carry durable IDs; when it is `FALSE` the semantic
+#'   digest is `NULL` because ephemeral IDs cannot enter an FDS manifest.
 #' @examples
 #' sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
 #' frame <- fmri_frame(
@@ -511,14 +532,20 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
   })
   observation_values <- observation_ids(x)
   feature_values <- feature_ids(x)
-  manifest <- fds_frame_manifest(x)
   spatial <- space(x)
+  # explain() inspects; it does not certify. A frame built without a durable
+  # space or observation policy has ephemeral IDs, which the FDS manifest
+  # rejects, so the semantic digest is reported as absent rather than
+  # aborting the whole summary. identity_descriptor() still refuses.
+  durable <- ids_are_durable(observation_axis(x)) && ids_are_durable(spatial)
+  semantic <- if (durable) fds_manifest_digest(fds_frame_manifest(x)) else NULL
   selection <- .frame_selection(x)
   list(
     class = class(x)[1L],
     schema_version = x$schema_version %||% x$base$schema_version,
     shape = stats::setNames(as.integer(dim(x)), c("observation", "feature")),
     active_assay = active_assay(x),
+    ids_durable = durable,
     selection = list(
       observation = .selection_summary(selection$observations),
       feature = .selection_summary(selection$features)
@@ -533,9 +560,9 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
     ),
     digests = list(
       schema = frame_schema_digest(x),
-      semantic = fds_manifest_digest(manifest),
-      observation = .canonical_digest(observation_values),
-      feature = .canonical_digest(feature_values)
+      semantic = semantic,
+      observation = .axis_digest(observation_axis(x)),
+      feature = .axis_digest(feature_axis(x))
     ),
     axes = list(
       observation = list(
@@ -921,6 +948,81 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
   if (length(flattened) == 1L) flattened[[1L]] else row_bound_source(flattened)
 }
 
+# The bound frame keeps the first frame's entity registry. Two registries
+# agree when they describe the same entities: the same names, keys, types,
+# scalar data, and blocks with the same components and values. Comparing
+# entity_registry_digest() instead was too strict: an entity block reopened
+# from FDS is an array source whose fingerprint is per file, so two frames
+# reopened from equal data, or a reopened frame and its in-memory original,
+# were refused although every value agreed. Block data is compared by
+# fingerprint first and by realized values only when fingerprints differ,
+# the same rule .assert_feature_blocks_agree() applies to feature blocks.
+.assert_entity_registries_agree <- function(reference, candidate) {
+  refuse <- function(detail, ...) {
+    .entity_abort(
+      paste("Frames have incompatible entity registries:", detail),
+      operation = "bind_observations", ...
+    )
+  }
+  ref_names <- sort(names(reference))
+  cand_names <- sort(names(candidate))
+  if (!identical(ref_names, cand_names)) {
+    refuse(
+      sprintf(
+        "entity names differ (%s vs %s).",
+        paste(ref_names, collapse = ", "), paste(cand_names, collapse = ", ")
+      ),
+      expected = ref_names, actual = cand_names
+    )
+  }
+  agrees <- function(x, y) isTRUE(all.equal(x, y))
+  for (nm in ref_names) {
+    ref <- reference[[nm]]
+    cand <- candidate[[nm]]
+    if (!identical(entity_key(ref), entity_key(cand)) ||
+      !identical(ref$entity_type, cand$entity_type)) {
+      refuse(sprintf("entity '%s' declares a different key or type.", nm), entity = nm)
+    }
+    if (!agrees(entity_data(ref), entity_data(cand))) {
+      refuse(sprintf("entity '%s' has different entity data.", nm), entity = nm)
+    }
+    if (!agrees(ref$metadata, cand$metadata)) {
+      refuse(sprintf("entity '%s' has different metadata.", nm), entity = nm)
+    }
+    ref_blocks <- entity_blocks(ref)
+    cand_blocks <- entity_blocks(cand)
+    if (!identical(sort(names(ref_blocks)), sort(names(cand_blocks)))) {
+      refuse(sprintf("entity '%s' has different block names.", nm), entity = nm)
+    }
+    for (block in names(ref_blocks)) {
+      ref_block <- ref_blocks[[block]]
+      cand_block <- cand_blocks[[block]]
+      if (!agrees(block_components(ref_block), block_components(cand_block)) ||
+        !identical(ref_block$role, cand_block$role) ||
+        !identical(ref_block$units, cand_block$units) ||
+        !agrees(ref_block$metadata, cand_block$metadata)) {
+        refuse(
+          sprintf("entity '%s' block '%s' has different components or annotations.", nm, block),
+          entity = nm, block = block
+        )
+      }
+      ref_data <- axis_block_data(ref_block)
+      cand_data <- axis_block_data(cand_block)
+      if (inherits(ref_data, "array_source") && inherits(cand_data, "array_source") &&
+        identical(source_fingerprint(ref_data), source_fingerprint(cand_data))) {
+        next
+      }
+      if (!agrees(.realized_block_matrix(ref_data), .realized_block_matrix(cand_data))) {
+        refuse(
+          sprintf("entity '%s' block '%s' has different values.", nm, block),
+          entity = nm, block = block
+        )
+      }
+    }
+  }
+  invisible(TRUE)
+}
+
 #' Bind frames along observations
 #'
 #' @param ... Frames with identical feature IDs, spaces, and assay semantics.
@@ -955,12 +1057,7 @@ bind_observations <- function(...,
   first <- xs[[1L]]
   for (x in xs[-1L]) {
     assert_compatible_space(space(first), space(x))
-    if (!identical(entity_registry_digest(first), entity_registry_digest(x))) {
-      .entity_abort(
-        "Frames have incompatible entity registries.",
-        operation = "bind_observations"
-      )
-    }
+    .assert_entity_registries_agree(entities(first), entities(x))
     validate_against_schema(x, first, mode = "bind")
     # The schema check compares contracts. The bound frame also keeps the first
     # frame's feature annotations, which is only sound when the others agree on

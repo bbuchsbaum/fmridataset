@@ -26,10 +26,14 @@ with the axis length `n` and one of three forms:
 |---|---|---|
 | `all` | nothing | every element of the axis, in order |
 | `range` | `start`, `end` | one contiguous ascending run |
-| `positions` | an integer vector | an explicit unique, order-preserving subset; also the empty selection |
+| `positions` | an integer vector | an explicit unique, order-preserving subset; also the empty selection on a non-empty axis |
 
 Construction canonicalizes: positions that spell out the whole axis become
-`all`, and positions that form one ascending run become `range`. Equal
+`all`, and positions that form one ascending run become `range`. On an
+axis of length zero the empty vector spells out the whole axis, so every
+selection over an empty axis is `all`; `NULL`, `integer()`, and
+`logical()` on such an axis produce one descriptor, and a plan built over an
+empty frame matches the same frame subset with `integer()`. Equal
 selections therefore have equal descriptors however a caller expressed them,
 and a descriptor's size never scales with the axis length unless the caller
 actually enumerated an arbitrary subset.
@@ -65,9 +69,11 @@ The law:
 - character selectors are stable IDs; each must exist, must be unique, and
   keeps its request order;
 - logical selectors must match the axis length and contain no `NA`;
-- numeric selectors must be whole numbers, may reorder, may be negative but
-  must not mix signs, drop zero, and must be in bounds (negative positions
-  past the axis are an error, not silently ignored);
+- numeric selectors must be finite whole numbers within R's integer range,
+  may reorder, may be negative but must not mix signs, drop zero, and must be
+  in bounds (negative positions past the axis are an error, not silently
+  ignored; `Inf`, `-Inf`, and magnitudes beyond `.Machine$integer.max` are
+  rejected before any coercion);
 - an element appears at most once: repeated positions or IDs are an error
   everywhere, on raw sources exactly as on frames;
 - an empty selection is a legal zero-length axis everywhere.
@@ -75,8 +81,8 @@ The law:
 Errors carry the owner's class (`fmridataset_error_alignment` for frames,
 views, sources, and axes; `fmridataset_error_collection` for collections) and
 a structured `reason`: `unsupported_type`, `positional_axis`, `missing`,
-`duplicate`, `unknown_id`, `length`, `non_integer`, `mixed_sign`,
-`out_of_bounds`, or `axis_length`.
+`duplicate`, `unknown_id`, `length`, `non_finite`, `non_integer`,
+`mixed_sign`, `out_of_bounds`, or `axis_length`.
 
 The law is enforced for sources at the `source_read()` and
 `source_read_native()` generics, before dispatch, so extension sources that

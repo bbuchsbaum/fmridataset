@@ -403,11 +403,32 @@ source_descriptor <- function(x) {
   )
 }
 
+# source_descriptor() dispatches from this namespace, which cannot see methods
+# a caller defined in a local scope. Validation dispatches the descriptor
+# generics from the caller's scope instead, so a class whose methods are
+# visible where validate_array_source() was called is certified there; other
+# entry points still need those methods visible globally or registered.
+.source_descriptor_from <- function(x, envir) {
+  frame <- new.env(parent = envir)
+  frame$.source <- x
+  dispatch <- function(generic) {
+    eval(as.call(list(generic, quote(.source))), envir = frame)
+  }
+  list(
+    shape = dispatch(source_shape),
+    dtype = dispatch(source_dtype),
+    chunks = dispatch(source_chunks),
+    capabilities = dispatch(source_capabilities),
+    fingerprint = dispatch(source_fingerprint)
+  )
+}
+
 #' @rdname source_descriptor
 #' @export
 validate_array_source <- function(x) {
-  .assert_source_methods(x)
-  descriptor <- source_descriptor(x)
+  caller <- parent.frame()
+  .assert_source_methods(x, envir = caller)
+  descriptor <- .source_descriptor_from(x, caller)
   shape <- descriptor$shape
   if (!is.numeric(shape) || length(shape) != 2L || anyNA(shape) ||
     any(shape < 0) || any(shape != as.integer(shape))) {
@@ -892,8 +913,18 @@ fault_source <- function(source, stage = c("read", "open", "native_read", "close
     list(source = as_array_source(source), stage = stage, message = message %||% paste("Injected", stage, "failure")),
     class = c("fault_source", "array_source")
   )
+  out$fingerprint <- .fault_source_fingerprint(out)
   validate_array_source(out)
   out
+}
+
+.fault_source_fingerprint <- function(x) {
+  .canonical_digest(list(
+    type = "fault_source",
+    source = source_fingerprint(x$source),
+    stage = x$stage,
+    message = x$message
+  ))
 }
 
 .fault_maybe <- function(x, stage) {
@@ -917,12 +948,7 @@ source_chunks.fault_source <- function(x, ...) source_chunks(x$source)
 source_capabilities.fault_source <- function(x, ...) source_capabilities(x$source)
 #' @export
 source_fingerprint.fault_source <- function(x, ...) {
-  .canonical_digest(list(
-    type = "fault_source",
-    source = source_fingerprint(x$source),
-    stage = x$stage,
-    message = x$message
-  ))
+  x$fingerprint %||% .fault_source_fingerprint(x)
 }
 #' @export
 source_open.fault_source <- function(x, ...) {
@@ -1020,8 +1046,24 @@ row_sharded_source <- function(sources, shard_ids = NULL, shard_data = NULL) {
     ),
     class = c("row_sharded_source", "row_bound_source", "array_source")
   )
+  # Combine the shards' cached fingerprints once (ADR-009); a composition of
+  # many shards is fingerprinted on every plan and every explain().
+  out$fingerprint <- .row_sharded_fingerprint(out)
   validate_array_source(out)
   out
+}
+
+.row_sharded_fingerprint <- function(x) {
+  .canonical_digest(list(
+    type = "row_sharded_source",
+    schema_version = x$schema_version,
+    shape = x$shape,
+    dtype = x$dtype,
+    boundaries = x$boundaries,
+    shard_ids = x$shard_ids,
+    shard_data = x$shard_data,
+    sources = lapply(x$sources, source_fingerprint)
+  ))
 }
 
 .shard_manifest_reserved <- c(
@@ -1166,16 +1208,7 @@ source_capabilities.row_sharded_source <- function(x, ...) {
 }
 #' @export
 source_fingerprint.row_sharded_source <- function(x, ...) {
-  .canonical_digest(list(
-    type = "row_sharded_source",
-    schema_version = x$schema_version,
-    shape = x$shape,
-    dtype = x$dtype,
-    boundaries = x$boundaries,
-    shard_ids = x$shard_ids,
-    shard_data = x$shard_data,
-    sources = lapply(x$sources, source_fingerprint)
-  ))
+  x$fingerprint %||% .row_sharded_fingerprint(x)
 }
 #' @export
 source_open.row_sharded_source <- function(x, ...) {
@@ -1242,7 +1275,7 @@ source_capabilities.row_bound_source <- function(x, ...) {
 }
 #' @export
 source_fingerprint.row_bound_source <- function(x, ...) {
-  .canonical_digest(list(
+  x$fingerprint %||% .canonical_digest(list(
     type = "row_bound_source",
     shape = x$shape,
     dtype = x$dtype,

@@ -55,6 +55,10 @@ entity_frame <- function(data, key, blocks = list(), entity_type = NULL,
     entity_type, "entity_type", .entity_abort,
     message = "entity_type must be NULL or one non-empty string."
   )
+  .assert_no_runtime_state(
+    list(blocks = blocks, metadata = metadata), .entity_abort,
+    "Entity frames cannot contain runtime functions, environments, or external pointers."
+  )
   out <- axis_frame(
     data = data,
     blocks = blocks,

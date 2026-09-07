@@ -352,9 +352,11 @@ you can rely on.
 - **Ambiguity fails early.** Duplicated selectors, conflicting dimnames,
   disagreeing metadata, and colliding IDs raise structured errors rather than
   being resolved by a rule you did not choose.
-- **Execution is lazy and bounded.** Views and binds read nothing.
-  Realization goes through an explicit budget, and `explain()` tells you the
-  cost first.
+- **Execution is lazy and bounded.** Views read nothing, and a bind never
+  reads assay values; it reads a feature or entity block backed by an array
+  source only when the operands' block fingerprints differ and the values
+  must be compared. Realization goes through an explicit budget, and
+  `explain()` tells you the cost first.
 - **Descriptors, not handles.** A frame contains serializable descriptors of
   its sources, never open files, environments, or closures, so it can be
   serialized and rebuilt elsewhere.

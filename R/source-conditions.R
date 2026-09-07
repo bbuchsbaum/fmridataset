@@ -63,10 +63,25 @@ source_error <- function(message, type = c("stale", "io", "contract"), ...) {
   "source_fingerprint", "source_open", "source_read", "source_close"
 )
 
+# Resolve one protocol method the way S3 dispatch from `envir` would: a
+# function visible from the caller's scope first, then the registry of the
+# generic's namespace. Methods defined inside a local() or test_that() block
+# are visible to the caller but not to this namespace, so resolving from here
+# reported a complete class as implementing nothing.
+.resolve_source_method <- function(generic, cls, envir) {
+  method <- utils::getS3method(generic, cls, optional = TRUE, envir = envir)
+  if (!is.null(method)) return(method)
+  name <- paste(generic, cls, sep = ".")
+  if (exists(name, envir = envir, mode = "function")) {
+    return(get(name, envir = envir, mode = "function"))
+  }
+  utils::getS3method(generic, cls, optional = TRUE)
+}
+
 # A descriptor that claims to be an array source but implements none of the
 # protocol used to fail deep inside source_descriptor() with a bare
 # "no applicable method" error. Name the missing methods up front instead.
-.assert_source_methods <- function(x) {
+.assert_source_methods <- function(x, envir = parent.frame()) {
   if (!inherits(x, "array_source")) {
     .frame_abort(
       "Object does not inherit from array_source.",
@@ -77,7 +92,7 @@ source_error <- function(message, type = c("stale", "io", "contract"), ...) {
   classes <- class(x)
   missing <- vapply(.source_generics, function(generic) {
     !any(vapply(classes, function(cls) {
-      !is.null(utils::getS3method(generic, cls, optional = TRUE))
+      !is.null(.resolve_source_method(generic, cls, envir))
     }, logical(1)))
   }, logical(1))
   if (any(missing)) {
