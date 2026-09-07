@@ -15,6 +15,16 @@
 #' @param path For spatial operations, one of `"auto"`, `"native"`, or
 #'   `"reconstruct"`.
 #' @return One of `"matrix"`, `"native"`, or `"reconstruct"`.
+#' @examples
+#' sp <- volume_space(dim = c(2L, 2L, 1L), affine = diag(4), support = 1:4)
+#' frame <- fmri_frame(
+#'   assays = list(signal = memory_source(matrix(seq_len(12), 3, 4))),
+#'   observations = data.frame(.obs_id = sprintf("obs-%d", 1:3)),
+#'   space = sp,
+#'   active_assay = "signal"
+#' )
+#' execution_path(frame, operation = "matrix")
+#' execution_path(frame, operation = "spatial")
 #' @export
 execution_path <- function(
   x,
@@ -175,6 +185,16 @@ execution_path <- function(
 #' @param memory_budget Maximum estimated peak bytes for all returned native
 #'   maps plus the current packed read, conversion, and reconstruction buffers.
 #' @return A named list with one native spatial object per observation.
+#' @examples
+#' sp <- volume_space(dim = c(2L, 2L, 1L), affine = diag(4), support = 1:4)
+#' frame <- fmri_frame(
+#'   assays = list(signal = memory_source(matrix(seq_len(12), 3, 4))),
+#'   observations = data.frame(.obs_id = sprintf("obs-%d", 1:3)),
+#'   space = sp,
+#'   active_assay = "signal"
+#' )
+#' maps <- collect_spatial_maps(frame, observations = c(1L, 2L))
+#' names(maps)
 #' @export
 collect_spatial_maps <- function(
   x,
@@ -215,6 +235,15 @@ collect_spatial_maps <- function(
 #' @param memory_budget Maximum estimated peak bytes for one input spatial map
 #'   plus its packed read, conversion, and reconstruction buffers.
 #' @return A list of callback results in requested observation order.
+#' @examples
+#' sp <- volume_space(dim = c(2L, 2L, 1L), affine = diag(4), support = 1:4)
+#' frame <- fmri_frame(
+#'   assays = list(signal = memory_source(matrix(seq_len(12), 3, 4))),
+#'   observations = data.frame(.obs_id = sprintf("obs-%d", 1:3)),
+#'   space = sp,
+#'   active_assay = "signal"
+#' )
+#' execute_spatial(frame, c(1L, 2L), function(map, observation_id) observation_id)
 #' @export
 execute_spatial <- function(
   x,

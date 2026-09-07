@@ -59,6 +59,29 @@ ncol.fmri_view(x)
 \item{resolve}{Whether to append reachable, namespaced entity annotations or
 lazily lifted entity blocks.}
 }
+\value{
+\code{assays()} returns a named \code{aligned_assay_set} list and \code{assay()}
+one \code{aligned_assay} from it. \code{active_assay()} returns a single assay
+name. \code{observation_axis()} returns an \code{axis_frame}; \code{observations()} and
+\code{features()} return a data frame of the corresponding metadata.
+\code{observation_ids()} and \code{feature_ids()} return character vectors of
+stable IDs. \code{obs_blocks()} and \code{feature_blocks()} return named lists of
+\code{axis_block}s. \code{dim()} returns a length-2 integer vector, and \code{nrow()}
+and \code{ncol()} return single integers.
+}
 \description{
-Frame accessors
+Generic accessors for the components of an \code{fmri_frame} or \code{fmri_view}:
+its assays, active assay, observation and feature axes and IDs, block
+registries, and dimensions.
+}
+\examples{
+sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+frame <- fmri_frame(
+  assays = list(bold = matrix(rnorm(4 * n_features(sp)), nrow = 4)),
+  observations = data.frame(.obs_id = sprintf("vol-\%d", 1:4)),
+  space = sp
+)
+names(assays(frame))
+active_assay(frame)
+dim(frame)
 }

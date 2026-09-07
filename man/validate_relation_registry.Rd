@@ -27,3 +27,9 @@ foreign-key and edge identities.
 \description{
 Validate a relation registry
 }
+\examples{
+registry <- relation_registry(
+  observation_stimulus = key_relation("stimulus_id", target = "stimulus")
+)
+validate_relation_registry(registry)
+}

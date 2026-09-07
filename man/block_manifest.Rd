@@ -15,3 +15,12 @@ A data frame containing logical block bounds and byte estimates.
 \description{
 Inspect a frame block plan
 }
+\examples{
+frame <- fmri_frame(
+  assays = list(signal = memory_source(matrix(seq_len(20), 5, 4))),
+  observations = data.frame(.obs_id = sprintf("obs-\%d", 1:5)),
+  active_assay = "signal"
+)
+plan <- plan_blocks(frame, memory_budget = 10 * 1024^2)
+block_manifest(plan)
+}

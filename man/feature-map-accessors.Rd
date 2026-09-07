@@ -29,3 +29,12 @@ the source space, target space, linear operator, or deterministic digest.
 \description{
 Validate and inspect feature maps
 }
+\examples{
+src <- index_space(4, ids = paste0("v", 1:4), namespace = "map-source")
+tgt <- index_space(2, ids = paste0("p", 1:2), namespace = "map-target")
+op <- matrix(c(0.5, 0.5, 0, 0, 0, 0, 0.5, 0.5), nrow = 2, byrow = TRUE)
+m <- feature_map(src, tgt, op, map_type = "toy_aggregation")
+feature_map_source_space(m)
+feature_map_target_space(m)
+feature_map_digest(m)
+}

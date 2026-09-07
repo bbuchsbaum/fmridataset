@@ -39,6 +39,15 @@
 #' @param metadata Unaligned collection-level metadata.
 #' @param provenance `NULL` or a validated `provenance_graph`.
 #' @return An `fmri_collection`.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' collection <- fmri_collection(list(sub01 = frame, sub02 = frame))
+#' collection_ids(collection)
 #' @export
 fmri_collection <- function(frames, metadata = list(), provenance = NULL) {
   if (!is.list(frames) || !length(frames)) {
@@ -85,6 +94,15 @@ fmri_collection <- function(frames, metadata = list(), provenance = NULL) {
 #'
 #' @param x An `fmri_collection`.
 #' @return `x`, invisibly, or a structured collection error.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' collection <- fmri_collection(list(sub01 = frame, sub02 = frame))
+#' validate_fmri_collection(collection)
 #' @export
 validate_fmri_collection <- function(x) {
   required <- c("frames", "metadata", "provenance", "schema_version")
@@ -102,6 +120,16 @@ validate_fmri_collection <- function(x) {
 #' @param x An `fmri_collection`.
 #' @param id One stable frame ID.
 #' @return The named frame list, one frame, or the stable frame IDs.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' collection <- fmri_collection(list(sub01 = frame, sub02 = frame))
+#' collection_ids(collection)
+#' collection_frame(collection, "sub01")
 #' @name collection-accessors
 NULL
 
@@ -186,6 +214,16 @@ names.fmri_collection <- function(x) names(x$frames)
 #' @return `collection_space_data()` returns one metadata row per frame;
 #'   `collection_common_space()` returns whether every feature space is exactly
 #'   compatible with the first.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' collection <- fmri_collection(list(sub01 = frame, sub02 = frame))
+#' collection_space_data(collection)
+#' collection_common_space(collection)
 #' @name collection-spaces
 NULL
 
@@ -223,6 +261,15 @@ collection_common_space <- function(x) {
 #'
 #' @param x An `fmri_collection`.
 #' @return A SHA-256 digest computed without reading numerical arrays.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' collection <- fmri_collection(list(sub01 = frame, sub02 = frame))
+#' collection_digest(collection)
 #' @export
 collection_digest <- function(x) {
   validate_fmri_collection(x)

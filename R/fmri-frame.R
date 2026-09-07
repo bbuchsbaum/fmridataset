@@ -10,6 +10,12 @@
 #' @param observations Observation axis.
 #' @param features Feature axis.
 #' @return An `aligned_assay_set`.
+#' @examples
+#' sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+#' obs <- axis_frame(data.frame(.obs_id = sprintf("vol-%d", 1:4)), axis = "observation")
+#' feat <- feature_axis(feature_data(sp), space = sp)
+#' bold <- matrix(rnorm(4 * n_features(sp)), nrow = 4)
+#' aligned_assay_set(list(bold = bold), obs, feat)
 #' @export
 aligned_assay_set <- function(assays, observations, features) {
   if (!is.list(assays) || !length(assays) || is.null(names(assays)) || any(!nzchar(names(assays)))) {
@@ -71,6 +77,14 @@ aligned_assay_set <- function(assays, observations, features) {
 #'   axis, entity, block, assay, relation, typed table, or linked frame.
 #' @param provenance `NULL` or a validated `provenance_graph`.
 #' @return An `fmri_frame`.
+#' @examples
+#' sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(4 * n_features(sp)), nrow = 4)),
+#'   observations = data.frame(.obs_id = sprintf("vol-%d", 1:4)),
+#'   space = sp
+#' )
+#' frame
 #' @export
 fmri_frame <- function(assays, observations, features = NULL, space = NULL,
                        entities = list(), relations = list(), tables = list(),
@@ -162,10 +176,32 @@ fmri_frame <- function(assays, observations, features = NULL, space = NULL,
 
 #' Frame accessors
 #'
+#' Generic accessors for the components of an `fmri_frame` or `fmri_view`:
+#' its assays, active assay, observation and feature axes and IDs, block
+#' registries, and dimensions.
+#'
 #' @param x An `fmri_frame` or `fmri_view`.
 #' @param resolve Whether to append reachable, namespaced entity annotations or
 #'   lazily lifted entity blocks.
 #' @param ... Additional method arguments.
+#' @return `assays()` returns a named `aligned_assay_set` list and `assay()`
+#'   one `aligned_assay` from it. `active_assay()` returns a single assay
+#'   name. `observation_axis()` returns an `axis_frame`; `observations()` and
+#'   `features()` return a data frame of the corresponding metadata.
+#'   `observation_ids()` and `feature_ids()` return character vectors of
+#'   stable IDs. `obs_blocks()` and `feature_blocks()` return named lists of
+#'   `axis_block`s. `dim()` returns a length-2 integer vector, and `nrow()`
+#'   and `ncol()` return single integers.
+#' @examples
+#' sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(4 * n_features(sp)), nrow = 4)),
+#'   observations = data.frame(.obs_id = sprintf("vol-%d", 1:4)),
+#'   space = sp
+#' )
+#' names(assays(frame))
+#' active_assay(frame)
+#' dim(frame)
 #' @name frame-accessors
 NULL
 
@@ -261,6 +297,14 @@ feature_blocks.fmri_frame <- function(x, ...) axis_blocks(feature_axis(x))
 #' @param x An object with spatial identity.
 #' @param ... Additional arguments.
 #' @return A `FeatureSpace`.
+#' @examples
+#' sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(4 * n_features(sp)), nrow = 4)),
+#'   observations = data.frame(.obs_id = sprintf("vol-%d", 1:4)),
+#'   space = sp
+#' )
+#' space(frame)
 #' @export
 space <- function(x, ...) UseMethod("space")
 #' @export
@@ -311,6 +355,14 @@ print.fmri_frame <- function(x, ...) {
 #'   output and source conversion or decompression buffers.
 #' @param force Allow collection above the estimated peak budget.
 #' @return A dense matrix.
+#' @examples
+#' sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(4 * n_features(sp)), nrow = 4)),
+#'   observations = data.frame(.obs_id = sprintf("vol-%d", 1:4)),
+#'   space = sp
+#' )
+#' collect_assay(frame)
 #' @export
 collect_assay <- function(x, assay = active_assay(x),
                           memory_budget = getOption("fmridataset.collect_budget", 2 * 1024^3),
@@ -340,6 +392,14 @@ collect_assay <- function(x, assay = active_assay(x),
 #' @param assay Assay name.
 #' @param ... Additional arguments passed to `FUN`.
 #' @return A list of block results.
+#' @examples
+#' sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(4 * n_features(sp)), nrow = 4)),
+#'   observations = data.frame(.obs_id = sprintf("vol-%d", 1:4)),
+#'   space = sp
+#' )
+#' block_apply(frame, function(mat, ids) colMeans(mat), block_size = 4L)
 #' @export
 block_apply <- function(x, FUN, block_size = 4096L, assay = active_assay(x), ...) {
   block_size <- as.integer(block_size)
@@ -362,6 +422,14 @@ block_apply <- function(x, FUN, block_size = 4096L, assay = active_assay(x), ...
 #' @param observation Observation ID or one integer position.
 #' @param assay Assay name.
 #' @return A reconstructed spatial object.
+#' @examples
+#' sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(4 * n_features(sp)), nrow = 4)),
+#'   observations = data.frame(.obs_id = sprintf("vol-%d", 1:4)),
+#'   space = sp
+#' )
+#' spatial_map(frame, observation = 1L)
 #' @export
 spatial_map <- function(x, observation, assay = active_assay(x)) {
   index <- .normalize_frame_selector(observation, observation_ids(x), "observation")
@@ -406,6 +474,15 @@ spatial_map <- function(x, observation, assay = active_assay(x)) {
 #' @param sample_size Number of IDs sampled from each end of each axis.
 #' @return A bounded serializable execution summary. No assay or aligned-block
 #'   values are read.
+#' @examples
+#' sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(4 * n_features(sp)), nrow = 4)),
+#'   observations = data.frame(.obs_id = sprintf("vol-%d", 1:4)),
+#'   space = sp
+#' )
+#' summary <- explain(frame)
+#' summary$shape
 #' @export
 explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) {
   if (!inherits(x, "fmri_frame")) {
@@ -853,6 +930,17 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
 #' @param active_assay Optional active assay for the result. Required when
 #'   operands have different active assays.
 #' @return A lazily row-bound `fmri_frame`.
+#' @examples
+#' sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+#' make <- function(prefix) {
+#'   fmri_frame(
+#'     assays = list(bold = matrix(rnorm(4 * n_features(sp)), nrow = 4)),
+#'     observations = data.frame(.obs_id = sprintf("%s-%d", prefix, 1:4)),
+#'     space = sp
+#'   )
+#' }
+#' bound <- bind_observations(make("a"), make("b"))
+#' dim(bound)
 #' @export
 bind_observations <- function(...,
                               metadata_policy = c("identical", "merge"),

@@ -63,6 +63,28 @@ assert_compatible_space(x, y, ...)
 \code{"surface_map"}; \code{"neurosurf"} returns a \code{neurosurf::NeuroSurface} when
 embedded unilateral geometry is available.}
 }
+\value{
+\code{n_features()} returns a single integer; \code{feature_ids()} returns a
+character vector of stable feature identifiers; \code{native_shape()} returns
+the class-specific native dimensions; \code{feature_data()} returns a tibble
+of per-feature metadata; \code{space_digest()} returns a content digest
+string; \code{restrict_space()} and \code{reconstruct_space()} return an object of
+the same feature-space class; \code{vectorize_space()} returns a numeric
+vector; \code{adjacency()} returns a sparse adjacency matrix or \code{NULL};
+\code{same_space()} and \code{compatible_space()} return a \code{space_compatibility}
+list; \code{assert_same_space()} and \code{assert_compatible_space()} return the
+compatibility report invisibly and signal an error when incompatible.
+}
 \description{
-Feature-space contract
+Every feature-space class (such as \code{\link[=volume_space]{volume_space()}}, \code{\link[=surface_space]{surface_space()}},
+\code{\link[=parcel_space]{parcel_space()}}, \code{\link[=basis_space]{basis_space()}}, \code{\link[=composite_space]{composite_space()}}, and
+\code{\link[=index_space]{index_space()}}) implements this shared generic contract for feature
+count, stable identity, restriction, vectorization, and reconstruction.
+}
+\examples{
+x <- index_space(3, ids = c("a", "b", "c"))
+n_features(x)
+feature_ids(x)
+y <- restrict_space(x, 1:2)
+same_space(x, x)$same
 }

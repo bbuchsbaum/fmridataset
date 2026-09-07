@@ -16,3 +16,7 @@ fingerprints, and user-supplied shard metadata.
 \description{
 Inspect a row-sharded source manifest
 }
+\examples{
+shards <- list(memory_source(matrix(1:4, nrow = 2)), memory_source(matrix(5:8, nrow = 2)))
+shard_manifest(row_sharded_source(shards))
+}

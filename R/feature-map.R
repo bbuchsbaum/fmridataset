@@ -33,6 +33,12 @@
 #' @param provenance Serializable derivation metadata for the map itself.
 #' @param metadata Additional serializable metadata.
 #' @return A serializable `feature_map` descriptor.
+#' @examples
+#' src <- index_space(4, ids = paste0("v", 1:4), namespace = "map-source")
+#' tgt <- index_space(2, ids = paste0("p", 1:2), namespace = "map-target")
+#' op <- matrix(c(0.5, 0.5, 0, 0, 0, 0, 0.5, 0.5), nrow = 2, byrow = TRUE)
+#' m <- feature_map(src, tgt, op, map_type = "toy_aggregation")
+#' feature_map_operator(m)
 #' @export
 feature_map <- function(from, to, operator, map_type = "linear",
                         traits = list(linear = TRUE), provenance = list(),
@@ -86,6 +92,14 @@ feature_map <- function(from, to, operator, map_type = "linear",
 #' @param x A `feature_map`.
 #' @return `validate_feature_map()` returns `x` invisibly. The accessors return
 #'   the source space, target space, linear operator, or deterministic digest.
+#' @examples
+#' src <- index_space(4, ids = paste0("v", 1:4), namespace = "map-source")
+#' tgt <- index_space(2, ids = paste0("p", 1:2), namespace = "map-target")
+#' op <- matrix(c(0.5, 0.5, 0, 0, 0, 0, 0.5, 0.5), nrow = 2, byrow = TRUE)
+#' m <- feature_map(src, tgt, op, map_type = "toy_aggregation")
+#' feature_map_source_space(m)
+#' feature_map_target_space(m)
+#' feature_map_digest(m)
 #' @name feature-map-accessors
 NULL
 
@@ -168,6 +182,14 @@ print.feature_map <- function(x, ...) {
 #'
 #' @param target A parent-linked `parcel_space` or `basis_space`.
 #' @return A `feature_map` from `parent_space(target)` to `target`.
+#' @examples
+#' parent <- volume_space(c(2, 2, 1), support = 1:4, template = "toy")
+#' membership <- Matrix::sparseMatrix(
+#'   i = 1:4, j = c(1L, 1L, 2L, 2L), x = 1, dims = c(4L, 2L)
+#' )
+#' target <- parcel_space(parent, c("left", "right"), membership, atlas = "toy")
+#' m <- feature_map_from_target(target)
+#' feature_map_target_space(m)
 #' @export
 feature_map_from_target <- function(target) {
   if (inherits(target, "parcel_space")) {
@@ -240,6 +262,13 @@ feature_map_from_target <- function(target) {
 #' @param rule Transformation rule. `"linear"` maps ordinary values;
 #'   `"independent_variance"` maps diagonal variances with squared weights.
 #' @return A serializable `feature_mapped_source`.
+#' @examples
+#' src <- index_space(4, ids = paste0("v", 1:4), namespace = "map-source")
+#' tgt <- index_space(2, ids = paste0("p", 1:2), namespace = "map-target")
+#' op <- matrix(c(0.5, 0.5, 0, 0, 0, 0, 0.5, 0.5), nrow = 2, byrow = TRUE)
+#' m <- feature_map(src, tgt, op, map_type = "toy_aggregation")
+#' fs <- feature_mapped_source(memory_source(matrix(1:12, nrow = 3)), m)
+#' dim(source_read(fs))
 #' @export
 feature_mapped_source <- function(source, map,
                                   rule = c("linear", "independent_variance")) {
@@ -389,6 +418,10 @@ source_close.feature_mapped_source <- function(x, ...) invisible(TRUE)
 #' @param parents IDs of direct parent records.
 #' @param inputs,parameters,outputs,software,metadata Serializable record data.
 #' @return A `provenance_record`.
+#' @examples
+#' r <- provenance_record("normalize", inputs = list(method = "zscore"))
+#' r$operation
+#' r$id
 #' @export
 provenance_record <- function(operation, parents = character(), inputs = list(),
                               parameters = list(), outputs = list(),
@@ -462,6 +495,12 @@ provenance_record <- function(operation, parents = character(), inputs = list(),
 #' @param x A `provenance_graph`.
 #' @param records One or more records appended to `x`.
 #' @return A validated `provenance_graph`, its records, tips, or digest.
+#' @examples
+#' r1 <- provenance_record("load", inputs = list(path = "toy.nii"))
+#' g <- provenance_graph(r1)
+#' r2 <- provenance_record("normalize", parents = r1$id)
+#' g <- append_provenance(g, r2)
+#' provenance_tips(g)
 #' @name provenance-graph
 NULL
 
@@ -585,6 +624,11 @@ print.provenance_graph <- function(x, ...) {
 #'
 #' @param x `NULL`, a `provenance_graph`, or a serializable lineage value.
 #' @return A validated `provenance_graph`.
+#' @examples
+#' g <- as_provenance_graph(NULL)
+#' provenance_tips(g)
+#' g2 <- as_provenance_graph(list(note = "legacy value"))
+#' provenance_tips(g2)
 #' @export
 as_provenance_graph <- function(x) {
   if (is.null(x)) return(provenance_graph())
@@ -635,6 +679,23 @@ as_provenance_graph <- function(x) {
 #' @param assay_rules Named rules for every assay: `"linear"` or
 #'   `"independent_variance"`. Unnamed scalar rules are recycled.
 #' @return A new linked-domain `fmri_frame` whose assays remain lazy.
+#' @examples
+#' parent <- volume_space(c(2, 2, 1), support = 1:4, template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(signal = matrix(1:12, nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("o", 1:3)),
+#'   space = parent
+#' )
+#' parcels <- parcel_space(
+#'   parent,
+#'   parcel_ids = c("left", "right"),
+#'   membership = Matrix::sparseMatrix(
+#'     i = 1:4, j = c(1L, 1L, 2L, 2L), x = 1, dims = c(4L, 2L)
+#'   ),
+#'   atlas = "toy-atlas"
+#' )
+#' parcel_frame <- map_features(frame, target = parcels)
+#' dim(collect_assay(parcel_frame))
 #' @export
 map_features <- function(x, target = NULL, map = NULL,
                          assay_rules = "linear") {

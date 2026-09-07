@@ -29,3 +29,8 @@ A \code{basis_space}.
 Computes the exact unregularized least-squares encoder
 \verb{(D' D)^\{-1\} D'} for a full-column-rank decoder \code{D}.
 }
+\examples{
+parent <- volume_space(c(2, 1, 1), support = 1:2)
+x <- basis_space_from_decoder(parent, c("c1", "c2"), diag(2))
+basis_synthesis(x)
+}

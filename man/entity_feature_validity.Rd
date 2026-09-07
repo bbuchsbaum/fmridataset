@@ -24,3 +24,15 @@ An \code{entity_feature_validity} relation descriptor.
 \description{
 Describe compressed entity-by-feature validity
 }
+\examples{
+space <- index_space(4, ids = paste0("f", 1:4), namespace = "validity-ex")
+validity <- entity_feature_validity(
+  entity = "subject", entity_ids = c("sub-1", "sub-2"),
+  masks = rbind(
+    c(TRUE, TRUE, FALSE, TRUE),
+    c(TRUE, FALSE, FALSE, TRUE)
+  ),
+  space = space
+)
+validity_entity(validity)
+}

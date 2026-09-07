@@ -28,3 +28,7 @@ and recovery conformance tests.
 This is developer-only test instrumentation. Never persist a \code{fault_source}
 as study data or use one in an analysis plan.
 }
+\examples{
+src <- fault_source(memory_source(matrix(seq_len(6), nrow = 2)), stage = "read")
+tryCatch(source_read(src), error = function(e) conditionMessage(e))
+}

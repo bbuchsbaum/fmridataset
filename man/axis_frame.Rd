@@ -55,3 +55,8 @@ An \code{axis_frame}.
 \description{
 Construct an annotated axis
 }
+\examples{
+x <- axis_frame(data.frame(value = 1:3), id_policy = "ephemeral")
+axis_ids(x)
+axis_data(x)
+}

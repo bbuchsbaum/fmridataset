@@ -93,6 +93,14 @@
 #' @param mask A NIfTI mask path or a compatible `volume_space`.
 #' @param chunks Optional logical observation-by-feature chunk hint.
 #' @return A serializable `nifti_array_source`.
+#' @examples
+#' # A small NIfTI fixture shipped with neuroim2 stands in for real data.
+#' path <- system.file("extdata", "global_mask_v4.nii", package = "neuroim2")
+#' if (nzchar(path)) {
+#'   src <- nifti_array_source(path, path)
+#'   source_shape(src)
+#'   source_dtype(src)
+#' }
 #' @export
 nifti_array_source <- function(paths, mask, chunks = NULL) {
   if (!is.character(paths) || !length(paths) || anyNA(paths) || any(!nzchar(paths))) {
@@ -238,6 +246,13 @@ nifti_array_source <- function(paths, mask, chunks = NULL) {
 #' @param x A `nifti_array_source`.
 #' @param template Optional template or native-space label.
 #' @return A compatible `volume_space`.
+#' @examples
+#' path <- system.file("extdata", "global_mask_v4.nii", package = "neuroim2")
+#' if (nzchar(path)) {
+#'   src <- nifti_array_source(path, path)
+#'   spatial <- nifti_source_space(src, template = "fixture")
+#'   n_features(spatial)
+#' }
 #' @export
 nifti_source_space <- function(x, template = NULL) {
   if (!inherits(x, "nifti_array_source")) {

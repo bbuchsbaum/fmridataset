@@ -20,3 +20,8 @@ ids_are_durable(x)
 \description{
 Inspect axis ID durability
 }
+\examples{
+x <- axis_frame(data.frame(value = 1:3), id_policy = "ephemeral")
+axis_id_policy(x)
+ids_are_durable(x)
+}

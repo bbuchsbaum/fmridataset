@@ -25,3 +25,10 @@ axes must agree. Explicit ID maps are joined through the intermediate IDs.
 Feature operators are composed as \code{second \%*\% first} without changing link
 direction.
 }
+\examples{
+first <- frame_link("bold", "beta", type = "derivation")
+second <- frame_link("beta", "summary", type = "derivation")
+composed <- compose_frame_links(first, second)
+composed$source
+composed$target
+}

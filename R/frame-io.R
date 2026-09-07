@@ -39,6 +39,17 @@
 #' @return `write_frame()` invisibly returns the committed path, normalized
 #'   with forward slashes on every platform. `open_frame()` returns an
 #'   `fmri_frame`.
+#' @examples
+#' if (requireNamespace("fmristore", quietly = TRUE)) {
+#'   src <- memory_source(matrix(seq_len(6), nrow = 2))
+#'   obs <- tibble::tibble(.obs_id = c("o1", "o2"))
+#'   space <- index_space(3, id_policy = "deterministic", namespace = "demo")
+#'   frame <- fmri_frame(list(beta = src), obs, space = space)
+#'   path <- tempfile(fileext = ".h5")
+#'   committed <- write_frame(frame, path)
+#'   reopened <- open_frame(committed)
+#'   collect_assay(reopened, "beta")
+#' }
 #' @export
 write_frame <- function(x, path, format = "hdf5", ...) {
   format <- match.arg(format, "hdf5")

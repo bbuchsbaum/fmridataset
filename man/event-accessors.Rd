@@ -19,3 +19,11 @@ Event scalar data or the stable key name.
 \description{
 Event-table accessors
 }
+\examples{
+et <- event_table(
+  data.frame(event_id = c("e1", "e2"), onset = c(0, 10)),
+  key = "event_id"
+)
+event_data(et)
+event_key(et)
+}

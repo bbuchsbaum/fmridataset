@@ -26,3 +26,12 @@ return table data, key, or role.
 \description{
 Validate and inspect a typed auxiliary table
 }
+\examples{
+at <- auxiliary_table(
+  data.frame(contrast = c("A-B", "B-A"), stat = c(2.1, -2.1)),
+  key = "contrast", role = "contrasts"
+)
+validate_auxiliary_table(at)
+table_key(at)
+table_role(at)
+}

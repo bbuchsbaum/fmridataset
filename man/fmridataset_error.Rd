@@ -19,4 +19,8 @@ A condition object
 \description{
 Create a Custom fmridataset Error
 }
+\examples{
+cond <- fmridataset:::fmridataset_error("bad input", class = "fmridataset_error_config")
+inherits(cond, "fmridataset_error")
+}
 \keyword{internal}

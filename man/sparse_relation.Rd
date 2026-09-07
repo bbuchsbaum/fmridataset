@@ -38,3 +38,16 @@ A serializable \code{sparse_relation} descriptor.
 \description{
 Describe an explicit sparse or many-to-many relation
 }
+\examples{
+edges <- sparse_relation(
+  data = tibble::tibble(
+    .from_id = c("obs-1", "obs-2"),
+    .to_id = c("stim-1", "stim-2"),
+    weight = c(0.7, 0.3)
+  ),
+  from = "observation",
+  to = "entity:stimulus",
+  weight = "weight"
+)
+edges$from
+}

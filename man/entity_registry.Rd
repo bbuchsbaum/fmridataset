@@ -24,3 +24,11 @@ A named \code{entity_registry}.
 \description{
 Construct and validate an entity registry
 }
+\examples{
+subjects <- entity_frame(
+  data = tibble::tibble(subject_id = c("sub-1", "sub-2")),
+  key = "subject_id"
+)
+registry <- entity_registry(subject = subjects)
+entity_names(registry)
+}

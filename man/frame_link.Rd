@@ -40,3 +40,8 @@ A \code{frame_link} descriptor.
 \description{
 Describe a typed link between study representations
 }
+\examples{
+link <- frame_link("bold", "surface", type = "derivation")
+link$source
+link$target
+}

@@ -28,3 +28,13 @@ The schema digest describes column, block, assay, relation, entity, table,
 and space contracts. The semantic digest covers the complete source-free FDS
 manifest. Physical source fingerprints are reported separately.
 }
+\examples{
+sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+frame <- fmri_frame(
+  assays = list(bold = matrix(rnorm(4 * n_features(sp)), nrow = 4)),
+  observations = data.frame(.obs_id = sprintf("vol-\%d", 1:4)),
+  space = sp
+)
+summary <- explain(frame)
+summary$shape
+}

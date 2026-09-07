@@ -138,6 +138,14 @@
 #' @param memory_budget Hard maximum estimated peak bytes for one input block.
 #' @param target_block_bytes Preferred block size, capped by `memory_budget`.
 #' @return A serializable `frame_block_plan`.
+#' @examples
+#' frame <- fmri_frame(
+#'   assays = list(signal = memory_source(matrix(seq_len(20), 5, 4))),
+#'   observations = data.frame(.obs_id = sprintf("obs-%d", 1:5)),
+#'   active_assay = "signal"
+#' )
+#' plan <- plan_blocks(frame, memory_budget = 10 * 1024^2)
+#' plan
 #' @export
 plan_blocks <- function(
   x,
@@ -229,6 +237,14 @@ plan_blocks <- function(
 #'
 #' @param plan A `frame_block_plan`.
 #' @return A data frame containing logical block bounds and byte estimates.
+#' @examples
+#' frame <- fmri_frame(
+#'   assays = list(signal = memory_source(matrix(seq_len(20), 5, 4))),
+#'   observations = data.frame(.obs_id = sprintf("obs-%d", 1:5)),
+#'   active_assay = "signal"
+#' )
+#' plan <- plan_blocks(frame, memory_budget = 10 * 1024^2)
+#' block_manifest(plan)
 #' @export
 block_manifest <- function(plan) {
   if (!inherits(plan, "frame_block_plan")) {
@@ -246,6 +262,16 @@ block_manifest <- function(plan) {
 #' @param ... Additional arguments passed to `FUN`.
 #' @param assay Assay name; defaults to the planned assay.
 #' @return A list containing one result per planned block.
+#' @examples
+#' frame <- fmri_frame(
+#'   assays = list(signal = memory_source(matrix(seq_len(20), 5, 4))),
+#'   observations = data.frame(.obs_id = sprintf("obs-%d", 1:5)),
+#'   active_assay = "signal"
+#' )
+#' plan <- plan_blocks(frame, memory_budget = 10 * 1024^2)
+#' execute_block_plan(frame, plan, function(values, observation_ids, feature_ids, block) {
+#'   sum(values)
+#' })
 #' @export
 execute_block_plan <- function(x, plan, FUN, ..., assay = plan$assay) {
   if (!inherits(plan, "frame_block_plan")) {

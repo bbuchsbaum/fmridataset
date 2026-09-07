@@ -30,3 +30,8 @@ This is developer-only test instrumentation. The counter registry is
 process-local, is not persisted with the descriptor, and must not be used as
 provenance or as an execution receipt.
 }
+\examples{
+src <- counting_source(memory_source(matrix(seq_len(6), nrow = 2)))
+source_read(src, observations = 1)
+source_counts(src)$reads
+}

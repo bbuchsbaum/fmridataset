@@ -29,3 +29,8 @@ is legal. Fingerprints hash the normalized form, so equal selections agree
 however they were expressed and a select-all view fingerprints in constant
 time.
 }
+\examples{
+src <- memory_source(matrix(seq_len(6), nrow = 2))
+view <- source_view(src, observations = 1)
+source_shape(view)
+}

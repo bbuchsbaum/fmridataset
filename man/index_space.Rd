@@ -30,3 +30,7 @@ An \code{index_space}.
 \description{
 Construct a generic indexed feature space
 }
+\examples{
+index_space(3, ids = c("a", "b", "c"))
+index_space(2, namespace = "roi", id_policy = "deterministic")
+}

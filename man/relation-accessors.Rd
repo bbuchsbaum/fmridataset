@@ -27,3 +27,11 @@ descriptor; \code{relation_names()} returns registry names.
 \description{
 Access frame relations
 }
+\examples{
+registry <- relation_registry(
+  observation_stimulus = key_relation("stimulus_id", target = "stimulus")
+)
+relations(registry)
+relation(registry, "observation_stimulus")
+relation_names(registry)
+}

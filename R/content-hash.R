@@ -19,6 +19,8 @@
 #' that produced the values.
 #'
 #' @return A serializable content-hash contract descriptor.
+#' @examples
+#' content_hash_contract()
 #' @export
 content_hash_contract <- function() .content_hash_contract
 

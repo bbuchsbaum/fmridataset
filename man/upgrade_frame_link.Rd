@@ -17,3 +17,7 @@ Version-one links used reverse \verb{*_from} endpoints for derivation, mapping,
 and alignment and stored feature operators in metadata. This explicit
 migration converts them to the canonical source-to-target version-two form.
 }
+\examples{
+link <- frame_link("bold", "surface", type = "derivation")
+identical(upgrade_frame_link(link), link)
+}

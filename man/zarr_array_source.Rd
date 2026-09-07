@@ -51,3 +51,12 @@ re-reads the store metadata and raises \code{fmridataset_error_source_stale}
 changed; a store that cannot be opened is \code{fmridataset_error_backend_io}.
 See \code{\link[=content_hash]{content_hash()}} to identify values.
 }
+\examples{
+# Metadata-only construction needs no Zarr store and no zarr package.
+src <- zarr_array_source(
+  "fixture.zarr",
+  shape = c(5L, 6L), dtype = "float64", chunks = c(2L, 3L)
+)
+source_shape(src)
+source_chunks(src)
+}

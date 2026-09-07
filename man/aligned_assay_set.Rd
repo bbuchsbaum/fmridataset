@@ -19,3 +19,10 @@ An \code{aligned_assay_set}.
 \description{
 Construct a strictly aligned assay set
 }
+\examples{
+sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+obs <- axis_frame(data.frame(.obs_id = sprintf("vol-\%d", 1:4)), axis = "observation")
+feat <- feature_axis(feature_data(sp), space = sp)
+bold <- matrix(rnorm(4 * n_features(sp)), nrow = 4)
+aligned_assay_set(list(bold = bold), obs, feat)
+}

@@ -139,6 +139,14 @@
 #' @param units Optional units applying to the block as a whole.
 #' @param metadata Additional serializable metadata.
 #' @return An `axis_block`.
+#' @examples
+#' b <- axis_block(
+#'   matrix(1:6, 3, 2),
+#'   components = data.frame(.component_id = c("x", "y")),
+#'   role = "continuous"
+#' )
+#' dim(axis_block_data(b))
+#' block_component_ids(b)
 #' @export
 axis_block <- function(data, components = NULL, role = "continuous",
                        units = NULL, metadata = list()) {
@@ -206,6 +214,10 @@ block_component_ids <- function(x) x$components$.component_id
 #' @param id_keys Columns that uniquely identify rows under deterministic policy.
 #' @param id_namespace Stable namespace under deterministic policy.
 #' @return An `axis_frame`.
+#' @examples
+#' x <- axis_frame(data.frame(value = 1:3), id_policy = "ephemeral")
+#' axis_ids(x)
+#' axis_data(x)
 #' @export
 axis_frame <- function(data, blocks = list(), id = NULL,
                        axis = c("observation", "feature", "entity", "component"),
@@ -266,6 +278,10 @@ axis_ids.axis_frame <- function(x) x$data[[x$id_col]]
 #' @param x An axis, feature space, frame, or view.
 #' @return `axis_id_policy()` returns the versioned ID-policy descriptor;
 #'   `ids_are_durable()` returns one logical value.
+#' @examples
+#' x <- axis_frame(data.frame(value = 1:3), id_policy = "ephemeral")
+#' axis_id_policy(x)
+#' ids_are_durable(x)
 #' @name id-policy
 NULL
 
@@ -330,6 +346,10 @@ length.axis_frame <- function(x) nrow(x$data)
 #' @param metadata Additional metadata.
 #' @param ... Additional arguments for methods.
 #' @return A feature `axis_frame` carrying its space.
+#' @examples
+#' sp <- index_space(3, ids = sprintf("f%d", 1:3), namespace = "ex")
+#' fx <- feature_axis(data.frame(.feature_id = sprintf("f%d", 1:3)), space = sp)
+#' axis_ids(fx)
 #' @export
 feature_axis <- function(data, space = NULL, blocks = list(), metadata = list(), ...) {
   UseMethod("feature_axis")

@@ -16,3 +16,6 @@ realized R mode, and every value, and on nothing else: not on the storage
 dtype, the chunk grid, the read block size, or the composition of sources
 that produced the values.
 }
+\examples{
+content_hash_contract()
+}

@@ -17,3 +17,12 @@ Parcel spaces contribute their aggregation operator and basis spaces their
 analysis operator. Other transformations require an explicit
 \code{feature_map()}.
 }
+\examples{
+parent <- volume_space(c(2, 2, 1), support = 1:4, template = "toy")
+membership <- Matrix::sparseMatrix(
+  i = 1:4, j = c(1L, 1L, 2L, 2L), x = 1, dims = c(4L, 2L)
+)
+target <- parcel_space(parent, c("left", "right"), membership, atlas = "toy")
+m <- feature_map_from_target(target)
+feature_map_target_space(m)
+}

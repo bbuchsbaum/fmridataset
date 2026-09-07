@@ -43,3 +43,11 @@ A \code{parcel_space} owns only the feature-axis algebra required by
 parent-to-parcel operators. Atlas discovery, labels, and provenance remain
 owned by \code{neuroatlas} and can be imported with \code{\link[=parcel_space_from_atlas]{parcel_space_from_atlas()}}.
 }
+\examples{
+parent <- volume_space(c(3, 2, 1), support = 1:6)
+membership <- Matrix::sparseMatrix(
+  i = 1:6, j = c(1, 1, 1, 2, 2, 2), x = 1, dims = c(6L, 2L)
+)
+x <- parcel_space(parent, c(10L, 20L), membership, atlas = "toy-atlas")
+n_features(x)
+}

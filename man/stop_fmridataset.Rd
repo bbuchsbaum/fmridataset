@@ -13,7 +13,17 @@ stop_fmridataset(error_fn, message = NULL, ...)
 
 \item{...}{Arguments passed to the error constructor}
 }
+\value{
+Does not return; always signals the constructed condition with
+\code{\link[=stop]{stop()}}.
+}
 \description{
 Stop with a Custom Error
+}
+\examples{
+tryCatch(
+  fmridataset:::stop_fmridataset(fmridataset:::fmridataset_error_config, "bad value"),
+  fmridataset_error_config = function(e) conditionMessage(e)
+)
 }
 \keyword{internal}

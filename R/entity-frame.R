@@ -37,6 +37,15 @@
 #'   `"stimulus"`.
 #' @param metadata Additional serializable metadata.
 #' @return An `entity_frame`, also implementing the `axis_frame` contract.
+#' @examples
+#' x <- entity_frame(
+#'   data = tibble::tibble(
+#'     stimulus_id = c("stim-1", "stim-2", "stim-3"),
+#'     category = c("face", "scene", "object")
+#'   ),
+#'   key = "stimulus_id"
+#' )
+#' entity_ids(x)
 #' @export
 entity_frame <- function(data, key, blocks = list(), entity_type = NULL,
                          metadata = list()) {
@@ -68,6 +77,17 @@ entity_frame <- function(data, key, blocks = list(), entity_type = NULL,
 #'
 #' @param x An `entity_frame`.
 #' @return The stable key name, entity IDs, scalar data, or aligned blocks.
+#' @examples
+#' embedding <- axis_block(matrix(as.double(1:8), 2, 4), role = "embedding")
+#' x <- entity_frame(
+#'   data = tibble::tibble(stimulus_id = c("stim-1", "stim-2")),
+#'   key = "stimulus_id",
+#'   blocks = list(semantic = embedding)
+#' )
+#' entity_key(x)
+#' entity_ids(x)
+#' entity_data(x)
+#' entity_blocks(x)
 #' @name entity-frame-accessors
 NULL
 
@@ -158,6 +178,13 @@ print.entity_frame <- function(x, ...) {
 #'   `key` or a conventional `<name>_id` column is normalized immediately.
 #' @param ... Alternatively, named `entity_frame` objects.
 #' @return A named `entity_registry`.
+#' @examples
+#' subjects <- entity_frame(
+#'   data = tibble::tibble(subject_id = c("sub-1", "sub-2")),
+#'   key = "subject_id"
+#' )
+#' registry <- entity_registry(subject = subjects)
+#' entity_names(registry)
 #' @export
 entity_registry <- function(entities = list(), ...) {
   dots <- list(...)
@@ -249,6 +276,15 @@ validate_entity_registry <- function(x) {
 #' @param ... Additional method arguments.
 #' @return `entities()` returns the registry; `entity()` returns one
 #'   `entity_frame`; `entity_names()` returns registry names.
+#' @examples
+#' subjects <- entity_frame(
+#'   data = tibble::tibble(subject_id = c("sub-1", "sub-2")),
+#'   key = "subject_id"
+#' )
+#' registry <- entity_registry(subject = subjects)
+#' entities(registry)
+#' entity(registry, "subject")
+#' entity_names(registry)
 #' @name entity-accessors
 NULL
 
@@ -280,6 +316,13 @@ entity_names <- function(x) names(entities(x))
 #'
 #' @param x A frame, view, or entity registry.
 #' @return A hexadecimal digest over the normalized registry.
+#' @examples
+#' subjects <- entity_frame(
+#'   data = tibble::tibble(subject_id = c("sub-1", "sub-2")),
+#'   key = "subject_id"
+#' )
+#' registry <- entity_registry(subject = subjects)
+#' entity_registry_digest(registry)
 #' @export
 entity_registry_digest <- function(x) {
   x <- entities(x)

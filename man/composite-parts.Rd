@@ -26,3 +26,12 @@ returns one child space.
 \description{
 Inspect composite feature-space parts
 }
+\examples{
+parts <- list(
+  left = index_space(2, ids = c("l1", "l2")),
+  right = index_space(2, ids = c("r1", "r2"))
+)
+x <- composite_space(parts)
+composite_part_names(x)
+composite_part(x, "left")
+}

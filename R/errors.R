@@ -15,6 +15,9 @@ NULL
 #' @param ... Additional data to include in the error condition
 #' @return A condition object
 #' @keywords internal
+#' @examples
+#' cond <- fmridataset:::fmridataset_error("bad input", class = "fmridataset_error_config")
+#' inherits(cond, "fmridataset_error")
 fmridataset_error <- function(message, class = character(), ...) {
   structure(
     list(message = message, ...),
@@ -33,6 +36,9 @@ fmridataset_error <- function(message, class = character(), ...) {
 #' @param ... Additional context
 #' @return A backend I/O error condition
 #' @keywords internal
+#' @examples
+#' cond <- fmridataset:::fmridataset_error_backend_io("read failed", file = "x.h5")
+#' cond$operation
 fmridataset_error_backend_io <- function(message, file = NULL, operation = NULL, ...) {
   fmridataset_error(
     message = message,
@@ -54,6 +60,9 @@ fmridataset_error_backend_io <- function(message, file = NULL, operation = NULL,
 #' @param ... Additional context
 #' @return A configuration error condition
 #' @keywords internal
+#' @examples
+#' cond <- fmridataset:::fmridataset_error_config("bad value", parameter = "chunks")
+#' cond$parameter
 fmridataset_error_config <- function(message, parameter = NULL, value = NULL, ...) {
   fmridataset_error(
     message = message,
@@ -69,7 +78,14 @@ fmridataset_error_config <- function(message, parameter = NULL, value = NULL, ..
 #' @param error_fn Error constructor function
 #' @param message Error message (optional if provided as first ... argument)
 #' @param ... Arguments passed to the error constructor
+#' @return Does not return; always signals the constructed condition with
+#'   [stop()].
 #' @keywords internal
+#' @examples
+#' tryCatch(
+#'   fmridataset:::stop_fmridataset(fmridataset:::fmridataset_error_config, "bad value"),
+#'   fmridataset_error_config = function(e) conditionMessage(e)
+#' )
 stop_fmridataset <- function(error_fn, message = NULL, ...) {
   if (!is.null(message)) {
     # New calling pattern with explicit message

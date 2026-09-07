@@ -48,3 +48,12 @@ rejected because a trailing axis without typed metadata would be an
 anonymous semantic dimension; represent higher-order structure as named
 components, as several blocks, or as an assay.
 }
+\examples{
+b <- axis_block(
+  matrix(1:6, 3, 2),
+  components = data.frame(.component_id = c("x", "y")),
+  role = "continuous"
+)
+dim(axis_block_data(b))
+block_component_ids(b)
+}

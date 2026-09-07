@@ -86,3 +86,11 @@ physical state before every open and read and raise
 raise \code{fmridataset_error_backend_io}. The policy is recorded in
 \code{inst/architecture/ADR-009-source-fingerprints-and-content-hashes.md}.
 }
+\examples{
+src <- memory_source(matrix(seq_len(6), nrow = 2))
+source_shape(src)
+source_dtype(src)
+handle <- source_open(src)
+source_read(handle, observations = 1)
+source_close(handle)
+}

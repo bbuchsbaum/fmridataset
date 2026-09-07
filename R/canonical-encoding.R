@@ -221,6 +221,9 @@
 #' @param x A serializable R value.
 #' @return `canonical_bytes()` returns a raw vector. `canonical_sha256()` returns
 #'   its lowercase SHA-256 hexadecimal digest.
+#' @examples
+#' canonical_bytes(list(b = 2, a = 1))
+#' canonical_sha256(list(b = 2, a = 1))
 #' @name canonical-encoding
 NULL
 
