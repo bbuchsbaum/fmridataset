@@ -67,8 +67,9 @@ object whose public fields expose hidden base state.
 The stable extension groups are:
 
 - source protocol: `as_array_source()`, `source_descriptor()`,
-  `validate_array_source()`, `source_realization_cost()`, and the
-  `source_*()` lifecycle generics;
+  `validate_array_source()`, `source_realization_cost()`, the
+  `source_*()` lifecycle generics, and `source_error()` for signalling the
+  protocol's stale, I/O, and contract conditions from an extension;
 - spatial protocol: `n_features()`, `feature_ids()`, `native_shape()`,
   `restrict_space()`, `vectorize_space()`, `reconstruct_space()`,
   `adjacency()`, exact `same_space()`, the migration alias

@@ -21,11 +21,14 @@ memory_source(
 \item{chunks}{Optional logical chunk shape.}
 
 \item{revision}{Optional single string naming the revision of \code{data}, such
-as a version label or an upstream checksum. It enters the fingerprint and
-is never interpreted.}
+as a version label or an upstream checksum. It is never interpreted, but
+it replaces the per-object identity token, so two sources built
+independently under the same revision share a fingerprint: the caller is
+asserting they are the same source in the same revision.}
 
-\item{identity}{\code{"object"} assigns a fresh identity token; \code{"content"}
-derives it from \code{\link[=content_hash]{content_hash()}} of \code{data}.}
+\item{identity}{\code{"object"} assigns a fresh identity token (unless
+\code{revision} is supplied); \code{"content"} derives it from \code{\link[=content_hash]{content_hash()}} of
+\code{data}.}
 }
 \value{
 A serializable \code{memory_source}.

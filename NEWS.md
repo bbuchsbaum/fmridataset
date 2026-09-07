@@ -1,5 +1,15 @@
 # fmridataset 0.10.0 (Development)
 
+- Added `source_error()`, an exported constructor for the stale, I/O, and
+  contract conditions an array source may signal, so storage packages fail
+  the way built-in sources fail. `validate_array_source()` now names the
+  protocol methods a descriptor lacks instead of failing with a bare
+  no-applicable-method error. A caller-supplied `revision` on
+  `memory_source()` now replaces the per-object identity token, so equal-valued
+  sources built independently under the same revision share a fingerprint, as
+  ADR-009 describes. `feature_map_from_target()` and `map_features()` explain
+  that a synthesis-only basis has no analysis operator instead of failing on
+  the operator type.
 - Replaced the package's independent selector mechanisms with one selection
   algebra (`inst/architecture/ADR-010-selection-algebra.md`). Frames, views,
   source views, `source_read()`, collections, axis and entity frames, and

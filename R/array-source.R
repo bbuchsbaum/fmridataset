@@ -395,6 +395,7 @@ source_descriptor <- function(x) {
 #' @rdname source_descriptor
 #' @export
 validate_array_source <- function(x) {
+  .assert_source_methods(x)
   descriptor <- source_descriptor(x)
   shape <- descriptor$shape
   if (!is.numeric(shape) || length(shape) != 2L || anyNA(shape) ||
@@ -490,10 +491,13 @@ validate_array_source <- function(x) {
 #'   `"float64"`.
 #' @param chunks Optional logical chunk shape.
 #' @param revision Optional single string naming the revision of `data`, such
-#'   as a version label or an upstream checksum. It enters the fingerprint and
-#'   is never interpreted.
-#' @param identity `"object"` assigns a fresh identity token; `"content"`
-#'   derives it from [content_hash()] of `data`.
+#'   as a version label or an upstream checksum. It is never interpreted, but
+#'   it replaces the per-object identity token, so two sources built
+#'   independently under the same revision share a fingerprint: the caller is
+#'   asserting they are the same source in the same revision.
+#' @param identity `"object"` assigns a fresh identity token (unless
+#'   `revision` is supplied); `"content"` derives it from [content_hash()] of
+#'   `data`.
 #' @return A serializable `memory_source`.
 #' @seealso [source_fingerprint()] and [content_hash()] for the fingerprint
 #'   policy.
@@ -538,8 +542,13 @@ memory_source <- function(data, dtype = NULL, chunks = NULL, revision = NULL,
     ),
     class = c("memory_source", "array_source")
   )
+  # A caller-supplied revision is an assertion of identity: two memory sources
+  # constructed independently under the same revision are the same source in
+  # the same revision, so they share the token instead of each minting one.
   out$identity <- if (identical(identity, "content")) {
     paste0("content:", content_hash(out))
+  } else if (!is.null(revision)) {
+    paste0("revision:", revision)
   } else {
     paste0("object:", uuid::UUIDgenerate())
   }

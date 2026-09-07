@@ -118,8 +118,10 @@ through stale and I/O errors from the reads it issues.
   attaching a value receipt to a persisted or published artifact:
   `content_hash()`, called explicitly where the O(n) read is acceptable.
 - Wanting equal-valued memory sources to share a fingerprint:
-  `memory_source(identity = "content")`, or pass a `revision` you already
-  know.
+  `memory_source(identity = "content")` (the token is derived from the
+  values), or pass the same `revision` to each (the revision replaces the
+  per-object token, so the caller is asserting that the sources are the same
+  source in the same revision).
 - Never infer value equality from any fingerprint, and never infer that a
   content hash is current without recomputing it.
 
