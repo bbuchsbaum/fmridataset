@@ -1071,6 +1071,9 @@ adjacency.parcel_space <- function(x, ...) {
 #' @param metadata Serializable metadata passed to [parcel_space()].
 #' @return A `parcel_space` aligned to `parent`.
 #' @examples
+#' \donttest{
+#' # Loading neuroatlas and neurosurf alone takes several seconds, so this
+#' # example runs under --run-donttest rather than on every check.
 #' if (requireNamespace("neuroatlas", quietly = TRUE) &&
 #'   requireNamespace("neurosurf", quietly = TRUE)) {
 #'   old_rgl <- Sys.getenv("RGL_USE_NULL", unset = NA)
@@ -1099,6 +1102,7 @@ adjacency.parcel_space <- function(x, ...) {
 #'   x <- parcel_space_from_atlas(atlas, parent)
 #'   feature_ids(x)
 #'   if (is.na(old_rgl)) Sys.unsetenv("RGL_USE_NULL") else Sys.setenv(RGL_USE_NULL = old_rgl)
+#' }
 #' }
 #' @export
 parcel_space_from_atlas <- function(atlas, parent,
