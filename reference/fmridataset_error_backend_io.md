@@ -29,3 +29,11 @@ fmridataset_error_backend_io(message, file = NULL, operation = NULL, ...)
 ## Value
 
 A backend I/O error condition
+
+## Examples
+
+``` r
+cond <- fmridataset:::fmridataset_error_backend_io("read failed", file = "x.h5")
+cond$operation
+#> NULL
+```

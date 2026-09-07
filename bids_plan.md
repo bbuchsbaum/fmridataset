@@ -81,8 +81,7 @@ datasets). Each subject’s backend may itself be **scan-composite** (a
 `x$backend$backends[[idx]]` — it reaches the subject level, not
 individual scans.
 
-This gives us
-[`data_chunks()`](https://bbuchsbaum.github.io/fmridataset/reference/data_chunks.md),
+This gives us `data_chunks()`,
 [`as_delarr()`](https://bbuchsbaum.github.io/fmridataset/reference/as_delarr.md),
 and per-subject access for free.
 
@@ -92,12 +91,10 @@ This is the main structural issue. The current backend contract couples
 three things:
 
 - `backend_get_dims()$spatial` → 3D volume geometry
-- [`backend_get_mask()`](https://bbuchsbaum.github.io/fmridataset/reference/backend_get_mask.md)
-  → logical vector of length `prod(spatial)`
+- `backend_get_mask()` → logical vector of length `prod(spatial)`
 - `backend_get_data(rows, cols)` → matrix where `ncol == sum(mask)`
 
-This coupling is enforced in
-[`validate_backend()`](https://bbuchsbaum.github.io/fmridataset/reference/validate_backend.md)
+This coupling is enforced in `validate_backend()`
 (storage_backend.R:170-188), `study_backend` column bounds
 (study_backend.R:161),
 [`as_delarr()`](https://bbuchsbaum.github.io/fmridataset/reference/as_delarr.md)
@@ -123,15 +120,14 @@ live in the H5 file as metadata (under `/spatial/` and
 `bids_h5_dataset` object — but they do not flow through the backend
 contract. This means:
 
-- [`validate_backend()`](https://bbuchsbaum.github.io/fmridataset/reference/validate_backend.md)
-  passes: `length(mask) == prod(spatial) == K`, `sum(mask) == K`
+- `validate_backend()` passes: `length(mask) == prod(spatial) == K`,
+  `sum(mask) == K`
 - `study_backend` works: column bounds are K, consistent across scans
 - [`as_delarr()`](https://bbuchsbaum.github.io/fmridataset/reference/as_delarr.md)
   works: column count derived from mask is K
-- [`data_chunks()`](https://bbuchsbaum.github.io/fmridataset/reference/data_chunks.md)
-  works unchanged
-- [`index_selector()`](https://bbuchsbaum.github.io/fmridataset/reference/index_selector.md)
-  works over parcel columns (select parcels 1:10, etc.)
+- `data_chunks()` works unchanged
+- `index_selector()` works over parcel columns (select parcels 1:10,
+  etc.)
 - ROI/sphere/voxel selectors do **not** work on parcellated data —
   correct, because parcellated data doesn’t have voxel resolution
 
@@ -344,21 +340,15 @@ h5_shared_connection <- function(file)
 ```
 
 **Handle lifecycle:** Each `bids_h5_scan_backend` carries an `is_open`
-flag.
-[`backend_open()`](https://bbuchsbaum.github.io/fmridataset/reference/backend_open.md)
-and
-[`backend_close()`](https://bbuchsbaum.github.io/fmridataset/reference/backend_close.md)
-are **idempotent per instance**: open increments the shared ref_count
-only on first open (when `is_open` is FALSE → TRUE), close decrements
-only on final close (when `is_open` is TRUE → FALSE). This is critical
-because
-[`fmri_dataset()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_dataset.md)
-calls
-[`backend_open()`](https://bbuchsbaum.github.io/fmridataset/reference/backend_open.md)
-during construction (dataset_constructors.R:280) and `study_backend`
-recursively opens/closes children (study_backend.R:122). Without
-idempotent guards, nested composition drifts the ref_count, leaking the
-file handle or closing it prematurely.
+flag. `backend_open()` and `backend_close()` are **idempotent per
+instance**: open increments the shared ref_count only on first open
+(when `is_open` is FALSE → TRUE), close decrements only on final close
+(when `is_open` is TRUE → FALSE). This is critical because
+`fmri_dataset()` calls `backend_open()` during construction
+(dataset_constructors.R:280) and `study_backend` recursively
+opens/closes children (study_backend.R:122). Without idempotent guards,
+nested composition drifts the ref_count, leaking the file handle or
+closing it prematurely.
 
 ``` r
 
@@ -441,9 +431,7 @@ parcellation_info(study)
 2.  Select corresponding per-scan backends (already in memory, just
     pointers)
 3.  Regroup by subject → new per-subject `fmri_dataset` objects
-4.  Return new `bids_h5_study_dataset` via
-    [`fmri_study_dataset()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_study_dataset.md)
-    with:
+4.  Return new `bids_h5_study_dataset` via `fmri_study_dataset()` with:
     - Filtered event_table (only matching scans, preserving both `run`
       and `run_id`)
     - Filtered sampling_frame (only matching run lengths)
@@ -457,8 +445,8 @@ parcellation_info(study)
 | File | Contents |
 |:---|:---|
 | `R/bids_h5_backend.R` | `bids_h5_scan_backend` class, 6-method contract, `h5_shared_connection` |
-| `R/bids_h5_dataset.R` | [`bids_h5_dataset()`](https://bbuchsbaum.github.io/fmridataset/reference/bids_h5_dataset.md) reader, `bids_h5_study_dataset` class, [`subset_bids_h5()`](https://bbuchsbaum.github.io/fmridataset/reference/subset_bids_h5.md), [`study_to_group()`](https://bbuchsbaum.github.io/fmridataset/reference/study_to_group.md), [`participants()`](https://bbuchsbaum.github.io/fmridataset/reference/participants.md), [`tasks()`](https://bbuchsbaum.github.io/fmridataset/reference/tasks.md), [`sessions()`](https://bbuchsbaum.github.io/fmridataset/reference/sessions.md), [`parcellation_info()`](https://bbuchsbaum.github.io/fmridataset/reference/parcellation_info.md), [`get_confounds()`](https://bbuchsbaum.github.io/fmridataset/reference/get_confounds.md) |
-| `R/bids_h5_write.R` | [`compress_bids_study()`](https://bbuchsbaum.github.io/fmridataset/reference/compress_bids_study.md) writer |
+| `R/bids_h5_dataset.R` | `bids_h5_dataset()` reader, `bids_h5_study_dataset` class, `subset_bids_h5()`, `study_to_group()`, `participants()`, `tasks()`, `sessions()`, `parcellation_info()`, `get_confounds()` |
+| `R/bids_h5_write.R` | `compress_bids_study()` writer |
 | `R/bids_h5_events.R` | Event read/write helpers for HDF5 column arrays |
 | `tests/testthat/test-bids_h5.R` | Round-trip tests, subsetting, events, confounds |
 
@@ -474,12 +462,12 @@ parcellation_info(study)
 
 | What | From | Function/Class |
 |:---|:---|:---|
-| BIDS querying | bidser | `bids_project()`, `preproc_scans()`, `read_events()`, `read_confounds()`, [`participants()`](https://bbuchsbaum.github.io/fmridataset/reference/participants.md), [`tasks()`](https://bbuchsbaum.github.io/fmridataset/reference/tasks.md), [`sessions()`](https://bbuchsbaum.github.io/fmridataset/reference/sessions.md) |
+| BIDS querying | bidser | `bids_project()`, `preproc_scans()`, `read_events()`, `read_confounds()`, `participants()`, `tasks()`, `sessions()` |
 | Mock BIDS | bidser | `create_mock_bids()` |
 | Parcel averaging | fmristore | `summarize_by_clusters()` |
 | HDF5 I/O | hdf5r | Direct H5 read/write |
 | Temporal structure | fmrihrf | `sampling_frame()` |
-| Dataset interface | fmridataset | [`fmri_dataset()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_dataset.md), [`fmri_study_dataset()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_study_dataset.md), `study_backend`, backend registry |
+| Dataset interface | fmridataset | `fmri_dataset()`, `fmri_study_dataset()`, `study_backend`, backend registry |
 | Spatial objects | neuroim2 | `NeuroVec`, `LogicalNeuroVol`, `ClusteredNeuroVol` |
 
 ------------------------------------------------------------------------
@@ -504,23 +492,18 @@ parcellation_info(study)
 ### Step 3: `bids_h5_dataset()` reader + `bids_h5_study_dataset` class
 
 - Open H5, read scan_index → per-scan backends → group by subject
-- Compose via
-  [`fmri_study_dataset()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_study_dataset.md)
+- Compose via `fmri_study_dataset()`
 - scan_manifest as first-class field
-- [`participants()`](https://bbuchsbaum.github.io/fmridataset/reference/participants.md),
-  [`tasks()`](https://bbuchsbaum.github.io/fmridataset/reference/tasks.md),
-  [`sessions()`](https://bbuchsbaum.github.io/fmridataset/reference/sessions.md)
-  methods. **Concrete approach: fmridataset-local generics.** Define
-  [`participants()`](https://bbuchsbaum.github.io/fmridataset/reference/participants.md),
-  [`tasks()`](https://bbuchsbaum.github.io/fmridataset/reference/tasks.md),
-  [`sessions()`](https://bbuchsbaum.github.io/fmridataset/reference/sessions.md)
-  as S3 generics in `R/all_generic.R` owned by fmridataset. This avoids
-  any conditional registration complexity and works whether or not
-  bidser is installed. If a user loads both packages, standard S3
-  dispatch resolves by class — bidser methods handle `bids_project`
-  objects, fmridataset methods handle `bids_h5_study_dataset` objects,
-  no conflict. Users call `fmridataset::participants(study)` or just
-  `participants(study)` with no bidser dependency.
+- `participants()`, `tasks()`, `sessions()` methods. **Concrete
+  approach: fmridataset-local generics.** Define `participants()`,
+  `tasks()`, `sessions()` as S3 generics in `R/all_generic.R` owned by
+  fmridataset. This avoids any conditional registration complexity and
+  works whether or not bidser is installed. If a user loads both
+  packages, standard S3 dispatch resolves by class — bidser methods
+  handle `bids_project` objects, fmridataset methods handle
+  `bids_h5_study_dataset` objects, no conflict. Users call
+  `fmridataset::participants(study)` or just `participants(study)` with
+  no bidser dependency.
 
 ### Step 4: `subset_bids_h5()` for task/subject/session/run filtering
 
@@ -533,13 +516,11 @@ parcellation_info(study)
 - `get_confounds(study, scan_name=)` accessor — keyed by scan_name,
   returns named list of tibbles when multiple scans match; single tibble
   when unambiguous
-- Censor vector:
-  [`fmri_study_dataset()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_study_dataset.md)
-  does not propagate censor (R/dataset_constructors.R:486 drops it).
-  `bids_h5_study_dataset` must aggregate per-scan censor vectors itself
-  and store as a top-level field. The per-subject `fmri_dataset` objects
-  carry their own censor; the study-level censor is the concatenation
-  across all subjects.
+- Censor vector: `fmri_study_dataset()` does not propagate censor
+  (R/dataset_constructors.R:486 drops it). `bids_h5_study_dataset` must
+  aggregate per-scan censor vectors itself and store as a top-level
+  field. The per-subject `fmri_dataset` objects carry their own censor;
+  the study-level censor is the concatenation across all subjects.
 - Task column in event_table
 - Events carry both BIDS `run` (the BIDS run label, e.g. “01”) and
   internal `run_id` (sequential integer across runs within a subject, as
@@ -547,23 +528,16 @@ parcellation_info(study)
 
 ### Step 6: Integration tests
 
-- Round-trip: `create_mock_bids()` →
-  [`compress_bids_study()`](https://bbuchsbaum.github.io/fmridataset/reference/compress_bids_study.md)
-  →
-  [`bids_h5_dataset()`](https://bbuchsbaum.github.io/fmridataset/reference/bids_h5_dataset.md)
-  → verify
-- [`get_data_matrix()`](https://bbuchsbaum.github.io/fmridataset/reference/get_data_matrix.md)
-  returns correct `[T, K]`
+- Round-trip: `create_mock_bids()` → `compress_bids_study()` →
+  `bids_h5_dataset()` → verify
+- `get_data_matrix()` returns correct `[T, K]`
 - `event_table` matches original events.tsv content
 - `subset_bids_h5(task = "nback")` returns correct subset
-- [`data_chunks()`](https://bbuchsbaum.github.io/fmridataset/reference/data_chunks.md)
-  works on the result
+- `data_chunks()` works on the result
 - [`as_delarr()`](https://bbuchsbaum.github.io/fmridataset/reference/as_delarr.md)
   works on the result
-- [`index_selector()`](https://bbuchsbaum.github.io/fmridataset/reference/index_selector.md)
-  works over parcel columns
-- [`fmri_group()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_group.md)
-  works on the result
+- `index_selector()` works over parcel columns
+- `fmri_group()` works on the result
 - Missing dependency errors are informative
 
 ## Future Phases
@@ -575,9 +549,7 @@ parcellation_info(study)
 - `bids_h5_scan_backend` extended (or new subclass) for voxel-space data
 - May require backend contract revision to distinguish spatial vs
   feature dims
-- Lazy voxel selection via
-  [`fmri_series()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_series.md)
-  selectors
+- Lazy voxel selection via `fmri_series()` selectors
 
 ### Phase 3: Convenience and polish
 
@@ -593,17 +565,15 @@ parcellation_info(study)
 ## Key Constraints & Non-Goals (Phase 1)
 
 - **No voxel selectors on parcellated data.** Parcels are the feature
-  space.
-  [`index_selector()`](https://bbuchsbaum.github.io/fmridataset/reference/index_selector.md)
-  works (select parcels by column index), but ROI/sphere/voxel selectors
-  do not apply. This is honest about what parcellated data is.
+  space. `index_selector()` works (select parcels by column index), but
+  ROI/sphere/voxel selectors do not apply. This is honest about what
+  parcellated data is.
 - **TR must be constant across all scans.** `fmri_study_dataset`
   enforces this. Writer validates upfront.
 - **No neuroarchive dependency.** Schema leaves a seam; code doesn’t
   touch it.
-- **No NSE filtering.**
-  [`subset_bids_h5()`](https://bbuchsbaum.github.io/fmridataset/reference/subset_bids_h5.md)
-  uses standard evaluation with named arguments.
+- **No NSE filtering.** `subset_bids_h5()` uses standard evaluation with
+  named arguments.
 - **No incremental writes.** The archive is written once from a complete
   BIDS directory.
 - **Parcellation must be consistent across subjects.** The writer takes
@@ -617,15 +587,12 @@ parcellation_info(study)
 ## Verification Checklist
 
 1.  Round-trip: mock BIDS → write → read → verify events, data, metadata
-2.  [`get_data_matrix()`](https://bbuchsbaum.github.io/fmridataset/reference/get_data_matrix.md)
-    returns `[T, K]` with correct K = n_parcels
-3.  [`validate_backend()`](https://bbuchsbaum.github.io/fmridataset/reference/validate_backend.md)
-    passes on `bids_h5_scan_backend`
+2.  `get_data_matrix()` returns `[T, K]` with correct K = n_parcels
+3.  `validate_backend()` passes on `bids_h5_scan_backend`
 4.  `study_backend` correctly composes per-scan backends
 5.  `subset_bids_h5(task = ...)` produces valid study_dataset
 6.  `event_table` has task, session, subject_id, run columns
-7.  [`data_chunks()`](https://bbuchsbaum.github.io/fmridataset/reference/data_chunks.md)
-    iterates correctly over study
+7.  `data_chunks()` iterates correctly over study
 8.  [`as_delarr()`](https://bbuchsbaum.github.io/fmridataset/reference/as_delarr.md)
     produces correct `[T_total, K]` lazy matrix
 9.  Missing bidser/fmristore/hdf5r produces clear error

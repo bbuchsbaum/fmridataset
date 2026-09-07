@@ -34,7 +34,7 @@ plan_blocks(
 
 - memory_budget:
 
-  Hard maximum bytes for one input block.
+  Hard maximum estimated peak bytes for one input block.
 
 - target_block_bytes:
 
@@ -43,3 +43,20 @@ plan_blocks(
 ## Value
 
 A serializable `frame_block_plan`.
+
+## Examples
+
+``` r
+frame <- fmri_frame(
+  assays = list(signal = memory_source(matrix(seq_len(20), 5, 4))),
+  observations = data.frame(.obs_id = sprintf("obs-%d", 1:5)),
+  active_assay = "signal"
+)
+plan <- plan_blocks(frame, memory_budget = 10 * 1024^2)
+plan
+#> <frame_block_plan> balanced 
+#>   shape: 5 x 4 
+#>   block shape: 5 x 4 
+#>   blocks: 1 
+#>   maximum block bytes: 160 
+```

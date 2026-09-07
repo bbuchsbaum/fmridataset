@@ -35,13 +35,10 @@ This package follows the tidyverse style guide with some modifications:
 
 1.  Create a new branch for your feature or bug fix
 2.  Write tests for any new functionality
-3.  Ensure all tests pass:
-    [`devtools::test()`](https://devtools.r-lib.org/reference/test.html)
-4.  Check the package:
-    [`devtools::check()`](https://devtools.r-lib.org/reference/check.html)
+3.  Ensure all tests pass: `devtools::test()`
+4.  Check the package: `devtools::check()`
 5.  Run the linter: `lintr::lint_package()`
-6.  Update documentation if needed:
-    [`devtools::document()`](https://devtools.r-lib.org/reference/document.html)
+6.  Update documentation if needed: `devtools::document()`
 
 ## Backend Development
 
@@ -49,8 +46,7 @@ If you’re adding a new storage backend:
 
 1.  Implement all methods from the `StorageBackend` contract (see
     `R/storage_backend.R`)
-2.  Validate your backend with
-    [`validate_backend()`](https://bbuchsbaum.github.io/fmridataset/reference/validate_backend.md)
+2.  Validate your backend with `validate_backend()`
 3.  Add comprehensive tests
 4.  Document the backend in the extending vignette
 

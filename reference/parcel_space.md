@@ -62,3 +62,15 @@ parcel_space(
 ## Value
 
 A `parcel_space`.
+
+## Examples
+
+``` r
+parent <- volume_space(c(3, 2, 1), support = 1:6)
+membership <- Matrix::sparseMatrix(
+  i = 1:6, j = c(1, 1, 1, 2, 2, 2), x = 1, dims = c(6L, 2L)
+)
+x <- parcel_space(parent, c(10L, 20L), membership, atlas = "toy-atlas")
+n_features(x)
+#> [1] 2
+```

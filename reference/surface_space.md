@@ -69,3 +69,67 @@ surface_space(
 ## Value
 
 A `surface_space`.
+
+## Examples
+
+``` r
+surface_space(
+  vertex_ids = c("L-1", "L-2", "L-3"),
+  hemisphere = rep("left", 3)
+)
+#> $vertex_ids
+#> [1] "L-1" "L-2" "L-3"
+#> 
+#> $hemisphere
+#> [1] "left" "left" "left"
+#> 
+#> $support
+#> [1] 1 2 3
+#> 
+#> $medial_wall
+#> [1] FALSE FALSE FALSE
+#> 
+#> $topology
+#> $topology$reference
+#> NULL
+#> 
+#> $topology$digest
+#> [1] "c251941577ab73e34bf946561f9c11708ce03c301ec36bac5e74366185f3f5f4"
+#> 
+#> $topology$data
+#> NULL
+#> 
+#> 
+#> $geometry
+#> $geometry$reference
+#> NULL
+#> 
+#> $geometry$digest
+#> [1] "c251941577ab73e34bf946561f9c11708ce03c301ec36bac5e74366185f3f5f4"
+#> 
+#> $geometry$data
+#> NULL
+#> 
+#> 
+#> $template
+#> NULL
+#> 
+#> $units
+#> [1] "mm"
+#> 
+#> $surf_to_world
+#>      [,1] [,2] [,3] [,4]
+#> [1,]    1    0    0    0
+#> [2,]    0    1    0    0
+#> [3,]    0    0    1    0
+#> [4,]    0    0    0    1
+#> 
+#> $metadata
+#> list()
+#> 
+#> $schema_version
+#> [1] 2
+#> 
+#> attr(,"class")
+#> [1] "surface_space" "feature_space"
+```

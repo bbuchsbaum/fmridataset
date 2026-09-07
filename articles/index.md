@@ -1,14 +1,20 @@
 # Articles
 
-### All vignettes
+### Using frames
 
-- [Architecture
-  Overview](https://bbuchsbaum.github.io/fmridataset/articles/architecture-overview.md):
-- [Writing Custom Storage
-  Backends](https://bbuchsbaum.github.io/fmridataset/articles/backend-development-basics.md):
-- [BIDS H5 Archive: Compressing a Study into a Single
-  File](https://bbuchsbaum.github.io/fmridataset/articles/bids-h5-archive.md):
-- [Getting Started with
-  fmridataset](https://bbuchsbaum.github.io/fmridataset/articles/fmridataset-intro.md):
-- [Study-Level Analysis: From Single Subjects to Group
-  Studies](https://bbuchsbaum.github.io/fmridataset/articles/study-level-analysis.md):
+The frame container, its feature spaces, and how frames move between
+spaces, storage, and BIDS.
+
+- [Frames: aligned fMRI data with explicit
+  identity](https://bbuchsbaum.github.io/fmridataset/articles/fmridataset.md):
+- [Feature spaces and
+  maps](https://bbuchsbaum.github.io/fmridataset/articles/feature-spaces.md):
+- [Persistence, identity, and
+  import](https://bbuchsbaum.github.io/fmridataset/articles/persistence-and-import.md):
+
+### Extending the package
+
+The array-source protocol for storage-package authors.
+
+- [Implementing an array
+  source](https://bbuchsbaum.github.io/fmridataset/articles/extending-sources.md):

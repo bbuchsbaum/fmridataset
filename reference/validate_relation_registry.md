@@ -35,3 +35,12 @@ validate_relation_registry(
 
 Invisibly returns `x`; contextual validation also enforces all
 foreign-key and edge identities.
+
+## Examples
+
+``` r
+registry <- relation_registry(
+  observation_stimulus = key_relation("stimulus_id", target = "stimulus")
+)
+validate_relation_registry(registry)
+```

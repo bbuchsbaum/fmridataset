@@ -39,3 +39,19 @@ execution_path(
 ## Value
 
 One of `"matrix"`, `"native"`, or `"reconstruct"`.
+
+## Examples
+
+``` r
+sp <- volume_space(dim = c(2L, 2L, 1L), affine = diag(4), support = 1:4)
+frame <- fmri_frame(
+  assays = list(signal = memory_source(matrix(seq_len(12), 3, 4))),
+  observations = data.frame(.obs_id = sprintf("obs-%d", 1:3)),
+  space = sp,
+  active_assay = "signal"
+)
+execution_path(frame, operation = "matrix")
+#> [1] "matrix"
+execution_path(frame, operation = "spatial")
+#> [1] "reconstruct"
+```

@@ -2,6 +2,230 @@
 
 ## fmridataset 0.10.0 (Development)
 
+- Fixed a set of review findings.
+  [`bind_observations()`](https://bbuchsbaum.github.io/fmridataset/reference/bind_observations.md)
+  now compares entity registries semantically (names, keys, scalar data,
+  block components, and block values, by fingerprint first and by
+  realized values only when fingerprints differ), so frames reopened
+  from FDS bind with each other and with their in-memory originals.
+  Feature-mapped, validity-masked, fault, and row-sharded sources
+  compute their fingerprints once at construction, as ADR-009 promises,
+  instead of re-hashing the operator or mask bank on every
+  [`plan_blocks()`](https://bbuchsbaum.github.io/fmridataset/reference/plan_blocks.md)
+  and
+  [`execute_block_plan()`](https://bbuchsbaum.github.io/fmridataset/reference/execute_block_plan.md)
+  call.
+  [`validate_array_source()`](https://bbuchsbaum.github.io/fmridataset/reference/source_descriptor.md)
+  resolves protocol methods from the caller’s scope, so an extension
+  class defined inside [`local()`](https://rdrr.io/r/base/eval.html) or
+  a test block validates. Canonical encoding of character vectors is
+  vectorized (byte-for-byte unchanged; the golden vectors still hold)
+  and axis frames cache the digest of their IDs, which makes
+  [`explain()`](https://bbuchsbaum.github.io/fmridataset/reference/explain.md),
+  [`assays()`](https://bbuchsbaum.github.io/fmridataset/reference/frame-accessors.md)
+  on a view, and manifest digests of wide frames orders of magnitude
+  faster.
+  [`explain()`](https://bbuchsbaum.github.io/fmridataset/reference/explain.md)
+  reports `ids_durable` and a `NULL` semantic digest for a frame with
+  ephemeral IDs instead of aborting, while
+  `identity_descriptor(domain = "semantic")` still refuses and names the
+  ephemeral axis. Runtime state (functions, environments) in axis,
+  axis-block, and assay metadata is rejected at construction. Every
+  selection over an empty axis now has the one form `all`, so plans over
+  an empty frame and its
+  [`integer()`](https://rdrr.io/r/base/integer.html) subset agree, and
+  `Inf`, `-Inf`, or magnitudes past the integer range are rejected as
+  selectors with structured reasons (`non_finite`, `out_of_bounds`)
+  rather than a bare coercion error. FDS manifests written by earlier
+  0.10 development builds, before the `id_policy` and typed-metadata
+  fields, are not readable by this build and must be rewritten from the
+  source data; the schema version stays 1 because no build with the
+  earlier layout was released.
+- Added
+  [`source_error()`](https://bbuchsbaum.github.io/fmridataset/reference/source_error.md),
+  an exported constructor for the stale, I/O, and contract conditions an
+  array source may signal, so storage packages fail the way built-in
+  sources fail.
+  [`validate_array_source()`](https://bbuchsbaum.github.io/fmridataset/reference/source_descriptor.md)
+  now names the protocol methods a descriptor lacks instead of failing
+  with a bare no-applicable-method error. A caller-supplied `revision`
+  on
+  [`memory_source()`](https://bbuchsbaum.github.io/fmridataset/reference/memory_source.md)
+  now replaces the per-object identity token, so equal-valued sources
+  built independently under the same revision share a fingerprint, as
+  ADR-009 describes.
+  [`feature_map_from_target()`](https://bbuchsbaum.github.io/fmridataset/reference/feature_map_from_target.md)
+  and
+  [`map_features()`](https://bbuchsbaum.github.io/fmridataset/reference/map_features.md)
+  explain that a synthesis-only basis has no analysis operator instead
+  of failing on the operator type.
+- Replaced the package’s independent selector mechanisms with one
+  selection algebra (`inst/architecture/ADR-010-selection-algebra.md`).
+  Frames, views, source views,
+  [`source_read()`](https://bbuchsbaum.github.io/fmridataset/reference/array-source.md),
+  collections, axis and entity frames, and
+  [`filter_entities()`](https://bbuchsbaum.github.io/fmridataset/reference/filter_entities.md)
+  now normalize selectors through one law: character selectors are
+  stable IDs that must exist, be unique, and keep request order; logical
+  selectors must match the axis with no `NA`; numeric selectors must be
+  whole, may reorder or be negative but not mixed, drop zero, and must
+  be in bounds; an element appears at most once; and an empty selection
+  is legal everywhere (a collection still cannot be empty, as a
+  container rule with `reason = "empty_collection"`). Errors carry a
+  structured `reason`. Consequently raw sources and
+  [`locate_source_rows()`](https://bbuchsbaum.github.io/fmridataset/reference/locate_source_rows.md)
+  now reject repeated positions, the law is enforced at the
+  [`source_read()`](https://bbuchsbaum.github.io/fmridataset/reference/array-source.md)
+  and
+  [`source_read_native()`](https://bbuchsbaum.github.io/fmridataset/reference/array-source.md)
+  generics for extension sources too, and collections accept negative
+  positions. Selections are stored in a compact normalized form (`all`,
+  `range`, or `positions`):
+  [`source_view()`](https://bbuchsbaum.github.io/fmridataset/reference/source_view.md)
+  no longer stores expanded index vectors, nested source views and
+  nested frame views compose into one view over the root, Zarr reads
+  take chunk runs from the form instead of re-deriving them,
+  [`explain()`](https://bbuchsbaum.github.io/fmridataset/reference/explain.md)
+  reports the selection form under `selection`, and descriptor size,
+  fingerprint cost, and plan fingerprint cost no longer scale with a
+  select-all or range axis. `source_view` fingerprints changed (schema
+  version 2);
+  [`fds_manifest_digest()`](https://bbuchsbaum.github.io/fmridataset/reference/fds_manifest_digest.md)
+  is unaffected.
+  [`source_capabilities()`](https://bbuchsbaum.github.io/fmridataset/reference/array-source.md)
+  now reports the selector forms a backend pushes down natively as
+  `pushdown:all`, `pushdown:range`, and `pushdown:positions`; every
+  built-in source declares its forms.
+- Rewrote the vignettes for the frame API. The pre-frame vignettes were
+  removed with the legacy surface; the four replacements are
+  [`vignette("fmridataset")`](https://bbuchsbaum.github.io/fmridataset/articles/fmridataset.md)
+  (frames, views, laziness, the temporal contract, ID policy, and
+  binding),
+  [`vignette("feature-spaces")`](https://bbuchsbaum.github.io/fmridataset/articles/feature-spaces.md)
+  (volume, parcel, basis, and composite spaces, spatial identity, and
+  feature maps),
+  [`vignette("persistence-and-import")`](https://bbuchsbaum.github.io/fmridataset/articles/persistence-and-import.md)
+  (FDS manifests, identity domains, fingerprints versus content hashes,
+  the HDF5 round trip, and
+  [`read_bids_bold()`](https://bbuchsbaum.github.io/fmridataset/reference/read_bids_bold.md)),
+  and
+  [`vignette("extending-sources")`](https://bbuchsbaum.github.io/fmridataset/articles/extending-sources.md)
+  (implementing and validating an array source). All four run on small
+  synthetic data and guard the `fmristore`, `bidser`, and `fmrihrf`
+  examples on those packages being installed.
+- Made source fingerprint and content-hash policy explicit
+  (`inst/architecture/ADR-009-source-fingerprints-and-content-hashes.md`).
+  [`source_fingerprint()`](https://bbuchsbaum.github.io/fmridataset/reference/array-source.md)
+  is now a cheap revision fingerprint of the descriptor and its physical
+  revision evidence, computed once at construction and cached, never of
+  array values:
+  [`memory_source()`](https://bbuchsbaum.github.io/fmridataset/reference/memory_source.md)
+  no longer hashes its payload and derives its fingerprint from shape,
+  dtype, chunks, a per-object identity token, and an optional
+  `revision`, so equal-valued memory sources built independently have
+  different fingerprints by design; `identity = "content"` is the
+  explicit opt-in. Sparse entity, lifted, and view fingerprints are
+  cached so repeated calls are O(1), and canonical encoding of numeric
+  vectors is vectorized. Added the exported extension generic
+  [`content_hash()`](https://bbuchsbaum.github.io/fmridataset/reference/content_hash.md)
+  (with
+  [`content_hash_contract()`](https://bbuchsbaum.github.io/fmridataset/reference/content_hash_contract.md)),
+  an explicit O(n) SHA-256 of realized values streamed in bounded,
+  chunk-aligned blocks that agrees across memory copies, storage dtypes,
+  views, and row-bound compositions and is accepted as a content receipt
+  by
+  [`identity_descriptor()`](https://bbuchsbaum.github.io/fmridataset/reference/identity_descriptor.md).
+  Every file-backed source now raises `fmridataset_error_source_stale`
+  (with `source`, `expected`, and `actual` fields) when its files or
+  store changed after construction; NIfTI previously raised
+  `fmridataset_error_backend_io`, which is now reserved for genuine I/O
+  failures.
+  [`plan_blocks()`](https://bbuchsbaum.github.io/fmridataset/reference/plan_blocks.md)
+  no longer rejects frames with an empty axis while estimating the
+  per-value cost.
+- Axis blocks are now two-dimensional: rows are the owning axis elements
+  and columns are named components
+  (`inst/architecture/ADR-008-axis-block-dimensionality.md`).
+  [`axis_block()`](https://bbuchsbaum.github.io/fmridataset/reference/axis_block.md)
+  rejects vectors and arrays with more than two dimensions with a
+  structured alignment error carrying `shape` and `dims`; axis, entity,
+  and manifest validation name the offending block. FDS manifests no
+  longer emit synthetic `dimension:` axis labels, and block arrays
+  declaring trailing axes are rejected. This fixes
+  [`bind_observations()`](https://bbuchsbaum.github.io/fmridataset/reference/bind_observations.md)
+  silently flattening higher-dimensional blocks. Feature blocks of every
+  bound operand must now agree with the first frame’s components and
+  values.
+- Stable keys, scalar columns, unique names, one-string fields,
+  runtime-state guards, block alignment, and synchronized subsetting are
+  validated once, in shared internal helpers, across axes, entities,
+  event and auxiliary tables, relations, and FDS manifests. Each domain
+  keeps its existing error class and wording.
+- Realization budgets now distinguish storage dtype and bytes from the R
+  output dtype, retained output, temporary selection, conversion, or
+  decompression buffers, and estimated peak working memory. The shared
+  peak-cost contract is enforced by assay, chunk, block, spatial, and
+  finite `delarr` collection paths, with counting sources reporting
+  storage and realized traffic separately.
+- The test suite now runs under testthat edition 3
+  (`Config/testthat/edition: 3`), activating the previously inert
+  snapshot tests for canonical serialization. `series()` now signals its
+  deprecation through
+  [`lifecycle::deprecate_warn()`](https://lifecycle.r-lib.org/reference/deprecate_soft.html).
+- [`write_frame()`](https://bbuchsbaum.github.io/fmridataset/reference/write_frame.md)
+  now returns the committed path normalized with forward slashes on
+  every platform, and zarr `file://` sources are resolved to native
+  filesystem paths before opening, fixing Windows-only failures.
+- Classified the namespace into user, extension, and developer-only
+  audiences (`inst/architecture/API-AUDIENCES.md`). `%||%` is no longer
+  exported; counting and fault sources remain only as documented
+  conformance tools for companion packages.
+- Added one zero-I/O canonical frame schema
+  ([`frame_schema()`](https://bbuchsbaum.github.io/fmridataset/reference/frame_schema.md))
+  for collection compatibility, observation binding, bounded
+  explanation, FDS validation, and downstream protocol checks, with
+  path-specific structured mismatch diagnostics.
+- Made
+  [`bind_observations()`](https://bbuchsbaum.github.io/fmridataset/reference/bind_observations.md)
+  lossless and policy-driven. Compatible assay, axis, feature, entity,
+  relation, and validity annotations are retained; frame metadata must
+  match or be explicitly conflict-free merged; active assay differences
+  require an explicit result; keyed typed tables union with conflict
+  detection; and every bind creates a provenance node over all input
+  graphs. Nested row-bound sources flatten canonically and empty views
+  bind without forcing numerical reads.
+- Made container metadata, typed tables, aligned values, and lineage
+  mechanically distinct. Frame, collection, study, and FDS constructors
+  now require `unaligned_record` metadata semantics and
+  `provenance_graph` lineage;
+  [`as_provenance_graph()`](https://bbuchsbaum.github.io/fmridataset/reference/as_provenance_graph.md)
+  converts a list of provenance records into a graph. Added
+  [`auxiliary_table()`](https://bbuchsbaum.github.io/fmridataset/reference/auxiliary_table.md)
+  for keyed files, contrasts, transforms, and other relational tables,
+  and reject axis-length vectors, result diagnostics, arrays, and raw
+  data frames hidden in generic metadata.
+- Defined typed semantic, schema, space, source, provenance, and
+  optional content identities under an explicit R-only canonicalization
+  v1 contract. The package-owned tagged binary encoder now publishes
+  exact golden bytes and SHA-256 vectors for numeric, Unicode, factor,
+  dimension, sparse, and nested values; `stringi` is the sole added hard
+  dependency for platform-independent UTF-8 NFC normalization. Added
+  [`same_space()`](https://bbuchsbaum.github.io/fmridataset/reference/feature-space.md)
+  for exact spatial identity; the older compatibility names remain
+  exact-identity aliases and never infer alignment from shape.
+- Made axis identity policy explicit. Durable IDs are now supplied or
+  derived deterministically from declared keys; UUID-backed IDs require
+  an explicit `ephemeral` policy, are visibly marked, and are rejected
+  by FDS persistence and semantic certification.
+- Made
+  [`explain()`](https://bbuchsbaum.github.io/fmridataset/reference/explain.md)
+  bounded for large axes: it now reports counts, source contracts,
+  realization estimates, semantic/schema digests, and sampled IDs
+  without numerical reads. Complete IDs require `ids = "complete"`.
+- Frame views now expose assay descriptors for their visible rectangle:
+  sources, shapes, and axis digests remain synchronized through
+  reordered, composed, ID-selected, and empty views without reading
+  numerical data.
 - Added the canonical
   [`as_fmri_frame()`](https://bbuchsbaum.github.io/fmridataset/reference/as_fmri_frame.md)
   coercion generic so companion packages can provide explicit legacy
@@ -95,12 +319,19 @@
   relation schemas without inferring spatial equality from dimensions,
   and inspection remains zero-read.
 
-- Added `fmri_study`, typed `frame_link` descriptors, keyed
-  `event_table` objects, shared entity contextualization, and lazy
-  [`filter_entities()`](https://bbuchsbaum.github.io/fmridataset/reference/filter_entities.md)
-  study views. Entity filters propagate through frames and native-space
-  collections, and restrict linked axis maps and event rows without
-  reading assay data.
+- Added `fmri_study`, canonical source-to-target `frame_link`
+  descriptors, keyed `event_table` objects, shared entity
+  contextualization, and self-contained lazy filtered studies. Entity
+  filters propagate through frames and native-space collections and
+  compact visible entities, linked axis maps, and typed table rows
+  without reading assay data. Feature operators are first-class link
+  fields;
+  [`compose_frame_links()`](https://bbuchsbaum.github.io/fmridataset/reference/compose_frame_links.md),
+  [`upgrade_frame_link()`](https://bbuchsbaum.github.io/fmridataset/reference/upgrade_frame_link.md),
+  and
+  [`upgrade_fds_study_manifest()`](https://bbuchsbaum.github.io/fmridataset/reference/upgrade_fds_study_manifest.md)
+  make direction, composition, and provisional-schema migration
+  explicit.
 
 - Added serializable balanced, imagewise, and featurewise block planners
   with explicit byte ceilings, chunk-aware block shapes, stale-plan
@@ -190,9 +421,8 @@
   during dependency setup before reaching `R CMD check`.
 - Constrained `delarr (>= 0.1.0.9000)` and `fmristore (>= 0.1.0.9000)`,
   the versions that first provide `delarr_provider_pull()` and
-  [`write_frame_h5()`](https://bbuchsbaum.github.io/fmristore/reference/write_frame_h5.html).
-  Older builds previously failed at namespace load or mid-test rather
-  than at dependency resolution.
+  `write_frame_h5()`. Older builds previously failed at namespace load
+  or mid-test rather than at dependency resolution.
 - Dropped the Bioconductor dependency surface. `DelayedArray` and
   `DelayedMatrixStats` are no longer suggested, and CI no longer
   installs `BiocManager`, `Rarr`, `rhdf5`, `DelayedArray`, or
@@ -201,6 +431,45 @@
 
 ### Breaking changes
 
+- Removed the pre-frame dataset architecture. `fmri_dataset()`,
+  `matrix_dataset()`, `fmri_mem_dataset()`, `fmri_file_dataset()`,
+  `fmri_h5_dataset()`, `fmri_zarr_dataset()`, `fmri_study_dataset()`,
+  `latent_dataset()`, `bids_h5_dataset()`, `compress_bids_study()`, the
+  storage-backend protocol and registry (`storage_backend`,
+  `backend_*()`, `register_backend()`), the sampling-frame accessors
+  (`get_TR()`, `blocklens()`, `blockids()`, `n_runs()`,
+  `n_timepoints()`, …), `data_chunks()` and its execution strategies,
+  `fmri_series()` and the selector API, `fmri_group()` and the group
+  verbs, `read_fmri_config()`, and the vignette data generators are
+  gone.
+  [`fmri_frame()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_frame.md)
+  is the only data container;
+  [`temporal_schema()`](https://bbuchsbaum.github.io/fmridataset/reference/temporal-schema.md)
+  and
+  [`as_sampling_frame()`](https://bbuchsbaum.github.io/fmridataset/reference/temporal-schema.md)
+  replace the sampling-frame accessors,
+  [`collect_assay()`](https://bbuchsbaum.github.io/fmridataset/reference/collect_assay.md),
+  [`plan_blocks()`](https://bbuchsbaum.github.io/fmridataset/reference/plan_blocks.md),
+  and
+  [`as_delarr()`](https://bbuchsbaum.github.io/fmridataset/reference/as_delarr.md)
+  replace chunk iteration, and
+  [`fmri_collection()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_collection.md)
+  and
+  [`fmri_study()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_study.md)
+  replace the study dataset and group. The last commit carrying the old
+  surface is `3ae565e`; applications that still need it should pin that
+  revision while they migrate. `fmri_frame` objects no longer inherit
+  from `fmri_dataset`. Serialized 0.x objects are not migrated by this
+  package: load them with the pinned revision, build an `fmri_frame`
+  from the matrix and metadata, and persist it with
+  [`write_frame()`](https://bbuchsbaum.github.io/fmridataset/reference/write_frame.md).
+- [`as_delarr()`](https://bbuchsbaum.github.io/fmridataset/reference/as_delarr.md)
+  now dispatches on `x` rather than `backend`, and is defined for array
+  sources only.
+- `fmrihrf` moved from Imports to Suggests. Only
+  [`as_sampling_frame()`](https://bbuchsbaum.github.io/fmridataset/reference/temporal-schema.md)
+  needs it, and that function now fails with a structured error when it
+  is absent.
 - Retired the `DelayedArray` bridge. `as_delayed_array()` and its
   methods, the `StorageBackendSeed` and `StudyBackendSeed` classes, and
   `register_delayed_array_support()` are removed.
@@ -208,10 +477,9 @@
   provides the same lazy interface over the same backends
   (`matrix_backend`, `nifti_backend`, `study_backend`, and a default
   method) and is the supported replacement.
-- [`fmri_series()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_series.md)
-  no longer accepts `output = "DelayedMatrix"`; `output` is now
-  `"fmri_series"` only. The returned object already carries a `delarr`
-  lazy matrix payload, which
+- `fmri_series()` no longer accepts `output = "DelayedMatrix"`; `output`
+  is now `"fmri_series"` only. The returned object already carries a
+  `delarr` lazy matrix payload, which
   [`as_delarr()`](https://bbuchsbaum.github.io/fmridataset/reference/as_delarr.md)
   exposes directly. Note that `delarr` is a hard dependency, so the
   previous `DelayedArray` fallback path was unreachable in any
@@ -221,22 +489,17 @@
 
 ### New features
 
-- Added `dummy_mode` parameter to
-  [`fmri_dataset()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_dataset.md)
-  and
-  [`nifti_backend()`](https://bbuchsbaum.github.io/fmridataset/reference/nifti_backend.md)
+- Added `dummy_mode` parameter to `fmri_dataset()` and `nifti_backend()`
   ([\#3](https://github.com/bbuchsbaum/fmridataset/issues/3))
   - Allows creation of datasets with non-existent file paths for testing
   - Returns placeholder data (zeros) and standard dimensions
   - Useful for testing dependent packages without requiring actual data
     files
-  - Enable with `dummy_mode = TRUE` in
-    [`fmri_dataset()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_dataset.md)
-    constructor
+  - Enable with `dummy_mode = TRUE` in `fmri_dataset()` constructor
 - Replaced the DelayedArray dependency with the lightweight `delarr`
   lazy matrix adapter
-  - [`fmri_series()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_series.md)
-    and study helpers now return `delarr` objects by default
+  - `fmri_series()` and study helpers now return `delarr` objects by
+    default
   - Added
     [`as_delarr()`](https://bbuchsbaum.github.io/fmridataset/reference/as_delarr.md)
     generics for all storage backends and study adapters
@@ -251,18 +514,14 @@
   ([\#1](https://github.com/bbuchsbaum/fmridataset/issues/1))
   - Memoization now uses `cachem` with configurable size limit (default
     512MB)
-  - Added
-    [`fmri_clear_cache()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_clear_cache.md)
-    function to manually clear cache
+  - Added `fmri_clear_cache()` function to manually clear cache
   - Cache size configurable via
     `options(fmridataset.cache_max_mb = 1024)`
 - Added memory warnings and mitigation for study_backend
   ([\#2](https://github.com/bbuchsbaum/fmridataset/issues/2))
   - Warning when operations will load \>1GB into memory
   - Automatic chunking for operations that would load \>2GB
-  - Recommends using
-    [`data_chunks()`](https://bbuchsbaum.github.io/fmridataset/reference/data_chunks.md)
-    for large datasets
+  - Recommends using `data_chunks()` for large datasets
 
 ## fmridataset 0.1.0
 
@@ -279,10 +538,7 @@
 ### Bug fixes
 
 - Fixed chunking edge case when `nchunks > number of voxels`
-- Updated deprecated
-  [`with_mock()`](https://testthat.r-lib.org/reference/with_mock.html)
-  calls to
-  [`with_mocked_bindings()`](https://testthat.r-lib.org/reference/local_mocked_bindings.html)
+- Updated deprecated `with_mock()` calls to `with_mocked_bindings()`
 - Fixed dimensional consistency issues in storage backends
 - Resolved all test failures from package refactoring
 

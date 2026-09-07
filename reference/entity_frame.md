@@ -36,3 +36,17 @@ entity_frame(data, key, blocks = list(), entity_type = NULL, metadata = list())
 ## Value
 
 An `entity_frame`, also implementing the `axis_frame` contract.
+
+## Examples
+
+``` r
+x <- entity_frame(
+  data = tibble::tibble(
+    stimulus_id = c("stim-1", "stim-2", "stim-3"),
+    category = c("face", "scene", "object")
+  ),
+  key = "stimulus_id"
+)
+entity_ids(x)
+#> [1] "stim-1" "stim-2" "stim-3"
+```

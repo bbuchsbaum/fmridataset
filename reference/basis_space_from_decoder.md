@@ -14,7 +14,8 @@ basis_space_from_decoder(
   basis_type = "linear_basis",
   provenance = list(),
   tolerance = 1e-08,
-  metadata = list()
+  metadata = list(),
+  encoder = c("least_squares", "none")
 )
 ```
 
@@ -26,6 +27,22 @@ basis_space_from_decoder(
   Passed to
   [`basis_space()`](https://bbuchsbaum.github.io/fmridataset/reference/basis_space.md).
 
+- encoder:
+
+  Either `"least_squares"` to construct and validate the exact
+  unregularized left inverse, or `"none"` for a synthesis-only basis.
+
 ## Value
 
 A `basis_space`.
+
+## Examples
+
+``` r
+parent <- volume_space(c(2, 1, 1), support = 1:2)
+x <- basis_space_from_decoder(parent, c("c1", "c2"), diag(2))
+basis_synthesis(x)
+#>      [,1] [,2]
+#> [1,]    1    0
+#> [2,]    0    1
+```

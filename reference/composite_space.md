@@ -39,3 +39,15 @@ composite_space(
 ## Value
 
 A `composite_space`.
+
+## Examples
+
+``` r
+parts <- list(
+  left = index_space(2, ids = c("l1", "l2")),
+  right = index_space(2, ids = c("r1", "r2"))
+)
+x <- composite_space(parts, composite_type = "bilateral")
+feature_ids(x)
+#> [1] "left::l1"  "left::l2"  "right::r1" "right::r2"
+```

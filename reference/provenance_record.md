@@ -33,3 +33,13 @@ provenance_record(
 ## Value
 
 A `provenance_record`.
+
+## Examples
+
+``` r
+r <- provenance_record("normalize", inputs = list(method = "zscore"))
+r$operation
+#> [1] "normalize"
+r$id
+#> [1] "8acf06efadec5badb0d153c7ef17603a143dea261745f1cb4b0513413021c3dc"
+```

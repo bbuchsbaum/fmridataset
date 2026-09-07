@@ -15,14 +15,14 @@
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/fmridataset.html">Get started</a></li>
+<li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/architecture-overview.html">Architecture Overview</a></li>
-    <li><a class="dropdown-item" href="../articles/backend-development-basics.html">Writing Custom Storage Backends</a></li>
-    <li><a class="dropdown-item" href="../articles/bids-h5-archive.html">BIDS H5 Archive: Compressing a Study into a Single File</a></li>
-    <li><a class="dropdown-item" href="../articles/fmridataset-intro.html">Getting Started with fmridataset</a></li>
-    <li><a class="dropdown-item" href="../articles/study-level-analysis.html">Study-Level Analysis: From Single Subjects to Group Studies</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/feature-spaces.html">Feature spaces and maps</a></li>
+    <li><a class="dropdown-item" href="../articles/persistence-and-import.html">Persistence, identity, and import</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="../articles/index.html">More articles...</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -71,6 +71,87 @@
     <p>An <code>aligned_assay_set</code>.</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="volume_space.html">volume_space</a></span><span class="op">(</span>dim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span>, affine <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fl">4</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">obs</span> <span class="op">&lt;-</span> <span class="fu"><a href="axis_frame.html">axis_frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>.obs_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"vol-%d"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">4</span><span class="op">)</span><span class="op">)</span>, axis <span class="op">=</span> <span class="st">"observation"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">feat</span> <span class="op">&lt;-</span> <span class="fu"><a href="feature_axis.html">feature_axis</a></span><span class="op">(</span><span class="fu"><a href="feature-space.html">feature_data</a></span><span class="op">(</span><span class="va">sp</span><span class="op">)</span>, space <span class="op">=</span> <span class="va">sp</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">bold</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">4</span> <span class="op">*</span> <span class="fu"><a href="feature-space.html">n_features</a></span><span class="op">(</span><span class="va">sp</span><span class="op">)</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">aligned_assay_set</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>bold <span class="op">=</span> <span class="va">bold</span><span class="op">)</span>, <span class="va">obs</span>, <span class="va">feat</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $bold</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $name</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "bold"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $source</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $data</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>              [,1]       [,2]       [,3]       [,4]        [,5]       [,6]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1,] -1.400043517  0.6215527 -0.2441996  2.0650249 -0.52201251  0.4681544</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [2,]  0.255317055  1.1484116 -0.2827054 -1.6309894 -0.05260191  0.3629513</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [3,] -2.437263611 -1.8218177 -0.5536994  0.5124269  0.54299634 -1.3045435</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [4,] -0.005571287 -0.2473253  0.6289820 -1.8630115 -0.91407483  0.7377763</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>             [,7]       [,8]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1,]  1.88850493 -0.8267890</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [2,] -0.09744510 -1.5123997</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [3,] -0.93584735  0.9353632</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [4,] -0.01595031  0.1764886</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $shape</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 4 8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $dtype</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "float64"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $chunks</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 4 8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $capabilities</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "row_slice"          "column_slice"       "block_slice"       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [4] "serializable"       "pushdown:all"       "pushdown:range"    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [7] "pushdown:positions"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $identity</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "object:46a6e935-95c3-44ef-8f32-656e4fe3d921"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $identity_basis</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "object"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $revision</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $schema_version</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $fingerprint</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "81c6706690e4e92df42548c93f2576f48db8fbf4e1d02e23ea02b0a5b00ccd40"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"class")</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "memory_source" "array_source" </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $dtype</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "float64"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $observation_digest</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "28df8f486f71cf37d9a5b1904e08bdc23d74ad6016c06fe1dda6720059b6f491"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $feature_digest</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "7da7a601714ec9063d1844682d3f9755e7b8785ad9d62d6280391d426c8a0c44"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $role</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $units</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $metadata</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> list()</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"class")</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "aligned_assay"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"class")</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "aligned_assay_set" "list"             </span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

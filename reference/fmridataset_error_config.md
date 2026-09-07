@@ -29,3 +29,11 @@ fmridataset_error_config(message, parameter = NULL, value = NULL, ...)
 ## Value
 
 A configuration error condition
+
+## Examples
+
+``` r
+cond <- fmridataset:::fmridataset_error_config("bad value", parameter = "chunks")
+cond$parameter
+#> [1] "chunks"
+```

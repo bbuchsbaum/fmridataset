@@ -32,3 +32,23 @@ validity_matrix(x, name = NULL)
 
 The validated descriptor, entity name/IDs, mask bank, feature space, or
 expanded entity-by-feature logical matrix.
+
+## Examples
+
+``` r
+space <- index_space(4, ids = paste0("f", 1:4), namespace = "validity-ex")
+validity <- entity_feature_validity(
+  entity = "subject", entity_ids = c("sub-1", "sub-2"),
+  masks = rbind(
+    c(TRUE, TRUE, FALSE, TRUE),
+    c(TRUE, FALSE, FALSE, TRUE)
+  ),
+  space = space
+)
+validity_entity_ids(validity)
+#> [1] "sub-1" "sub-2"
+validity_matrix(validity)
+#>      [,1]  [,2]  [,3] [,4]
+#> [1,] TRUE  TRUE FALSE TRUE
+#> [2,] TRUE FALSE FALSE TRUE
+```

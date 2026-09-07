@@ -64,3 +64,12 @@ basis_space(
 ## Value
 
 A `basis_space`.
+
+## Examples
+
+``` r
+parent <- volume_space(c(2, 1, 1), support = 1:2)
+x <- basis_space(parent, c("c1", "c2"), diag(2), diag(2))
+n_features(x)
+#> [1] 2
+```

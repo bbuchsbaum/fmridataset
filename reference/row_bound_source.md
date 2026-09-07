@@ -18,3 +18,13 @@ row_bound_source(sources)
 
 A serializable `row_sharded_source`. This compatibility constructor
 assigns deterministic shard IDs.
+
+## Examples
+
+``` r
+a <- memory_source(matrix(1:4, nrow = 2))
+b <- memory_source(matrix(5:8, nrow = 2))
+src <- row_bound_source(list(a, b))
+source_shape(src)
+#> [1] 4 2
+```

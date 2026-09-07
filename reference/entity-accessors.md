@@ -30,3 +30,21 @@ entity_names(x)
 
 `entities()` returns the registry; `entity()` returns one
 `entity_frame`; `entity_names()` returns registry names.
+
+## Examples
+
+``` r
+subjects <- entity_frame(
+  data = tibble::tibble(subject_id = c("sub-1", "sub-2")),
+  key = "subject_id"
+)
+registry <- entity_registry(subject = subjects)
+entities(registry)
+#> <entity_registry> 1 entity types
+#>   subject
+entity(registry, "subject")
+#> <entity_frame> 2 entity records
+#>   key: subject_id 
+entity_names(registry)
+#> [1] "subject"
+```

@@ -17,3 +17,20 @@ fds_schema_version()
 
 `fds_schema()` returns the immutable schema identity;
 `fds_schema_version()` returns its integer major version.
+
+## Examples
+
+``` r
+fds_schema()
+#> $id
+#> [1] "org.fmridataset.fds/v1"
+#> 
+#> $version
+#> [1] 1
+#> 
+#> $object_types
+#> [1] "fmri_frame"
+#> 
+fds_schema_version()
+#> [1] 1
+```

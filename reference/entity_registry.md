@@ -29,3 +29,15 @@ validate_entity_registry(x)
 ## Value
 
 A named `entity_registry`.
+
+## Examples
+
+``` r
+subjects <- entity_frame(
+  data = tibble::tibble(subject_id = c("sub-1", "sub-2")),
+  key = "subject_id"
+)
+registry <- entity_registry(subject = subjects)
+entity_names(registry)
+#> [1] "subject"
+```

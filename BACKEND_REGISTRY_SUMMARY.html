@@ -15,14 +15,14 @@
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="articles/fmridataset.html">Get started</a></li>
+<li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/architecture-overview.html">Architecture Overview</a></li>
-    <li><a class="dropdown-item" href="articles/backend-development-basics.html">Writing Custom Storage Backends</a></li>
-    <li><a class="dropdown-item" href="articles/bids-h5-archive.html">BIDS H5 Archive: Compressing a Study into a Single File</a></li>
-    <li><a class="dropdown-item" href="articles/fmridataset-intro.html">Getting Started with fmridataset</a></li>
-    <li><a class="dropdown-item" href="articles/study-level-analysis.html">Study-Level Analysis: From Single Subjects to Group Studies</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/feature-spaces.html">Feature spaces and maps</a></li>
+    <li><a class="dropdown-item" href="articles/persistence-and-import.html">Persistence, identity, and import</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="articles/index.html">More articles...</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -55,18 +55,18 @@
 <li>
 <strong>Registration Functions</strong>:
 <ul><li>
-<code><a href="reference/register_backend.html">register_backend()</a></code>: Register new backend types</li>
+<code>register_backend()</code>: Register new backend types</li>
 <li>
-<code><a href="reference/unregister_backend.html">unregister_backend()</a></code>: Remove backend types</li>
+<code>unregister_backend()</code>: Remove backend types</li>
 <li>
-<code><a href="reference/is_backend_registered.html">is_backend_registered()</a></code>: Check registration status</li>
+<code>is_backend_registered()</code>: Check registration status</li>
 <li>
-<code><a href="reference/get_backend_registry.html">get_backend_registry()</a></code>: Get registry information</li>
+<code>get_backend_registry()</code>: Get registry information</li>
 <li>
-<code><a href="reference/list_backend_names.html">list_backend_names()</a></code>: List all registered backends</li>
+<code>list_backend_names()</code>: List all registered backends</li>
 </ul></li>
 <li>
-<strong>Backend Creation</strong>: <code><a href="reference/create_backend.html">create_backend()</a></code> - Create backend instances by name</li>
+<strong>Backend Creation</strong>: <code>create_backend()</code> - Create backend instances by name</li>
 <li>
 <strong>Validation</strong>: Enhanced validation system with backend-specific validation functions</li>
 </ul></div>
@@ -130,9 +130,9 @@
 <div class="section level3">
 <h3 id="discoverability">Discoverability<a class="anchor" aria-label="anchor" href="#discoverability"></a></h3>
 <ul><li>
-<code><a href="reference/list_backend_names.html">list_backend_names()</a></code> shows all available backends</li>
+<code>list_backend_names()</code> shows all available backends</li>
 <li>
-<code><a href="reference/get_backend_registry.html">get_backend_registry()</a></code> provides detailed information</li>
+<code>get_backend_registry()</code> provides detailed information</li>
 <li>Print method for pretty-printed registry information</li>
 </ul></div>
 </div>
@@ -149,19 +149,19 @@
 <span>  <span class="va">backend</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="fu"><a href="reference/register_backend.html">register_backend</a></span><span class="op">(</span><span class="st">"my_backend"</span>, <span class="va">my_backend_factory</span>, <span class="st">"My custom backend"</span><span class="op">)</span></span>
+<span><span class="fu">register_backend</span><span class="op">(</span><span class="st">"my_backend"</span>, <span class="va">my_backend_factory</span>, <span class="st">"My custom backend"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Create instance</span></span>
-<span><span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/create_backend.html">create_backend</a></span><span class="op">(</span><span class="st">"my_backend"</span>, source <span class="op">=</span> <span class="st">"data.txt"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu">create_backend</span><span class="op">(</span><span class="st">"my_backend"</span>, source <span class="op">=</span> <span class="st">"data.txt"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="using-in-dataset-creation">Using in Dataset Creation<a class="anchor" aria-label="anchor" href="#using-in-dataset-creation"></a></h3>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Create backend and use in dataset</span></span>
-<span><span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/create_backend.html">create_backend</a></span><span class="op">(</span><span class="st">"nifti"</span>, </span>
+<span><span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu">create_backend</span><span class="op">(</span><span class="st">"nifti"</span>, </span>
 <span>                         source <span class="op">=</span> <span class="st">"scan.nii"</span>, </span>
 <span>                         mask_source <span class="op">=</span> <span class="st">"mask.nii"</span><span class="op">)</span></span>
-<span><span class="va">dataset</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/fmri_dataset.html">fmri_dataset</a></span><span class="op">(</span><span class="va">backend</span>, TR <span class="op">=</span> <span class="fl">2</span>, run_length <span class="op">=</span> <span class="fl">300</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">dataset</span> <span class="op">&lt;-</span> <span class="fu">fmri_dataset</span><span class="op">(</span><span class="va">backend</span>, TR <span class="op">=</span> <span class="fl">2</span>, run_length <span class="op">=</span> <span class="fl">300</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="package-integration">Package Integration<a class="anchor" aria-label="anchor" href="#package-integration"></a></h3>
@@ -169,7 +169,7 @@
 <code class="sourceCode R"><span><span class="co"># In external package's .onLoad()</span></span>
 <span><span class="va">.onLoad</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">libname</span>, <span class="va">pkgname</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"fmridataset"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="fu">fmridataset</span><span class="fu">::</span><span class="fu"><a href="reference/register_backend.html">register_backend</a></span><span class="op">(</span></span>
+<span>    <span class="fu">fmridataset</span><span class="fu">::</span><span class="fu">register_backend</span><span class="op">(</span></span>
 <span>      name <span class="op">=</span> <span class="st">"myformat"</span>,</span>
 <span>      factory <span class="op">=</span> <span class="va">myformat_backend</span>,</span>
 <span>      description <span class="op">=</span> <span class="st">"Backend for MyFormat files"</span></span>

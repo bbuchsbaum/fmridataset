@@ -1,6 +1,7 @@
-# Inject deterministic source failures
+# Developer tool: inject deterministic source failures
 
-Inject deterministic source failures
+This source is exported solely for deterministic backend, codec,
+cleanup, and recovery conformance tests.
 
 ## Usage
 
@@ -29,3 +30,16 @@ fault_source(
 ## Value
 
 A serializable fault-injecting source.
+
+## Details
+
+This is developer-only test instrumentation. Never persist a
+`fault_source` as study data or use one in an analysis plan.
+
+## Examples
+
+``` r
+src <- fault_source(memory_source(matrix(seq_len(6), nrow = 2)), stage = "read")
+tryCatch(source_read(src), error = function(e) conditionMessage(e))
+#> [1] "Injected read failure"
+```

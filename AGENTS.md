@@ -55,10 +55,9 @@ and spatial identity.
   validators.
 - Add behavioral tests for every contract change, including reordered,
   duplicated, empty, malformed, and lazy inputs where relevant.
-- Update roxygen comments and run
-  [`devtools::document()`](https://devtools.r-lib.org/reference/document.html)
-  when exports or public documentation change. Do not hand-edit
-  `NAMESPACE` or `man/` files.
+- Update roxygen comments and run `devtools::document()` when exports or
+  public documentation change. Do not hand-edit `NAMESPACE` or `man/`
+  files.
 - Update `NEWS.md` for user-visible changes. Keep examples and vignettes
   executable and consistent with the current API.
 - Do not hand-edit generated pkgdown files under `docs/`.

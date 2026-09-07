@@ -30,3 +30,15 @@ row_sharded_source(sources, shard_ids = NULL, shard_data = NULL)
 ## Value
 
 A serializable `row_sharded_source`.
+
+## Examples
+
+``` r
+shards <- list(
+  memory_source(matrix(1:4, nrow = 2)),
+  memory_source(matrix(5:8, nrow = 2))
+)
+src <- row_sharded_source(shards)
+source_shape(src)
+#> [1] 4 2
+```

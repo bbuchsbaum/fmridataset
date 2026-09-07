@@ -21,13 +21,10 @@ pure compute + in-memory, RDS for template persistence
 fmristore’s class (direct `@basis`/`@loadings` matrix access) -
 fmrilatent’s `LatentNeuroVec` has the same slot names but may use
 `BasisHandle`/`LoadingsHandle` (lazy) instead of concrete matrices -
-`latent_dataset` provides
-[`get_latent_scores()`](https://bbuchsbaum.github.io/fmridataset/reference/get_latent_scores.md),
-[`get_spatial_loadings()`](https://bbuchsbaum.github.io/fmridataset/reference/get_spatial_loadings.md),
-[`reconstruct_voxels()`](https://bbuchsbaum.github.io/fmridataset/reference/reconstruct_voxels.md)
-— exactly the right API for latent data - BIDS H5 archive (Phase 1)
-supports `compression_mode = "parcellated"` with a clean seam for new
-modes
+`latent_dataset` provides `get_latent_scores()`,
+`get_spatial_loadings()`, `reconstruct_voxels()` — exactly the right API
+for latent data - BIDS H5 archive (Phase 1) supports
+`compression_mode = "parcellated"` with a clean seam for new modes
 
 **Relationship between packages:**
 
@@ -142,17 +139,15 @@ fmrilatent as a supported source.
 `latent_dataset(source = list(fmrilatent_lvec), TR = 2, run_length = 100)`
 works without fmristore installed
 
-[`get_latent_scores()`](https://bbuchsbaum.github.io/fmridataset/reference/get_latent_scores.md)
-returns correct `[T, K]` matrix from fmrilatent objects
+`get_latent_scores()` returns correct `[T, K]` matrix from fmrilatent
+objects
 
-[`get_spatial_loadings()`](https://bbuchsbaum.github.io/fmridataset/reference/get_spatial_loadings.md)
-returns correct loadings from fmrilatent objects
+`get_spatial_loadings()` returns correct loadings from fmrilatent
+objects
 
-[`reconstruct_voxels()`](https://bbuchsbaum.github.io/fmridataset/reference/reconstruct_voxels.md)
-works on fmrilatent-sourced latent_dataset
+`reconstruct_voxels()` works on fmrilatent-sourced latent_dataset
 
-[`get_component_info()`](https://bbuchsbaum.github.io/fmridataset/reference/get_component_info.md)
-returns valid metadata
+`get_component_info()` returns valid metadata
 
 Objects with BasisHandle/LoadingsHandle (lazy) are handled correctly
 
@@ -160,8 +155,7 @@ Objects with concrete matrices (explicit) also still work
 
 fmristore-based .lv.h5 file path workflow is unbroken
 
-[`validate_backend()`](https://bbuchsbaum.github.io/fmridataset/reference/validate_backend.md)
-passes on fmrilatent-sourced latent_backend
+`validate_backend()` passes on fmrilatent-sourced latent_backend
 
 R CMD check passes with fmrilatent in Suggests
 
@@ -236,9 +230,8 @@ confounds, censor (same as parcellated) 7. Release memory
 → reads `summary_data` → `[T, K]` (existing) - `"latent"` → reads
 `basis` → `[T, K]` (same contract!)
 
-Both modes return `[T, K]` from
-[`backend_get_data()`](https://bbuchsbaum.github.io/fmridataset/reference/backend_get_data.md).
-The backend contract is unchanged.
+Both modes return `[T, K]` from `backend_get_data()`. The backend
+contract is unchanged.
 
 For latent mode, additional methods on `bids_h5_study_dataset`: -
 `get_loadings(study, scan_name = NULL)` → `[V, K]` loadings matrix -
@@ -248,10 +241,9 @@ encoding family, params, K
 
 ### Reader: Same Two-Level Composition
 
-The
-[`bids_h5_dataset()`](https://bbuchsbaum.github.io/fmridataset/reference/bids_h5_dataset.md)
-reader works identically for latent mode — per-scan backends grouped by
-subject. The only difference is what data the backend reads from H5.
+The `bids_h5_dataset()` reader works identically for latent mode —
+per-scan backends grouped by subject. The only difference is what data
+the backend reads from H5.
 
 ### Key Design Decision: Consistent K Across Scans
 
@@ -270,11 +262,9 @@ produces valid H5
 
 H5 file contains `/scans/<name>/data/basis`, `loadings`, `offset`
 
-[`bids_h5_dataset()`](https://bbuchsbaum.github.io/fmridataset/reference/bids_h5_dataset.md)
-reads latent-mode archives correctly
+`bids_h5_dataset()` reads latent-mode archives correctly
 
-[`get_data_matrix()`](https://bbuchsbaum.github.io/fmridataset/reference/get_data_matrix.md)
-returns `[T_total, K]` (latent scores)
+`get_data_matrix()` returns `[T_total, K]` (latent scores)
 
 `subset_bids_h5(task = ...)` works on latent-mode archives
 

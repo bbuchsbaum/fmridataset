@@ -15,14 +15,14 @@
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="articles/fmridataset.html">Get started</a></li>
+<li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/architecture-overview.html">Architecture Overview</a></li>
-    <li><a class="dropdown-item" href="articles/backend-development-basics.html">Writing Custom Storage Backends</a></li>
-    <li><a class="dropdown-item" href="articles/bids-h5-archive.html">BIDS H5 Archive: Compressing a Study into a Single File</a></li>
-    <li><a class="dropdown-item" href="articles/fmridataset-intro.html">Getting Started with fmridataset</a></li>
-    <li><a class="dropdown-item" href="articles/study-level-analysis.html">Study-Level Analysis: From Single Subjects to Group Studies</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/feature-spaces.html">Feature spaces and maps</a></li>
+    <li><a class="dropdown-item" href="articles/persistence-and-import.html">Persistence, identity, and import</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="articles/index.html">More articles...</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -147,18 +147,18 @@
 <span><span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="st">"{}"</span>, <span class="va">json_file</span><span class="op">)</span>  <span class="co"># Create dummy file</span></span>
 <span></span>
 <span><span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu">json_backend</span><span class="op">(</span><span class="va">json_file</span><span class="op">)</span></span>
-<span><span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_open.html">backend_open</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
+<span><span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu">backend_open</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">dims</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_get_dims.html">backend_get_dims</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
+<span><span class="va">dims</span> <span class="op">&lt;-</span> <span class="fu">backend_get_dims</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Backend dimensions - Time:"</span>, <span class="va">dims</span><span class="op">$</span><span class="va">time</span>, <span class="st">"Spatial:"</span>, <span class="va">dims</span><span class="op">$</span><span class="va">spatial</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, <span class="st">"\n"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Backend dimensions - Time: 100 Spatial: 500</span></span>
 <span></span>
 <span><span class="co"># Get some data</span></span>
-<span><span class="va">sample_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_get_data.html">backend_get_data</a></span><span class="op">(</span><span class="va">backend</span>, rows <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">10</span>, cols <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">50</span><span class="op">)</span></span>
+<span><span class="va">sample_data</span> <span class="op">&lt;-</span> <span class="fu">backend_get_data</span><span class="op">(</span><span class="va">backend</span>, rows <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">10</span>, cols <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">50</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Retrieved data shape:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">sample_data</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Retrieved data shape: 10 50</span></span>
 <span></span>
-<span><span class="fu"><a href="reference/backend_close.html">backend_close</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">backend_close</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span></code></pre></div>
 <blockquote>
 <p><strong>💡 Key Insight</strong>: A backend only needs to implement five methods to work with the entire fmridataset ecosystem. This simple interface provides tremendous power and flexibility.</p>
 </blockquote>
@@ -232,8 +232,8 @@
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="co"># Test optional methods</span></span>
-<span><span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_open.html">backend_open</a></span><span class="op">(</span><span class="fu">json_backend</span><span class="op">(</span><span class="va">json_file</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">metadata</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_get_metadata.html">backend_get_metadata</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
+<span><span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu">backend_open</span><span class="op">(</span><span class="fu">json_backend</span><span class="op">(</span><span class="va">json_file</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">metadata</span> <span class="op">&lt;-</span> <span class="fu">backend_get_metadata</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Format:"</span>, <span class="va">metadata</span><span class="op">$</span><span class="va">format</span>, <span class="st">"\n"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Format: json</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Quality score:"</span>, <span class="va">metadata</span><span class="op">$</span><span class="va">custom_metrics</span><span class="op">$</span><span class="va">quality_score</span>, <span class="st">"\n"</span><span class="op">)</span></span>
@@ -243,7 +243,7 @@
 <span><span class="co">#&gt; Error in backend_validate(backend): could not find function "backend_validate"</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Backend valid:"</span>, <span class="va">is_valid</span>, <span class="st">"\n"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Error: object 'is_valid' not found</span></span>
-<span><span class="fu"><a href="reference/backend_close.html">backend_close</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">backend_close</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level1">
@@ -328,11 +328,11 @@
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Initial state - is_open:"</span>, <span class="va">backend</span><span class="op">$</span><span class="va">is_open</span>, <span class="st">"\n"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Initial state - is_open: FALSE</span></span>
 <span></span>
-<span><span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_open.html">backend_open</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
+<span><span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu">backend_open</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"After open - is_open:"</span>, <span class="va">backend</span><span class="op">$</span><span class="va">is_open</span>, <span class="st">"\n"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; After open - is_open: TRUE</span></span>
 <span></span>
-<span><span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_close.html">backend_close</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
+<span><span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu">backend_close</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"After close - is_open:"</span>, <span class="va">backend</span><span class="op">$</span><span class="va">is_open</span>, <span class="st">"\n"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; After close - is_open: FALSE</span></span></code></pre></div>
 </div>
@@ -395,7 +395,7 @@
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="va">backend</span><span class="op">$</span><span class="va">is_open</span><span class="op">)</span> <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="st">"Backend not open"</span><span class="op">)</span></span>
 <span>  </span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">backend</span><span class="op">$</span><span class="va">mask_cache</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="va">dims</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_get_dims.html">backend_get_dims</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
+<span>    <span class="va">dims</span> <span class="op">&lt;-</span> <span class="fu">backend_get_dims</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
 <span>    <span class="va">backend</span><span class="op">$</span><span class="va">mask_cache</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="cn">TRUE</span>, <span class="va">dims</span><span class="op">$</span><span class="va">spatial</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span></span>
 <span>  <span class="op">}</span></span>
 <span>  </span>
@@ -412,24 +412,24 @@
 <span></span>
 <span><span class="co"># Demonstrate lazy loading</span></span>
 <span><span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu">lazy_backend</span><span class="op">(</span><span class="st">"source"</span><span class="op">)</span></span>
-<span><span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_open.html">backend_open</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
+<span><span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu">backend_open</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Getting dimensions...\n"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Getting dimensions...</span></span>
-<span><span class="va">dims</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_get_dims.html">backend_get_dims</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span>  <span class="co"># No data loading</span></span>
+<span><span class="va">dims</span> <span class="op">&lt;-</span> <span class="fu">backend_get_dims</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span>  <span class="co"># No data loading</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"\nGetting mask...\n"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Getting mask...</span></span>
-<span><span class="va">mask</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_get_mask.html">backend_get_mask</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span>  <span class="co"># Still no data loading</span></span>
+<span><span class="va">mask</span> <span class="op">&lt;-</span> <span class="fu">backend_get_mask</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span>  <span class="co"># Still no data loading</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"\nGetting data...\n"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Getting data...</span></span>
-<span><span class="va">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_get_data.html">backend_get_data</a></span><span class="op">(</span><span class="va">backend</span>, rows <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span>  <span class="co"># NOW data loads</span></span>
+<span><span class="va">data</span> <span class="op">&lt;-</span> <span class="fu">backend_get_data</span><span class="op">(</span><span class="va">backend</span>, rows <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span>  <span class="co"># NOW data loads</span></span>
 <span><span class="co">#&gt; Loading data (lazy)...</span></span>
 <span></span>
-<span><span class="fu"><a href="reference/backend_close.html">backend_close</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">backend_close</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="validation-pattern">Validation Pattern<a class="anchor" aria-label="anchor" href="#validation-pattern"></a></h2>
@@ -578,21 +578,21 @@
 <span><span class="va">`%||%`</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span> <span class="va">y</span> <span class="kw">else</span> <span class="va">x</span></span>
 <span></span>
 <span><span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu">cached_backend</span><span class="op">(</span><span class="st">"source"</span><span class="op">)</span></span>
-<span><span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_open.html">backend_open</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
+<span><span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu">backend_open</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># First access - cache miss</span></span>
-<span><span class="va">data1</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_get_data.html">backend_get_data</a></span><span class="op">(</span><span class="va">backend</span>, rows <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span></span>
+<span><span class="va">data1</span> <span class="op">&lt;-</span> <span class="fu">backend_get_data</span><span class="op">(</span><span class="va">backend</span>, rows <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Cache miss for data_1_10_1_100 - loading...</span></span>
 <span></span>
 <span><span class="co"># Second access - cache hit</span></span>
-<span><span class="va">data2</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_get_data.html">backend_get_data</a></span><span class="op">(</span><span class="va">backend</span>, rows <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span></span>
+<span><span class="va">data2</span> <span class="op">&lt;-</span> <span class="fu">backend_get_data</span><span class="op">(</span><span class="va">backend</span>, rows <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Cache miss for data_1_10_1_100 - loading...</span></span>
 <span></span>
 <span><span class="co"># Different subset - cache miss</span></span>
-<span><span class="va">data3</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_get_data.html">backend_get_data</a></span><span class="op">(</span><span class="va">backend</span>, rows <span class="op">=</span> <span class="fl">11</span><span class="op">:</span><span class="fl">20</span><span class="op">)</span></span>
+<span><span class="va">data3</span> <span class="op">&lt;-</span> <span class="fu">backend_get_data</span><span class="op">(</span><span class="va">backend</span>, rows <span class="op">=</span> <span class="fl">11</span><span class="op">:</span><span class="fl">20</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Cache miss for data_11_20_1_100 - loading...</span></span>
 <span></span>
-<span><span class="fu"><a href="reference/backend_close.html">backend_close</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
+<span><span class="fu">backend_close</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Cache statistics:</span></span>
 <span><span class="co">#&gt;   Hits: 0 </span></span>
@@ -700,10 +700,10 @@
 <span></span>
 <span><span class="co"># May fail randomly</span></span>
 <span><span class="va">result</span> <span class="op">&lt;-</span> <span class="kw"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">tryCatch</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>  <span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_open.html">backend_open</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
-<span>  <span class="va">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_get_data.html">backend_get_data</a></span><span class="op">(</span><span class="va">backend</span>, rows <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span></span>
+<span>  <span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu">backend_open</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
+<span>  <span class="va">data</span> <span class="op">&lt;-</span> <span class="fu">backend_get_data</span><span class="op">(</span><span class="va">backend</span>, rows <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Data retrieved successfully\n"</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="reference/backend_close.html">backend_close</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
+<span>  <span class="fu">backend_close</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
 <span><span class="op">}</span>, error <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">e</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Caught error:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">conditionMessage</a></span><span class="op">(</span><span class="va">e</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
@@ -801,12 +801,12 @@
 <span>  </span>
 <span>  <span class="co"># Test opening</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Testing open..."</span><span class="op">)</span></span>
-<span>  <span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_open.html">backend_open</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
+<span>  <span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu">backend_open</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">" ✓\n"</span><span class="op">)</span></span>
 <span>  </span>
 <span>  <span class="co"># Test dimensions</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Testing dimensions..."</span><span class="op">)</span></span>
-<span>  <span class="va">dims</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_get_dims.html">backend_get_dims</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
+<span>  <span class="va">dims</span> <span class="op">&lt;-</span> <span class="fu">backend_get_dims</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">is.list</a></span><span class="op">(</span><span class="va">dims</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"spatial"</span>, <span class="st">"time"</span><span class="op">)</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">dims</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">dims</span><span class="op">$</span><span class="va">spatial</span><span class="op">)</span> <span class="op">==</span> <span class="fl">3</span><span class="op">)</span></span>
@@ -814,28 +814,28 @@
 <span>  </span>
 <span>  <span class="co"># Test mask</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Testing mask..."</span><span class="op">)</span></span>
-<span>  <span class="va">mask</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_get_mask.html">backend_get_mask</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
+<span>  <span class="va">mask</span> <span class="op">&lt;-</span> <span class="fu">backend_get_mask</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/logical.html" class="external-link">is.logical</a></span><span class="op">(</span><span class="va">mask</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">mask</span><span class="op">)</span> <span class="op">==</span> <span class="fu"><a href="https://rdrr.io/r/base/prod.html" class="external-link">prod</a></span><span class="op">(</span><span class="va">dims</span><span class="op">$</span><span class="va">spatial</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">" ✓\n"</span><span class="op">)</span></span>
 <span>  </span>
 <span>  <span class="co"># Test data access</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Testing data access..."</span><span class="op">)</span></span>
-<span>  <span class="va">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_get_data.html">backend_get_data</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
+<span>  <span class="va">data</span> <span class="op">&lt;-</span> <span class="fu">backend_get_data</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">is.matrix</a></span><span class="op">(</span><span class="va">data</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">data</span><span class="op">)</span> <span class="op">==</span> <span class="va">dims</span><span class="op">$</span><span class="va">time</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">" ✓\n"</span><span class="op">)</span></span>
 <span>  </span>
 <span>  <span class="co"># Test subsetting</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Testing subsetting..."</span><span class="op">)</span></span>
-<span>  <span class="va">subset_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/backend_get_data.html">backend_get_data</a></span><span class="op">(</span><span class="va">backend</span>, rows <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">10</span>, cols <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">20</span><span class="op">)</span></span>
+<span>  <span class="va">subset_data</span> <span class="op">&lt;-</span> <span class="fu">backend_get_data</span><span class="op">(</span><span class="va">backend</span>, rows <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">10</span>, cols <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">20</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">subset_data</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">==</span> <span class="fl">10</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">subset_data</span><span class="op">)</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="op">==</span> <span class="fl">20</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">" ✓\n"</span><span class="op">)</span></span>
 <span>  </span>
 <span>  <span class="co"># Test closing</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Testing close..."</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="reference/backend_close.html">backend_close</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
+<span>  <span class="fu">backend_close</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">" ✓\n"</span><span class="op">)</span></span>
 <span>  </span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"\n✅ All tests passed!\n"</span><span class="op">)</span></span>

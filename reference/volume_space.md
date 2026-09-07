@@ -44,3 +44,36 @@ volume_space(
 ## Value
 
 A `volume_space`.
+
+## Examples
+
+``` r
+volume_space(c(2, 2, 2), affine = diag(4), support = 1:4)
+#> $dim
+#> [1] 2 2 2
+#> 
+#> $affine
+#>      [,1] [,2] [,3] [,4]
+#> [1,]    1    0    0    0
+#> [2,]    0    1    0    0
+#> [3,]    0    0    1    0
+#> [4,]    0    0    0    1
+#> 
+#> $support
+#> [1] 1 2 3 4
+#> 
+#> $template
+#> NULL
+#> 
+#> $units
+#> [1] "mm"
+#> 
+#> $metadata
+#> list()
+#> 
+#> $schema_version
+#> [1] 1
+#> 
+#> attr(,"class")
+#> [1] "volume_space"  "feature_space"
+```

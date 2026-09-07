@@ -32,15 +32,15 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
+<li class="nav-item"><a class="nav-link" href="articles/fmridataset.html">Get started</a></li>
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="articles/architecture-overview.html">Architecture Overview</a></li>
-    <li><a class="dropdown-item" href="articles/backend-development-basics.html">Writing Custom Storage Backends</a></li>
-    <li><a class="dropdown-item" href="articles/bids-h5-archive.html">BIDS H5 Archive: Compressing a Study into a Single File</a></li>
-    <li><a class="dropdown-item" href="articles/fmridataset-intro.html">Getting Started with fmridataset</a></li>
-    <li><a class="dropdown-item" href="articles/study-level-analysis.html">Study-Level Analysis: From Single Subjects to Group Studies</a></li>
+<li><a class="dropdown-item" href="articles/feature-spaces.html">Feature spaces and maps</a></li>
+    <li><a class="dropdown-item" href="articles/persistence-and-import.html">Persistence, identity, and import</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="articles/index.html">More articles...</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
@@ -58,22 +58,21 @@
 </nav><div class="container template-home">
 <div class="row">
   <main id="main" class="col-md-9"><div class="section level1">
-<div class="page-header"><h1 id="fmridataset-">fmridataset <img src="reference/figures/logo.png" align="right" height="139"><a class="anchor" aria-label="anchor" href="#fmridataset-"></a>
+<div class="page-header"><h1 id="fmridataset">fmridataset<a class="anchor" aria-label="anchor" href="#fmridataset"></a>
 </h1></div>
-<p><a href="NEWS.html">Changelog</a> · <a href="inst/architecture/ADR-001-canonical-data-model.html">Canonical data model</a> · <a href="https://github.com/bbuchsbaum/fmridataset/issues" class="external-link">Issues</a> · <a href="CONTRIBUTING.html">Contributing</a></p>
+<p><a href="NEWS.html">Changelog</a> · <a href="inst/architecture/ADR-001-canonical-data-model.html">Canonical data model</a> · <a href="inst/architecture/API-AUDIENCES.html">API audiences</a> · <a href="https://github.com/bbuchsbaum/fmridataset/issues" class="external-link">Issues</a> · <a href="CONTRIBUTING.html">Contributing</a></p>
 <p><code>fmridataset</code> is an R package for keeping fMRI arrays aligned with what their rows and columns mean. It represents each assay as observations by features and carries stable IDs, annotations, entities, relations, and explicit spatial identity through views, transformations, and storage round trips.</p>
 <p>Use it when raw time series, beta estimates, parcel values, surface data, or latent representations must retain their meaning as they move between analysis steps and storage systems.</p>
 <blockquote>
-<p><strong>Status:</strong> The <code>0.10.0</code> development line is an active migration toward 1.0 and requires R 4.3 or newer. <code><a href="reference/fmri_frame.html">fmri_frame()</a></code> is the canonical entry point; older dataset constructors remain available as transitional 0.x adapters. APIs may still change before 1.0.</p>
+<p><strong>Status:</strong> The <code>0.10.0</code> development line is the road to 1.0 and requires R 4.3 or newer. <code><a href="reference/fmri_frame.html">fmri_frame()</a></code> is the only data container. The pre-frame 0.x dataset and backend API has been removed; the last commit carrying it is <code>3ae565e</code>. APIs may still change before 1.0.</p>
 </blockquote>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>The current frame API is available from GitHub:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"bbuchsbaum/fmridataset"</span><span class="op">)</span></span></code></pre></div>
-<p><code>fmridataset</code> is not currently on CRAN. The published <a href="https://bbuchsbaum.r-universe.dev/fmridataset" class="external-link">R-universe build</a> is version 0.8.9 and documents the legacy dataset API.</p>
+<p><code>fmridataset</code> is not on CRAN. The published <a href="https://bbuchsbaum.r-universe.dev/fmridataset" class="external-link">R-universe build</a> is version 0.8.9 and documents the old dataset API, not this one.</p>
 </div>
 <div class="section level2">
 <h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
@@ -93,7 +92,8 @@
 <span>  assays <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>signal <span class="op">=</span> <span class="va">signal</span><span class="op">)</span>,</span>
 <span>  observations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>    .obs_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"volume-"</span>, <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fl">6</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>    run <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"run-1"</span>, <span class="st">"run-2"</span><span class="op">)</span>, each <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
+<span>    run_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"run-1"</span>, <span class="st">"run-2"</span><span class="op">)</span>, each <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>,</span>
+<span>    TR <span class="op">=</span> <span class="fl">2</span></span>
 <span>  <span class="op">)</span>,</span>
 <span>  space <span class="op">=</span> <span class="va">voxel_space</span></span>
 <span><span class="op">)</span></span>
@@ -110,12 +110,29 @@
 <span></span>
 <span><span class="fu"><a href="reference/feature-space.html">feature_ids</a></span><span class="op">(</span><span class="va">view</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "voxel-4" "voxel-2"</span></span></code></pre></div>
-<p>The numerical view, observation metadata, feature metadata, and restricted volume space all retain the requested order. For large assays, <code><a href="reference/collect_assay.html">collect_assay()</a></code> enforces an explicit memory budget; block execution and lazy array sources avoid requiring full materialization.</p>
+<p>The numerical view, observation metadata, feature metadata, and restricted volume space all retain the requested order. Nothing is read until <code><a href="reference/collect_assay.html">collect_assay()</a></code> asks for values, and <code>explain(frame)</code> describes the frame, its sources, and the cost of realizing it without reading any.</p>
+<p>Axis IDs are required. Importers derive reproducible IDs from declared keys with <code>axis_frame(id_policy = "deterministic", ...)</code>. Exploratory session-only IDs require <code>id_policy = "ephemeral"</code>; they are visibly marked and must be replaced before FDS persistence or semantic certification.</p>
+<div class="section level3">
+<h3 id="runs-and-timing">Runs and timing<a class="anchor" aria-label="anchor" href="#runs-and-timing"></a>
+</h3>
+<p>Run structure, TR, and censoring are observation metadata under a validated schema rather than separate state:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/temporal-schema.html">has_temporal_schema</a></span><span class="op">(</span><span class="va">frame</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span>
+<span></span>
+<span><span class="va">schema</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/temporal-schema.html">temporal_schema</a></span><span class="op">(</span><span class="va">frame</span><span class="op">)</span></span>
+<span><span class="va">schema</span><span class="op">$</span><span class="va">run_lengths</span></span>
+<span><span class="co">#&gt; run-1 run-2</span></span>
+<span><span class="co">#&gt;     3     3</span></span>
+<span></span>
+<span><span class="fu"><a href="reference/temporal-schema.html">as_sampling_frame</a></span><span class="op">(</span><span class="va">frame</span><span class="op">)</span>   <span class="co"># an fmrihrf::sampling_frame, when runs are contiguous</span></span></code></pre></div>
+<p>The run column is discovered from a run-typed relation, <code>scan_id</code>, or <code>run_id</code>, or named explicitly with <code>run_col</code>. Frames without acquisition structure, such as beta estimates, simply report <code><a href="reference/temporal-schema.html">has_temporal_schema()</a></code> as <code>FALSE</code>.</p>
+</div>
 <div class="section level3">
 <h3 id="load-one-bids-subject">Load one BIDS subject<a class="anchor" aria-label="anchor" href="#load-one-bids-subject"></a>
 </h3>
-<p>With <code>bidser</code> 0.5.0 or newer, a subject’s fMRIPrep BOLD runs can be opened as one lazy frame:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<p>With <code>bidser</code> 0.5.0 or newer, a subject’s fMRIPrep BOLD runs open as one lazy frame:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">bold</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_bids_bold.html">read_bids_bold</a></span><span class="op">(</span></span>
 <span>  <span class="st">"/data/my-study"</span>,</span>
 <span>  subject <span class="op">=</span> <span class="st">"01"</span>,</span>
@@ -125,7 +142,14 @@
 <span></span>
 <span><span class="va">run_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/filter_obs.html">filter_obs</a></span><span class="op">(</span><span class="va">bold</span>, <span class="va">run_id</span> <span class="op">==</span> <span class="st">"run-1"</span><span class="op">)</span></span>
 <span><span class="va">map</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/spatial_map.html">spatial_map</a></span><span class="op">(</span><span class="va">bold</span>, observation <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
-<p>Construction reads BOLD headers and the matching run masks, but not BOLD values. By default the frame uses the intersection of the run masks. No resampling or cross-space alignment is performed implicitly; ambiguous spaces, masks, or multi-echo selections produce an error requiring an explicit choice. Events remain a keyed auxiliary table rather than being copied onto volumes.</p>
+<p>Construction reads BOLD headers and the matching run masks, but not BOLD values. By default the frame uses the intersection of the run masks. No resampling or cross-space alignment is performed implicitly; ambiguous spaces, masks, or multi-echo selections produce an error requiring an explicit choice.</p>
+</div>
+<div class="section level3">
+<h3 id="persist-and-reopen">Persist and reopen<a class="anchor" aria-label="anchor" href="#persist-and-reopen"></a>
+</h3>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">path</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/write_frame.html">write_frame</a></span><span class="op">(</span><span class="va">frame</span>, <span class="st">"frame.h5"</span><span class="op">)</span>   <span class="co"># atomic, manifest-backed HDF5 via fmristore</span></span>
+<span><span class="va">again</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/write_frame.html">open_frame</a></span><span class="op">(</span><span class="va">path</span><span class="op">)</span>                <span class="co"># assays reopen as lazy sources</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -141,7 +165,9 @@
 <li>
 <strong>Explicit transformations:</strong> map between feature spaces with validated, serializable operators and derivation provenance.</li>
 <li>
-<strong>Bounded execution:</strong> read lazy in-memory, NIfTI, sharded, HDF5-backed, and experimental Zarr sources through observation-by-feature selections.</li>
+<strong>Bounded execution:</strong> read lazy in-memory, NIfTI, sharded, HDF5-backed, and experimental Zarr sources through observation-by-feature selections, with realization budgets enforced before any read.</li>
+<li>
+<strong>Collections and studies:</strong> group native-space frames that cannot share a feature axis, and link heterogeneous frames through shared entities, relations, and typed maps.</li>
 <li>
 <strong>Portable semantics:</strong> serialize the logical frame contract with FDS v1 and bind it to physical storage without changing axis or spatial identity.</li>
 </ul>
@@ -160,16 +186,16 @@
 <li>
 <a href="https://github.com/bbuchsbaum/multidesign" class="external-link"><code>multidesign</code></a> and <a href="https://github.com/bbuchsbaum/fmrigds" class="external-link"><code>fmrigds</code></a> own design compilation and statistical execution.</li>
 <li>
-<a href="https://github.com/bbuchsbaum/bidser" class="external-link"><code>bidser</code></a> provides BIDS discovery used by <code><a href="reference/read_bids_bold.html">read_bids_bold()</a></code> and the optional BIDS-to-HDF5 workflow.</li>
+<a href="https://github.com/bbuchsbaum/bidser" class="external-link"><code>bidser</code></a> provides BIDS discovery used by <code><a href="reference/read_bids_bold.html">read_bids_bold()</a></code>.</li>
 </ul>
-<p>HDF5 is the certified persistence direction for 1.0. Zarr support remains experimental, and <code>DelayedArray</code> is optional interoperability rather than the internal execution model. Legacy <code><a href="reference/fmri_dataset.html">fmri_dataset()</a></code>, <code><a href="reference/matrix_dataset.html">matrix_dataset()</a></code>, backend, and sampling-frame workflows remain available during the 0.x migration.</p>
+<p>HDF5 is the certified persistence direction for 1.0. Zarr support remains experimental.</p>
 </div>
 <div class="section level2">
 <h2 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a>
 </h2>
 <ul>
 <li>Run <code><a href="https://bbuchsbaum.github.io/fmridataset/reference">help(package = "fmridataset")</a></code> and <code><a href="reference/fmri_frame.html">?fmri_frame</a></code> for documentation that matches the installed package.</li>
-<li>Read the <a href="inst/architecture/ADR-001-canonical-data-model.html">canonical data model</a> for ownership, compatibility, and migration decisions.</li>
+<li>Read the <a href="inst/architecture/ADR-001-canonical-data-model.html">canonical data model</a> for ownership and compatibility decisions, and the <a href="inst/architecture/API-AUDIENCES.html">API audiences</a> for which exports are user, extension, or developer surface.</li>
 <li>Read the <a href="inst/architecture/ADR-002-fds-v1-logical-schema.html">FDS v1 decision</a> for the backend-neutral persistence contract.</li>
 <li>See the <a href="NEWS.html">changelog</a> for the current development surface.</li>
 <li>The <a href="https://bbuchsbaum.github.io/fmridataset/">hosted package site</a> currently describes the published 0.8.9 release.</li>

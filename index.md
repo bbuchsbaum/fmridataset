@@ -1,8 +1,10 @@
-# fmridataset ![](reference/figures/logo.png)
+# fmridataset
 
 [Changelog](https://bbuchsbaum.github.io/fmridataset/NEWS.md) ·
 [Canonical data
 model](https://bbuchsbaum.github.io/fmridataset/inst/architecture/ADR-001-canonical-data-model.md)
+· [API
+audiences](https://bbuchsbaum.github.io/fmridataset/inst/architecture/API-AUDIENCES.md)
 · [Issues](https://github.com/bbuchsbaum/fmridataset/issues) ·
 [Contributing](https://bbuchsbaum.github.io/fmridataset/CONTRIBUTING.md)
 
@@ -16,16 +18,14 @@ Use it when raw time series, beta estimates, parcel values, surface
 data, or latent representations must retain their meaning as they move
 between analysis steps and storage systems.
 
-> **Status:** The `0.10.0` development line is an active migration
-> toward 1.0 and requires R 4.3 or newer.
+> **Status:** The `0.10.0` development line is the road to 1.0 and
+> requires R 4.3 or newer.
 > [`fmri_frame()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_frame.md)
-> is the canonical entry point; older dataset constructors remain
-> available as transitional 0.x adapters. APIs may still change before
-> 1.0.
+> is the only data container. The pre-frame 0.x dataset and backend API
+> has been removed; the last commit carrying it is `3ae565e`. APIs may
+> still change before 1.0.
 
 ## Installation
-
-The current frame API is available from GitHub:
 
 ``` r
 
@@ -33,9 +33,9 @@ install.packages("remotes")
 remotes::install_github("bbuchsbaum/fmridataset")
 ```
 
-`fmridataset` is not currently on CRAN. The published [R-universe
+`fmridataset` is not on CRAN. The published [R-universe
 build](https://bbuchsbaum.r-universe.dev/fmridataset) is version 0.8.9
-and documents the legacy dataset API.
+and documents the old dataset API, not this one.
 
 ## Quick start
 
@@ -57,7 +57,8 @@ frame <- fmri_frame(
   assays = list(signal = signal),
   observations = data.frame(
     .obs_id = paste0("volume-", seq_len(6)),
-    run = rep(c("run-1", "run-2"), each = 3)
+    run_id = rep(c("run-1", "run-2"), each = 3),
+    TR = 2
   ),
   space = voxel_space
 )
@@ -77,16 +78,46 @@ feature_ids(view)
 ```
 
 The numerical view, observation metadata, feature metadata, and
-restricted volume space all retain the requested order. For large
-assays,
+restricted volume space all retain the requested order. Nothing is read
+until
 [`collect_assay()`](https://bbuchsbaum.github.io/fmridataset/reference/collect_assay.md)
-enforces an explicit memory budget; block execution and lazy array
-sources avoid requiring full materialization.
+asks for values, and `explain(frame)` describes the frame, its sources,
+and the cost of realizing it without reading any.
+
+Axis IDs are required. Importers derive reproducible IDs from declared
+keys with `axis_frame(id_policy = "deterministic", ...)`. Exploratory
+session-only IDs require `id_policy = "ephemeral"`; they are visibly
+marked and must be replaced before FDS persistence or semantic
+certification.
+
+### Runs and timing
+
+Run structure, TR, and censoring are observation metadata under a
+validated schema rather than separate state:
+
+``` r
+
+has_temporal_schema(frame)
+#> [1] TRUE
+
+schema <- temporal_schema(frame)
+schema$run_lengths
+#> run-1 run-2
+#>     3     3
+
+as_sampling_frame(frame)   # an fmrihrf::sampling_frame, when runs are contiguous
+```
+
+The run column is discovered from a run-typed relation, `scan_id`, or
+`run_id`, or named explicitly with `run_col`. Frames without acquisition
+structure, such as beta estimates, simply report
+[`has_temporal_schema()`](https://bbuchsbaum.github.io/fmridataset/reference/temporal-schema.md)
+as `FALSE`.
 
 ### Load one BIDS subject
 
-With `bidser` 0.5.0 or newer, a subject’s fMRIPrep BOLD runs can be
-opened as one lazy frame:
+With `bidser` 0.5.0 or newer, a subject’s fMRIPrep BOLD runs open as one
+lazy frame:
 
 ``` r
 
@@ -105,8 +136,15 @@ Construction reads BOLD headers and the matching run masks, but not BOLD
 values. By default the frame uses the intersection of the run masks. No
 resampling or cross-space alignment is performed implicitly; ambiguous
 spaces, masks, or multi-echo selections produce an error requiring an
-explicit choice. Events remain a keyed auxiliary table rather than being
-copied onto volumes.
+explicit choice.
+
+### Persist and reopen
+
+``` r
+
+path <- write_frame(frame, "frame.h5")   # atomic, manifest-backed HDF5 via fmristore
+again <- open_frame(path)                # assays reopen as lazy sources
+```
 
 ## What it covers
 
@@ -123,7 +161,11 @@ copied onto volumes.
   validated, serializable operators and derivation provenance.
 - **Bounded execution:** read lazy in-memory, NIfTI, sharded,
   HDF5-backed, and experimental Zarr sources through
-  observation-by-feature selections.
+  observation-by-feature selections, with realization budgets enforced
+  before any read.
+- **Collections and studies:** group native-space frames that cannot
+  share a feature axis, and link heterogeneous frames through shared
+  entities, relations, and typed maps.
 - **Portable semantics:** serialize the logical frame contract with FDS
   v1 and bind it to physical storage without changing axis or spatial
   identity.
@@ -145,16 +187,10 @@ responsibilities:
   compilation and statistical execution.
 - [`bidser`](https://github.com/bbuchsbaum/bidser) provides BIDS
   discovery used by
-  [`read_bids_bold()`](https://bbuchsbaum.github.io/fmridataset/reference/read_bids_bold.md)
-  and the optional BIDS-to-HDF5 workflow.
+  [`read_bids_bold()`](https://bbuchsbaum.github.io/fmridataset/reference/read_bids_bold.md).
 
 HDF5 is the certified persistence direction for 1.0. Zarr support
-remains experimental, and `DelayedArray` is optional interoperability
-rather than the internal execution model. Legacy
-[`fmri_dataset()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_dataset.md),
-[`matrix_dataset()`](https://bbuchsbaum.github.io/fmridataset/reference/matrix_dataset.md),
-backend, and sampling-frame workflows remain available during the 0.x
-migration.
+remains experimental.
 
 ## Documentation
 
@@ -165,7 +201,9 @@ migration.
   for documentation that matches the installed package.
 - Read the [canonical data
   model](https://bbuchsbaum.github.io/fmridataset/inst/architecture/ADR-001-canonical-data-model.md)
-  for ownership, compatibility, and migration decisions.
+  for ownership and compatibility decisions, and the [API
+  audiences](https://bbuchsbaum.github.io/fmridataset/inst/architecture/API-AUDIENCES.md)
+  for which exports are user, extension, or developer surface.
 - Read the [FDS v1
   decision](https://bbuchsbaum.github.io/fmridataset/inst/architecture/ADR-002-fds-v1-logical-schema.md)
   for the backend-neutral persistence contract.

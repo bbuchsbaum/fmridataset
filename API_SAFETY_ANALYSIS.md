@@ -63,9 +63,8 @@ matrix_dataset <- function(datamat, TR, run_length, event_table = data.frame()) 
 
 ### 1.2 Inconsistent Return Types
 
-**Issue**:
-[`get_mask()`](https://bbuchsbaum.github.io/fmridataset/reference/get_mask.md)
-returns different types depending on dataset type:
+**Issue**: `get_mask()` returns different types depending on dataset
+type:
 
 ``` r
 
@@ -150,9 +149,7 @@ if (sum(run_length) != nrow(datamat)) {
 
 ### 2.2 Missing Input Validation Leading to Downstream Errors
 
-**Issue**:
-[`fmri_dataset()`](https://bbuchsbaum.github.io/fmridataset/reference/fmri_dataset.md)
-doesn’t validate file existence early:
+**Issue**: `fmri_dataset()` doesn’t validate file existence early:
 
 ``` r
 

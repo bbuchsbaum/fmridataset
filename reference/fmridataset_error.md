@@ -25,3 +25,11 @@ fmridataset_error(message, class = character(), ...)
 ## Value
 
 A condition object
+
+## Examples
+
+``` r
+cond <- fmridataset:::fmridataset_error("bad input", class = "fmridataset_error_config")
+inherits(cond, "fmridataset_error")
+#> [1] TRUE
+```

@@ -14,19 +14,13 @@ packages to register new backends without modifying fmridataset.
 - **Registry Environment**: Package-level environment to store backend
   registrations
 - **Registration Functions**:
-  - [`register_backend()`](https://bbuchsbaum.github.io/fmridataset/reference/register_backend.md):
-    Register new backend types
-  - [`unregister_backend()`](https://bbuchsbaum.github.io/fmridataset/reference/unregister_backend.md):
-    Remove backend types
-  - [`is_backend_registered()`](https://bbuchsbaum.github.io/fmridataset/reference/is_backend_registered.md):
-    Check registration status
-  - [`get_backend_registry()`](https://bbuchsbaum.github.io/fmridataset/reference/get_backend_registry.md):
-    Get registry information
-  - [`list_backend_names()`](https://bbuchsbaum.github.io/fmridataset/reference/list_backend_names.md):
-    List all registered backends
-- **Backend Creation**:
-  [`create_backend()`](https://bbuchsbaum.github.io/fmridataset/reference/create_backend.md) -
-  Create backend instances by name
+  - `register_backend()`: Register new backend types
+  - `unregister_backend()`: Remove backend types
+  - `is_backend_registered()`: Check registration status
+  - `get_backend_registry()`: Get registry information
+  - `list_backend_names()`: List all registered backends
+- **Backend Creation**: `create_backend()` - Create backend instances by
+  name
 - **Validation**: Enhanced validation system with backend-specific
   validation functions
 
@@ -93,10 +87,8 @@ for dimension-reduced data - `study`: Multi-subject study backend -
 
 ### Discoverability
 
-- [`list_backend_names()`](https://bbuchsbaum.github.io/fmridataset/reference/list_backend_names.md)
-  shows all available backends
-- [`get_backend_registry()`](https://bbuchsbaum.github.io/fmridataset/reference/get_backend_registry.md)
-  provides detailed information
+- `list_backend_names()` shows all available backends
+- `get_backend_registry()` provides detailed information
 - Print method for pretty-printed registry information
 
 ## Usage Examples

@@ -6,24 +6,24 @@ Describe a typed link between study representations
 
 ``` r
 frame_link(
-  from,
-  to,
-  type = c("derived_from", "mapped_from", "corresponds_to", "aligned_from"),
+  source,
+  target,
+  type = c("derivation", "mapping", "correspondence", "alignment"),
   map = NULL,
-  from_axis = c("observation", "feature"),
-  to_axis = c("observation", "feature"),
+  source_axis = c("observation", "feature"),
+  target_axis = c("observation", "feature"),
   metadata = list(),
-  feature_map = NULL
+  operator = NULL
 )
 ```
 
 ## Arguments
 
-- from:
+- source:
 
   Source representation name.
 
-- to:
+- target:
 
   Target representation name.
 
@@ -33,26 +33,36 @@ frame_link(
 
 - map:
 
-  Optional scalar table with `.from_id` and `.to_id` columns.
+  Optional scalar table with `.source_id` and `.target_id` columns.
 
-- from_axis:
+- source_axis:
 
-  Axis addressed by `.from_id`.
+  Axis addressed by `.source_id`.
 
-- to_axis:
+- target_axis:
 
-  Axis addressed by `.to_id`.
+  Axis addressed by `.target_id`.
 
 - metadata:
 
   Serializable link metadata.
 
-- feature_map:
+- operator:
 
-  Optional typed feature map. This is valid only for a
-  feature-to-feature `"mapped_from"` link and is persisted in the link's
-  metadata without changing the v1 descriptor shape.
+  Optional typed feature operator. This is valid only for a
+  feature-to-feature mapping or alignment and remains a first-class
+  field.
 
 ## Value
 
 A `frame_link` descriptor.
+
+## Examples
+
+``` r
+link <- frame_link("bold", "surface", type = "derivation")
+link$source
+#> [1] "bold"
+link$target
+#> [1] "surface"
+```

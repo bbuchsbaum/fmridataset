@@ -43,3 +43,11 @@ key_relation(
 ## Value
 
 A serializable `key_relation` descriptor.
+
+## Examples
+
+``` r
+rel <- key_relation("stimulus_id", target = "stimulus", source = "observation")
+rel$key
+#> [1] "stimulus_id"
+```

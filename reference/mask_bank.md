@@ -25,3 +25,16 @@ mask_bank(masks, space, metadata = list())
 ## Value
 
 A serializable `mask_bank`.
+
+## Examples
+
+``` r
+space <- index_space(6, ids = paste0("f", 1:6), namespace = "validity-ex")
+masks <- rbind(
+  c(TRUE, TRUE, FALSE, TRUE, FALSE, TRUE),
+  c(TRUE, FALSE, FALSE, TRUE, TRUE, TRUE)
+)
+bank <- mask_bank(masks, space)
+n_masks(bank)
+#> [1] 2
+```

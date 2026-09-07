@@ -33,3 +33,12 @@ feature_axis(data, space = NULL, blocks = list(), metadata = list(), ...)
 ## Value
 
 A feature `axis_frame` carrying its space.
+
+## Examples
+
+``` r
+sp <- index_space(3, ids = sprintf("f%d", 1:3), namespace = "ex")
+fx <- feature_axis(data.frame(.feature_id = sprintf("f%d", 1:3)), space = sp)
+axis_ids(fx)
+#> [1] "f1" "f2" "f3"
+```

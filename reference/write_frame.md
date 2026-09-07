@@ -33,5 +33,33 @@ open_frame(path, format = "hdf5", ...)
 
 ## Value
 
-`write_frame()` invisibly returns the committed path. `open_frame()`
-returns an `fmri_frame`.
+`write_frame()` invisibly returns the committed path, normalized with
+forward slashes on every platform. `open_frame()` returns an
+`fmri_frame`.
+
+## Details
+
+Neither function computes a content hash. Persistence records semantic
+manifest digests and source fingerprints only; a caller who wants a
+value receipt for the written or reopened arrays requests it explicitly
+with
+[`content_hash()`](https://bbuchsbaum.github.io/fmridataset/reference/content_hash.md)
+and records the result where it is needed.
+
+## Examples
+
+``` r
+if (requireNamespace("fmristore", quietly = TRUE)) {
+  src <- memory_source(matrix(seq_len(6), nrow = 2))
+  obs <- tibble::tibble(.obs_id = c("o1", "o2"))
+  space <- index_space(3, id_policy = "deterministic", namespace = "demo")
+  frame <- fmri_frame(list(beta = src), obs, space = space)
+  path <- tempfile(fileext = ".h5")
+  committed <- write_frame(frame, path)
+  reopened <- open_frame(committed)
+  collect_assay(reopened, "beta")
+}
+#>      [,1] [,2] [,3]
+#> [1,]    1    3    5
+#> [2,]    2    4    6
+```

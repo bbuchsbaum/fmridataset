@@ -23,3 +23,13 @@ as_fmri_frame(x, ...)
 ## Value
 
 An `fmri_frame`.
+
+## Examples
+
+``` r
+src <- memory_source(matrix(seq_len(6), nrow = 2))
+obs <- tibble::tibble(.obs_id = c("o1", "o2"))
+fr <- fmri_frame(list(beta = src), obs)
+identical(as_fmri_frame(fr), fr)
+#> [1] TRUE
+```
