@@ -73,6 +73,7 @@ reference:
   - matches("^parcel")
   - matches("^basis")
   - matches("^composite")
+  - space
   - matches("space_digest|compatible_space|same_space|restrict_space|vectorize_space|reconstruct_space|parent_space|native_shape|n_features|feature_data|feature_ids|adjacency")
   - matches("^nifti_source_space")
 
@@ -124,6 +125,8 @@ reference:
   - matches("shard")
   - locate_source_rows
   - validate_array_source
+  - content_hash
+  - content_hash_contract
   - as_delarr
   - plan_blocks
   - block_manifest
