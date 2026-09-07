@@ -31,6 +31,16 @@
 #' @param manifest An FDS study manifest.
 #' @return `fds_study_manifest()` returns a serializable source-free manifest;
 #'   `validate_fds_study_manifest()` returns `manifest` invisibly.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' study <- fmri_study(list(main = frame))
+#' manifest <- fds_study_manifest(study)
+#' names(manifest$representations)
 #' @export
 fds_study_manifest <- function(x) {
   validate_fmri_study(x)
@@ -61,6 +71,15 @@ fds_study_manifest <- function(x) {
 #'
 #' @param x An `fmri_study`.
 #' @return Named frames and collections matching `fds_study_manifest(x)`.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' study <- fmri_study(list(main = frame))
+#' names(fds_study_representations(study))
 #' @export
 fds_study_representations <- function(x) {
   validate_fmri_study(x)
@@ -346,6 +365,16 @@ validate_fds_study_manifest <- function(manifest) {
 #'
 #' @param manifest An FDS study v1 or v2 manifest.
 #' @return A validated FDS study v2 manifest.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' study <- fmri_study(list(main = frame))
+#' manifest <- fds_study_manifest(study)
+#' identical(upgrade_fds_study_manifest(manifest), manifest)
 #' @export
 upgrade_fds_study_manifest <- function(manifest) {
   if (!is.list(manifest) || is.null(manifest$schema)) {
@@ -373,6 +402,15 @@ upgrade_fds_study_manifest <- function(manifest) {
 #' @param x An `fmri_study`.
 #' @return A named list of shared entity-block payloads. Representation arrays
 #'   remain owned by their individual frame bindings.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' study <- fmri_study(list(main = frame))
+#' fds_study_bindings(study)
 #' @export
 fds_study_bindings <- function(x) {
   manifest <- fds_study_manifest(x)
@@ -496,6 +534,19 @@ fds_study_bindings <- function(x) {
 #'   representation manifests.
 #' @param bindings Named physical bindings for shared study arrays.
 #' @return An `fmri_study`.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' study <- fmri_study(list(main = frame))
+#' manifest <- fds_study_manifest(study)
+#' rebuilt <- study_from_fds_manifest(
+#'   manifest, list(main = frame), fds_study_bindings(study)
+#' )
+#' study_ids(rebuilt)
 #' @export
 study_from_fds_manifest <- function(manifest, representations, bindings = list()) {
   validate_fds_study_manifest(manifest)
@@ -530,6 +581,16 @@ study_from_fds_manifest <- function(manifest, representations, bindings = list()
 #'
 #' @param manifest A valid FDS study manifest.
 #' @return A stable hexadecimal digest over source-free study semantics.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' study <- fmri_study(list(main = frame))
+#' manifest <- fds_study_manifest(study)
+#' fds_study_manifest_digest(manifest)
 #' @export
 fds_study_manifest_digest <- function(manifest) {
   validate_fds_study_manifest(manifest)

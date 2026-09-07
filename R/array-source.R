@@ -34,6 +34,13 @@
 #' @param features Optional feature selector, under the same law.
 #' @param ... Additional method arguments.
 #' @name array-source
+#' @examples
+#' src <- memory_source(matrix(seq_len(6), nrow = 2))
+#' source_shape(src)
+#' source_dtype(src)
+#' handle <- source_open(src)
+#' source_read(handle, observations = 1)
+#' source_close(handle)
 NULL
 
 #' @rdname array-source
@@ -374,6 +381,10 @@ source_realization_cost <- function(x, observations = NULL, features = NULL) {
 #' @return `source_descriptor()` returns a plain serializable contract list.
 #'   `validate_array_source()` invisibly returns `x` or raises a structured
 #'   source-contract error.
+#' @examples
+#' src <- memory_source(matrix(seq_len(6), nrow = 2))
+#' source_descriptor(src)
+#' validate_array_source(src)
 #' @export
 source_descriptor <- function(x) {
   if (!inherits(x, "array_source")) {
@@ -501,6 +512,10 @@ validate_array_source <- function(x) {
 #' @return A serializable `memory_source`.
 #' @seealso [source_fingerprint()] and [content_hash()] for the fingerprint
 #'   policy.
+#' @examples
+#' src <- memory_source(matrix(seq_len(6), nrow = 2))
+#' source_shape(src)
+#' source_dtype(src)
 #' @export
 memory_source <- function(data, dtype = NULL, chunks = NULL, revision = NULL,
                           identity = c("object", "content")) {
@@ -639,6 +654,10 @@ source_close.array_source_handle <- function(x, ...) invisible(TRUE)
 #' @param observations Stored observation selector.
 #' @param features Stored feature selector.
 #' @return A serializable source view.
+#' @examples
+#' src <- memory_source(matrix(seq_len(6), nrow = 2))
+#' view <- source_view(src, observations = 1)
+#' source_shape(view)
 #' @export
 source_view <- function(source, observations = NULL, features = NULL) {
   source <- as_array_source(source)
@@ -744,6 +763,10 @@ source_close.source_view <- function(x, ...) invisible(TRUE)
 #' provenance or as an execution receipt.
 #' @param source An array source.
 #' @return A serializable instrumented source.
+#' @examples
+#' src <- counting_source(memory_source(matrix(seq_len(6), nrow = 2)))
+#' source_read(src, observations = 1)
+#' source_counts(src)$reads
 #' @export
 counting_source <- function(source) {
   id <- uuid::UUIDgenerate()
@@ -858,6 +881,9 @@ source_close.counting_source_handle <- function(x, ...) source_close(x$source, .
 #' @param stage One of `"open"`, `"read"`, `"native_read"`, or `"close"`.
 #' @param message Failure message.
 #' @return A serializable fault-injecting source.
+#' @examples
+#' src <- fault_source(memory_source(matrix(seq_len(6), nrow = 2)), stage = "read")
+#' tryCatch(source_read(src), error = function(e) conditionMessage(e))
 #' @export
 fault_source <- function(source, stage = c("read", "open", "native_read", "close"),
                          message = NULL) {
@@ -932,6 +958,13 @@ source_close.fault_source <- function(x, ...) {
 #' @param shard_data Optional scalar metadata with one row per shard. Names used
 #'   by the shard manifest are reserved.
 #' @return A serializable `row_sharded_source`.
+#' @examples
+#' shards <- list(
+#'   memory_source(matrix(1:4, nrow = 2)),
+#'   memory_source(matrix(5:8, nrow = 2))
+#' )
+#' src <- row_sharded_source(shards)
+#' source_shape(src)
 #' @export
 row_sharded_source <- function(sources, shard_ids = NULL, shard_data = NULL) {
   if (!is.list(sources) || !length(sources)) {
@@ -1020,6 +1053,9 @@ row_sharded_source <- function(sources, shard_ids = NULL, shard_data = NULL) {
 #' @param x A `row_sharded_source`.
 #' @return A data frame describing stable IDs, logical row ranges, source
 #'   fingerprints, and user-supplied shard metadata.
+#' @examples
+#' shards <- list(memory_source(matrix(1:4, nrow = 2)), memory_source(matrix(5:8, nrow = 2)))
+#' shard_manifest(row_sharded_source(shards))
 #' @export
 shard_manifest <- function(x) {
   if (!inherits(x, "row_sharded_source")) {
@@ -1042,6 +1078,9 @@ shard_manifest <- function(x) {
 #' @param x A `row_sharded_source`.
 #' @param observations Logical observation positions in requested order.
 #' @return A data frame mapping each request position to a shard and local row.
+#' @examples
+#' shards <- list(memory_source(matrix(1:4, nrow = 2)), memory_source(matrix(5:8, nrow = 2)))
+#' locate_source_rows(row_sharded_source(shards), observations = c(1, 3))
 #' @export
 locate_source_rows <- function(x, observations = NULL) {
   if (!inherits(x, "row_sharded_source")) {
@@ -1072,6 +1111,10 @@ locate_source_rows <- function(x, observations = NULL) {
 #'   match existing shard metadata.
 #' @return A new `row_sharded_source`; `x` and its child descriptors are not
 #'   modified.
+#' @examples
+#' src <- row_sharded_source(list(memory_source(matrix(1:4, nrow = 2))))
+#' grown <- append_source_shards(src, list(memory_source(matrix(5:8, nrow = 2))))
+#' source_shape(grown)
 #' @export
 append_source_shards <- function(x, sources, shard_ids = NULL, shard_data = NULL) {
   if (!inherits(x, "row_sharded_source")) {
@@ -1174,6 +1217,11 @@ source_close.row_sharded_source <- function(x, ...) invisible(TRUE)
 #' @param sources A non-empty list of two-dimensional array sources.
 #' @return A serializable `row_sharded_source`. This compatibility constructor
 #'   assigns deterministic shard IDs.
+#' @examples
+#' a <- memory_source(matrix(1:4, nrow = 2))
+#' b <- memory_source(matrix(5:8, nrow = 2))
+#' src <- row_bound_source(list(a, b))
+#' source_shape(src)
 #' @export
 row_bound_source <- function(sources) {
   row_sharded_source(sources)

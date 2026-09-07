@@ -35,3 +35,15 @@ manifest digests and source fingerprints only; a caller who wants a value
 receipt for the written or reopened arrays requests it explicitly with
 \code{\link[=content_hash]{content_hash()}} and records the result where it is needed.
 }
+\examples{
+if (requireNamespace("fmristore", quietly = TRUE)) {
+  src <- memory_source(matrix(seq_len(6), nrow = 2))
+  obs <- tibble::tibble(.obs_id = c("o1", "o2"))
+  space <- index_space(3, id_policy = "deterministic", namespace = "demo")
+  frame <- fmri_frame(list(beta = src), obs, space = space)
+  path <- tempfile(fileext = ".h5")
+  committed <- write_frame(frame, path)
+  reopened <- open_frame(committed)
+  collect_assay(reopened, "beta")
+}
+}

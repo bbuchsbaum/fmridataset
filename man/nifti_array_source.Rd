@@ -31,3 +31,12 @@ read, and native read re-observes those files first and raises
 \code{changed} fields) if any differ; genuine read failures remain
 \code{fmridataset_error_backend_io}. See \code{\link[=content_hash]{content_hash()}} to identify values.
 }
+\examples{
+# A small NIfTI fixture shipped with neuroim2 stands in for real data.
+path <- system.file("extdata", "global_mask_v4.nii", package = "neuroim2")
+if (nzchar(path)) {
+  src <- nifti_array_source(path, path)
+  source_shape(src)
+  source_dtype(src)
+}
+}

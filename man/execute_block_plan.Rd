@@ -24,3 +24,14 @@ A list containing one result per planned block.
 \description{
 Execute a bounded frame block plan
 }
+\examples{
+frame <- fmri_frame(
+  assays = list(signal = memory_source(matrix(seq_len(20), 5, 4))),
+  observations = data.frame(.obs_id = sprintf("obs-\%d", 1:5)),
+  active_assay = "signal"
+)
+plan <- plan_blocks(frame, memory_budget = 10 * 1024^2)
+execute_block_plan(frame, plan, function(values, observation_ids, feature_ids, block) {
+  sum(values)
+})
+}

@@ -25,3 +25,7 @@ order; unnamed list order is preserved. Strings are UTF-8 NFC, sparse matrix
 storage layouts are normalized, and NaN payloads use one R value while
 remaining distinct from \code{NA_real_}. Negative zero remains distinct from zero.
 }
+\examples{
+canonical_bytes(list(b = 2, a = 1))
+canonical_sha256(list(b = 2, a = 1))
+}

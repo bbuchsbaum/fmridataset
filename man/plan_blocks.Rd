@@ -32,3 +32,12 @@ a serializable, metadata-only execution plan. \code{"imagewise"} blocks retain
 complete feature rows, \code{"featurewise"} blocks retain complete observation
 columns, and \code{"balanced"} blocks scale both axes in the source chunk ratio.
 }
+\examples{
+frame <- fmri_frame(
+  assays = list(signal = memory_source(matrix(seq_len(20), 5, 4))),
+  observations = data.frame(.obs_id = sprintf("obs-\%d", 1:5)),
+  active_assay = "signal"
+)
+plan <- plan_blocks(frame, memory_budget = 10 * 1024^2)
+plan
+}

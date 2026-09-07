@@ -18,3 +18,9 @@ Any other serializable lineage value is wrapped, unchanged, in a single
 \code{legacy_provenance} record so that its origin remains inspectable rather
 than being silently reinterpreted.
 }
+\examples{
+g <- as_provenance_graph(NULL)
+provenance_tips(g)
+g2 <- as_provenance_graph(list(note = "legacy value"))
+provenance_tips(g2)
+}

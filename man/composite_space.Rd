@@ -31,3 +31,11 @@ such as left cortex, right cortex, and subcortical volume. It owns only the
 ordered routing between that axis and its named parts; each child remains the
 authority for spatial identity, vectorization, and reconstruction.
 }
+\examples{
+parts <- list(
+  left = index_space(2, ids = c("l1", "l2")),
+  right = index_space(2, ids = c("r1", "r2"))
+)
+x <- composite_space(parts, composite_type = "bilateral")
+feature_ids(x)
+}

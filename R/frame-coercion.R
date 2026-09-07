@@ -7,6 +7,11 @@
 #' @param x An object convertible to an `fmri_frame`.
 #' @param ... Method-specific arguments.
 #' @return An `fmri_frame`.
+#' @examples
+#' src <- memory_source(matrix(seq_len(6), nrow = 2))
+#' obs <- tibble::tibble(.obs_id = c("o1", "o2"))
+#' fr <- fmri_frame(list(beta = src), obs)
+#' identical(as_fmri_frame(fr), fr)
 #' @export
 as_fmri_frame <- function(x, ...) UseMethod("as_fmri_frame")
 

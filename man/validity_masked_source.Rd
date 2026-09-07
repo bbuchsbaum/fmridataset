@@ -19,3 +19,13 @@ A serializable \code{validity_masked_source}.
 \description{
 Lazily mask invalid observation-feature cells with missing values
 }
+\examples{
+space <- index_space(4, ids = paste0("f", 1:4), namespace = "validity-ex")
+bank <- mask_bank(
+  rbind(c(TRUE, TRUE, FALSE, TRUE), c(TRUE, FALSE, FALSE, TRUE)),
+  space
+)
+src <- memory_source(matrix(1:8, nrow = 2))
+masked <- validity_masked_source(src, bank$mask_ids[c(1, 2)], bank)
+source_read(masked)
+}

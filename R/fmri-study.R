@@ -15,6 +15,13 @@
 #' @param key Stable event-key column.
 #' @param metadata Serializable event-table metadata.
 #' @return An `fmri_event_table`.
+#' @examples
+#' et <- event_table(
+#'   data.frame(event_id = c("e1", "e2"), onset = c(0, 10), duration = c(2, 2)),
+#'   key = "event_id"
+#' )
+#' event_data(et)
+#' event_key(et)
 #' @export
 event_table <- function(data, key = "event_id", metadata = list()) {
   data <- tryCatch(
@@ -56,6 +63,12 @@ event_table <- function(data, key = "event_id", metadata = list()) {
 #'
 #' @param x An `fmri_event_table`.
 #' @return `x`, invisibly.
+#' @examples
+#' et <- event_table(
+#'   data.frame(event_id = c("e1", "e2"), onset = c(0, 10)),
+#'   key = "event_id"
+#' )
+#' validate_event_table(et)
 #' @export
 validate_event_table <- function(x) {
   required <- c("data", "key", "metadata", "schema_version")
@@ -72,6 +85,13 @@ validate_event_table <- function(x) {
 #'
 #' @param x An `fmri_event_table`.
 #' @return Event scalar data or the stable key name.
+#' @examples
+#' et <- event_table(
+#'   data.frame(event_id = c("e1", "e2"), onset = c(0, 10)),
+#'   key = "event_id"
+#' )
+#' event_data(et)
+#' event_key(et)
 #' @name event-accessors
 NULL
 
@@ -102,6 +122,10 @@ event_key <- function(x) {
 #' @param operator Optional typed feature operator. This is valid only for a
 #'   feature-to-feature mapping or alignment and remains a first-class field.
 #' @return A `frame_link` descriptor.
+#' @examples
+#' link <- frame_link("bold", "surface", type = "derivation")
+#' link$source
+#' link$target
 #' @export
 frame_link <- function(source, target,
                        type = c("derivation", "mapping", "correspondence", "alignment"),
@@ -204,6 +228,9 @@ frame_link <- function(source, target,
 #'
 #' @param x A provisional version-one or canonical version-two `frame_link`.
 #' @return A canonical version-two `frame_link`.
+#' @examples
+#' link <- frame_link("bold", "surface", type = "derivation")
+#' identical(upgrade_frame_link(link), link)
 #' @export
 upgrade_frame_link <- function(x) {
   if (inherits(x, "frame_link") && identical(x$schema_version, 2L)) {
@@ -265,6 +292,12 @@ upgrade_frame_link <- function(x) {
 #'   same type.
 #' @param metadata Unaligned result-link metadata.
 #' @return A canonical source-to-target `frame_link`.
+#' @examples
+#' first <- frame_link("bold", "beta", type = "derivation")
+#' second <- frame_link("beta", "summary", type = "derivation")
+#' composed <- compose_frame_links(first, second)
+#' composed$source
+#' composed$target
 #' @export
 compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
   .validate_frame_link(first, "first")
@@ -506,6 +539,15 @@ compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
 #' @param metadata Unaligned study-level metadata.
 #' @param provenance `NULL` or a validated `provenance_graph`.
 #' @return An `fmri_study`.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' study <- fmri_study(list(main = frame))
+#' study_ids(study)
 #' @export
 fmri_study <- function(frames, entities = list(), links = list(), tables = list(),
                        metadata = list(), provenance = NULL) {
@@ -571,6 +613,15 @@ fmri_study <- function(frames, entities = list(), links = list(), tables = list(
 #'
 #' @param x An `fmri_study`.
 #' @return `x`, invisibly.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' study <- fmri_study(list(main = frame))
+#' validate_fmri_study(study)
 #' @export
 validate_fmri_study <- function(x) {
   required <- c("frames", "entities", "links", "tables", "metadata", "provenance", "schema_version")
@@ -588,6 +639,16 @@ validate_fmri_study <- function(x) {
 #' @param name Stable representation name.
 #' @param contextual Replace frame-local entity stubs with shared study entities.
 #' @return Named representations, one representation, or representation IDs.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' study <- fmri_study(list(main = frame))
+#' study_ids(study)
+#' study_frame(study, "main")
 #' @name study-accessors
 NULL
 
@@ -628,6 +689,16 @@ entity.fmri_study <- function(x, name, ...) entity(entities(x), name)
 #' @param x An `fmri_study`.
 #' @param name Stable link or table name.
 #' @return A registry or one descriptor/table.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' study <- fmri_study(list(main = frame))
+#' study_links(study)
+#' study_tables(study)
 #' @name study-registries
 NULL
 
@@ -704,6 +775,27 @@ events <- function(x, name = "events") study_table(x, name)
 #' @param entity Bare or quoted shared entity name.
 #' @param predicate A scalar-metadata predicate evaluated on that entity table.
 #' @return A self-contained `fmri_study` whose numerical sources remain lazy.
+#' @examples
+#' subject_entity <- entity_frame(
+#'   data.frame(subject_id = c("s1", "s2"), age = c(20, 60)),
+#'   key = "subject_id"
+#' )
+#' obs <- data.frame(
+#'   .obs_id = paste0("o", 1:4),
+#'   subject_id = c("s1", "s1", "s2", "s2")
+#' )
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(16), nrow = 4)),
+#'   observations = obs,
+#'   space = index_space(4, ids = paste0("f", 1:4)),
+#'   entities = list(subject = subject_entity),
+#'   relations = list(
+#'     observation_subject = key_relation("subject_id", target = "subject")
+#'   )
+#' )
+#' study <- fmri_study(list(main = frame), entities = list(subject = subject_entity))
+#' older <- filter_entities(study, subject, age > 30)
+#' observation_ids(study_frame(older, "main"))
 #' @export
 filter_entities <- function(x, entity, predicate) {
   validate_fmri_study(x)
@@ -763,6 +855,15 @@ filter_entities <- function(x, entity, predicate) {
 #'
 #' @param x An `fmri_study` or filtered view.
 #' @return A SHA-256 digest computed without numerical reads.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' study <- fmri_study(list(main = frame))
+#' study_digest(study)
 #' @export
 study_digest <- function(x) {
   validate_fmri_study(x)

@@ -23,3 +23,8 @@ A feature \code{axis_frame} carrying its space.
 \description{
 Construct a spatial feature axis
 }
+\examples{
+sp <- index_space(3, ids = sprintf("f\%d", 1:3), namespace = "ex")
+fx <- feature_axis(data.frame(.feature_id = sprintf("f\%d", 1:3)), space = sp)
+axis_ids(fx)
+}

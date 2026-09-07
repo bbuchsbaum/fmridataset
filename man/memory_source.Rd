@@ -49,6 +49,11 @@ and its copies agree. Values compared across objects require
 token: the payload is hashed once at construction and equal-valued sources
 then share a fingerprint at O(n) cost.
 }
+\examples{
+src <- memory_source(matrix(seq_len(6), nrow = 2))
+source_shape(src)
+source_dtype(src)
+}
 \seealso{
 \code{\link[=source_fingerprint]{source_fingerprint()}} and \code{\link[=content_hash]{content_hash()}} for the fingerprint
 policy.

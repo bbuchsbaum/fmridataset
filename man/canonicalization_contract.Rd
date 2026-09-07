@@ -15,3 +15,7 @@ package-owned tagged binary encoding. It is stable for supported package
 operations and round trips, but is deliberately R-only rather than a
 cross-language wire encoding.
 }
+\examples{
+contract <- canonicalization_contract()
+contract$algorithm
+}

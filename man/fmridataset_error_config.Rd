@@ -21,4 +21,8 @@ A configuration error condition
 \description{
 Raised when invalid configuration is provided to a backend or dataset.
 }
+\examples{
+cond <- fmridataset:::fmridataset_error_config("bad value", parameter = "chunks")
+cond$parameter
+}
 \keyword{internal}

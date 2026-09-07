@@ -29,3 +29,7 @@ Content digests are optional receipts computed explicitly by
 \code{\link[=content_hash]{content_hash()}} or supplied by a backend; this function never reads data
 to infer one, so the content domain always requires \code{content_digest}.
 }
+\examples{
+src <- memory_source(matrix(seq_len(6), nrow = 2))
+identity_descriptor(src)$domain
+}

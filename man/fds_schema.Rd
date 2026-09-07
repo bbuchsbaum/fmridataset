@@ -18,3 +18,7 @@ FDS version 1 is the backend-neutral semantic contract for persisted
 \code{fmri_frame} objects. Physical codecs may add locations, chunks, compression,
 and checksums outside this manifest, but cannot change its field meanings.
 }
+\examples{
+fds_schema()
+fds_schema_version()
+}

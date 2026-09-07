@@ -26,3 +26,13 @@ An entity frame stores one row per subject, session, run, stimulus, item, or
 other study entity. Scalar annotations live in \code{data}; multivariate values
 live in named, first-axis-aligned \code{axis_block} objects.
 }
+\examples{
+x <- entity_frame(
+  data = tibble::tibble(
+    stimulus_id = c("stim-1", "stim-2", "stim-3"),
+    category = c("face", "scene", "object")
+  ),
+  key = "stimulus_id"
+)
+entity_ids(x)
+}

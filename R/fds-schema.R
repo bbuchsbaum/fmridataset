@@ -21,6 +21,9 @@
 #'
 #' @return `fds_schema()` returns the immutable schema identity;
 #'   `fds_schema_version()` returns its integer major version.
+#' @examples
+#' fds_schema()
+#' fds_schema_version()
 #' @export
 fds_schema <- function() .fds_schema
 
@@ -137,6 +140,16 @@ fds_schema_version <- function() .fds_schema$version
 #'
 #' @param x An `fmri_frame`.
 #' @return A serializable backend-neutral manifest.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' manifest <- fds_frame_manifest(frame)
+#' manifest$shape
+#' validate_fds_manifest(manifest)
 #' @export
 fds_frame_manifest <- function(x) {
   if (!inherits(x, "fmri_frame")) {
@@ -641,6 +654,15 @@ validate_fds_manifest <- function(manifest) {
 #' @param x An `fmri_frame`.
 #' @return A named list of `array_source` descriptors keyed exactly like the
 #'   manifest `arrays` registry.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' bindings <- fds_frame_bindings(frame)
+#' names(bindings)
 #' @export
 fds_frame_bindings <- function(x) {
   manifest <- fds_frame_manifest(x)
@@ -673,6 +695,15 @@ fds_frame_bindings <- function(x) {
 #'
 #' @param manifest A valid FDS manifest.
 #' @return A stable hexadecimal digest over semantic manifest content.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' manifest <- fds_frame_manifest(frame)
+#' fds_manifest_digest(manifest)
 #' @export
 fds_manifest_digest <- function(manifest) {
   validate_fds_manifest(manifest)
@@ -686,6 +717,17 @@ fds_manifest_digest <- function(manifest) {
 #'   one per manifest array declaration.
 #' @return An `fmri_frame` whose semantic state comes from `manifest` and whose
 #'   lazy arrays come from `bindings`.
+#' @examples
+#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
+#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
+#'   space = voxels
+#' )
+#' manifest <- fds_frame_manifest(frame)
+#' bindings <- fds_frame_bindings(frame)
+#' rebuilt <- frame_from_fds_manifest(manifest, bindings)
+#' identical(feature_ids(rebuilt), feature_ids(frame))
 #' @export
 frame_from_fds_manifest <- function(manifest, bindings) {
   validate_fds_manifest(manifest)

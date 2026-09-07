@@ -18,3 +18,13 @@ factor levels, multivariate block trailing axes and components, spatial
 identity, entities, relations, auxiliary tables, and active-assay policy.
 It inspects descriptors and metadata only and never reads numerical values.
 }
+\examples{
+sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
+frame <- fmri_frame(
+  assays = list(bold = matrix(rnorm(4 * n_features(sp)), nrow = 4)),
+  observations = data.frame(.obs_id = sprintf("vol-\%d", 1:4)),
+  space = sp
+)
+schema <- frame_schema(frame)
+schema$active_assay
+}

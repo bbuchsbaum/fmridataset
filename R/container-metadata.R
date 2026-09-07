@@ -135,6 +135,9 @@
 #' @param domains Optional named observation, feature, or entity sizes used to
 #'   detect hidden alignment.
 #' @return An `unaligned_record`.
+#' @examples
+#' rec <- unaligned_record(list(task = "rest", tr = 2))
+#' rec$task
 #' @export
 unaligned_record <- function(x = list(), domains = NULL) {
   if (inherits(x, "unaligned_record")) x <- unclass(x)
@@ -168,6 +171,9 @@ unaligned_record <- function(x = list(), domains = NULL) {
 #' @param x An `unaligned_record`.
 #' @param domains Optional named alignment-domain sizes.
 #' @return `x`, invisibly.
+#' @examples
+#' rec <- unaligned_record(list(task = "rest", tr = 2))
+#' validate_unaligned_record(rec)
 #' @export
 validate_unaligned_record <- function(x, domains = NULL) {
   if (!inherits(x, "unaligned_record")) {
@@ -281,6 +287,12 @@ validate_unaligned_record <- function(x, domains = NULL) {
 #'   `"transforms"`.
 #' @param metadata Unaligned table-level metadata.
 #' @return An `fmri_auxiliary_table`.
+#' @examples
+#' at <- auxiliary_table(
+#'   data.frame(contrast = c("A-B", "B-A"), stat = c(2.1, -2.1)),
+#'   key = "contrast", role = "contrasts"
+#' )
+#' table_data(at)
 #' @export
 auxiliary_table <- function(data, key = NULL, role = "auxiliary",
                             metadata = list()) {
@@ -314,6 +326,14 @@ auxiliary_table <- function(data, key = NULL, role = "auxiliary",
 #' @param x An `fmri_auxiliary_table`.
 #' @return `validate_auxiliary_table()` returns `x` invisibly; other functions
 #'   return table data, key, or role.
+#' @examples
+#' at <- auxiliary_table(
+#'   data.frame(contrast = c("A-B", "B-A"), stat = c(2.1, -2.1)),
+#'   key = "contrast", role = "contrasts"
+#' )
+#' validate_auxiliary_table(at)
+#' table_key(at)
+#' table_role(at)
 #' @name auxiliary-table
 NULL
 

@@ -17,3 +17,7 @@ validate_unaligned_record(x, domains = NULL)
 \description{
 Validate a typed unaligned metadata record
 }
+\examples{
+rec <- unaligned_record(list(task = "rest", tr = 2))
+validate_unaligned_record(rec)
+}

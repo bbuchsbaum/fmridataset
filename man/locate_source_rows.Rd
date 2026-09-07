@@ -17,3 +17,7 @@ A data frame mapping each request position to a shard and local row.
 \description{
 Resolve logical observation rows to shards
 }
+\examples{
+shards <- list(memory_source(matrix(1:4, nrow = 2)), memory_source(matrix(5:8, nrow = 2)))
+locate_source_rows(row_sharded_source(shards), observations = c(1, 3))
+}

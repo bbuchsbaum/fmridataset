@@ -21,4 +21,8 @@ A backend I/O error condition
 \description{
 Raised when a storage backend encounters read/write failures.
 }
+\examples{
+cond <- fmridataset:::fmridataset_error_backend_io("read failed", file = "x.h5")
+cond$operation
+}
 \keyword{internal}

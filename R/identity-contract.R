@@ -12,6 +12,9 @@
 #' @param content_digest Optional externally computed content digest, such as
 #'   the value of [content_hash()].
 #' @return A serializable typed identity descriptor.
+#' @examples
+#' src <- memory_source(matrix(seq_len(6), nrow = 2))
+#' identity_descriptor(src)$domain
 #' @export
 identity_descriptor <- function(
     x,

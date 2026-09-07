@@ -23,3 +23,8 @@ modified.
 \description{
 Append immutable source shards
 }
+\examples{
+src <- row_sharded_source(list(memory_source(matrix(1:4, nrow = 2))))
+grown <- append_source_shards(src, list(memory_source(matrix(5:8, nrow = 2))))
+source_shape(grown)
+}

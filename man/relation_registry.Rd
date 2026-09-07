@@ -18,3 +18,9 @@ A named \code{relation_registry}.
 \description{
 Construct a relation registry
 }
+\examples{
+registry <- relation_registry(
+  observation_stimulus = key_relation("stimulus_id", target = "stimulus")
+)
+relation_names(registry)
+}

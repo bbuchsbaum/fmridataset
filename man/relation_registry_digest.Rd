@@ -15,3 +15,9 @@ A hexadecimal digest over the normalized registry.
 \description{
 Compute a stable relation-registry digest
 }
+\examples{
+registry <- relation_registry(
+  observation_stimulus = key_relation("stimulus_id", target = "stimulus")
+)
+relation_registry_digest(registry)
+}

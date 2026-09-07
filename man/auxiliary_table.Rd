@@ -22,3 +22,10 @@ An \code{fmri_auxiliary_table}.
 \description{
 Construct a typed auxiliary table
 }
+\examples{
+at <- auxiliary_table(
+  data.frame(contrast = c("A-B", "B-A"), stat = c(2.1, -2.1)),
+  key = "contrast", role = "contrasts"
+)
+table_data(at)
+}

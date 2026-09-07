@@ -35,3 +35,10 @@ A validated \code{provenance_graph}, its records, tips, or digest.
 \description{
 Construct and inspect an immutable provenance graph
 }
+\examples{
+r1 <- provenance_record("load", inputs = list(path = "toy.nii"))
+g <- provenance_graph(r1)
+r2 <- provenance_record("normalize", parents = r1$id)
+g <- append_provenance(g, r2)
+provenance_tips(g)
+}

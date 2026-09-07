@@ -21,3 +21,7 @@ belong in assays, axis blocks, relations, typed tables, or linked frames.
 When \code{domains} are supplied, vector lengths matching an observation,
 feature, or entity domain are rejected as probable hidden alignment.
 }
+\examples{
+rec <- unaligned_record(list(task = "rest", tr = 2))
+rec$task
+}

@@ -32,3 +32,6 @@ A \code{volume_space}.
 \description{
 Construct a packed volumetric feature space
 }
+\examples{
+volume_space(c(2, 2, 2), affine = diag(4), support = 1:4)
+}
