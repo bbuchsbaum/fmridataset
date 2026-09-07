@@ -24,8 +24,14 @@
 #' `inst/architecture/ADR-009-source-fingerprints-and-content-hashes.md`.
 #'
 #' @param x An array source or object coercible to one.
-#' @param observations Optional observation positions.
-#' @param features Optional feature positions.
+#' @param observations Optional observation selector: `NULL` for every
+#'   observation, integer positions in request order, or a logical mask.
+#'   Selectors follow the package's normalization law: positions must be
+#'   whole numbers, may reorder, may be negative but not mixed with positive,
+#'   drop zero, must be in bounds, and may not repeat an element; masks must
+#'   match the axis length with no `NA`; an empty selection is legal. The law
+#'   is checked at the generic before a method is dispatched.
+#' @param features Optional feature selector, under the same law.
 #' @param ... Additional method arguments.
 #' @name array-source
 NULL
@@ -90,13 +96,35 @@ source_open <- function(x, ...) UseMethod("source_open")
 #' @rdname array-source
 #' @export
 source_read <- function(x, observations = NULL, features = NULL, ...) {
+  .assert_source_selectors(x, observations, features)
   UseMethod("source_read")
 }
 
 #' @rdname array-source
 #' @export
 source_read_native <- function(x, observations = NULL, ...) {
+  .assert_source_selectors(x, observations)
   UseMethod("source_read_native")
+}
+
+# The selection law is enforced at the generic, before dispatch, so every
+# source -- including extension sources the package does not implement --
+# rejects repeated, missing, fractional, mixed-sign, and out-of-bounds
+# selectors identically. Methods still receive the caller's NULL, integer, or
+# logical selector and expand it themselves; UseMethod() forwards the original
+# arguments, so this is a check rather than a rewrite.
+.assert_source_selectors <- function(x, observations = NULL, features = NULL) {
+  if (is.null(observations) && is.null(features)) {
+    return(invisible(TRUE))
+  }
+  shape <- source_shape(x)
+  if (!is.null(observations)) {
+    .normalize_selection(observations, shape[[1L]], axis = "observation")
+  }
+  if (!is.null(features)) {
+    .normalize_selection(features, shape[[2L]], axis = "feature")
+  }
+  invisible(TRUE)
 }
 
 #' @rdname array-source
@@ -434,21 +462,11 @@ validate_array_source <- function(x) {
   invisible(x)
 }
 
-.normalize_source_index <- function(index, n) {
-  if (is.null(index)) {
-    return(seq_len(n))
-  }
-  if (is.logical(index)) {
-    if (length(index) != n || anyNA(index)) {
-      .frame_abort("Logical source selectors must match the axis length and contain no NA.", "fmridataset_error_alignment")
-    }
-    return(which(index))
-  }
-  index <- as.integer(index)
-  if (anyNA(index) || any(index < 1L | index > n)) {
-    .frame_abort("Source selector is out of bounds.", "fmridataset_error_alignment")
-  }
-  index
+# Positional selector for a raw source read: the one normalization law
+# (R/axis-selection.R) applied to an axis without IDs, expanded to the integer
+# vector a backend indexes with. `all` expands to a compact base-R sequence.
+.normalize_source_index <- function(index, n, axis = "source") {
+  .selection_expand(.normalize_selection(index, n, ids = NULL, axis = axis))
 }
 
 #' Construct an in-memory array source
@@ -509,7 +527,10 @@ memory_source <- function(data, dtype = NULL, chunks = NULL, revision = NULL,
       shape = d,
       dtype = dtype,
       chunks = pmin(chunks, pmax(1L, d)),
-      capabilities = c("row_slice", "column_slice", "block_slice", "serializable"),
+      capabilities = c(
+        "row_slice", "column_slice", "block_slice", "serializable",
+        .pushdown_capabilities()
+      ),
       identity = NA_character_,
       identity_basis = identity,
       revision = revision,
@@ -593,6 +614,18 @@ source_close.array_source_handle <- function(x, ...) invisible(TRUE)
 
 #' Construct a lazy view over an array source
 #'
+#' A view stores its selectors in the package's normalized selection form
+#' rather than as expanded position vectors: a select-all axis stores no
+#' vector, one contiguous run stores its bounds, and only an arbitrary subset
+#' stores positions. A view over a view composes into one view over the root
+#' source. Selectors follow the package-wide normalization law: logical masks
+#' must match the axis length without `NA`; numeric positions must be whole
+#' numbers, may reorder, may be negative (but not mixed with positive), drop
+#' zero, must be in bounds, and may not repeat an element; an empty selection
+#' is legal. Fingerprints hash the normalized form, so equal selections agree
+#' however they were expressed and a select-all view fingerprints in constant
+#' time.
+#'
 #' @param source An `array_source`.
 #' @param observations Stored observation selector.
 #' @param features Stored feature selector.
@@ -601,26 +634,42 @@ source_close.array_source_handle <- function(x, ...) invisible(TRUE)
 source_view <- function(source, observations = NULL, features = NULL) {
   source <- as_array_source(source)
   shape <- source_shape(source)
-  observations <- .normalize_source_index(observations, shape[1L])
-  features <- .normalize_source_index(features, shape[2L])
+  observations <- .normalize_selection(
+    observations, shape[[1L]], axis = "observation"
+  )
+  features <- .normalize_selection(features, shape[[2L]], axis = "feature")
+  if (inherits(source, "source_view")) {
+    observations <- .selection_compose(observations, source$observations)
+    features <- .selection_compose(features, source$features)
+    source <- source$source
+  }
   out <- structure(
-    list(source = source, observations = observations, features = features),
+    list(
+      source = source,
+      observations = observations,
+      features = features,
+      schema_version = 2L
+    ),
     class = c("source_view", "array_source")
   )
   # Descriptors are immutable, so the fingerprint is computed once here. Views
   # are what frames hold, and plan_blocks()/execute_block_plan() fingerprint
   # the frame selection on every call.
   out$fingerprint <- .canonical_digest(list(
+    type = "source_view",
+    schema_version = out$schema_version,
     source = source_fingerprint(source),
-    observations = observations,
-    features = features
+    observations = .selection_descriptor(observations),
+    features = .selection_descriptor(features)
   ))
   validate_array_source(out)
   out
 }
 
 #' @export
-source_shape.source_view <- function(x, ...) c(length(x$observations), length(x$features))
+source_shape.source_view <- function(x, ...) {
+  c(.selection_length(x$observations), .selection_length(x$features))
+}
 #' @export
 source_dtype.source_view <- function(x, ...) source_dtype(x$source)
 #' @export
@@ -628,7 +677,7 @@ source_chunks.source_view <- function(x, ...) pmin(source_chunks(x$source), pmax
 #' @export
 source_capabilities.source_view <- function(x, ...) {
   capabilities <- source_capabilities(x$source)
-  if (!identical(x$features, seq_len(source_shape(x$source)[2L]))) {
+  if (!.selection_is_all(x$features)) {
     capabilities <- setdiff(capabilities, "native_read")
   }
   capabilities
@@ -641,12 +690,16 @@ source_open.source_view <- function(x, ...) {
 }
 #' @export
 source_read.source_view <- function(x, observations = NULL, features = NULL, ...) {
-  observations <- .normalize_source_index(observations, length(x$observations))
-  features <- .normalize_source_index(features, length(x$features))
+  observations <- .normalize_selection(
+    observations, .selection_length(x$observations), axis = "observation"
+  )
+  features <- .normalize_selection(
+    features, .selection_length(x$features), axis = "feature"
+  )
   source_read(
     x$source,
-    observations = x$observations[observations],
-    features = x$features[features],
+    observations = .selection_index(.selection_compose(observations, x$observations)),
+    features = .selection_index(.selection_compose(features, x$features)),
     ...
   )
 }
@@ -659,8 +712,14 @@ source_read_native.source_view <- function(x, observations = NULL, ...) {
       operation = "native_read"
     )
   }
-  observations <- .normalize_source_index(observations, length(x$observations))
-  source_read_native(x$source, observations = x$observations[observations], ...)
+  observations <- .normalize_selection(
+    observations, .selection_length(x$observations), axis = "observation"
+  )
+  source_read_native(
+    x$source,
+    observations = .selection_index(.selection_compose(observations, x$observations)),
+    ...
+  )
 }
 #' @export
 source_close.source_view <- function(x, ...) invisible(TRUE)

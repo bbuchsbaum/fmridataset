@@ -98,10 +98,10 @@ test_that("content hashes agree across equal values and differ otherwise", {
   expect_false(identical(content_hash(memory_source(t(m))), reference))
   expect_false(identical(content_hash(memory_source(matrix(m, 4, 6))), reference))
 
-  reordered <- source_view(whole, observations = c(6, 1, 1), features = c(4, 2))
+  reordered <- source_view(whole, observations = c(6, 1, 3), features = c(4, 2))
   expect_identical(
     content_hash(reordered),
-    content_hash(memory_source(m[c(6, 1, 1), c(4, 2)]))
+    content_hash(memory_source(m[c(6, 1, 3), c(4, 2)]))
   )
   expect_false(identical(content_hash(reordered), reference))
 })

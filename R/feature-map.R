@@ -290,7 +290,9 @@ source_dtype.feature_mapped_source <- function(x, ...) x$dtype
 source_chunks.feature_mapped_source <- function(x, ...) as.integer(x$chunks)
 #' @export
 source_capabilities.feature_mapped_source <- function(x, ...) {
-  c("row_slice", "column_slice", "block_slice", "serializable")
+  # Observations are forwarded to the child; any feature selector resolves to
+  # the operator rows it names, so every form is consumed directly.
+  c("row_slice", "column_slice", "block_slice", "serializable", .pushdown_capabilities())
 }
 #' @export
 source_fingerprint.feature_mapped_source <- function(x, ...) {

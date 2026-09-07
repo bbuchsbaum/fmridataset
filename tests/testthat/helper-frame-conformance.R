@@ -69,14 +69,56 @@ expect_array_source_conformance <- function(source, reference) {
     )
   }
 
-  # Repeated positions select repeated data. Sources agree on this even though
-  # the frame axis rejects duplicates; pinning it here keeps the sources
-  # consistent with each other while the selection algebra is settled.
+  # One normalization law for every axis in the package: an element appears
+  # at most once in a selection, on raw sources exactly as on frames, so the
+  # positional and the ID-bearing layers can never disagree about a read.
   if (n_row && n_col) {
-    expect_equal(
+    expect_error(
       source_read(source, c(1L, 1L), cols),
-      reference[c(1L, 1L), cols, drop = FALSE]
+      class = "fmridataset_error_alignment"
     )
+    expect_error(
+      source_read(source, rows, c(1L, 1L)),
+      class = "fmridataset_error_alignment"
+    )
+  }
+
+  # Views compose. A range, an arbitrary set of positions, and a select-all
+  # nested in any order read exactly what the equivalent flat positions read,
+  # and the nesting collapses to one view over the root source.
+  if (n_row > 2L && n_col > 2L) {
+    inner_rows <- 2:n_row
+    inner_cols <- seq_len(n_col - 1L)
+    ranged <- source_view(source, observations = inner_rows, features = inner_cols)
+    expect_equal(source_read(ranged), reference[inner_rows, inner_cols, drop = FALSE])
+
+    picked <- source_view(ranged, observations = c(n_row - 1L, 1L))
+    picked_rows <- inner_rows[c(n_row - 1L, 1L)]
+    expect_false(inherits(picked$source, "source_view"))
+    expect_equal(source_read(picked), reference[picked_rows, inner_cols, drop = FALSE])
+
+    everything <- source_view(picked)
+    expect_identical(source_fingerprint(everything), source_fingerprint(picked))
+    expect_equal(source_read(everything), source_read(picked))
+
+    deeper <- source_view(everything, observations = 2:1, features = c(n_col - 1L, 1L))
+    expect_false(inherits(deeper$source, "source_view"))
+    expect_equal(
+      source_read(deeper),
+      reference[picked_rows[2:1], c(n_col - 1L, 1L), drop = FALSE]
+    )
+    expect_equal(
+      source_read(deeper, 1L, 2L),
+      reference[picked_rows[[2L]], 1L, drop = FALSE]
+    )
+    expect_identical(
+      source_fingerprint(deeper),
+      source_fingerprint(source_view(
+        source,
+        observations = picked_rows[2:1], features = c(n_col - 1L, 1L)
+      ))
+    )
+    expect_identical(dim(source_read(source_view(deeper, observations = integer()))), c(0L, 2L))
   }
 
   # Empty selections on either axis, and on both.

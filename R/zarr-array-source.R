@@ -235,8 +235,11 @@ zarr_array_source <- function(uri, array_path = "/", shape = NULL,
       dtype = logical_metadata$dtype,
       chunks = logical_metadata$chunks,
       physical_axes = physical_axes,
+      # Chunked stores read rectangular ranges natively; arbitrary positions
+      # are decomposed into range reads and are not a pushdown form.
       capabilities = c(
-        "row_slice", "column_slice", "block_slice", "serializable"
+        "row_slice", "column_slice", "block_slice", "serializable",
+        .pushdown_capabilities(c("all", "range"))
       ),
       schema_version = 1L,
       experimental = TRUE
@@ -306,14 +309,6 @@ source_open.zarr_array_source <- function(x, ...) {
   handle
 }
 
-.zarr_consecutive_runs <- function(index) {
-  index <- sort(unique(as.integer(index)))
-  if (!length(index)) {
-    return(list())
-  }
-  split(index, cumsum(c(TRUE, diff(index) != 1L)))
-}
-
 .zarr_empty_matrix <- function(dtype, nrow, ncol) {
   prototype <- if (identical(dtype, "logical")) {
     logical()
@@ -335,32 +330,36 @@ source_open.zarr_array_source <- function(x, ...) {
       operation = "read"
     )
   }
-  observations <- .normalize_source_index(observations, source$shape[[1L]])
-  features <- .normalize_source_index(features, source$shape[[2L]])
-  if (!length(observations) || !length(features)) {
-    return(.zarr_empty_matrix(
-      source$dtype,
-      length(observations),
-      length(features)
-    ))
+  observation_selection <- .normalize_selection(
+    observations, source$shape[[1L]], axis = "observation"
+  )
+  feature_selection <- .normalize_selection(
+    features, source$shape[[2L]], axis = "feature"
+  )
+  n_observation <- .selection_length(observation_selection)
+  n_feature <- .selection_length(feature_selection)
+  if (!n_observation || !n_feature) {
+    return(.zarr_empty_matrix(source$dtype, n_observation, n_feature))
   }
 
-  observation_index <- sort(unique(observations))
-  feature_index <- sort(unique(features))
+  # The normalized form supplies the chunk-aligned runs directly: a select-all
+  # or range axis is one run, and only arbitrary positions are decomposed.
+  observation_index <- .selection_sorted(observation_selection)
+  feature_index <- .selection_sorted(feature_selection)
   selected <- .zarr_empty_matrix(
     source$dtype,
     length(observation_index),
     length(feature_index)
   )
-  observation_runs <- .zarr_consecutive_runs(observation_index)
-  feature_runs <- .zarr_consecutive_runs(feature_index)
+  observation_runs <- .selection_runs(observation_selection)
+  feature_runs <- .selection_runs(feature_selection)
   logical_axes <- c("observation", "feature")
 
   for (observation_run in observation_runs) {
     for (feature_run in feature_runs) {
       logical_selection <- list(
-        observation = range(observation_run),
-        feature = range(feature_run)
+        observation = observation_run,
+        feature = feature_run
       )
       physical_selection <- unname(
         logical_selection[match(source$physical_axes, logical_axes)]
@@ -374,16 +373,24 @@ source_open.zarr_array_source <- function(x, ...) {
         block <- t(block)
       }
       selected[
-        match(observation_run, observation_index),
-        match(feature_run, feature_index)
+        match(seq.int(observation_run[[1L]], observation_run[[2L]]), observation_index),
+        match(seq.int(feature_run[[1L]], feature_run[[2L]]), feature_index)
       ] <- block
     }
   }
-  selected[
-    match(observations, observation_index),
-    match(features, feature_index),
-    drop = FALSE
-  ]
+  if (identical(observation_selection$form, "positions")) {
+    selected <- selected[
+      match(observation_selection$positions, observation_index), ,
+      drop = FALSE
+    ]
+  }
+  if (identical(feature_selection$form, "positions")) {
+    selected <- selected[
+      , match(feature_selection$positions, feature_index),
+      drop = FALSE
+    ]
+  }
+  selected
 }
 
 #' @export

@@ -296,8 +296,18 @@ length.axis_frame <- function(x) nrow(x$data)
 
 #' @export
 `[.axis_frame` <- function(x, i, ...) {
-  if (missing(i)) i <- seq_len(nrow(x$data))
-  rows <- .subset_keyed_rows(x$data, x$blocks, i)
+  n <- nrow(x$data)
+  selection <- if (missing(i)) {
+    .selection_all(n)
+  } else {
+    .normalize_selection(i, n, ids = x$data[[x$id_col]], axis = x$axis %||% "axis")
+  }
+  .subset_axis_frame(x, selection)
+}
+
+# Subset an axis frame by an already-normalized selection.
+.subset_axis_frame <- function(x, selection) {
+  rows <- .subset_keyed_rows(x$data, x$blocks, .selection_expand(selection))
   data <- rows$data
   out <- axis_frame(
     data,

@@ -27,8 +27,8 @@ test_that("NIfTI sources expose serializable pushdown contracts", {
 test_that("NIfTI sources push observation and packed-feature selections", {
   fixture <- .nifti_source_fixture()
   source <- nifti_array_source(c(fixture$path, fixture$path), fixture$path)
-  observations <- c(8L, 1L, 5L, 1L)
-  features <- c(3L, 1L, 3L)
+  observations <- c(8L, 1L, 5L, 2L)
+  features <- c(3L, 1L, 2L)
 
   full <- suppressWarnings(neuroim2::read_vec(
     c(fixture$path, fixture$path),
@@ -60,8 +60,8 @@ test_that("NIfTI sources push observation and packed-feature selections", {
     }
   )
   expect_length(calls, 2L)
-  expect_identical(lapply(calls, `[[`, "indices"), list(c(4L, 1L), c(1L, 1L)))
-  expect_identical(vapply(calls, `[[`, integer(1), "active_features"), c(2L, 2L))
+  expect_identical(lapply(calls, `[[`, "indices"), list(c(4L, 1L), c(1L, 2L)))
+  expect_identical(vapply(calls, `[[`, integer(1), "active_features"), c(3L, 3L))
 
   plan <- as_delarr(source)
   restored <- unserialize(serialize(plan, NULL))

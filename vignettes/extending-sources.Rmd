@@ -170,11 +170,14 @@ source_open.rds_source <- function(x, ...) {
 source_close.rds_source <- function(x, ...) invisible(TRUE)
 ```
 
-Reads take integer selectors on both axes and honor the requested order.
-They accept repeated positions and return a zero-extent matrix for an empty
-selection. Anything out of range is refused rather than recycled or
-truncated. Reading through the handle is the real implementation; reading
-from the descriptor opens, reads, and closes.
+Reads take integer selectors on both axes and honor the requested order,
+and return a zero-extent matrix for an empty selection. The selection law
+(`inst/architecture/ADR-010-selection-algebra.md`) is checked at the
+`source_read()` generic before your method runs: positions arrive whole, in
+bounds, and never repeated, so a method need not defend against a repeated
+or out-of-range position, though refusing one again is harmless. Reading
+through the handle is the real implementation; reading from the descriptor
+opens, reads, and closes.
 
 ```{r read}
 source_read.rds_source_handle <- function(x, observations = NULL, features = NULL, ...) {
@@ -272,9 +275,10 @@ order:
 - the descriptor survives `serialize()` and `unserialize()` with the same
   fingerprint, shape, dtype, and chunks;
 - opening and closing a handle is safe and leaves the fingerprint untouched;
-- reads match the reference for full, reversed, permuted, repeated, and empty
+- reads match the reference for full, reversed, permuted, and empty
   selections, and are pure;
-- out-of-range selections raise an error;
+- out-of-range and repeated selections raise an error, and views composed
+  over the source read what the equivalent flat positions read;
 - `content_hash()` equals the content hash of a memory source over the
   reference, is accepted by `identity_descriptor()` as a content receipt, and
   does not change the fingerprint.

@@ -1,5 +1,29 @@
 # fmridataset 0.10.0 (Development)
 
+- Replaced the package's independent selector mechanisms with one selection
+  algebra (`inst/architecture/ADR-010-selection-algebra.md`). Frames, views,
+  source views, `source_read()`, collections, axis and entity frames, and
+  `filter_entities()` now normalize selectors through one law: character
+  selectors are stable IDs that must exist, be unique, and keep request
+  order; logical selectors must match the axis with no `NA`; numeric
+  selectors must be whole, may reorder or be negative but not mixed, drop
+  zero, and must be in bounds; an element appears at most once; and an empty
+  selection is legal everywhere (a collection still cannot be empty, as a
+  container rule with `reason = "empty_collection"`). Errors carry a
+  structured `reason`. Consequently raw sources and `locate_source_rows()`
+  now reject repeated positions, the law is enforced at the `source_read()`
+  and `source_read_native()` generics for extension sources too, and
+  collections accept negative positions. Selections are stored in a compact
+  normalized form (`all`, `range`, or `positions`): `source_view()` no longer
+  stores expanded index vectors, nested source views and nested frame views
+  compose into one view over the root, Zarr reads take chunk runs from the
+  form instead of re-deriving them, `explain()` reports the selection form
+  under `selection`, and descriptor size, fingerprint cost, and plan
+  fingerprint cost no longer scale with a select-all or range axis.
+  `source_view` fingerprints changed (schema version 2); `fds_manifest_digest()`
+  is unaffected. `source_capabilities()` now reports the selector forms a
+  backend pushes down natively as `pushdown:all`, `pushdown:range`, and
+  `pushdown:positions`; every built-in source declares its forms.
 - Rewrote the vignettes for the frame API. The pre-frame vignettes were
   removed with the legacy surface; the four replacements are
   `vignette("fmridataset")` (frames, views, laziness, the temporal contract,

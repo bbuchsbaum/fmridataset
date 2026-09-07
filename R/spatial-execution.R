@@ -1,6 +1,5 @@
 .has_complete_feature_selection <- function(x) {
-  selection <- .frame_selection(x)
-  identical(selection$features, seq_len(ncol(selection$base)))
+  .selection_is_all(.frame_selection(x)$features)
 }
 
 #' Select a matrix or spatial execution path
@@ -80,15 +79,15 @@ execution_path <- function(
   selection <- .frame_selection(x)
   descriptor <- assay(selection$base, assay)
   traits <- .source_cost_traits(descriptor$source)
-  packed <- if (n_map > 0L && length(selection$observations)) {
+  packed <- if (n_map > 0L && .selection_length(selection$observations)) {
     source_realization_cost(
       descriptor$source,
-      observations = selection$observations[[1L]],
-      features = selection$features
+      observations = .selection_element(selection$observations, 1L),
+      features = .selection_index(selection$features)
     )
   } else {
     .realization_cost_from_shape(
-      c(0L, length(selection$features)),
+      c(0L, .selection_length(selection$features)),
       descriptor$dtype,
       already_realized = traits$already_realized,
       compressed = traits$compressed
@@ -146,10 +145,11 @@ execution_path <- function(
 .read_one_spatial_map <- function(x, position, assay, path) {
   selection <- .frame_selection(x)
   descriptor <- assay(selection$base, assay)
+  observation <- .selection_element(selection$observations, position)
   if (path == "native") {
     native <- .one_native_map(source_read_native(
       descriptor$source,
-      observations = selection$observations[[position]]
+      observations = observation
     ))
     return(reconstruct_space(
       space(x),
@@ -158,8 +158,8 @@ execution_path <- function(
   }
   values <- source_read(
     descriptor$source,
-    observations = selection$observations[[position]],
-    features = selection$features
+    observations = observation,
+    features = .selection_index(selection$features)
   )
   reconstruct_space(space(x), as.numeric(values))
 }
