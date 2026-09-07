@@ -15,12 +15,22 @@ validate_fds_manifest(manifest)
 \item{manifest}{An FDS manifest.}
 }
 \value{
-A serializable backend-neutral manifest.
+\code{fds_frame_manifest()} returns a serializable backend-neutral
+manifest; \code{validate_fds_manifest()} returns the manifest invisibly,
+normalized to the current version-1 field set.
 }
 \description{
 The manifest owns semantic alignment but deliberately excludes physical
 source descriptors. Storage packages bind assay names to physical array
 locations separately and reconstruct frames with \code{frame_from_fds_manifest()}.
+}
+\details{
+Version-1 manifests written before the \code{id_policy} and typed-metadata
+fields were added are still version 1: \code{validate_fds_manifest()} reads an
+absent \code{id_policy} as the \code{require} policy (a persisted ID is supplied and
+durable) and types absent or plain-list container metadata through
+\code{\link[=unaligned_record]{unaligned_record()}}, which still rejects runtime state and hidden
+alignment. \code{fds_frame_manifest()} always writes the current field set.
 }
 \examples{
 voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")

@@ -16,7 +16,8 @@ validate_fds_study_manifest(manifest)
 }
 \value{
 \code{fds_study_manifest()} returns a serializable source-free manifest;
-\code{validate_fds_study_manifest()} returns \code{manifest} invisibly.
+\code{validate_fds_study_manifest()} returns \code{manifest} invisibly, with every
+member frame manifest normalized as \code{validate_fds_manifest()} does.
 }
 \description{
 Study manifests retain shared entities, typed links, relational tables, and

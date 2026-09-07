@@ -1,5 +1,23 @@
 # fmridataset 0.10.0 (Development)
 
+- Fixed a second set of review findings, on the contraction itself.
+  `as_delarr()` bounds each pull rather than the whole array, so a source
+  larger than the ceiling can be wrapped and read in chunks, which is what a
+  finite budget is for; a nonsensical ceiling is still refused at the wrap.
+  FDS v1 manifests written before the `id_policy` and typed-metadata fields
+  are read again: the schema identity never changed, so an absent `id_policy`
+  is read as the `require` policy (a persisted ID is supplied and durable) and
+  plain-list container metadata is typed through `unaligned_record()`, which
+  still rejects runtime state. `source_realization_cost()` is now a generic,
+  and the wrapper sources whose reads materialize more than they return
+  (`feature_mapped_source`, `validity_masked_source`) charge those
+  intermediates, so a budget can no longer approve a one-column read that
+  then allocates the contributing columns and the product temporaries.
+  `filter_entities()` restricts entity-addressed relations alongside the
+  registry, so a study carrying a per-entity validity mask or a sparse
+  relation on the filtered entity can be filtered at all, and it filters
+  typed tables stored on a frame by the same entity key it applies to
+  study-level tables, so no stale rows survive the filter.
 - Fixed a set of review findings. `bind_observations()` now compares entity
   registries semantically (names, keys, scalar data, block components, and
   block values, by fingerprint first and by realized values only when

@@ -85,6 +85,16 @@ physical state before every open and read and raise
 \code{fmridataset_error_source_stale} when it differs; genuine backend failures
 raise \code{fmridataset_error_backend_io}. The policy is recorded in
 \code{inst/architecture/ADR-009-source-fingerprints-and-content-hashes.md}.
+
+\code{source_realization_cost()} is a generic. The default method models a
+read whose cost is linear in the selected values. Wrapper sources whose
+reads materialize more than they return supply their own method:
+\code{feature_mapped_source} charges the contributing source columns it reads
+(through the child source's own estimate) plus the operator temporaries of
+the product, and \code{validity_masked_source} charges the child's read plus
+the logical mask it applies. Their \code{estimated_output_bytes} stay the
+presented shape; the intermediates enter \code{estimated_temporary_bytes} and
+therefore \code{estimated_peak_bytes}, which is what every budget compares.
 }
 \examples{
 src <- memory_source(matrix(seq_len(6), nrow = 2))

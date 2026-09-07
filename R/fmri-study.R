@@ -596,20 +596,75 @@ fmri_study <- function(frames, entities = list(), links = list(), tables = list(
   out
 }
 
-.contextualize_study_frame <- function(value, shared) {
+# Cut entity-addressed relation rows down to the entities `shared` holds. A
+# study filter narrows the shared registry, but a frame's validity relation
+# still lists every entity it was built with and a sparse relation still
+# carries edges to the removed ones; fmri_frame() would reject either against
+# the narrowed registry. Only relations whose entities are all known to
+# `shared` are restricted, in the registry's order; anything else is left for
+# fmri_frame() to reject exactly as it does today.
+.restrict_relations_to_entities <- function(relations, shared) {
+  out <- lapply(relations, function(value) {
+    if (inherits(value, "entity_feature_validity")) {
+      if (!value$entity %in% entity_names(shared)) {
+        return(value)
+      }
+      kept_ids <- entity_ids(shared[[value$entity]])
+      positions <- match(kept_ids, value$entity_ids)
+      if (anyNA(positions) || identical(value$entity_ids, kept_ids)) {
+        return(value)
+      }
+      value$entity_ids <- value$entity_ids[positions]
+      value$mask_id <- value$mask_id[positions]
+      return(value)
+    }
+    if (!inherits(value, "sparse_relation")) {
+      return(value)
+    }
+    keep <- rep(TRUE, nrow(value$data))
+    for (side in c("from", "to")) {
+      domain <- value[[side]]
+      if (!startsWith(domain, "entity:")) next
+      name <- sub("^entity:", "", domain)
+      if (!name %in% entity_names(shared)) next
+      column <- value[[paste0(side, "_col")]]
+      keep <- keep & value$data[[column]] %in% entity_ids(shared[[name]])
+    }
+    if (!all(keep)) value$data <- value$data[keep, , drop = FALSE]
+    value
+  })
+  names(out) <- names(relations)
+  class(out) <- c("relation_registry", "list")
+  out
+}
+
+# Rebuild a study member against the shared registry. `selections`, a named
+# list of kept entity IDs, additionally filters the member's own typed tables
+# by their entity-key columns, exactly as study-level tables are filtered.
+.contextualize_study_frame <- function(value, shared, selections = NULL) {
   if (inherits(value, "fmri_collection")) {
-    members <- lapply(collection_frames(value), .contextualize_study_frame, shared = shared)
+    members <- lapply(
+      collection_frames(value), .contextualize_study_frame,
+      shared = shared, selections = selections
+    )
     return(fmri_collection(members, metadata = value$metadata, provenance = value$provenance))
   }
   assay_sources <- lapply(names(assays(value)), function(name) .frame_assay_source(value, name))
   names(assay_sources) <- names(assays(value))
+  tables <- value$tables %||% value$base$tables
+  if (length(selections) && length(tables)) {
+    tables <- lapply(
+      tables, .filter_study_table,
+      selections = selections, shared = shared
+    )
+  }
   fmri_frame(
     assays = assay_sources,
     observations = observation_axis(value),
     features = feature_axis(value),
     entities = shared,
-    relations = relations(value),
-    tables = value$tables %||% value$base$tables,
+    relations = .restrict_relations_to_entities(relations(value), shared),
+    tables = tables,
     active_assay = active_assay(value),
     metadata = value$metadata %||% value$base$metadata,
     provenance = value$provenance %||% value$base$provenance
@@ -836,7 +891,11 @@ filter_entities <- function(x, entity, predicate) {
   # normalization law every other axis uses.
   restricted[[entity_name]] <- visible[selected_ids]
   class(restricted) <- c("entity_registry", "list")
-  frames <- lapply(frames, .contextualize_study_frame, shared = restricted)
+  selections <- stats::setNames(list(selected_ids), entity_name)
+  frames <- lapply(
+    frames, .contextualize_study_frame,
+    shared = restricted, selections = selections
+  )
   links <- lapply(x$links, function(value) {
     if (is.null(value$map)) {
       return(value)
@@ -852,7 +911,6 @@ filter_entities <- function(x, entity, predicate) {
     value$map <- value$map[keep_map, , drop = FALSE]
     value
   })
-  selections <- stats::setNames(list(selected_ids), entity_name)
   tables <- lapply(
     x$tables, .filter_study_table,
     selections = selections, shared = visible_registry

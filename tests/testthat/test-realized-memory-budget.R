@@ -186,16 +186,43 @@ test_that("counting sources report storage and realized traffic separately", {
   expect_equal(counts$bytes, counts$output_bytes)
 })
 
-test_that("as_delarr refuses a realization above its explicit ceiling", {
+test_that("as_delarr bounds each pull rather than the whole array", {
   source <- memory_source(matrix(seq_len(100), 10, 10), dtype = "float32")
   cost <- source_realization_cost(source)
 
-  expect_error(
-    as_delarr(source, memory_budget = cost$estimated_peak_bytes - 1),
-    class = "fmridataset_error_budget"
+  # Wrapping reads nothing, so a ceiling below the size of the whole array is
+  # not a reason to refuse: bounding a large source is what chunked execution
+  # is for. The budget is charged against each pull instead.
+  lazy <- as_delarr(source, memory_budget = cost$estimated_peak_bytes - 1)
+  expect_s3_class(lazy, "delarr")
+  expect_identical(dim(lazy), source_shape(source))
+
+  # A pull that fits is served.
+  one_row <- source_realization_cost(source, observations = 1L)
+  bounded <- as_delarr(source, memory_budget = one_row$estimated_peak_bytes)
+  expect_equal(
+    delarr::collect(bounded[1, , drop = FALSE]),
+    source_read(source, observations = 1L)
   )
-  lazy <- as_delarr(source, memory_budget = cost$estimated_peak_bytes)
-  expect_equal(delarr::collect(lazy), source_read(source))
+
+  # A pull that does not fit is refused, at the pull and not at the wrap.
+  expect_error(delarr::collect(bounded), class = "fmridataset_error_budget")
+
+  # With room for everything, collecting the whole array still works.
+  whole <- as_delarr(source, memory_budget = cost$estimated_peak_bytes)
+  expect_equal(delarr::collect(whole), source_read(source))
+})
+
+test_that("as_delarr still rejects a nonsensical ceiling", {
+  source <- memory_source(matrix(seq_len(100), 10, 10))
+
+  for (bad in list(0, -1, NA_real_, c(1, 2), "big")) {
+    expect_error(
+      as_delarr(source, memory_budget = bad),
+      class = "fmridataset_error_budget"
+    )
+  }
+  expect_s3_class(as_delarr(source, memory_budget = Inf), "delarr")
 })
 
 test_that("measured vector-heap peak stays within the documented tolerance", {

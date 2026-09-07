@@ -273,6 +273,16 @@ source_close <- function(x, ...) UseMethod("source_close")
 #' payloads; fixed R object headers and selector metadata are outside the
 #' estimate.
 #'
+#' `source_realization_cost()` is a generic. The default method models a
+#' read whose cost is linear in the selected values. Wrapper sources whose
+#' reads materialize more than they return supply their own method:
+#' `feature_mapped_source` charges the contributing source columns it reads
+#' (through the child source's own estimate) plus the operator temporaries of
+#' the product, and `validity_masked_source` charges the child's read plus
+#' the logical mask it applies. Their `estimated_output_bytes` stay the
+#' presented shape; the intermediates enter `estimated_temporary_bytes` and
+#' therefore `estimated_peak_bytes`, which is what every budget compares.
+#'
 #' @param x An array source or object coercible to one.
 #' @return A `source_realization_cost` list containing storage and realized
 #'   dtypes, storage and output bytes, temporary buffer components, and the
@@ -280,10 +290,29 @@ source_close <- function(x, ...) UseMethod("source_close")
 #' @rdname array-source
 #' @export
 source_realization_cost <- function(x, observations = NULL, features = NULL) {
+  UseMethod("source_realization_cost")
+}
+
+#' @export
+source_realization_cost.default <- function(x, observations = NULL, features = NULL) {
   x <- as_array_source(x)
   shape <- source_shape(x)
   observations <- .normalize_source_index(observations, shape[[1L]])
   features <- .normalize_source_index(features, shape[[2L]])
+  # A view, counter, or fault injector forwards the read unchanged, so when
+  # its child materializes intermediates the composed selection is costed by
+  # the child. Linear children keep the trait-based estimate below.
+  if (inherits(x, c("source_view", "counting_source", "fault_source")) &&
+    inherits(x$source, "array_source") && .source_cost_nonlinear(x$source)) {
+    if (inherits(x, "source_view")) {
+      observations <- .selection_expand(x$observations)[observations]
+      features <- .selection_expand(x$features)[features]
+    }
+    return(source_realization_cost(
+      x$source,
+      observations = observations, features = features
+    ))
+  }
   traits <- .source_cost_traits(x)
   .realization_cost_from_shape(
     c(length(observations), length(features)),
@@ -291,6 +320,20 @@ source_realization_cost <- function(x, observations = NULL, features = NULL) {
     already_realized = traits$already_realized,
     compressed = traits$compressed
   )
+}
+
+# TRUE when a source's realization cost is not a per-value constant, so a
+# block planner cannot size blocks from a unit cost alone and must verify
+# each planned block through source_realization_cost().
+.source_cost_nonlinear <- function(x) {
+  if (inherits(x, c("feature_mapped_source", "validity_masked_source"))) {
+    return(TRUE)
+  }
+  if (inherits(x, c("source_view", "counting_source", "fault_source")) &&
+    inherits(x$source, "array_source")) {
+    return(.source_cost_nonlinear(x$source))
+  }
+  FALSE
 }
 
 .assert_realization_budget <- function(cost, memory_budget, operation,
@@ -1354,8 +1397,20 @@ as_delarr.array_source <- function(x, memory_budget = Inf, ...) {
   }
   shape <- source_shape(backend)
   chunks <- source_chunks(backend)
-  cost <- source_realization_cost(backend)
-  .assert_realization_budget(cost, memory_budget, "delarr realization")
+  # The budget bounds each pull, not the whole array: wrapping is free of
+  # reads, and delarr_provider_pull() charges every request it receives
+  # against the attached ceiling. Budgeting the full shape here refused to
+  # wrap any source larger than the budget, which is exactly the case chunked
+  # execution exists for.
+  if (!is.numeric(memory_budget) || length(memory_budget) != 1L ||
+    is.na(memory_budget) || memory_budget <= 0) {
+    .frame_abort(
+      "memory_budget must be one positive number.",
+      "fmridataset_error_budget",
+      operation = "as_delarr",
+      memory_budget = memory_budget
+    )
+  }
   attr(backend, "fmridataset.memory_budget") <- memory_budget
   delarr::delarr_provider(
     provider = backend,
