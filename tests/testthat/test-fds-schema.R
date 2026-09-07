@@ -57,43 +57,38 @@ test_that("FDS manifests do not change with physical source layout", {
   expect_identical(fds_frame_manifest(rechunked), fds_frame_manifest(fx$frame))
 })
 
-test_that("FDS array declarations retain higher-dimensional block axes", {
+test_that("FDS block arrays declare exactly the owner and component axes", {
+  # ADR-008: blocks are two-dimensional. A trailing axis without typed
+  # metadata would be an anonymous semantic dimension, so the manifest never
+  # emits synthetic "dimension:" labels.
   fx <- make_frame_fixture()
-  tensor <- array(seq_len(7L * 2L * 3L), dim = c(7L, 2L, 3L))
-  tensor_block <- axis_block(
-    tensor,
-    components = data.frame(.component_id = c("channel-a", "channel-b"))
-  )
-  observation <- observation_axis(fx$frame)
-  observation <- axis_frame(
-    observation$data,
-    blocks = c(observation$blocks, list(tensor = tensor_block)),
-    id = observation_ids(fx$frame),
-    axis = "observation",
-    id_col = observation$id_col,
-    metadata = observation$metadata
-  )
-  x <- fmri_frame(
-    assays = lapply(assays(fx$frame), `[[`, "source"),
-    observations = observation,
-    features = feature_axis(fx$frame),
-    entities = fx$frame$entities,
-    active_assay = "beta"
-  )
-  manifest <- fds_frame_manifest(x)
-  declaration <- manifest$arrays[["axis/observation/blocks/tensor"]]
+  manifest <- fds_frame_manifest(fx$frame)
+  block_keys <- grep("/blocks/", names(manifest$arrays), value = TRUE)
+  expect_true(length(block_keys) > 0L)
+  for (key in block_keys) {
+    declaration <- manifest$arrays[[key]]
+    expect_length(declaration$axes, 2L)
+    expect_length(declaration$shape, 2L)
+    expect_identical(declaration$axes[[2L]], paste0("component:", key))
+    expect_false(any(startsWith(declaration$axes, "dimension:")))
+  }
+})
 
-  expect_identical(declaration$shape, c(7L, 2L, 3L))
-  expect_identical(
-    declaration$axes,
-    c(
-      "observation",
-      "component:axis/observation/blocks/tensor",
-      "dimension:axis/observation/blocks/tensor:3"
-    )
+test_that("FDS manifests reject block arrays that declare trailing axes", {
+  fx <- make_frame_fixture()
+  manifest <- fds_frame_manifest(fx$frame)
+  key <- "axis/observation/blocks/motion"
+  expect_true(key %in% names(manifest$arrays))
+  manifest$arrays[[key]]$axes <- c(manifest$arrays[[key]]$axes, "dimension:3")
+  manifest$arrays[[key]]$shape <- c(manifest$arrays[[key]]$shape, 3L)
+
+  error <- expect_error(
+    validate_fds_manifest(manifest),
+    class = "fmridataset_error_schema"
   )
-  rebuilt <- frame_from_fds_manifest(manifest, fds_frame_bindings(x))
-  expect_identical(axis_block_data(obs_blocks(rebuilt)$tensor), tensor)
+  expect_match(conditionMessage(error), "two-dimensional")
+  expect_identical(error$field, "axes.observation.blocks.motion")
+  expect_identical(error$block, "motion")
 })
 
 test_that("FDS manifests rebuild frames from separately bound sources", {

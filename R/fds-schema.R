@@ -56,6 +56,29 @@ fds_schema_version <- function() .fds_schema$version
   )
 }
 
+# Block arrays declare exactly two logical axes: the owning axis and the
+# block's component axis (ADR-008). There are no synthetic trailing axes.
+.fds_block_array <- function(key, axis_label, data) {
+  .assert_block_shape(
+    data, abort = .fds_schema_abort, block = key
+  )
+  .fds_array_descriptor(key, c(axis_label, paste0("component:", key)), data)
+}
+
+.fds_entity_block_arrays <- function(registry) {
+  arrays <- list()
+  for (entity_name in entity_names(registry)) {
+    blocks <- entity_blocks(registry[[entity_name]])
+    for (block_name in names(blocks)) {
+      key <- paste0("entities/", entity_name, "/blocks/", block_name)
+      arrays[[key]] <- .fds_block_array(
+        key, paste0("entity:", entity_name), axis_block_data(blocks[[block_name]])
+      )
+    }
+  }
+  arrays
+}
+
 .fds_block_manifests <- function(blocks, axis, prefix = paste0("axis/", axis)) {
   if (!length(blocks)) {
     return(list())
@@ -154,46 +177,13 @@ fds_frame_manifest <- function(x) {
     axis_value <- if (axis_name == "observation") observation else feature
     for (block_name in names(axis_value$blocks)) {
       key <- paste0("axis/", axis_name, "/blocks/", block_name)
-      block_shape <- if (inherits(axis_value$blocks[[block_name]]$data, "array_source")) {
-        source_shape(axis_value$blocks[[block_name]]$data)
-      } else {
-        dim(axis_value$blocks[[block_name]]$data)
-      }
-      extra_axes <- if (length(block_shape) > 2L) {
-        paste0("dimension:", key, ":", seq.int(3L, length(block_shape)))
-      } else {
-        character()
-      }
-      arrays[[key]] <- .fds_array_descriptor(
-        key,
-        c(axis_name, paste0("component:", key), extra_axes),
-        axis_value$blocks[[block_name]]$data
+      arrays[[key]] <- .fds_block_array(
+        key, axis_name, axis_block_data(axis_value$blocks[[block_name]])
       )
     }
   }
   entity_values <- entities(x)
-  for (entity_name in names(entity_values)) {
-    entity_value <- entity_values[[entity_name]]
-    for (block_name in names(entity_blocks(entity_value))) {
-      key <- paste0("entities/", entity_name, "/blocks/", block_name)
-      block_data <- axis_block_data(entity_blocks(entity_value)[[block_name]])
-      block_shape <- if (inherits(block_data, "array_source")) {
-        source_shape(block_data)
-      } else {
-        dim(block_data)
-      }
-      extra_axes <- if (length(block_shape) > 2L) {
-        paste0("dimension:", key, ":", seq.int(3L, length(block_shape)))
-      } else {
-        character()
-      }
-      arrays[[key]] <- .fds_array_descriptor(
-        key,
-        c(paste0("entity:", entity_name), paste0("component:", key), extra_axes),
-        block_data
-      )
-    }
-  }
+  arrays <- c(arrays, .fds_entity_block_arrays(entity_values))
   entity_manifest <- lapply(names(entity_values), function(name) {
     .fds_entity_manifest(entity_values[[name]], name)
   })
@@ -227,11 +217,12 @@ fds_frame_manifest <- function(x) {
   if (!length(values)) {
     return(invisible(TRUE))
   }
+  .assert_unique_names(
+    values, .fds_schema_abort,
+    "Manifest entities must have unique, non-empty names.",
+    field = "entities"
+  )
   names_value <- names(values)
-  if (is.null(names_value) || anyNA(names_value) || any(!nzchar(names_value)) ||
-    anyDuplicated(names_value)) {
-    .fds_schema_abort("Manifest entities must have unique, non-empty names.", "entities")
-  }
   required <- c(
     "name", "key", "ids", "id_policy", "data", "blocks", "entity_type",
     "metadata"
@@ -255,8 +246,7 @@ fds_frame_manifest <- function(x) {
         paste0(field, ".id_policy")
       )
     }
-    if (!is.character(value$key) || length(value$key) != 1L ||
-      is.na(value$key) || !nzchar(value$key) ||
+    if (!.is_one_string(value$key) ||
       !is.data.frame(value$data) || nrow(value$data) != length(value$ids) ||
       !value$key %in% names(value$data) ||
       !identical(as.character(value$data[[value$key]]), value$ids)) {
@@ -265,40 +255,69 @@ fds_frame_manifest <- function(x) {
         paste0(field, ".key")
       )
     }
-    if (!is.null(value$entity_type) &&
-      (!is.character(value$entity_type) || length(value$entity_type) != 1L ||
-        is.na(value$entity_type) || !nzchar(value$entity_type))) {
-      .fds_schema_abort("Entity type must be NULL or one non-empty string.", paste0(field, ".entity_type"))
+    .assert_optional_string(
+      value$entity_type, paste0(field, ".entity_type"), .fds_schema_abort,
+      message = "Entity type must be NULL or one non-empty string."
+    )
+    .validate_manifest_blocks(
+      value$blocks,
+      axis_label = paste0("entity:", name),
+      expected_n = length(value$ids),
+      arrays = arrays,
+      field = paste0(field, ".blocks"),
+      what = "Entity",
+      label = function(block_name) sprintf("'%s.%s'", name, block_name),
+      aligned_with = "its keys"
+    )
+  }
+  invisible(TRUE)
+}
+
+# Validate the block declarations of one manifest axis or entity. Every block
+# references one array whose first axis is the owner, whose second axis is the
+# block's component axis, and which declares no further axes (ADR-008).
+.validate_manifest_blocks <- function(blocks, axis_label, expected_n, arrays,
+                                      field, what, label, aligned_with) {
+  if (!is.list(blocks) || !.has_unique_names(blocks)) {
+    .fds_schema_abort(
+      sprintf("%s blocks must be a uniquely named list.", what), field
+    )
+  }
+  block_required <- c("name", "array", "components", "role", "units", "metadata")
+  for (name in names(blocks)) {
+    block <- blocks[[name]]
+    block_field <- paste0(field, ".", name)
+    if (!is.list(block) || !all(block_required %in% names(block)) ||
+      !identical(block$name, name) || !.is_one_string(block$array) ||
+      !block$array %in% names(arrays)) {
+      .fds_schema_abort(
+        sprintf("%s block %s has an invalid array reference.", what, label(name)),
+        block_field
+      )
     }
-    if (!is.list(value$blocks) ||
-      (length(value$blocks) &&
-        (is.null(names(value$blocks)) || any(!nzchar(names(value$blocks))) ||
-          anyDuplicated(names(value$blocks))))) {
-      .fds_schema_abort("Entity blocks must be a uniquely named list.", paste0(field, ".blocks"))
+    array <- arrays[[block$array]]
+    if (length(array$axes) != 2L || length(array$shape) != 2L) {
+      .fds_schema_abort(
+        sprintf(
+          "%s block %s declares %d array axes; FDS blocks are two-dimensional (owner axis by component axis).",
+          what, label(name), length(array$axes)
+        ),
+        block_field,
+        block = name, axes = array$axes, shape = array$shape
+      )
     }
-    for (block_name in names(value$blocks)) {
-      block <- value$blocks[[block_name]]
-      block_required <- c("name", "array", "components", "role", "units", "metadata")
-      if (!is.list(block) || !all(block_required %in% names(block)) ||
-        !identical(block$name, block_name) || !is.character(block$array) ||
-        length(block$array) != 1L || !block$array %in% names(arrays)) {
-        .fds_schema_abort(
-          sprintf("Entity block '%s.%s' has an invalid array reference.", name, block_name),
-          paste0(field, ".blocks.", block_name)
-        )
-      }
-      array <- arrays[[block$array]]
-      expected_axis <- paste0("entity:", name)
-      if (!identical(array$axes[[1L]], expected_axis) ||
-        array$shape[[1L]] != length(value$ids) ||
-        !is.data.frame(block$components) ||
-        nrow(block$components) != array$shape[[2L]] ||
-        !".component_id" %in% names(block$components)) {
-        .fds_schema_abort(
-          sprintf("Entity block '%s.%s' is not aligned with its keys or components.", name, block_name),
-          paste0(field, ".blocks.", block_name)
-        )
-      }
+    if (!identical(array$axes[[1L]], axis_label) ||
+      array$shape[[1L]] != expected_n ||
+      !is.data.frame(block$components) ||
+      nrow(block$components) != array$shape[[2L]] ||
+      !".component_id" %in% names(block$components)) {
+      .fds_schema_abort(
+        sprintf(
+          "%s block %s is not aligned with %s or components.",
+          what, label(name), aligned_with
+        ),
+        block_field
+      )
     }
   }
   invisible(TRUE)
@@ -362,13 +381,15 @@ fds_frame_manifest <- function(x) {
 }
 
 .validate_manifest_ids <- function(ids, expected_n, axis) {
-  if (!is.character(ids) || length(ids) != expected_n || anyNA(ids) ||
-    any(!nzchar(ids)) || anyDuplicated(ids)) {
-    .fds_schema_abort(
-      sprintf("%s axis IDs must be unique, non-empty strings matching the axis length.", axis),
-      paste0("axes.", axis, ".ids")
-    )
-  }
+  message <- sprintf(
+    "%s axis IDs must be unique, non-empty strings matching the axis length.",
+    axis
+  )
+  field <- paste0("axes.", axis, ".ids")
+  if (length(ids) != expected_n) .fds_schema_abort(message, field)
+  .assert_stable_keys(
+    ids, .fds_schema_abort, what = axis, field = field, message = message
+  )
 }
 
 .validate_manifest_axis <- function(value, expected_n, axis, arrays, require_space = FALSE) {
@@ -390,10 +411,10 @@ fds_frame_manifest <- function(x) {
       paste0("axes.", axis, ".id_policy")
     )
   }
-  if (!is.character(value$id_column) || length(value$id_column) != 1L ||
-    is.na(value$id_column) || !nzchar(value$id_column)) {
-    .fds_schema_abort("Axis id_column must be one non-empty string.", paste0("axes.", axis, ".id_column"))
-  }
+  .assert_one_string(
+    value$id_column, paste0("axes.", axis, ".id_column"), .fds_schema_abort,
+    message = "Axis id_column must be one non-empty string."
+  )
   if (!is.data.frame(value$data) || nrow(value$data) != expected_n ||
     !value$id_column %in% names(value$data) ||
     !identical(as.character(value$data[[value$id_column]]), value$ids)) {
@@ -402,31 +423,16 @@ fds_frame_manifest <- function(x) {
       paste0("axes.", axis, ".data")
     )
   }
-  if (!is.list(value$blocks) ||
-    (length(value$blocks) && (is.null(names(value$blocks)) || any(!nzchar(names(value$blocks))) || anyDuplicated(names(value$blocks))))) {
-    .fds_schema_abort("Axis blocks must be a uniquely named list.", paste0("axes.", axis, ".blocks"))
-  }
-  for (name in names(value$blocks)) {
-    block <- value$blocks[[name]]
-    block_required <- c("name", "array", "components", "role", "units", "metadata")
-    if (!is.list(block) || !all(block_required %in% names(block)) ||
-      !identical(block$name, name) || !is.character(block$array) ||
-      length(block$array) != 1L || !block$array %in% names(arrays)) {
-      .fds_schema_abort(
-        sprintf("Axis block '%s' has an invalid array reference.", name),
-        paste0("axes.", axis, ".blocks.", name)
-      )
-    }
-    array <- arrays[[block$array]]
-    if (!identical(array$axes[[1L]], axis) || array$shape[[1L]] != expected_n ||
-      !is.data.frame(block$components) || nrow(block$components) != array$shape[[2L]] ||
-      !".component_id" %in% names(block$components)) {
-      .fds_schema_abort(
-        sprintf("Axis block '%s' is not aligned with the %s axis or components.", name, axis),
-        paste0("axes.", axis, ".blocks.", name)
-      )
-    }
-  }
+  .validate_manifest_blocks(
+    value$blocks,
+    axis_label = axis,
+    expected_n = expected_n,
+    arrays = arrays,
+    field = paste0("axes.", axis, ".blocks"),
+    what = "Axis",
+    label = function(name) sprintf("'%s'", name),
+    aligned_with = sprintf("the %s axis", axis)
+  )
   if (require_space) {
     if (!inherits(value$space, "feature_space") ||
       !identical(feature_ids(value$space), value$ids)) {
@@ -573,12 +579,10 @@ validate_fds_manifest <- function(manifest) {
     !manifest$active_assay %in% assay_names) {
     .fds_schema_abort("active_assay must name one manifest assay.", "active_assay")
   }
-  if (.source_contains_runtime_state(manifest)) {
-    .fds_schema_abort(
-      "FDS manifests cannot contain runtime functions, environments, or external pointers.",
-      "runtime_state"
-    )
-  }
+  .assert_no_runtime_state(
+    manifest, .fds_schema_abort,
+    "FDS manifests cannot contain runtime functions, environments, or external pointers."
+  )
   .frame_schema_from_manifest(manifest)
   invisible(manifest)
 }
@@ -642,29 +646,23 @@ fds_frame_bindings <- function(x) {
   manifest <- fds_frame_manifest(x)
   out <- lapply(names(assays(x)), function(name) .frame_assay_source(x, name))
   names(out) <- paste0("assays/", names(assays(x)))
+  bind_block <- function(data) {
+    if (inherits(data, "array_source")) return(data)
+    tryCatch(as_array_source(data), error = function(error) data)
+  }
   for (axis_name in c("observation", "feature")) {
     axis_value <- if (axis_name == "observation") observation_axis(x) else feature_axis(x)
     for (block_name in names(axis_value$blocks)) {
       key <- paste0("axis/", axis_name, "/blocks/", block_name)
-      data <- axis_value$blocks[[block_name]]$data
-      out[[key]] <- if (inherits(data, "array_source") || length(dim(data)) != 2L) {
-        data
-      } else {
-        tryCatch(as_array_source(data), error = function(error) data)
-      }
+      out[[key]] <- bind_block(axis_block_data(axis_value$blocks[[block_name]]))
     }
   }
   entity_values <- entities(x)
   for (entity_name in names(entity_values)) {
-    entity_value <- entity_values[[entity_name]]
-    for (block_name in names(entity_blocks(entity_value))) {
+    blocks <- entity_blocks(entity_values[[entity_name]])
+    for (block_name in names(blocks)) {
       key <- paste0("entities/", entity_name, "/blocks/", block_name)
-      data <- axis_block_data(entity_blocks(entity_value)[[block_name]])
-      out[[key]] <- if (inherits(data, "array_source") || length(dim(data)) != 2L) {
-        data
-      } else {
-        tryCatch(as_array_source(data), error = function(error) data)
-      }
+      out[[key]] <- bind_block(axis_block_data(blocks[[block_name]]))
     }
   }
   out <- out[names(manifest$arrays)]

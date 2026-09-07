@@ -3,12 +3,7 @@
 }
 
 .one_map_string <- function(x, field) {
-  if (!is.character(x) || length(x) != 1L || is.na(x) || !nzchar(x)) {
-    .feature_map_abort(sprintf("%s must be one non-empty string.", field),
-      field = field
-    )
-  }
-  x
+  .assert_one_string(x, field, .feature_map_abort)
 }
 
 .validate_serializable_list <- function(x, field) {
@@ -49,14 +44,11 @@ feature_map <- function(from, to, operator, map_type = "linear",
   }
   map_type <- .one_map_string(map_type, "map_type")
   traits <- .validate_serializable_list(traits, "traits")
-  if (length(traits) &&
-    (is.null(names(traits)) || anyNA(names(traits)) ||
-      any(!nzchar(names(traits))) || anyDuplicated(names(traits)))) {
-    .feature_map_abort(
-      "traits must be named with unique non-empty values.",
-      field = "traits"
-    )
-  }
+  .assert_unique_names(
+    traits, .feature_map_abort,
+    "traits must be named with unique non-empty values.",
+    field = "traits"
+  )
   provenance <- .validate_serializable_list(provenance, "provenance")
   metadata <- .validate_serializable_list(metadata, "metadata")
   operator <- tryCatch(
@@ -85,11 +77,7 @@ feature_map <- function(from, to, operator, map_type = "linear",
     ),
     class = "feature_map"
   )
-  if (.source_contains_runtime_state(out)) {
-    .feature_map_abort("Feature maps must be serializable.",
-      field = "runtime_state"
-    )
-  }
+  .assert_no_runtime_state(out, .feature_map_abort, "Feature maps must be serializable.")
   out
 }
 

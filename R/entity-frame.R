@@ -6,9 +6,10 @@
   if (!is.data.frame(data)) {
     .entity_abort("Entity data must be a data frame.", field = "data")
   }
-  if (!is.character(key) || length(key) != 1L || is.na(key) || !nzchar(key)) {
-    .entity_abort("Entity key must be one non-empty column name.", field = "key")
-  }
+  .assert_one_string(
+    key, "key", .entity_abort,
+    message = "Entity key must be one non-empty column name."
+  )
   if (!key %in% names(data)) {
     .entity_abort(
       sprintf("Entity key column '%s' is absent from data.", key),
@@ -16,16 +17,10 @@
       key = key
     )
   }
-  non_scalar <- vapply(data, function(value) {
-    is.list(value) || !is.null(dim(value)) || length(value) != nrow(data)
-  }, logical(1))
-  if (any(non_scalar)) {
-    .entity_abort(
-      "Entity data columns must be scalar annotations; use axis_block for multivariate values.",
-      field = "data",
-      columns = names(data)[non_scalar]
-    )
-  }
+  .assert_scalar_columns(
+    data, .entity_abort,
+    "Entity data columns must be scalar annotations; use axis_block for multivariate values."
+  )
   invisible(TRUE)
 }
 
@@ -47,11 +42,10 @@ entity_frame <- function(data, key, blocks = list(), entity_type = NULL,
                          metadata = list()) {
   data <- tibble::as_tibble(data)
   .validate_entity_scalar_data(data, key)
-  if (!is.null(entity_type) &&
-    (!is.character(entity_type) || length(entity_type) != 1L ||
-      is.na(entity_type) || !nzchar(entity_type))) {
-    .entity_abort("entity_type must be NULL or one non-empty string.", field = "entity_type")
-  }
+  .assert_optional_string(
+    entity_type, "entity_type", .entity_abort,
+    message = "entity_type must be NULL or one non-empty string."
+  )
   out <- axis_frame(
     data = data,
     blocks = blocks,
@@ -63,12 +57,10 @@ entity_frame <- function(data, key, blocks = list(), entity_type = NULL,
   out$key <- key
   out$entity_type <- entity_type
   class(out) <- c("entity_frame", class(out))
-  if (.source_contains_runtime_state(out)) {
-    .entity_abort(
-      "Entity frames cannot contain runtime functions, environments, or external pointers.",
-      field = "runtime_state"
-    )
-  }
+  .assert_no_runtime_state(
+    out, .entity_abort,
+    "Entity frames cannot contain runtime functions, environments, or external pointers."
+  )
   out
 }
 
@@ -183,11 +175,11 @@ entity_registry <- function(entities = list(), ...) {
     .entity_abort("entities must be a named list.", field = "entities")
   }
   if (length(entities)) {
+    .assert_unique_names(
+      entities, .entity_abort,
+      "Entity registries must be named with unique, non-empty values."
+    )
     names_value <- names(entities)
-    if (is.null(names_value) || anyNA(names_value) || any(!nzchar(names_value)) ||
-      anyDuplicated(names_value)) {
-      .entity_abort("Entity registries must be named with unique, non-empty values.", field = "names")
-    }
     entities <- lapply(names_value, function(name) {
       .coerce_entity_registry_entry(entities[[name]], name)
     })
@@ -206,11 +198,11 @@ validate_entity_registry <- function(x) {
     .entity_abort("x must be an entity_registry.", field = "class")
   }
   if (length(x)) {
+    .assert_unique_names(
+      x, .entity_abort,
+      "Entity registries must be named with unique, non-empty values."
+    )
     names_value <- names(x)
-    if (is.null(names_value) || anyNA(names_value) || any(!nzchar(names_value)) ||
-      anyDuplicated(names_value)) {
-      .entity_abort("Entity registries must be named with unique, non-empty values.", field = "names")
-    }
     valid <- vapply(x, inherits, logical(1), "entity_frame")
     if (!all(valid)) {
       .entity_abort(
@@ -237,35 +229,16 @@ validate_entity_registry <- function(x) {
           field = "key"
         )
       }
-      blocks <- entity_blocks(value)
-      if (length(blocks) &&
-        (is.null(names(blocks)) || any(!nzchar(names(blocks))) || anyDuplicated(names(blocks)))) {
-        .entity_abort(
-          sprintf("Entity registry entry '%s' has unnamed or duplicate blocks.", name),
-          entity = name,
-          field = "blocks"
-        )
-      }
-      for (block_name in names(blocks)) {
-        block <- blocks[[block_name]]
-        if (!inherits(block, "axis_block") ||
-          .data_leading_dim(axis_block_data(block)) != nrow(value$data)) {
-          .entity_abort(
-            sprintf("Entity block '%s.%s' is not aligned with its entity keys.", name, block_name),
-            entity = name,
-            block = block_name,
-            field = "blocks"
-          )
-        }
-      }
+      .assert_aligned_blocks(
+        entity_blocks(value), nrow(value$data), .entity_abort,
+        what = sprintf("Entity '%s'", name), entity = name
+      )
     }
   }
-  if (.source_contains_runtime_state(x)) {
-    .entity_abort(
-      "Entity registries cannot contain runtime functions, environments, or external pointers.",
-      field = "runtime_state"
-    )
-  }
+  .assert_no_runtime_state(
+    x, .entity_abort,
+    "Entity registries cannot contain runtime functions, environments, or external pointers."
+  )
   invisible(x)
 }
 

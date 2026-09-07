@@ -44,13 +44,11 @@ fmri_collection <- function(frames, metadata = list(), provenance = NULL) {
   if (!is.list(frames) || !length(frames)) {
     .collection_abort("frames must be a non-empty named list.", field = "frames")
   }
+  .assert_unique_names(
+    frames, .collection_abort,
+    "Collection frame names must be unique, non-missing stable IDs."
+  )
   ids <- names(frames)
-  if (is.null(ids) || anyNA(ids) || any(!nzchar(ids)) || anyDuplicated(ids)) {
-    .collection_abort(
-      "Collection frame names must be unique, non-missing stable IDs.",
-      field = "names"
-    )
-  }
   valid <- vapply(frames, inherits, logical(1), "fmri_frame")
   if (!all(valid)) {
     .collection_abort(
@@ -76,11 +74,10 @@ fmri_collection <- function(frames, metadata = list(), provenance = NULL) {
     ),
     class = "fmri_collection"
   )
-  if (.source_contains_runtime_state(out)) {
-    .collection_abort(
-      "Collections cannot contain runtime functions, environments, or external pointers."
-    )
-  }
+  .assert_no_runtime_state(
+    out, .collection_abort,
+    "Collections cannot contain runtime functions, environments, or external pointers."
+  )
   out
 }
 

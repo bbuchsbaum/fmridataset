@@ -119,31 +119,38 @@ test_that("frames disagreeing on feature metadata are refused", {
   expect_error(bind_observations(a, b), "feature metadata")
 })
 
+events_table <- function(onset) {
+  event_table(tibble::tibble(event_id = "e1", onset = onset))
+}
+
 test_that("frames disagreeing on tables or metadata are refused", {
   a <- bind_frame(c("o1", "o2"), c("translation", "rotation"),
-    tables = list(events = tibble::tibble(onset = 1)),
+    tables = list(events = events_table(1)),
     metadata = list(source = "from-A")
   )
   b_tables <- bind_frame(c("o3", "o4"), c("translation", "rotation"),
-    tables = list(events = tibble::tibble(onset = 99)),
+    tables = list(events = events_table(99)),
     metadata = list(source = "from-A")
   )
   b_meta <- bind_frame(c("o5", "o6"), c("translation", "rotation"),
-    tables = list(events = tibble::tibble(onset = 1)),
+    tables = list(events = events_table(1)),
     metadata = list(source = "from-B")
   )
 
-  expect_error(bind_observations(a, b_tables), "tables")
+  expect_error(
+    bind_observations(a, b_tables), "table",
+    class = "fmridataset_error_table"
+  )
   expect_error(bind_observations(a, b_meta), "metadata")
 })
 
 test_that("frames that agree on all annotations still bind", {
   a <- bind_frame(c("o1", "o2"), c("translation", "rotation"),
-    tables = list(events = tibble::tibble(onset = 1)),
+    tables = list(events = events_table(1)),
     metadata = list(source = "shared")
   )
   b <- bind_frame(c("o3", "o4"), c("translation", "rotation"),
-    tables = list(events = tibble::tibble(onset = 1)),
+    tables = list(events = events_table(1)),
     metadata = list(source = "shared")
   )
 

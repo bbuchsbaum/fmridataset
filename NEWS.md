@@ -1,5 +1,19 @@
 # fmridataset 0.10.0 (Development)
 
+- Axis blocks are now two-dimensional: rows are the owning axis elements and
+  columns are named components (`inst/architecture/ADR-008-axis-block-dimensionality.md`).
+  `axis_block()` rejects vectors and arrays with more than two dimensions with
+  a structured alignment error carrying `shape` and `dims`; axis, entity, and
+  manifest validation name the offending block. FDS manifests no longer emit
+  synthetic `dimension:` axis labels, and block arrays declaring trailing axes
+  are rejected. This fixes `bind_observations()` silently flattening
+  higher-dimensional blocks. Feature blocks of every bound operand must now
+  agree with the first frame's components and values.
+- Stable keys, scalar columns, unique names, one-string fields, runtime-state
+  guards, block alignment, and synchronized subsetting are validated once, in
+  shared internal helpers, across axes, entities, event and auxiliary tables,
+  relations, and FDS manifests. Each domain keeps its existing error class and
+  wording.
 - Realization budgets now distinguish storage dtype and bytes from the R
   output dtype, retained output, temporary selection, conversion, or
   decompression buffers, and estimated peak working memory. The shared

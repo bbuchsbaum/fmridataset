@@ -249,9 +249,9 @@ hierarchy_index <- function(x, levels, relations = NULL) {
     ),
     class = "fmri_hierarchy_index"
   )
-  if (.source_contains_runtime_state(out)) {
-    .hierarchy_abort("Hierarchy indices cannot contain runtime state.")
-  }
+  .assert_no_runtime_state(
+    out, .hierarchy_abort, "Hierarchy indices cannot contain runtime state."
+  )
   out
 }
 

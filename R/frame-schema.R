@@ -179,7 +179,18 @@ validate_frame_schema <- function(schema) {
 .schema_projection <- function(schema, mode) {
   schema <- unclass(frame_schema(schema))
   if (!identical(mode, "same")) schema$observation$count <- NULL
-  if (identical(mode, "bind")) schema$active_assay <- NULL
+  if (identical(mode, "bind")) {
+    schema$active_assay <- NULL
+    # Binding rebuilds observation blocks by component identity and permutes
+    # each operand's columns into the leading frame's order, so the ordered
+    # component list is not part of the bind contract. Component identity is
+    # enforced by the bind path itself with an alignment error that names the
+    # differing components.
+    schema$observation$blocks <- lapply(schema$observation$blocks, function(block) {
+      block$component_ids <- NULL
+      block
+    })
+  }
   if (identical(mode, "collection")) {
     schema$feature$count <- NULL
     schema$feature$space$digest <- NULL
