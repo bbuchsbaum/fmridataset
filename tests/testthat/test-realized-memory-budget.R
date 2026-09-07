@@ -186,16 +186,31 @@ test_that("counting sources report storage and realized traffic separately", {
   expect_equal(counts$bytes, counts$output_bytes)
 })
 
-test_that("as_delarr refuses a realization above its explicit ceiling", {
+test_that("as_delarr budgets each pull, not the full assay at wrap", {
   source <- memory_source(matrix(seq_len(100), 10, 10), dtype = "float32")
-  cost <- source_realization_cost(source)
+  full_cost <- source_realization_cost(source)
+  subset_cost <- source_realization_cost(
+    source,
+    observations = 1:2,
+    features = 1:3
+  )
+  # A ceiling below the full assay must still allow wrapping so chunked
+  # pulls that fit can proceed.
+  budget <- full_cost$estimated_peak_bytes - 1
+  expect_lt(subset_cost$estimated_peak_bytes, budget)
 
+  lazy <- as_delarr(source, memory_budget = budget)
+  expect_equal(
+    delarr::collect(lazy[1:2, 1:3]),
+    source_read(source, observations = 1:2, features = 1:3)
+  )
   expect_error(
-    as_delarr(source, memory_budget = cost$estimated_peak_bytes - 1),
+    delarr::collect(lazy),
     class = "fmridataset_error_budget"
   )
-  lazy <- as_delarr(source, memory_budget = cost$estimated_peak_bytes)
-  expect_equal(delarr::collect(lazy), source_read(source))
+
+  ok <- as_delarr(source, memory_budget = full_cost$estimated_peak_bytes)
+  expect_equal(delarr::collect(ok), source_read(source))
 })
 
 test_that("measured vector-heap peak stays within the documented tolerance", {

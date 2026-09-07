@@ -1350,8 +1350,6 @@ as_delarr.array_source <- function(x, memory_budget = Inf, ...) {
   }
   shape <- source_shape(backend)
   chunks <- source_chunks(backend)
-  cost <- source_realization_cost(backend)
-  .assert_realization_budget(cost, memory_budget, "delarr realization")
   attr(backend, "fmridataset.memory_budget") <- memory_budget
   delarr::delarr_provider(
     provider = backend,
