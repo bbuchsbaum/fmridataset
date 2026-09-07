@@ -14,11 +14,13 @@
 .frame_plan_fingerprint <- function(x, assay) {
   selection <- .frame_selection(x)
   descriptor <- assay(selection$base, assay)
+  # The normalized selection is hashed, not an expanded axis, so planning a
+  # select-all frame costs the same whatever its size.
   .canonical_digest(list(
     assay = assay,
     source = source_fingerprint(descriptor$source),
-    observations = selection$observations,
-    features = selection$features
+    observations = .selection_descriptor(selection$observations),
+    features = .selection_descriptor(selection$features)
   ))
 }
 

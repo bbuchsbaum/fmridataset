@@ -42,9 +42,15 @@ source_realization_cost(x, observations = NULL, features = NULL)
 
 \item{...}{Additional method arguments.}
 
-\item{observations}{Optional observation positions.}
+\item{observations}{Optional observation selector: \code{NULL} for every
+observation, integer positions in request order, or a logical mask.
+Selectors follow the package's normalization law: positions must be
+whole numbers, may reorder, may be negative but not mixed with positive,
+drop zero, must be in bounds, and may not repeat an element; masks must
+match the axis length with no \code{NA}; an empty selection is legal. The law
+is checked at the generic before a method is dispatched.}
 
-\item{features}{Optional feature positions.}
+\item{features}{Optional feature selector, under the same law.}
 }
 \value{
 A \code{source_realization_cost} list containing storage and realized

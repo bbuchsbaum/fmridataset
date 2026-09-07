@@ -137,27 +137,14 @@ length.fmri_collection <- function(x) length(x$frames)
 #' @export
 names.fmri_collection <- function(x) names(x$frames)
 
+# Collection frame selectors follow the package-wide normalization law
+# (R/axis-selection.R) with the collection's own error class. Emptiness is a
+# container invariant checked by the caller, not a selector rule.
 .normalize_collection_selector <- function(i, ids) {
-  if (is.character(i)) {
-    if (anyNA(i) || any(!i %in% ids) || anyDuplicated(i)) {
-      .collection_abort("Collection frame selector contains unknown or duplicate IDs.")
-    }
-    return(match(i, ids))
-  }
-  if (is.logical(i)) {
-    if (length(i) != length(ids) || anyNA(i)) {
-      .collection_abort("Logical collection selectors must match collection length.")
-    }
-    return(which(i))
-  }
-  if (!is.numeric(i) || anyNA(i) || any(i != as.integer(i))) {
-    .collection_abort("Collection selectors must contain frame IDs or integer positions.")
-  }
-  i <- as.integer(i)
-  if (any(i < 1L | i > length(ids)) || anyDuplicated(i)) {
-    .collection_abort("Collection selector is out of bounds or duplicated.")
-  }
-  i
+  .selection_expand(.normalize_selection(
+    i, length(ids),
+    ids = ids, axis = "collection frame", abort = .collection_abort
+  ))
 }
 
 #' @export
@@ -168,7 +155,10 @@ names.fmri_collection <- function(x) names(x$frames)
   }
   i <- .normalize_collection_selector(i, names(x$frames))
   if (!length(i)) {
-    .collection_abort("An fmri_collection cannot be empty after subsetting.")
+    .collection_abort(
+      "An fmri_collection cannot be empty after subsetting.",
+      reason = "empty_collection"
+    )
   }
   fmri_collection(
     x$frames[i],

@@ -64,14 +64,18 @@ test_that("row-sharded sources expose stable manifests and exact row mappings", 
     )
   )
   expect_identical(
-    locate_source_rows(source, c(8L, 1L, 6L, 1L)),
+    locate_source_rows(source, c(8L, 1L, 6L, 2L)),
     data.frame(
       .request_position = 1:4,
-      .observation = c(8L, 1L, 6L, 1L),
+      .observation = c(8L, 1L, 6L, 2L),
       .shard_index = c(3L, 1L, 3L, 1L),
       .shard_id = c("sub-02_run-1", "sub-01_run-1", "sub-02_run-1", "sub-01_run-1"),
-      .local_observation = c(3L, 1L, 1L, 1L)
+      .local_observation = c(3L, 1L, 1L, 2L)
     )
+  )
+  expect_error(
+    locate_source_rows(source, c(8L, 1L, 8L)),
+    class = "fmridataset_error_alignment"
   )
 })
 
@@ -83,8 +87,8 @@ test_that("row-sharded reads touch only selected shards once", {
   )
   children <- lapply(matrices, function(x) counting_source(memory_source(x)))
   source <- row_sharded_source(children, shard_ids = c("a", "b", "c"))
-  observations <- c(8L, 1L, 6L, 1L)
-  features <- c(4L, 1L, 4L)
+  observations <- c(8L, 1L, 6L, 2L)
+  features <- c(4L, 1L, 2L)
   reference <- do.call(rbind, matrices)[observations, features, drop = FALSE]
 
   expect_equal(source_read(source, observations, features), reference)

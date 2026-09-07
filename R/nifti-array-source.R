@@ -207,8 +207,11 @@ nifti_array_source <- function(paths, mask, chunks = NULL) {
       shape = as.integer(shape),
       dtype = dtypes[[1L]],
       chunks = chunks,
+      # Volumes are read by index list and features through an explicit
+      # mask, so every selector form is consumed natively.
       capabilities = c(
-        "row_slice", "column_slice", "block_slice", "native_read", "serializable"
+        "row_slice", "column_slice", "block_slice", "native_read", "serializable",
+        .pushdown_capabilities()
       ),
       file_state = state,
       schema_version = 1L

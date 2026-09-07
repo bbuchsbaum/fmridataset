@@ -727,7 +727,9 @@ filter_entities <- function(x, entity, predicate) {
     shared = shared
   )
   restricted <- visible_registry
-  restricted[[entity_name]] <- visible[which(keep)]
+  # The kept entity IDs select the restricted registry entry through the same
+  # normalization law every other axis uses.
+  restricted[[entity_name]] <- visible[selected_ids]
   class(restricted) <- c("entity_registry", "list")
   frames <- lapply(frames, .contextualize_study_frame, shared = restricted)
   links <- lapply(x$links, function(value) {

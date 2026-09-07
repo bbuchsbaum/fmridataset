@@ -177,7 +177,7 @@ source_chunks.sparse_entity_source <- function(x, ...) pmax(1L, source_shape(x))
 
 #' @export
 source_capabilities.sparse_entity_source <- function(x, ...) {
-  c("row_slice", "column_slice", "block_slice", "serializable")
+  c("row_slice", "column_slice", "block_slice", "serializable", .pushdown_capabilities())
 }
 
 #' @export
@@ -219,7 +219,7 @@ source_chunks.row_index_source <- function(x, ...) {
 
 #' @export
 source_capabilities.row_index_source <- function(x, ...) {
-  c("row_slice", "column_slice", "block_slice", "serializable")
+  c("row_slice", "column_slice", "block_slice", "serializable", .pushdown_capabilities())
 }
 
 #' @export

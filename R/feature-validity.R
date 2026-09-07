@@ -377,7 +377,7 @@ source_dtype.validity_masked_source <- function(x, ...) {
 source_chunks.validity_masked_source <- function(x, ...) as.integer(x$chunks)
 #' @export
 source_capabilities.validity_masked_source <- function(x, ...) {
-  c("row_slice", "column_slice", "block_slice", "serializable")
+  c("row_slice", "column_slice", "block_slice", "serializable", .pushdown_capabilities())
 }
 #' @export
 source_fingerprint.validity_masked_source <- function(x, ...) {

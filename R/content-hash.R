@@ -105,7 +105,7 @@ content_hash.source_view <- function(
     x, ...,
     block_bytes = getOption("fmridataset.target_block_bytes", 4 * 1024^2)) {
   # A view hashes as the array it presents: its own row-major order, through
-  # its own reads, so selector reordering and duplication are reflected.
+  # its own reads, so selector reordering is reflected.
   handle <- source_open(x)
   on.exit(source_close(handle), add = TRUE)
   .content_hash_through(handle, block_bytes = block_bytes)

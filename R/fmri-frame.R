@@ -289,11 +289,17 @@ print.fmri_frame <- function(x, ...) {
   invisible(x)
 }
 
+# The normalized selection a frame or view applies to its base frame's assay
+# sources. A plain frame selects everything; a view carries its composed
+# selections. Nothing here expands an axis.
 .frame_selection <- function(x) {
+  if (inherits(x, "fmri_view")) {
+    return(list(base = x$base, observations = x$observation, features = x$feature))
+  }
   list(
     base = x,
-    observations = seq_len(nrow(x)),
-    features = seq_len(ncol(x))
+    observations = .selection_all(nrow(x)),
+    features = .selection_all(ncol(x))
   )
 }
 
@@ -311,16 +317,18 @@ collect_assay <- function(x, assay = active_assay(x),
                           force = FALSE) {
   selection <- .frame_selection(x)
   descriptor <- assay(selection$base, assay)
+  observations <- .selection_index(selection$observations)
+  features <- .selection_index(selection$features)
   cost <- source_realization_cost(
     descriptor$source,
-    observations = selection$observations,
-    features = selection$features
+    observations = observations,
+    features = features
   )
   .assert_realization_budget(cost, memory_budget, "collect_assay()", force)
   source_read(
     descriptor$source,
-    observations = selection$observations,
-    features = selection$features
+    observations = observations,
+    features = features
   )
 }
 
@@ -428,11 +436,16 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
   feature_values <- feature_ids(x)
   manifest <- fds_frame_manifest(x)
   spatial <- space(x)
+  selection <- .frame_selection(x)
   list(
     class = class(x)[1L],
     schema_version = x$schema_version %||% x$base$schema_version,
     shape = stats::setNames(as.integer(dim(x)), c("observation", "feature")),
     active_assay = active_assay(x),
+    selection = list(
+      observation = .selection_summary(selection$observations),
+      feature = .selection_summary(selection$features)
+    ),
     counts = list(
       assays = length(assay_values),
       observation_blocks = length(obs_blocks(x)),
