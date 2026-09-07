@@ -1,6 +1,7 @@
 test_that("source_error() builds the three protocol conditions with their fields", {
   stale <- source_error(
-    "Store changed.", type = "stale",
+    "Store changed.",
+    type = "stale",
     source = "a.h5", expected = "x", actual = "y"
   )
   expect_s3_class(stale, "fmridataset_error_source_stale")

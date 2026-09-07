@@ -63,7 +63,8 @@ fds_schema_version <- function() .fds_schema$version
 # block's component axis (ADR-008). There are no synthetic trailing axes.
 .fds_block_array <- function(key, axis_label, data) {
   .assert_block_shape(
-    data, abort = .fds_schema_abort, block = key
+    data,
+    abort = .fds_schema_abort, block = key
   )
   .fds_array_descriptor(key, c(axis_label, paste0("component:", key)), data)
 }
@@ -265,8 +266,8 @@ fds_frame_manifest <- function(x) {
     }
     .validate_manifest_ids(value$ids, length(value$ids), paste0("entity:", name))
     if (!inherits(value$id_policy, "fmri_id_policy") ||
-        !identical(value$id_policy$policy, "require") ||
-        !isTRUE(value$id_policy$durable)) {
+      !identical(value$id_policy$policy, "require") ||
+      !isTRUE(value$id_policy$durable)) {
       .fds_schema_abort(
         sprintf("Entity '%s' requires supplied durable IDs.", name),
         paste0(field, ".id_policy")
@@ -414,7 +415,8 @@ fds_frame_manifest <- function(x) {
   field <- paste0("axes.", axis, ".ids")
   if (length(ids) != expected_n) .fds_schema_abort(message, field)
   .assert_stable_keys(
-    ids, .fds_schema_abort, what = axis, field = field, message = message
+    ids, .fds_schema_abort,
+    what = axis, field = field, message = message
   )
 }
 
@@ -429,9 +431,9 @@ fds_frame_manifest <- function(x) {
   .validate_manifest_ids(value$ids, expected_n, axis)
   policy <- value$id_policy
   if (!inherits(policy, "fmri_id_policy") ||
-      !identical(policy$schema_version, 1L) ||
-      !policy$policy %in% c("require", "deterministic") ||
-      !isTRUE(policy$durable)) {
+    !identical(policy$schema_version, 1L) ||
+    !policy$policy %in% c("require", "deterministic") ||
+    !isTRUE(policy$durable)) {
     .fds_schema_abort(
       sprintf("The %s axis requires a durable version-1 ID policy.", axis),
       paste0("axes.", axis, ".id_policy")
@@ -627,24 +629,30 @@ validate_fds_manifest <- function(manifest) {
     names(out) <- names(blocks)
     out
   }
-  axis_schema <- function(value, name) list(
-    count = length(value$ids), id_column = value$id_column,
-    columns = .schema_columns(value$data), blocks = block_schema(value$blocks),
-    metadata = value$metadata
-  )
-  out <- list(
-    schema = list(id = "org.fmridataset.frame-schema/v1", version = .frame_schema_version),
-    assays = lapply(manifest$assays, function(value) list(
-      dtype = value$dtype, role = value$role, units = value$units,
-      metadata = value$metadata
-    )),
-    observation = axis_schema(manifest$axes$observation, "observation"),
-    feature = axis_schema(manifest$axes$feature, "feature"),
-    entities = lapply(manifest$entities, function(value) list(
-      key = value$key, entity_type = value$entity_type,
+  axis_schema <- function(value, name) {
+    list(
+      count = length(value$ids), id_column = value$id_column,
       columns = .schema_columns(value$data), blocks = block_schema(value$blocks),
       metadata = value$metadata
-    )),
+    )
+  }
+  out <- list(
+    schema = list(id = "org.fmridataset.frame-schema/v1", version = .frame_schema_version),
+    assays = lapply(manifest$assays, function(value) {
+      list(
+        dtype = value$dtype, role = value$role, units = value$units,
+        metadata = value$metadata
+      )
+    }),
+    observation = axis_schema(manifest$axes$observation, "observation"),
+    feature = axis_schema(manifest$axes$feature, "feature"),
+    entities = lapply(manifest$entities, function(value) {
+      list(
+        key = value$key, entity_type = value$entity_type,
+        columns = .schema_columns(value$data), blocks = block_schema(value$blocks),
+        metadata = value$metadata
+      )
+    }),
     relations = .schema_relations(manifest$relations),
     tables = .schema_tables(manifest$tables),
     active_assay = list(policy = "named", name = manifest$active_assay)
@@ -682,7 +690,9 @@ fds_frame_bindings <- function(x) {
   out <- lapply(names(assays(x)), function(name) .frame_assay_source(x, name))
   names(out) <- paste0("assays/", names(assays(x)))
   bind_block <- function(data) {
-    if (inherits(data, "array_source")) return(data)
+    if (inherits(data, "array_source")) {
+      return(data)
+    }
     tryCatch(as_array_source(data), error = function(error) data)
   }
   for (axis_name in c("observation", "feature")) {

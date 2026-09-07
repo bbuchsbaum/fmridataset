@@ -170,7 +170,7 @@ index_space <- function(n, ids = NULL, namespace = NULL, data = NULL,
   }
   if (identical(id_policy, "deterministic")) {
     if (!is.character(namespace) || length(namespace) != 1L ||
-        is.na(namespace) || !nzchar(namespace)) {
+      is.na(namespace) || !nzchar(namespace)) {
       .identity_abort(
         "Deterministic index_space IDs require one non-empty `namespace`.",
         field = "namespace", policy = id_policy
@@ -729,7 +729,8 @@ adjacency.surface_space <- function(x, ...) {
 #'   Sys.setenv(RGL_USE_NULL = "TRUE")
 #'   vertices <- matrix(c(0, 0, 0, 1, 0, 0, 0, 1, 0), ncol = 3, byrow = TRUE)
 #'   geom <- neurosurf::SurfaceGeometry(
-#'     vertices, matrix(c(0, 1, 2), nrow = 1), hemi = "lh", label = "pial"
+#'     vertices, matrix(c(0, 1, 2), nrow = 1),
+#'     hemi = "lh", label = "pial"
 #'   )
 #'   x <- surface_space_from_neurosurf(geom, template = "toy-surface")
 #'   feature_ids(x)

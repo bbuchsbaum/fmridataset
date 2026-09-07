@@ -38,7 +38,9 @@
 }
 
 .assert_optional_string <- function(x, field, abort, message = NULL, ...) {
-  if (is.null(x)) return(NULL)
+  if (is.null(x)) {
+    return(NULL)
+  }
   .assert_one_string(
     x, field, abort,
     message = message %||% sprintf("%s must be NULL or one non-empty string.", field),
@@ -92,7 +94,9 @@
 # Named registries ------------------------------------------------------------
 
 .has_unique_names <- function(x) {
-  if (!length(x)) return(TRUE)
+  if (!length(x)) {
+    return(TRUE)
+  }
   names_value <- names(x)
   !is.null(names_value) && !anyNA(names_value) && all(nzchar(names_value)) &&
     !anyDuplicated(names_value)

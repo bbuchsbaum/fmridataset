@@ -150,12 +150,13 @@ frame_link <- function(source, target,
     unaligned_record(metadata),
     error = function(error) {
       .study_abort("Frame-link metadata must be a serializable unaligned record.",
-                   field = "metadata")
+        field = "metadata"
+      )
     }
   )
   if (type %in% c("mapping", "alignment") &&
-      (!identical(source_axis, "feature") ||
-       !identical(target_axis, "feature"))) {
+    (!identical(source_axis, "feature") ||
+      !identical(target_axis, "feature"))) {
     .study_abort(
       "Mapping and alignment links must address feature axes.",
       field = "type"
@@ -164,8 +165,8 @@ frame_link <- function(source, target,
   if (!is.null(operator)) {
     validate_feature_map(operator)
     if (!type %in% c("mapping", "alignment") ||
-        !identical(source_axis, "feature") ||
-        !identical(target_axis, "feature")) {
+      !identical(source_axis, "feature") ||
+      !identical(target_axis, "feature")) {
       .study_abort(
         "operator is valid only for a feature-to-feature mapping or alignment link.",
         field = "operator"
@@ -186,8 +187,8 @@ frame_link <- function(source, target,
     map$.source_id <- as.character(map$.source_id)
     map$.target_id <- as.character(map$.target_id)
     if (anyNA(map$.source_id) || any(!nzchar(map$.source_id)) ||
-        anyNA(map$.target_id) || any(!nzchar(map$.target_id)) ||
-        anyDuplicated(map[required])) {
+      anyNA(map$.target_id) || any(!nzchar(map$.target_id)) ||
+      anyDuplicated(map[required])) {
       .study_abort("Link map IDs must be non-missing with unique pairs.", field = "map")
     }
   }
@@ -209,11 +210,12 @@ frame_link <- function(source, target,
     "operator", "metadata", "schema_version"
   )
   if (!inherits(x, "frame_link") || !identical(names(unclass(x)), required) ||
-      !identical(x$schema_version, 2L)) {
+    !identical(x$schema_version, 2L)) {
     .study_abort("Invalid frame_link descriptor.", link = name)
   }
   frame_link(
-    x$source, x$target, x$type, map = x$map,
+    x$source, x$target, x$type,
+    map = x$map,
     source_axis = x$source_axis, target_axis = x$target_axis,
     metadata = x$metadata, operator = x$operator
   )
@@ -242,7 +244,7 @@ upgrade_frame_link <- function(x) {
     "schema_version"
   )
   if (!inherits(x, "frame_link") || !identical(names(unclass(x)), required) ||
-      !identical(x$schema_version, 1L)) {
+    !identical(x$schema_version, 1L)) {
     .study_abort("x is not a supported provisional frame_link.", field = "x")
   }
   legacy_types <- c(
@@ -273,7 +275,8 @@ upgrade_frame_link <- function(x) {
   operator <- metadata$feature_map %||% NULL
   metadata$feature_map <- NULL
   frame_link(
-    source, target, unname(legacy_types[[x$type]]), map = map,
+    source, target, unname(legacy_types[[x$type]]),
+    map = map,
     source_axis = source_axis, target_axis = target_axis,
     metadata = metadata, operator = operator
   )
@@ -303,7 +306,7 @@ compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
   .validate_frame_link(first, "first")
   .validate_frame_link(second, "second")
   if (!identical(first$target, second$source) ||
-      !identical(first$target_axis, second$source_axis)) {
+    !identical(first$target_axis, second$source_axis)) {
     .study_abort(
       "Frame links do not share one compatible intermediate endpoint and axis.",
       field = "links"
@@ -312,7 +315,8 @@ compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
   if (is.null(type)) {
     if (!identical(first$type, second$type)) {
       .study_abort("Composed links with different types require an explicit type.",
-                   field = "type")
+        field = "type"
+      )
     }
     type <- first$type
   }
@@ -329,12 +333,13 @@ compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
   if (!is.null(first$operator) || !is.null(second$operator)) {
     if (is.null(first$operator) || is.null(second$operator)) {
       .study_abort("Both links require operators for operator composition.",
-                   field = "operator")
+        field = "operator"
+      )
     }
     first_operator <- feature_map_operator(first$operator)
     second_operator <- feature_map_operator(second$operator)
     if (inherits(first_operator, "array_source") ||
-        inherits(second_operator, "array_source")) {
+      inherits(second_operator, "array_source")) {
       .study_abort(
         "Array-source feature operators cannot be composed implicitly; materialize or provide a composed operator explicitly.",
         field = "operator"
@@ -356,7 +361,8 @@ compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
     )
   }
   frame_link(
-    first$source, second$target, type = type, map = map,
+    first$source, second$target,
+    type = type, map = map,
     source_axis = first$source_axis, target_axis = second$target_axis,
     metadata = metadata, operator = operator
   )
@@ -466,7 +472,7 @@ compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
           frames[[value$target]], value$target_axis, value$target
         )
         if (any(!value$map$.source_id %in% source_ids) ||
-            any(!value$map$.target_id %in% target_ids)) {
+          any(!value$map$.target_id %in% target_ids)) {
           .study_abort(sprintf("Study link '%s' map contains unknown axis IDs.", id), link = id)
         }
       }
@@ -474,8 +480,8 @@ compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
       if (!is.null(typed_map)) {
         validate_feature_map(typed_map)
         if (!value$type %in% c("mapping", "alignment") ||
-            !identical(value$source_axis, "feature") ||
-            !identical(value$target_axis, "feature")) {
+          !identical(value$source_axis, "feature") ||
+          !identical(value$target_axis, "feature")) {
           .study_abort(
             sprintf("Study link '%s' uses an operator outside a feature mapping or alignment.", id),
             link = id
@@ -484,16 +490,20 @@ compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
         source_frame <- frames[[value$source]]
         target_frame <- frames[[value$target]]
         if (inherits(source_frame, "fmri_collection") ||
-            inherits(target_frame, "fmri_collection")) {
+          inherits(target_frame, "fmri_collection")) {
           .study_abort(
             sprintf("Study link '%s' operator endpoints must be single frames.", id),
             link = id
           )
         }
-        assert_compatible_space(feature_map_source_space(typed_map),
-                                space(source_frame))
-        assert_compatible_space(feature_map_target_space(typed_map),
-                                space(target_frame))
+        assert_compatible_space(
+          feature_map_source_space(typed_map),
+          space(source_frame)
+        )
+        assert_compatible_space(
+          feature_map_target_space(typed_map),
+          space(target_frame)
+        )
       }
     }
   }
@@ -660,7 +670,9 @@ study_frames <- function(x, contextual = TRUE) {
     .study_abort("contextual must be TRUE or FALSE.", field = "contextual")
   }
   frames <- .study_raw_frames(x)
-  if (!isTRUE(contextual)) return(frames)
+  if (!isTRUE(contextual)) {
+    return(frames)
+  }
   shared <- entities(x)
   lapply(frames, .contextualize_study_frame, shared = shared)
 }
@@ -730,7 +742,8 @@ study_link <- function(x, name) {
     return(event_table(data, key = event_key(value), metadata = value$metadata))
   }
   auxiliary_table(
-    data, key = table_key(value), role = table_role(value), metadata = value$metadata
+    data,
+    key = table_key(value), role = table_role(value), metadata = value$metadata
   )
 }
 
@@ -825,7 +838,9 @@ filter_entities <- function(x, entity, predicate) {
   class(restricted) <- c("entity_registry", "list")
   frames <- lapply(frames, .contextualize_study_frame, shared = restricted)
   links <- lapply(x$links, function(value) {
-    if (is.null(value$map)) return(value)
+    if (is.null(value$map)) {
+      return(value)
+    }
     source_ids <- .study_axis_ids(
       frames[[value$source]], value$source_axis, value$source
     )
@@ -839,7 +854,8 @@ filter_entities <- function(x, entity, predicate) {
   })
   selections <- stats::setNames(list(selected_ids), entity_name)
   tables <- lapply(
-    x$tables, .filter_study_table, selections = selections, shared = visible_registry
+    x$tables, .filter_study_table,
+    selections = selections, shared = visible_registry
   )
   fmri_study(
     frames = frames, entities = restricted, links = links, tables = tables,

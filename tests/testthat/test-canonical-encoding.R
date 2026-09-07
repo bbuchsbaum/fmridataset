@@ -46,8 +46,10 @@ test_that("canonical bytes normalize records strings and sparse storage", {
   )
   expect_false(identical(canonical_bytes(0), canonical_bytes(-0)))
   expect_false(identical(canonical_bytes(NA_real_), canonical_bytes(NaN)))
-  expect_false(identical(canonical_bytes(list(a = 1L)),
-                         canonical_bytes(list(a = 1L, b = NULL))))
+  expect_false(identical(
+    canonical_bytes(list(a = 1L)),
+    canonical_bytes(list(a = 1L, b = NULL))
+  ))
 
   x <- Matrix::sparseMatrix(i = c(2L, 1L), j = c(1L, 2L), x = c(3, 4))
   y <- methods::as(x, "TsparseMatrix")
@@ -100,7 +102,8 @@ test_that("canonical bytes reject unsupported S4 objects deterministically", {
 
 test_that("published canonical v1 golden vectors match bytes and SHA-256", {
   path <- system.file(
-    "golden", "r-canonical-v1.tsv", package = "fmridataset"
+    "golden", "r-canonical-v1.tsv",
+    package = "fmridataset"
   )
   if (!nzchar(path)) path <- testthat::test_path("..", "..", "inst", "golden", "r-canonical-v1.tsv")
   expect_true(file.exists(path))
@@ -110,8 +113,12 @@ test_that("published canonical v1 golden vectors match bytes and SHA-256", {
   for (name in names(values)) {
     bytes <- canonical_bytes(values[[name]])
     expect_identical(paste(sprintf("%02x", as.integer(bytes)), collapse = ""),
-                     golden$bytes_hex[golden$name == name], info = name)
+      golden$bytes_hex[golden$name == name],
+      info = name
+    )
     expect_identical(canonical_sha256(values[[name]]),
-                     golden$sha256[golden$name == name], info = name)
+      golden$sha256[golden$name == name],
+      info = name
+    )
   }
 })
