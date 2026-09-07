@@ -51,12 +51,11 @@
 }
 
 .normalize_unaligned_value <- function(value, path, domains) {
-  if (.source_contains_runtime_state(value)) {
-    .metadata_abort(
-      sprintf("Metadata field '%s' cannot contain runtime state.", path),
-      path
-    )
-  }
+  .assert_no_runtime_state(
+    value, .metadata_abort,
+    sprintf("Metadata field '%s' cannot contain runtime state.", path),
+    field = path
+  )
   if (is.data.frame(value) || (!is.null(dim(value)) && !inherits(value, "AsIs"))) {
     .metadata_abort(
       sprintf(
@@ -95,12 +94,11 @@
 }
 
 .normalize_unaligned_list <- function(value, path, domains) {
-    if (!inherits(value, "unaligned_record") && length(value) &&
-        (is.null(names(value)) || anyNA(names(value)) ||
-         any(!nzchar(names(value))) || anyDuplicated(names(value)))) {
-      .metadata_abort(
+    if (!inherits(value, "unaligned_record")) {
+      .assert_unique_names(
+        value, .metadata_abort,
         sprintf("Metadata record '%s' must have unique non-empty field names.", path),
-        path
+        field = path
       )
     }
     fields <- unclass(value)
@@ -143,13 +141,11 @@ unaligned_record <- function(x = list(), domains = NULL) {
   if (!is.list(x)) {
     .metadata_abort("Unaligned metadata must be a named list.", "metadata")
   }
-  if (length(x) && (is.null(names(x)) || anyNA(names(x)) ||
-                    any(!nzchar(names(x))) || anyDuplicated(names(x)))) {
-    .metadata_abort(
-      "Unaligned metadata must have unique non-empty field names.",
-      "metadata"
-    )
-  }
+  .assert_unique_names(
+    x, .metadata_abort,
+    "Unaligned metadata must have unique non-empty field names.",
+    field = "metadata"
+  )
   domains <- .normalize_alignment_domains(domains)
   if (length(x)) {
     tokens <- .metadata_field_token(names(x))
@@ -271,16 +267,9 @@ validate_unaligned_record <- function(x, domains = NULL) {
     .table_abort(sprintf("%s data must be a data frame.", owner), "data")
   }
   data <- tibble::as_tibble(data)
-  non_scalar <- vapply(data, function(value) {
-    is.list(value) || !is.null(dim(value)) || length(value) != nrow(data)
-  }, logical(1))
-  if (any(non_scalar)) {
-    .table_abort(
-      sprintf("%s columns must contain scalar values.", owner),
-      "data",
-      columns = names(data)[non_scalar]
-    )
-  }
+  .assert_scalar_columns(
+    data, .table_abort, sprintf("%s columns must contain scalar values.", owner)
+  )
   data
 }
 
@@ -297,22 +286,19 @@ auxiliary_table <- function(data, key = NULL, role = "auxiliary",
                             metadata = list()) {
   data <- .validate_scalar_table_data(data, "Auxiliary table")
   if (!is.null(key)) {
-    if (!is.character(key) || length(key) != 1L || is.na(key) ||
-        !nzchar(key) || !key %in% names(data)) {
+    if (!.is_one_string(key) || !key %in% names(data)) {
       .table_abort("Auxiliary table key must name one scalar column.", "key")
     }
-    ids <- as.character(data[[key]])
-    if (anyNA(ids) || any(!nzchar(ids)) || anyDuplicated(ids)) {
-      .table_abort(
-        "Auxiliary table keys must be unique, non-missing, and non-empty.",
-        key
-      )
-    }
-    data[[key]] <- ids
+    data[[key]] <- .assert_stable_keys(
+      as.character(data[[key]]), .table_abort,
+      field = key,
+      message = "Auxiliary table keys must be unique, non-missing, and non-empty."
+    )
   }
-  if (!is.character(role) || length(role) != 1L || is.na(role) || !nzchar(role)) {
-    .table_abort("Auxiliary table role must be one non-empty string.", "role")
-  }
+  .assert_one_string(
+    role, "role", .table_abort,
+    message = "Auxiliary table role must be one non-empty string."
+  )
   metadata <- unaligned_record(metadata)
   structure(
     list(
@@ -373,14 +359,12 @@ table_role <- function(x) {
     .table_abort(sprintf("%s tables must be a named list.", owner), "tables")
   }
   if (!length(tables)) return(tables)
-  ids <- names(tables)
-  if (is.null(ids) || anyNA(ids) || any(!nzchar(ids)) || anyDuplicated(ids)) {
-    .table_abort(
-      sprintf("%s tables require unique non-empty names.", owner),
-      "tables"
-    )
-  }
-  for (name in ids) {
+  .assert_unique_names(
+    tables, .table_abort,
+    sprintf("%s tables require unique non-empty names.", owner),
+    field = "tables"
+  )
+  for (name in names(tables)) {
     value <- tables[[name]]
     tryCatch(
       {

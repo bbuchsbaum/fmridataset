@@ -181,11 +181,13 @@ validate_frame_schema <- function(schema) {
   if (!identical(mode, "same")) schema$observation$count <- NULL
   if (identical(mode, "bind")) {
     schema$active_assay <- NULL
-    # Bound observation blocks are aligned by component ID, not by column
-    # position, so component order is not part of the bind contract. Identity
-    # (the set of IDs) still is.
+    # Binding rebuilds observation blocks by component identity and permutes
+    # each operand's columns into the leading frame's order, so the ordered
+    # component list is not part of the bind contract. Component identity is
+    # enforced by the bind path itself with an alignment error that names the
+    # differing components.
     schema$observation$blocks <- lapply(schema$observation$blocks, function(block) {
-      block$component_ids <- sort(block$component_ids)
+      block$component_ids <- NULL
       block
     })
   }

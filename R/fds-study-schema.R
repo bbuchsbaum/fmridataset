@@ -17,26 +17,7 @@
 }
 
 .fds_study_entity_arrays <- function(registry) {
-  arrays <- list()
-  for (entity_name in entity_names(registry)) {
-    value <- registry[[entity_name]]
-    for (block_name in names(entity_blocks(value))) {
-      key <- paste0("entities/", entity_name, "/blocks/", block_name)
-      data <- axis_block_data(entity_blocks(value)[[block_name]])
-      shape <- if (inherits(data, "array_source")) source_shape(data) else dim(data)
-      extra_axes <- if (length(shape) > 2L) {
-        paste0("dimension:", key, ":", seq.int(3L, length(shape)))
-      } else {
-        character()
-      }
-      arrays[[key]] <- .fds_array_descriptor(
-        key,
-        c(paste0("entity:", entity_name), paste0("component:", key), extra_axes),
-        data
-      )
-    }
-  }
-  arrays
+  .fds_entity_block_arrays(registry)
 }
 
 #' Construct and validate an FDS v2 study manifest
@@ -93,11 +74,11 @@ fds_study_representations <- function(x) {
   if (!length(arrays)) {
     return(invisible(TRUE))
   }
+  .assert_unique_names(
+    arrays, .fds_schema_abort, "Study arrays must have unique non-empty names.",
+    field = "arrays"
+  )
   array_names <- names(arrays)
-  if (is.null(array_names) || anyNA(array_names) || any(!nzchar(array_names)) ||
-    anyDuplicated(array_names)) {
-    .fds_schema_abort("Study arrays must have unique non-empty names.", "arrays")
-  }
   for (name in array_names) {
     value <- arrays[[name]]
     if (!is.list(value) ||
@@ -133,11 +114,12 @@ fds_study_representations <- function(x) {
     !is.list(value$members) || !length(value$members)) {
     .fds_schema_abort("Study representation type is unsupported or invalid.", paste0("representations.", name))
   }
+  .assert_unique_names(
+    value$members, .fds_schema_abort,
+    "Collection members require unique stable names.",
+    field = paste0("representations.", name, ".members")
+  )
   member_names <- names(value$members)
-  if (is.null(member_names) || anyNA(member_names) || any(!nzchar(member_names)) ||
-    anyDuplicated(member_names)) {
-    .fds_schema_abort("Collection members require unique stable names.", paste0("representations.", name, ".members"))
-  }
   for (member_name in member_names) validate_fds_manifest(value$members[[member_name]])
   tryCatch(
     .validate_container_provenance(value$provenance, "FDS collection representation"),
@@ -287,12 +269,11 @@ validate_fds_study_manifest <- function(manifest) {
     }
   )
   representations <- manifest$representations
-  representation_names <- names(representations)
   if (!is.list(representations) || !length(representations) ||
-    is.null(representation_names) || anyNA(representation_names) ||
-    any(!nzchar(representation_names)) || anyDuplicated(representation_names)) {
+    !.has_unique_names(representations)) {
     .fds_schema_abort("Study representations require unique stable names.", "representations")
   }
+  representation_names <- names(representations)
   for (name in representation_names) {
     .validate_study_representation_manifest(representations[[name]], name)
   }
@@ -350,12 +331,10 @@ validate_fds_study_manifest <- function(manifest) {
       .fds_schema_abort(conditionMessage(error), "metadata")
     }
   )
-  if (.source_contains_runtime_state(manifest)) {
-    .fds_schema_abort(
-      "FDS study manifests cannot contain runtime functions, environments, or external pointers.",
-      "runtime_state"
-    )
-  }
+  .assert_no_runtime_state(
+    manifest, .fds_schema_abort,
+    "FDS study manifests cannot contain runtime functions, environments, or external pointers."
+  )
   invisible(manifest)
 }
 

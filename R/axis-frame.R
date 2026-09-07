@@ -48,8 +48,7 @@
       descriptor = .id_policy("ephemeral")
     ))
   }
-  if (!is.character(id_namespace) || length(id_namespace) != 1L ||
-      is.na(id_namespace) || !nzchar(id_namespace)) {
+  if (!.is_one_string(id_namespace)) {
     .identity_abort(
       "Deterministic ID policy requires one non-empty `id_namespace`.",
       field = "id_namespace", policy = id_policy
@@ -99,25 +98,7 @@
 }
 
 .validate_stable_ids <- function(ids, what = "axis") {
-  if (!is.character(ids)) {
-    .frame_abort(
-      sprintf("%s IDs must be character values.", what),
-      "fmridataset_error_alignment"
-    )
-  }
-  if (anyNA(ids) || any(!nzchar(ids))) {
-    .frame_abort(
-      sprintf("%s IDs must be non-missing and non-empty.", what),
-      "fmridataset_error_alignment"
-    )
-  }
-  if (anyDuplicated(ids)) {
-    .frame_abort(
-      sprintf("%s IDs must be unique.", what),
-      "fmridataset_error_alignment"
-    )
-  }
-  ids
+  .assert_stable_keys(ids, .alignment_abort, what = what)
 }
 
 .axis_id_column <- function(axis) {
@@ -140,27 +121,17 @@
   )
 }
 
-.data_leading_dim <- function(x) {
-  if (inherits(x, "array_source")) {
-    return(source_shape(x)[1L])
-  }
-  d <- dim(x)
-  if (is.null(d)) length(x) else d[1L]
-}
-
-.data_component_dim <- function(x) {
-  if (inherits(x, "array_source")) {
-    d <- source_shape(x)
-  } else {
-    d <- dim(x)
-  }
-  if (is.null(d) || length(d) < 2L) 1L else d[2L]
-}
-
 #' Construct an axis-aligned multivariate block
 #'
-#' @param data A matrix, array, lazy array, or serializable array source. Its
-#'   first dimension is aligned with the owning axis.
+#' A block is two-dimensional: rows are the elements of the owning axis and
+#' columns are named components. Arrays with more than two dimensions are
+#' rejected because a trailing axis without typed metadata would be an
+#' anonymous semantic dimension; represent higher-order structure as named
+#' components, as several blocks, or as an assay.
+#'
+#' @param data A matrix, two-dimensional lazy array, or serializable array
+#'   source. Its first dimension is aligned with the owning axis and its second
+#'   dimension indexes `components`.
 #' @param components Component metadata. The `.component_id` column is
 #'   generated when absent.
 #' @param role Semantic role such as `"continuous"`, `"confound"`, or
@@ -171,7 +142,8 @@
 #' @export
 axis_block <- function(data, components = NULL, role = "continuous",
                        units = NULL, metadata = list()) {
-  n_component <- as.integer(.data_component_dim(data))
+  .assert_block_shape(data)
+  n_component <- .block_shape(data)[[2L]]
   if (is.null(components)) {
     components <- data.frame(
       .component_id = sprintf("component-%06d", seq_len(n_component)),
@@ -219,28 +191,6 @@ block_components <- function(x) x$components
 #' @export
 block_component_ids <- function(x) x$components$.component_id
 
-.subset_axis_block <- function(x, index) {
-  data <- x$data
-  if (inherits(data, "array_source")) {
-    data <- source_view(data, observations = index)
-  } else {
-    d <- dim(data)
-    if (is.null(d)) {
-      data <- data[index]
-    } else {
-      selectors <- c(list(index), rep(list(TRUE), length(d) - 1L), list(drop = FALSE))
-      data <- do.call(`[`, c(list(data), selectors))
-    }
-  }
-  axis_block(
-    data,
-    components = x$components,
-    role = x$role,
-    units = x$units,
-    metadata = x$metadata
-  )
-}
-
 #' Construct an annotated axis
 #'
 #' @param data A data frame with one row per axis element.
@@ -280,23 +230,7 @@ axis_frame <- function(data, blocks = list(), id = NULL,
   data[[id_col]] <- id
   data <- data[c(id_col, setdiff(names(data), id_col))]
 
-  if (is.null(names(blocks)) && length(blocks)) {
-    .frame_abort("Axis blocks must be named.", "fmridataset_error_alignment")
-  }
-  for (nm in names(blocks)) {
-    if (!inherits(blocks[[nm]], "axis_block")) {
-      .frame_abort(
-        sprintf("Axis block '%s' is not an axis_block.", nm),
-        "fmridataset_error_alignment"
-      )
-    }
-    if (.data_leading_dim(blocks[[nm]]$data) != nrow(data)) {
-      .frame_abort(
-        sprintf("Axis block '%s' is not aligned with the axis.", nm),
-        "fmridataset_error_alignment"
-      )
-    }
-  }
+  .assert_aligned_blocks(blocks, nrow(data), what = "Axis")
 
   structure(
     list(
@@ -363,12 +297,11 @@ length.axis_frame <- function(x) nrow(x$data)
 #' @export
 `[.axis_frame` <- function(x, i, ...) {
   if (missing(i)) i <- seq_len(nrow(x$data))
-  i <- as.integer(i)
-  data <- x$data[i, , drop = FALSE]
-  blocks <- lapply(x$blocks, .subset_axis_block, index = i)
+  rows <- .subset_keyed_rows(x$data, x$blocks, i)
+  data <- rows$data
   out <- axis_frame(
     data,
-    blocks = blocks,
+    blocks = rows$blocks,
     id = data[[x$id_col]],
     axis = x$axis,
     id_col = x$id_col,

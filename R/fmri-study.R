@@ -23,15 +23,16 @@ event_table <- function(data, key = "event_id", metadata = list()) {
       .event_abort(conditionMessage(error), field = error$field %||% "data")
     }
   )
-  if (!is.character(key) || length(key) != 1L || is.na(key) || !nzchar(key) ||
-    !key %in% names(data)) {
+  if (!.is_one_string(key) || !key %in% names(data)) {
     .event_abort("Event key must name one scalar data column.", field = "key")
   }
-  ids <- as.character(data[[key]])
-  if (anyNA(ids) || any(!nzchar(ids)) || anyDuplicated(ids)) {
-    .event_abort("Event keys must be unique, non-missing, and non-empty.", field = key)
-  }
-  data[[key]] <- ids
+  data[[key]] <- .assert_stable_keys(
+    as.character(data[[key]]), .event_abort,
+    field = key,
+    message = "Event keys must be unique, non-missing, and non-empty."
+  )
+  # Onset and duration semantics are event-specific and stay here rather than
+  # in the shared keyed-domain validators.
   if ("onset" %in% names(data) &&
     (!is.numeric(data$onset) || anyNA(data$onset) ||
       any(!is.finite(data$onset)) || any(data$onset < 0))) {
@@ -47,9 +48,7 @@ event_table <- function(data, key = "event_id", metadata = list()) {
     list(data = data, key = key, metadata = metadata, schema_version = 1L),
     class = "fmri_event_table"
   )
-  if (.source_contains_runtime_state(out)) {
-    .event_abort("Event tables cannot contain runtime state.")
-  }
+  .assert_no_runtime_state(out, .event_abort, "Event tables cannot contain runtime state.")
   out
 }
 
@@ -111,10 +110,7 @@ frame_link <- function(source, target,
                        target_axis = c("observation", "feature"),
                        metadata = list(), operator = NULL) {
   scalar_string <- function(value, field) {
-    if (!is.character(value) || length(value) != 1L || is.na(value) || !nzchar(value)) {
-      .study_abort(sprintf("%s must be one non-empty string.", field), field = field)
-    }
-    value
+    .assert_one_string(value, field, .study_abort)
   }
   source <- scalar_string(source, "source")
   target <- scalar_string(target, "target")
@@ -155,12 +151,10 @@ frame_link <- function(source, target,
   if (!is.null(map)) {
     if (!is.data.frame(map)) .study_abort("Link map must be a data frame.", field = "map")
     map <- tibble::as_tibble(map)
-    non_scalar <- vapply(map, function(value) {
-      is.list(value) || !is.null(dim(value)) || length(value) != nrow(map)
-    }, logical(1))
-    if (any(non_scalar)) {
-      .study_abort("Link map columns must contain scalar values.", field = "map")
-    }
+    .assert_scalar_columns(
+      map, .study_abort, "Link map columns must contain scalar values.",
+      field = "map"
+    )
     required <- c(".source_id", ".target_id")
     if (!all(required %in% names(map))) {
       .study_abort("Link maps require .source_id and .target_id columns.", field = "map")
@@ -181,7 +175,7 @@ frame_link <- function(source, target,
     ),
     class = "frame_link"
   )
-  if (.source_contains_runtime_state(out)) .study_abort("Frame links cannot contain runtime state.")
+  .assert_no_runtime_state(out, .study_abort, "Frame links cannot contain runtime state.")
   out
 }
 
@@ -546,7 +540,7 @@ fmri_study <- function(frames, entities = list(), links = list(), tables = list(
     ),
     class = "fmri_study"
   )
-  if (.source_contains_runtime_state(out)) .study_abort("Studies cannot contain runtime state.")
+  .assert_no_runtime_state(out, .study_abort, "Studies cannot contain runtime state.")
   out
 }
 

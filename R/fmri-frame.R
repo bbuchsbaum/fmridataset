@@ -519,6 +519,38 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
   )
 }
 
+# The bound frame keeps the first frame's feature blocks. That is only sound
+# when every other frame carries the same components and the same values;
+# otherwise the bind would silently discard annotations.
+.assert_feature_blocks_agree <- function(reference, candidate) {
+  ref_blocks <- axis_blocks(reference)
+  cand_blocks <- axis_blocks(candidate)
+  for (nm in names(ref_blocks)) {
+    ref <- ref_blocks[[nm]]
+    cand <- cand_blocks[[nm]]
+    label <- sprintf("feature block %s", encodeString(nm, quote = "\""))
+    .assert_bind_agreement(
+      block_components(ref), block_components(cand), paste(label, "components")
+    )
+    ref_data <- axis_block_data(ref)
+    cand_data <- axis_block_data(cand)
+    if (inherits(ref_data, "array_source") && inherits(cand_data, "array_source") &&
+      identical(source_fingerprint(ref_data), source_fingerprint(cand_data))) {
+      next
+    }
+    .assert_bind_agreement(
+      .realized_block_matrix(ref_data), .realized_block_matrix(cand_data),
+      paste(label, "values")
+    )
+  }
+  invisible(TRUE)
+}
+
+.realized_block_matrix <- function(data) {
+  if (inherits(data, "array_source")) data <- source_read(data)
+  unname(as.matrix(data))
+}
+
 # Return a block's data with its component axis permuted into `proto`'s
 # component order, refusing any block whose component identities differ.
 # Binding rbinds these positionally, so a block whose components are merely
@@ -584,11 +616,9 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
       # brought into a common order FIRST. Aligning by component ID rather than
       # by column position is what keeps values under the label they belong to.
       values <- lapply(xs, function(x) .aligned_block_data(x$blocks[[nm]], proto, nm))
-      if (any(vapply(values, inherits, logical(1), what = "array_source"))) {
-        source <- row_bound_source(lapply(values, as_array_source))
-      } else {
-        source <- do.call(rbind, values)
-      }
+      # Every value is a validated two-dimensional block (ADR-008), so a
+      # positional rbind() is exact: it cannot flatten trailing dimensions.
+      source <- .bind_block_values(values, block = nm)
       axis_block(source, proto$components, proto$role, proto$units, proto$metadata)
     })
     names(blocks) <- block_names
@@ -839,6 +869,7 @@ bind_observations <- function(...,
       axis_data(feature_axis(first)), axis_data(feature_axis(x)),
       "feature metadata"
     )
+    .assert_feature_blocks_agree(feature_axis(first), feature_axis(x))
   }
   relation_values <- .bind_relation_registries(lapply(xs, relations))
   obs <- .bind_axis_frames(lapply(xs, observation_axis))

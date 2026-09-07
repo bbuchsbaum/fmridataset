@@ -75,14 +75,14 @@ test_that("blocks with different component identities are refused", {
   a <- bind_frame(c("o1", "o2"), c("translation", "rotation"))
   b <- bind_frame(c("o3", "o4"), c("translation", "scaling"))
 
-  # Component identity is a schema contract: the structured schema error
-  # names the path to the block whose components differ.
+  # Component identity is enforced by the bind path, which aligns by ID and
+  # names the block and the differing components when they cannot be aligned.
   err <- expect_error(
     bind_observations(a, b),
-    class = "fmridataset_error_schema"
+    class = "fmridataset_error_alignment"
   )
-  expect_match(err$field, "component_ids")
-  expect_true("scaling" %in% err$actual || "scaling" %in% err$expected)
+  expect_match(conditionMessage(err), "motion")
+  expect_match(conditionMessage(err), "scaling")
 })
 
 test_that("bind is order-insensitive for component alignment", {
