@@ -3,6 +3,21 @@ template:
   bootstrap: 5
   package: albersdown
 
+articles:
+- title: Using frames
+  desc: >
+    The frame container, its feature spaces, and how frames move between
+    spaces, storage, and BIDS.
+  navbar: ~
+  contents:
+  - fmridataset
+  - feature-spaces
+  - persistence-and-import
+- title: Extending the package
+  desc: The array-source protocol for storage-package authors.
+  contents:
+  - extending-sources
+
 reference:
 - title: Frames
   desc: >

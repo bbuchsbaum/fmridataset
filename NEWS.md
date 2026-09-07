@@ -1,5 +1,16 @@
 # fmridataset 0.10.0 (Development)
 
+- Rewrote the vignettes for the frame API. The pre-frame vignettes were
+  removed with the legacy surface; the four replacements are
+  `vignette("fmridataset")` (frames, views, laziness, the temporal contract,
+  ID policy, and binding), `vignette("feature-spaces")` (volume, parcel,
+  basis, and composite spaces, spatial identity, and feature maps),
+  `vignette("persistence-and-import")` (FDS manifests, identity domains,
+  fingerprints versus content hashes, the HDF5 round trip, and
+  `read_bids_bold()`), and `vignette("extending-sources")` (implementing and
+  validating an array source). All four run on small synthetic data and guard
+  the `fmristore`, `bidser`, and `fmrihrf` examples on those packages being
+  installed.
 - Made source fingerprint and content-hash policy explicit
   (`inst/architecture/ADR-009-source-fingerprints-and-content-hashes.md`).
   `source_fingerprint()` is now a cheap revision fingerprint of the descriptor

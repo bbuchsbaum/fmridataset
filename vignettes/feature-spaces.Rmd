@@ -1,0 +1,335 @@
+---
+title: "Feature spaces and maps"
+output:
+  rmarkdown::html_vignette:
+    toc: yes
+    toc_depth: 2
+    css: albers.css
+    includes:
+      in_header: albers-header.txt
+vignette: >
+  %\VignetteIndexEntry{Feature spaces and maps}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+resource_files:
+- albers.css
+- albers.js
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+The columns of an fMRI array are voxels, or vertices, or parcels, or latent
+components. A frame's *feature space* says which. It names every column with
+a stable ID and knows how to turn a row of values back into a spatial object.
+This vignette builds the space types the package ships with and shows how
+views restrict them. It explains what spatial identity means, then moves a
+frame from one space to another through an explicit, lazy map.
+
+```{r}
+library(fmridataset)
+library(Matrix)
+```
+
+## A masked volume
+
+`volume_space()` describes a packed volume: a 3-D grid, a voxel-to-world
+affine, and a *support*, the linear indices of the voxels that are in play.
+Feature IDs are derived from the support, so they survive masking and
+reordering unchanged.
+
+```{r volume}
+grid <- c(4L, 4L, 2L)
+mask <- array(FALSE, grid)
+mask[2:3, 2:3, ] <- TRUE
+
+brain <- volume_space(dim = grid, affine = diag(4), support = mask, template = "toy")
+n_features(brain)
+feature_ids(brain)
+head(feature_data(brain), 3)
+```
+
+The feature table gives each voxel its linear index and grid coordinates.
+Predicates in `select_features()` can use any of these columns.
+
+The frame used for the rest of the vignette has six observations over this
+masked volume.
+
+```{r frame}
+set.seed(2)
+n_obs <- 6L
+signal <- matrix(
+  round(rnorm(n_obs * n_features(brain)), 2),
+  nrow = n_obs, ncol = n_features(brain)
+)
+frame <- fmri_frame(
+  assays = list(bold = signal),
+  observations = data.frame(
+    .obs_id = sprintf("vol-%02d", seq_len(n_obs)),
+    run_id = "run-1",
+    TR = 2
+  ),
+  space = brain
+)
+frame
+```
+
+## Views restrict the space
+
+A view's feature space is the base space restricted to the selected features,
+in the selected order. Restriction is an operation on the space itself, not
+on a copy of its table. The restricted space still knows its grid, its
+affine, and where its voxels sit.
+
+```{r restrict}
+pair <- frame[, c("voxel-11", "voxel-6")]
+space(pair)$support
+feature_ids(pair)
+same_space(space(pair), restrict_space(brain, c(4L, 1L)))$same
+```
+
+Restricting to nothing is legal and gives a space with zero features, which
+is what an empty `select_features()` returns.
+
+```{r restrict-empty}
+n_features(restrict_space(brain, integer()))
+```
+
+A row of the frame can always be reconstructed into the native spatial object.
+For a volume that is a `neuroim2::NeuroVol` with `NA` outside the support.
+
+```{r spatial-map}
+map <- spatial_map(frame, "vol-01")
+dim(map)
+sum(!is.na(map))
+```
+
+The same works from a view, where the unselected voxels are also `NA`.
+
+```{r spatial-map-view}
+sum(!is.na(spatial_map(pair, "vol-01")))
+```
+
+## Same space, not merely same size
+
+`same_space()` reports exact semantic identity: the two spaces must agree on
+class, digest, and ordered feature IDs. `compatible_space()` is an alias for
+the same check, kept for the 1.0 transition. Neither word means a map exists.
+
+An independently constructed space with the same grid, affine, support, and
+template is the same space.
+
+```{r same-space}
+again <- volume_space(dim = grid, affine = diag(4), support = mask, template = "toy")
+same_space(brain, again)$same
+```
+
+Change the affine and the voxels have the same IDs but sit somewhere else in
+the world. The IDs still agree; the digest does not; the spaces are different.
+
+```{r different-space}
+rescaled <- volume_space(
+  dim = grid, affine = diag(c(2, 2, 2, 1)), support = mask, template = "toy"
+)
+report <- same_space(brain, rescaled)
+report[c("same", "same_class", "same_digest", "same_feature_ids")]
+```
+
+`assert_compatible_space()` turns that report into a structured error, and it
+is what `bind_observations()` and `map_features()` call before doing anything
+else.
+
+```{r assert-space, error = TRUE}
+assert_compatible_space(brain, rescaled)
+```
+
+## Parcels over a volume
+
+A `parcel_space()` is linked to a parent space through a membership matrix.
+It has one row per parent feature and one column per parcel, holding
+non-negative weights. Here the two slices of the masked volume become two
+parcels. The atlas identity is part of every parcel's feature ID.
+
+```{r parcel}
+slice <- feature_data(brain)$k
+membership <- sparseMatrix(
+  i = seq_len(n_features(brain)), j = slice, x = 1,
+  dims = c(n_features(brain), 2L)
+)
+slabs <- parcel_space(
+  parent = brain,
+  parcel_ids = c("lower", "upper"),
+  membership = membership,
+  atlas = "slab",
+  data = data.frame(id = c("lower", "upper"), label = c("Lower slab", "Upper slab"))
+)
+feature_ids(slabs)
+parcel_aggregation(slabs)
+```
+
+The aggregation operator is derived from the membership: weighted means by
+default, weighted sums on request. `parcel_space_from_atlas()` builds the same
+object from a `neuroatlas` atlas aligned to a parent space.
+
+## Moving a frame between spaces
+
+A parcel space owns the canonical map from its parent, so `map_features()`
+needs only the target. The result is a new frame in the parcel space. Its
+assay is a *lazy* transformed source: nothing is aggregated until it is read.
+
+```{r map-parcel}
+by_parcel <- map_features(frame, target = slabs)
+by_parcel
+collect_assay(by_parcel)
+```
+
+Those are the per-slice means of `signal`, checked here against a direct
+computation.
+
+```{r map-parcel-check}
+direct <- cbind(rowMeans(signal[, slice == 1]), rowMeans(signal[, slice == 2]))
+all.equal(collect_assay(by_parcel), direct)
+```
+
+The transformation is recorded in the new frame's provenance, and a parcel
+frame reconstructs back into the parent volume by spreading each parcel value
+over its member voxels.
+
+```{r map-parcel-provenance}
+by_parcel$provenance
+range(spatial_map(by_parcel, "vol-01"), na.rm = TRUE)
+```
+
+Any other linear transformation is an explicit `feature_map()`: a
+target-by-source operator plus both spaces. The operator's dimensions are
+checked against both. The source space must be the frame's space exactly.
+
+```{r feature-map}
+pairs <- index_space(2L, ids = c("pair-a", "pair-b"))
+operator <- sparseMatrix(
+  i = c(1, 1, 2, 2), j = c(1, 2, 3, 4), x = 0.5,
+  dims = c(2L, n_features(brain))
+)
+pair_means <- feature_map(from = brain, to = pairs, operator = operator, map_type = "pair_mean")
+pair_means
+collect_assay(map_features(frame, map = pair_means))[1:2, ]
+```
+
+A map declared from a different space is refused even though the operator
+would fit.
+
+```{r feature-map-mismatch, error = TRUE}
+wrong <- feature_map(from = rescaled, to = pairs, operator = operator)
+map_features(frame, map = wrong)
+```
+
+## Bases and synthesis-only bases
+
+A `basis_space()` is a representational axis over a parent space. It holds an
+encoder that projects parent values onto components, a decoder that
+synthesizes parent values from component scores, or both. When you hold only
+a decoder, `basis_space_from_decoder()` derives the exact least-squares
+encoder and validates that it is a left inverse.
+
+```{r basis}
+decoder <- matrix(0, n_features(brain), 3L)
+decoder[1:4, 1L] <- 1
+decoder[5:8, 2L] <- 1
+decoder[, 3L] <- seq_len(n_features(brain)) / 8
+
+components <- basis_space_from_decoder(
+  parent = brain,
+  component_ids = c("c1", "c2", "c3"),
+  decoder = decoder,
+  basis_type = "toy_basis"
+)
+basis_projection_info(components)[c("left_inverse_validated", "left_inverse_error")]
+dim(basis_analysis(components))
+```
+
+With an encoder available, `map_features()` projects the frame onto the
+components lazily, and `spatial_map()` synthesizes a volume back from scores.
+
+```{r basis-map}
+scores <- map_features(frame, target = components)
+round(collect_assay(scores)[1:2, ], 3)
+range(spatial_map(scores, "vol-01"), na.rm = TRUE)
+```
+
+Fitted dictionaries from ICA or dictionary learning are often rank-deficient,
+so no exact left inverse exists. Ask for `encoder = "none"` and you get a
+synthesis-only basis. It can reconstruct parent values from scores but has no
+canonical map from the parent. A frame of scores must therefore be
+constructed directly in that space.
+
+```{r basis-synthesis-only}
+synthesis_only <- basis_space_from_decoder(
+  parent = brain,
+  component_ids = c("c1", "c2", "c3"),
+  decoder = decoder,
+  encoder = "none"
+)
+is.null(basis_analysis(synthesis_only))
+basis_projection_info(synthesis_only)$left_inverse_validated
+
+score_frame <- fmri_frame(
+  assays = list(scores = matrix(round(rnorm(n_obs * 3), 2), n_obs, 3L)),
+  observations = observations(frame),
+  space = synthesis_only
+)
+range(spatial_map(score_frame, "vol-01"), na.rm = TRUE)
+```
+
+Because the encoder is absent, `vectorize_space()` on this basis raises an
+error that says so, and `map_features(frame, target = synthesis_only)` has no
+operator to build a map from.
+
+## Composite spaces
+
+A `composite_space()` concatenates named child spaces into one feature axis,
+for example left cortex, right cortex, and subcortical volume. Feature IDs
+are part-qualified and the routing order is authoritative. Each child stays
+the authority for its own identity and reconstruction.
+
+```{r composite}
+mixed_space <- composite_space(
+  list(cortex = slabs, latent = components),
+  composite_type = "toy_composite"
+)
+feature_ids(mixed_space)
+feature_data(mixed_space)[, c(".feature_id", ".part", ".part_index")]
+```
+
+A frame over a composite space is selected and reconstructed like any other.
+Selecting one part yields a composite space that holds only that part, and a
+spatial map returns one native object per part.
+
+```{r composite-frame}
+mixed <- fmri_frame(
+  assays = list(mixed = cbind(collect_assay(by_parcel), collect_assay(scores))),
+  observations = observations(frame),
+  space = mixed_space
+)
+latent_only <- select_features(mixed, .part == "latent")
+feature_ids(latent_only)
+composite_part_names(space(latent_only))
+
+parts <- spatial_map(mixed, "vol-01")
+names(parts$parts)
+```
+
+## Where the package stops
+
+`fmridataset` owns spatial identity, restriction, the linear map descriptor,
+and lazy application of that map. It does not fit bases, choose atlases, or
+run models. `neuroatlas` supplies parcellations. `fmrilatent` supplies fitted
+bases through `basis_space_from_fmrilatent()`. `neurosurf` supplies surface
+geometry for `surface_space_from_neurosurf()`. Each hands the package a
+serializable space; the package hands back frames whose columns still mean
+what they meant.
