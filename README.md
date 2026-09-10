@@ -1,5 +1,12 @@
 # fmridataset
 
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/bbuchsbaum/fmridataset/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/bbuchsbaum/fmridataset/actions/workflows/R-CMD-check.yaml)
+[![pkgdown](https://github.com/bbuchsbaum/fmridataset/actions/workflows/pkgdown.yaml/badge.svg)](https://bbuchsbaum.github.io/fmridataset/)
+[![test-coverage](https://github.com/bbuchsbaum/fmridataset/actions/workflows/test-coverage.yaml/badge.svg)](https://github.com/bbuchsbaum/fmridataset/actions/workflows/test-coverage.yaml)
+[![Codecov test coverage](https://codecov.io/gh/bbuchsbaum/fmridataset/branch/main/graph/badge.svg)](https://app.codecov.io/gh/bbuchsbaum/fmridataset?branch=main)
+<!-- badges: end -->
+
 [Changelog](NEWS.md) ·
 [Canonical data model](inst/architecture/ADR-001-canonical-data-model.md) ·
 [API audiences](inst/architecture/API-AUDIENCES.md) ·
