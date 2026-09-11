@@ -22,7 +22,7 @@ Use it when raw time series, beta estimates, parcel values, surface data, or
 latent representations must retain their meaning as they move between analysis
 steps and storage systems.
 
-> **Status:** The `0.10.0` development line is the road to 1.0 and requires R
+> **Status:** The `0.11.0` development line is the road to 1.0 and requires R
 > 4.3 or newer. `fmri_frame()` is the only data container. The pre-frame 0.x
 > dataset and backend API has been removed; the last commit carrying it is
 > `3ae565e`. APIs may still change before 1.0.
@@ -36,7 +36,10 @@ remotes::install_github("bbuchsbaum/fmridataset")
 
 `fmridataset` is not on CRAN. The published
 [R-universe build](https://bbuchsbaum.r-universe.dev/fmridataset) is version
-0.8.9 and documents the old dataset API, not this one.
+0.10.0.9000 (from `937e193` onward) and already documents the frame API, not
+the pre-frame dataset surface. Downstream packages that need the frame API
+should require `fmridataset (>= 0.11.0.9000)` once this development line is
+published.
 
 ## Quick start
 
@@ -189,7 +192,8 @@ experimental.
   for the backend-neutral persistence contract.
 - See the [changelog](NEWS.md) for the current development surface.
 - The [hosted package site](https://bbuchsbaum.github.io/fmridataset/)
-  currently describes the published 0.8.9 release.
+  currently describes the frame API development line (matching this README),
+  not a historical 0.8.9 release.
 
 ## Contributing
 
