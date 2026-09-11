@@ -1,3 +1,48 @@
+# fmridataset 0.11.0 (Development)
+
+- Bumped the development version to `0.11.0.9000` so downstream packages can
+  require the frame API (`fmridataset (>= 0.11.0.9000)`) or pin below it while
+  migrating. The previous `0.10.0.9000` string was unchanged across the
+  pre-frame export removal, so no DESCRIPTION constraint could distinguish
+  the two sides of the break.
+
+## Breaking changes
+
+* Removed the pre-frame dataset architecture. `fmri_dataset()`,
+  `matrix_dataset()`, `fmri_mem_dataset()`, `fmri_file_dataset()`,
+  `fmri_h5_dataset()`, `fmri_zarr_dataset()`, `fmri_study_dataset()`,
+  `latent_dataset()`, `bids_h5_dataset()`, `compress_bids_study()`, the
+  storage-backend protocol and registry (`storage_backend`, `backend_*()`,
+  `register_backend()`), the sampling-frame accessors (`get_TR()`,
+  `blocklens()`, `blockids()`, `n_runs()`, `n_timepoints()`, ...),
+  `data_chunks()` and its execution strategies, `fmri_series()` and the
+  selector API, `fmri_group()` and the group verbs, `read_fmri_config()`, and
+  the vignette data generators are gone. `fmri_frame()` is the only data
+  container; `temporal_schema()` and `as_sampling_frame()` replace the
+  sampling-frame accessors, `collect_assay()`, `plan_blocks()`, and
+  `as_delarr()` replace chunk iteration, and `fmri_collection()` and
+  `fmri_study()` replace the study dataset and group. The last commit carrying
+  the old surface is `3ae565e`; applications that still need it should pin
+  that revision while they migrate. `fmri_frame` objects no longer inherit
+  from `fmri_dataset`. Serialized 0.x objects are not migrated by this
+  package: load them with the pinned revision, build an `fmri_frame` from the
+  matrix and metadata, and persist it with `write_frame()`.
+* `as_delarr()` now dispatches on `x` rather than `backend`, and is defined for
+  array sources only.
+* `fmrihrf` moved from Imports to Suggests. Only `as_sampling_frame()` needs
+  it, and that function now fails with a structured error when it is absent.
+* Retired the `DelayedArray` bridge. `as_delayed_array()` and its methods, the
+  `StorageBackendSeed` and `StudyBackendSeed` classes, and
+  `register_delayed_array_support()` are removed. `as_delarr()` provides the
+  same lazy interface over the same backends (`matrix_backend`,
+  `nifti_backend`, `study_backend`, and a default method) and is the supported
+  replacement.
+* `fmri_series()` no longer accepts `output = "DelayedMatrix"`; `output` is now
+  `"fmri_series"` only. The returned object already carries a `delarr` lazy
+  matrix payload, which `as_delarr()` exposes directly. Note that `delarr` is a
+  hard dependency, so the previous `DelayedArray` fallback path was unreachable
+  in any installable configuration.
+
 # fmridataset 0.10.0 (Development)
 
 - Fixed a set of review findings. `bind_observations()` now compares entity
@@ -295,43 +340,6 @@
   `DelayedMatrixStats` are no longer suggested, and CI no longer installs
   `BiocManager`, `Rarr`, `rhdf5`, `DelayedArray`, or `S4Arrays`. Lazy array
   support is built on `delarr`, which this project owns.
-
-## Breaking changes
-
-* Removed the pre-frame dataset architecture. `fmri_dataset()`,
-  `matrix_dataset()`, `fmri_mem_dataset()`, `fmri_file_dataset()`,
-  `fmri_h5_dataset()`, `fmri_zarr_dataset()`, `fmri_study_dataset()`,
-  `latent_dataset()`, `bids_h5_dataset()`, `compress_bids_study()`, the
-  storage-backend protocol and registry (`storage_backend`, `backend_*()`,
-  `register_backend()`), the sampling-frame accessors (`get_TR()`,
-  `blocklens()`, `blockids()`, `n_runs()`, `n_timepoints()`, ...),
-  `data_chunks()` and its execution strategies, `fmri_series()` and the
-  selector API, `fmri_group()` and the group verbs, `read_fmri_config()`, and
-  the vignette data generators are gone. `fmri_frame()` is the only data
-  container; `temporal_schema()` and `as_sampling_frame()` replace the
-  sampling-frame accessors, `collect_assay()`, `plan_blocks()`, and
-  `as_delarr()` replace chunk iteration, and `fmri_collection()` and
-  `fmri_study()` replace the study dataset and group. The last commit carrying
-  the old surface is `3ae565e`; applications that still need it should pin
-  that revision while they migrate. `fmri_frame` objects no longer inherit
-  from `fmri_dataset`. Serialized 0.x objects are not migrated by this
-  package: load them with the pinned revision, build an `fmri_frame` from the
-  matrix and metadata, and persist it with `write_frame()`.
-* `as_delarr()` now dispatches on `x` rather than `backend`, and is defined for
-  array sources only.
-* `fmrihrf` moved from Imports to Suggests. Only `as_sampling_frame()` needs
-  it, and that function now fails with a structured error when it is absent.
-* Retired the `DelayedArray` bridge. `as_delayed_array()` and its methods, the
-  `StorageBackendSeed` and `StudyBackendSeed` classes, and
-  `register_delayed_array_support()` are removed. `as_delarr()` provides the
-  same lazy interface over the same backends (`matrix_backend`,
-  `nifti_backend`, `study_backend`, and a default method) and is the supported
-  replacement.
-* `fmri_series()` no longer accepts `output = "DelayedMatrix"`; `output` is now
-  `"fmri_series"` only. The returned object already carries a `delarr` lazy
-  matrix payload, which `as_delarr()` exposes directly. Note that `delarr` is a
-  hard dependency, so the previous `DelayedArray` fallback path was unreachable
-  in any installable configuration.
 
 # fmridataset 0.9.0
 
