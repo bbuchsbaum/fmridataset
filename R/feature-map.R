@@ -408,6 +408,85 @@ source_read.feature_mapped_source <- function(x, observations = NULL,
   result[hits > 0] <- NA_real_
   result
 }
+# The source columns a read of `features` touches. Matrix and in-memory
+# operators are inspected exactly, as the read does. Any other lazy operator
+# would have to be read to find out, so it is bounded by every source column.
+.feature_map_contributing_columns <- function(x, features) {
+  if (!length(features)) {
+    return(integer())
+  }
+  operator <- x$map$operator
+  if (inherits(operator, "array_source") && !inherits(operator, "memory_source")) {
+    return(seq_len(source_shape(operator)[2L]))
+  }
+  .operator_contributing_columns(.feature_map_operator_rows(x$map, features))
+}
+
+#' @export
+source_realization_cost.feature_mapped_source <- function(x, observations = NULL,
+                                                          features = NULL) {
+  observations <- .normalize_source_index(observations, x$shape[1L])
+  features <- .normalize_source_index(features, x$shape[2L])
+  n_observation <- length(observations)
+  n_feature <- length(features)
+  contributing <- if (n_observation) {
+    .feature_map_contributing_columns(x, features)
+  } else {
+    integer()
+  }
+  n_contributing <- length(contributing)
+  n_source <- source_shape(x$source)[2L]
+  realized_width <- .realized_dtype_bytes(x$dtype)
+  values <- as.double(n_observation) * n_feature
+  # The product is allocated once as the returned matrix.
+  output_bytes <- values * realized_width
+
+  # The read materializes every contributing source column for the requested
+  # rows through the child, whose own estimate covers its buffers.
+  child <- source_realization_cost(
+    x$source,
+    observations = observations, features = contributing
+  )
+  contributing_bytes <- child$estimated_peak_bytes
+  # Operator temporaries: the requested rows, their contributing slice, and
+  # the transpose taken inside the product. A sparse operator holds one entry
+  # per non-zero (row, column, value); a dense one holds every cell.
+  operator <- x$map$operator
+  sparse <- !inherits(operator, "array_source") && methods::is(operator, "sparseMatrix")
+  operator_bytes <- if (!n_feature || !n_contributing) {
+    0
+  } else if (sparse) {
+    rows <- .feature_map_operator_rows(x$map, features)
+    3 * 16 * as.double(Matrix::nnzero(rows))
+  } else {
+    8 * as.double(n_feature) * (n_source + 2 * n_contributing)
+  }
+  # The product screens non-finite values: a logical mask of the contributing
+  # block is always built, and a finite copy of the block is taken when any
+  # value is non-finite.
+  nonfinite_bytes <- as.double(n_observation) * n_contributing * (4 + realized_width)
+  temporary_bytes <- contributing_bytes + operator_bytes + nonfinite_bytes
+
+  structure(
+    list(
+      shape = c(n_observation, n_feature),
+      values = values,
+      storage_dtype = child$storage_dtype,
+      storage_bytes = child$storage_bytes,
+      realized_dtype = .realized_dtype_mode(x$dtype),
+      realized_dtype_bytes = realized_width,
+      estimated_output_bytes = output_bytes,
+      contributing_columns = n_contributing,
+      contributing_intermediate_bytes = contributing_bytes,
+      operator_buffer_bytes = operator_bytes,
+      nonfinite_buffer_bytes = nonfinite_bytes,
+      estimated_temporary_bytes = temporary_bytes,
+      estimated_peak_bytes = output_bytes + temporary_bytes
+    ),
+    class = "source_realization_cost"
+  )
+}
+
 #' @export
 source_read_native.feature_mapped_source <- function(x, observations = NULL, ...) {
   .frame_abort(

@@ -12,8 +12,9 @@ as_delarr(x, memory_budget = Inf, ...)
 \arguments{
 \item{x}{An array source, or another object with an \code{as_delarr()} method.}
 
-\item{memory_budget}{Maximum realized bytes permitted for a single pull.
-\code{Inf} disables the check.}
+\item{memory_budget}{Maximum estimated peak bytes permitted for a single
+pull, as estimated by \code{\link[=source_realization_cost]{source_realization_cost()}} for the pulled
+selection. \code{Inf} disables the check. The whole array is not budgeted.}
 
 \item{...}{Additional arguments passed to methods.}
 }
@@ -23,8 +24,12 @@ A \code{delarr} lazy array whose pulls route through \code{\link[=source_read]{s
 \description{
 \code{as_delarr()} wraps a serializable \link[=array-source]{array source} as a
 \code{delarr} provider so that bounded, chunk-aware execution can be delegated
-to \code{delarr} without materializing the assay. The realization budget is
-enforced before any provider is created.
+to \code{delarr} without materializing the assay. Wrapping reads nothing and
+is never refused on the size of the whole array: the realization budget
+is attached to the provider and enforced on every pull, so a source far
+larger than \code{memory_budget} can be wrapped and consumed in bounded blocks,
+while any single pull whose estimated peak exceeds the budget raises
+\code{fmridataset_error_budget} before it reads.
 }
 \examples{
 src <- memory_source(matrix(seq_len(6), nrow = 2))

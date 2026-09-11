@@ -66,6 +66,26 @@
   as.integer(c(observation_block, feature_block))
 }
 
+# Replace the per-value block estimates with the source's own estimate of
+# each block, resolved through the frame selection to source positions.
+.recost_blocks <- function(blocks, source, selection) {
+  observation_index <- .selection_expand(selection$observations)
+  feature_index <- .selection_expand(selection$features)
+  for (i in seq_len(nrow(blocks))) {
+    cost <- source_realization_cost(
+      source,
+      observations = observation_index[
+        blocks$.observation_start[[i]]:blocks$.observation_end[[i]]
+      ],
+      features = feature_index[blocks$.feature_start[[i]]:blocks$.feature_end[[i]]]
+    )
+    blocks$.output_bytes[[i]] <- cost$estimated_output_bytes
+    blocks$.peak_bytes[[i]] <- cost$estimated_peak_bytes
+  }
+  blocks$.bytes <- blocks$.peak_bytes
+  blocks
+}
+
 .axis_block_ranges <- function(n, block_size, prefix) {
   # A zero-length axis anywhere in the frame makes .plan_block_shape() return
   # c(0L, 0L), so the OTHER axis arrives here with block_size 0 and a non-zero
@@ -174,6 +194,20 @@ plan_blocks <- function(
   )
   output_dtype_bytes <- unit_cost$estimated_output_bytes
   peak_dtype_bytes <- unit_cost$estimated_peak_bytes
+  shape <- as.integer(dim(x))
+  # A wrapper that materializes intermediates (a feature map reads every
+  # contributing source column; a validity mask holds a logical copy) has no
+  # per-value peak. Start from the average peak per value of the whole
+  # selection, then hold every planned block to the wrapper's own estimate.
+  nonlinear <- .source_cost_nonlinear(descriptor$source)
+  if (nonlinear && all(shape > 0L)) {
+    whole <- source_realization_cost(
+      descriptor$source,
+      observations = .selection_index(selection$observations),
+      features = .selection_index(selection$features)
+    )
+    peak_dtype_bytes <- max(peak_dtype_bytes, whole$estimated_peak_bytes / whole$values)
+  }
   capacity <- floor(min(memory_budget, target_block_bytes) / peak_dtype_bytes)
   if (capacity < 1) {
     .frame_abort(
@@ -186,12 +220,36 @@ plan_blocks <- function(
       memory_budget = memory_budget
     )
   }
-  shape <- as.integer(dim(x))
   chunks <- pmin(source_chunks(descriptor$source), pmax(1L, shape))
-  block_shape <- .plan_block_shape(shape, chunks, layout, capacity)
-  blocks <- .block_grid(
-    shape, block_shape, output_dtype_bytes, peak_dtype_bytes, layout
-  )
+  repeat {
+    block_shape <- .plan_block_shape(shape, chunks, layout, capacity)
+    blocks <- .block_grid(
+      shape, block_shape, output_dtype_bytes, peak_dtype_bytes, layout
+    )
+    if (!nonlinear || !nrow(blocks)) {
+      break
+    }
+    blocks <- .recost_blocks(blocks, descriptor$source, selection)
+    max_peak_bytes <- max(blocks$.peak_bytes)
+    if (max_peak_bytes <= min(memory_budget, target_block_bytes) ||
+      prod(block_shape) <= 1) {
+      break
+    }
+    # Shrink in proportion to the overshoot; always make progress.
+    shrunk <- floor(capacity * min(memory_budget, target_block_bytes) / max_peak_bytes)
+    capacity <- min(shrunk, capacity - 1)
+    if (capacity < 1) {
+      .frame_abort(
+        "The block memory budget cannot hold one assay value.",
+        "fmridataset_error_budget",
+        dtype = descriptor$dtype,
+        dtype_bytes = output_dtype_bytes,
+        output_dtype_bytes = output_dtype_bytes,
+        peak_dtype_bytes = peak_dtype_bytes,
+        memory_budget = memory_budget
+      )
+    }
+  }
   max_output_bytes <- if (nrow(blocks)) max(blocks$.output_bytes) else 0
   max_peak_bytes <- if (nrow(blocks)) max(blocks$.peak_bytes) else 0
   if (max_peak_bytes > memory_budget) {

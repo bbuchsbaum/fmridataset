@@ -19,3 +19,6 @@ fmridataset_*.tar.gz
 *.db
 .beads-credential-key
 .mote/
+
+# testthat failure artifacts (check reporter)
+tests/testthat/_problems/

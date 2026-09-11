@@ -2,12 +2,17 @@
 #'
 #' `as_delarr()` wraps a serializable [array source][array-source] as a
 #' `delarr` provider so that bounded, chunk-aware execution can be delegated
-#' to `delarr` without materializing the assay. The realization budget is
-#' enforced before any provider is created.
+#' to `delarr` without materializing the assay. Wrapping reads nothing and
+#' is never refused on the size of the whole array: the realization budget
+#' is attached to the provider and enforced on every pull, so a source far
+#' larger than `memory_budget` can be wrapped and consumed in bounded blocks,
+#' while any single pull whose estimated peak exceeds the budget raises
+#' `fmridataset_error_budget` before it reads.
 #'
 #' @param x An array source, or another object with an `as_delarr()` method.
-#' @param memory_budget Maximum realized bytes permitted for a single pull.
-#'   `Inf` disables the check.
+#' @param memory_budget Maximum estimated peak bytes permitted for a single
+#'   pull, as estimated by [source_realization_cost()] for the pulled
+#'   selection. `Inf` disables the check. The whole array is not budgeted.
 #' @param ... Additional arguments passed to methods.
 #' @return A `delarr` lazy array whose pulls route through [source_read()].
 #' @seealso [array-source] for the source protocol.
