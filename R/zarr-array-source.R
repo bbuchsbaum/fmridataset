@@ -339,10 +339,12 @@ source_open.zarr_array_source <- function(x, ...) {
     )
   }
   observation_selection <- .normalize_selection(
-    observations, source$shape[[1L]], axis = "observation"
+    observations, source$shape[[1L]],
+    axis = "observation"
   )
   feature_selection <- .normalize_selection(
-    features, source$shape[[2L]], axis = "feature"
+    features, source$shape[[2L]],
+    axis = "feature"
   )
   n_observation <- .selection_length(observation_selection)
   n_feature <- .selection_length(feature_selection)

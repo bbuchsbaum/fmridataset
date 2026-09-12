@@ -16,7 +16,9 @@
 }
 
 .schema_data_shape <- function(data) {
-  if (inherits(data, "array_source")) return(as.integer(source_shape(data)))
+  if (inherits(data, "array_source")) {
+    return(as.integer(source_shape(data)))
+  }
   shape <- dim(data)
   if (is.null(shape)) c(length(data), 1L) else as.integer(shape)
 }
@@ -113,10 +115,12 @@ frame_schema <- function(x) {
   entity_values <- entities(x)
   out <- list(
     schema = list(id = "org.fmridataset.frame-schema/v1", version = .frame_schema_version),
-    assays = lapply(assay_values, function(value) list(
-      dtype = value$dtype, role = value$role, units = value$units,
-      metadata = value$metadata
-    )),
+    assays = lapply(assay_values, function(value) {
+      list(
+        dtype = value$dtype, role = value$role, units = value$units,
+        metadata = value$metadata
+      )
+    }),
     observation = list(
       count = length(observation), id_column = observation$id_col,
       columns = .schema_columns(axis_data(observation)),
@@ -133,11 +137,13 @@ frame_schema <- function(x) {
         feature_ids = feature_ids(x)
       )
     ),
-    entities = lapply(entity_values, function(value) list(
-      key = entity_key(value), entity_type = value$entity_type,
-      columns = .schema_columns(entity_data(value)),
-      blocks = .schema_blocks(entity_blocks(value)), metadata = value$metadata
-    )),
+    entities = lapply(entity_values, function(value) {
+      list(
+        key = entity_key(value), entity_type = value$entity_type,
+        columns = .schema_columns(entity_data(value)),
+        blocks = .schema_blocks(entity_blocks(value)), metadata = value$metadata
+      )
+    }),
     relations = .schema_relations(relations(x)),
     tables = .schema_tables(x$tables %||% x$base$tables),
     active_assay = list(policy = "named", name = active_assay(x))
@@ -181,17 +187,17 @@ validate_frame_schema <- function(schema) {
     "tables", "active_assay"
   )
   if (!inherits(schema, "fmri_frame_schema") ||
-      !identical(names(unclass(schema)), required) ||
-      !identical(schema$schema$id, "org.fmridataset.frame-schema/v1") ||
-      !identical(schema$schema$version, .frame_schema_version)) {
+    !identical(names(unclass(schema)), required) ||
+    !identical(schema$schema$id, "org.fmridataset.frame-schema/v1") ||
+    !identical(schema$schema$version, .frame_schema_version)) {
     .fds_schema_abort("Invalid canonical frame schema.", "frame_schema")
   }
   if (!length(schema$assays) || is.null(names(schema$assays)) ||
-      any(!nzchar(names(schema$assays))) || anyDuplicated(names(schema$assays))) {
+    any(!nzchar(names(schema$assays))) || anyDuplicated(names(schema$assays))) {
     .fds_schema_abort("Frame schema assays must be uniquely named.", "assays")
   }
   if (!identical(schema$active_assay$policy, "named") ||
-      !schema$active_assay$name %in% names(schema$assays)) {
+    !schema$active_assay$name %in% names(schema$assays)) {
     .fds_schema_abort("Frame schema active assay is invalid.", "active_assay")
   }
   invisible(schema)
@@ -221,7 +227,9 @@ validate_frame_schema <- function(schema) {
 }
 
 .schema_first_mismatch <- function(expected, actual, path = "schema") {
-  if (identical(expected, actual)) return(NULL)
+  if (identical(expected, actual)) {
+    return(NULL)
+  }
   if (is.list(expected) && is.list(actual)) {
     if (!identical(names(expected), names(actual))) {
       return(list(path = path, expected = names(expected), actual = names(actual)))
@@ -230,7 +238,9 @@ validate_frame_schema <- function(schema) {
       mismatch <- .schema_first_mismatch(
         expected[[name]], actual[[name]], paste0(path, ".", name)
       )
-      if (!is.null(mismatch)) return(mismatch)
+      if (!is.null(mismatch)) {
+        return(mismatch)
+      }
     }
   }
   list(path = path, expected = expected, actual = actual)

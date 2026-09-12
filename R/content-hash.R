@@ -83,8 +83,9 @@ content_hash.default <- function(x, ...) {
 #' @rdname content_hash
 #' @export
 content_hash.array_source <- function(
-    x, ...,
-    block_bytes = getOption("fmridataset.target_block_bytes", 4 * 1024^2)) {
+  x, ...,
+  block_bytes = getOption("fmridataset.target_block_bytes", 4 * 1024^2)
+) {
   handle <- source_open(x)
   on.exit(source_close(handle), add = TRUE)
   .content_hash_through(handle, block_bytes = block_bytes)
@@ -93,8 +94,9 @@ content_hash.array_source <- function(
 #' @rdname content_hash
 #' @export
 content_hash.memory_source <- function(
-    x, ...,
-    block_bytes = getOption("fmridataset.target_block_bytes", 4 * 1024^2)) {
+  x, ...,
+  block_bytes = getOption("fmridataset.target_block_bytes", 4 * 1024^2)
+) {
   # The values are already realized. Hashing still proceeds in row blocks so
   # that at most one bounded row-major copy exists at a time; a whole-array
   # transpose would double the resident payload.
@@ -104,8 +106,9 @@ content_hash.memory_source <- function(
 #' @rdname content_hash
 #' @export
 content_hash.source_view <- function(
-    x, ...,
-    block_bytes = getOption("fmridataset.target_block_bytes", 4 * 1024^2)) {
+  x, ...,
+  block_bytes = getOption("fmridataset.target_block_bytes", 4 * 1024^2)
+) {
   # A view hashes as the array it presents: its own row-major order, through
   # its own reads, so selector reordering is reflected.
   handle <- source_open(x)
@@ -116,8 +119,9 @@ content_hash.source_view <- function(
 #' @rdname content_hash
 #' @export
 content_hash.row_bound_source <- function(
-    x, ...,
-    block_bytes = getOption("fmridataset.target_block_bytes", 4 * 1024^2)) {
+  x, ...,
+  block_bytes = getOption("fmridataset.target_block_bytes", 4 * 1024^2)
+) {
   # Shards are consecutive row ranges of the logical array, so streaming each
   # child in turn reproduces the row-major order of the whole. Each child is
   # opened once and no read crosses a shard boundary.
@@ -135,8 +139,9 @@ content_hash.row_bound_source <- function(
 # Streaming core ---------------------------------------------------------
 
 .content_hash_through <- function(
-    reader,
-    block_bytes = getOption("fmridataset.target_block_bytes", 4 * 1024^2)) {
+  reader,
+  block_bytes = getOption("fmridataset.target_block_bytes", 4 * 1024^2)
+) {
   state <- .content_hash_state(reader)
   state <- .content_hash_feed(state, reader, block_bytes = block_bytes)
   .content_hash_finish(state)
@@ -149,12 +154,20 @@ content_hash.row_bound_source <- function(
   header <- c(
     charToRaw(paste0(.content_hash_contract$id, "\n")),
     .canonical_int32(shape),
-    charToRaw(switch(mode, double = "d", logical = "l", complex = "z"))
+    charToRaw(switch(mode,
+      double = "d",
+      logical = "l",
+      complex = "z"
+    ))
   )
   list(
     shape = shape,
     mode = mode,
-    width = switch(mode, double = 8L, logical = 1L, complex = 16L),
+    width = switch(mode,
+      double = 8L,
+      logical = 1L,
+      complex = 16L
+    ),
     digest = .content_hash_digest(header),
     carry = raw(),
     values = 0
@@ -163,7 +176,8 @@ content_hash.row_bound_source <- function(
 
 .content_hash_digest <- function(bytes) {
   digest::digest(
-    bytes, algo = .content_hash_contract$algorithm, serialize = FALSE
+    bytes,
+    algo = .content_hash_contract$algorithm, serialize = FALSE
   )
 }
 

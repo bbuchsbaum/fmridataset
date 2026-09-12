@@ -261,7 +261,7 @@ test_that("entity filtering propagates lazily through frames and collections", {
   )
   expect_s3_class(study_frame(older, "bold"), "fmri_frame")
   expect_false(any(c("base", "observation_selection") %in%
-                   names(unclass(study_frame(older, "bold")))))
+    names(unclass(study_frame(older, "bold")))))
   expect_identical(
     source_shape(assays(study_frame(older, "bold"))$signal$source),
     c(2L, 3L)

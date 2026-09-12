@@ -766,13 +766,18 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
   }
   data <- do.call(rbind, values)
   out <- axis_frame(
-    data, blocks = blocks, id = data[[first$id_col]], axis = first$axis,
+    data,
+    blocks = blocks, id = data[[first$id_col]], axis = first$axis,
     id_col = first$id_col, metadata = first$metadata
   )
   policies <- lapply(xs, axis_id_policy)
   out$id_policy <- if (all(vapply(
     policies, identical, logical(1), policies[[1L]]
-  ))) policies[[1L]] else .id_policy("require")
+  ))) {
+    policies[[1L]]
+  } else {
+    .id_policy("require")
+  }
   out
 }
 
@@ -790,14 +795,15 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
       if (!name %in% names(out)) {
         out[[name]] <- value[[name]]
       } else if (inherits(out[[name]], "unaligned_record") &&
-                 inherits(value[[name]], "unaligned_record")) {
+        inherits(value[[name]], "unaligned_record")) {
         out[[name]] <- .merge_unaligned_records(
           list(out[[name]], value[[name]]), child_path
         )
       } else if (!identical(out[[name]], value[[name]])) {
         .frame_abort(
           sprintf("Cannot merge conflicting frame metadata at '%s'.", child_path),
-          "fmridataset_error_alignment", field = child_path
+          "fmridataset_error_alignment",
+          field = child_path
         )
       }
     }
@@ -811,7 +817,8 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
     if (!all(vapply(values, identical, logical(1), values[[1L]]))) {
       .frame_abort(
         "Bound frame metadata differ; use metadata_policy = 'merge' for a conflict-free record merge.",
-        "fmridataset_error_alignment", field = "metadata"
+        "fmridataset_error_alignment",
+        field = "metadata"
       )
     }
     return(values[[1L]])
@@ -828,7 +835,9 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
 .merge_typed_table <- function(values, name) {
   prototype <- values[[1L]]
   keys <- vapply(values, function(value) table_key(value) %||% NA_character_,
-                 character(1), USE.NAMES = FALSE)
+    character(1),
+    USE.NAMES = FALSE
+  )
   if (anyNA(keys) || any(!nzchar(keys))) {
     if (!all(vapply(values, identical, logical(1), prototype))) {
       .table_abort(
@@ -874,7 +883,8 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
     event_table(rows, key = key, metadata = prototype$metadata)
   } else {
     auxiliary_table(
-      rows, key = key, role = table_role(prototype),
+      rows,
+      key = key, role = table_role(prototype),
       metadata = prototype$metadata
     )
   }
@@ -1050,8 +1060,10 @@ bind_observations <- function(...,
   xs <- list(...)
   if (!length(xs)) .frame_abort("At least one frame is required.", "fmridataset_error_alignment")
   if (!all(vapply(xs, inherits, logical(1), "fmri_frame"))) {
-    .frame_abort("Every bound operand must be an fmri_frame or view.",
-                 "fmridataset_error_alignment")
+    .frame_abort(
+      "Every bound operand must be an fmri_frame or view.",
+      "fmridataset_error_alignment"
+    )
   }
   metadata_policy <- match.arg(metadata_policy)
   first <- xs[[1L]]
@@ -1079,15 +1091,17 @@ bind_observations <- function(...,
     if (any(active_values != active_values[[1L]])) {
       .frame_abort(
         "Bound frames have different active assays; supply active_assay explicitly.",
-        "fmridataset_error_alignment", field = "active_assay"
+        "fmridataset_error_alignment",
+        field = "active_assay"
       )
     }
     active_assay <- active_values[[1L]]
   } else if (!is.character(active_assay) || length(active_assay) != 1L ||
-             is.na(active_assay) || !active_assay %in% names(assays(first))) {
+    is.na(active_assay) || !active_assay %in% names(assays(first))) {
     .frame_abort(
       "active_assay must name one assay shared by all bound frames.",
-      "fmridataset_error_alignment", field = "active_assay"
+      "fmridataset_error_alignment",
+      field = "active_assay"
     )
   }
   metadata <- .reconcile_frame_metadata(xs, metadata_policy)

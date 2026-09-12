@@ -2,6 +2,9 @@
 
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/bbuchsbaum/fmridataset/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/bbuchsbaum/fmridataset/actions/workflows/R-CMD-check.yaml)
+[![test-full-matrix](https://github.com/bbuchsbaum/fmridataset/actions/workflows/test-full-matrix.yaml/badge.svg)](https://github.com/bbuchsbaum/fmridataset/actions/workflows/test-full-matrix.yaml)
+[![lint](https://github.com/bbuchsbaum/fmridataset/actions/workflows/lint.yaml/badge.svg)](https://github.com/bbuchsbaum/fmridataset/actions/workflows/lint.yaml)
+[![pkgcheck](https://github.com/bbuchsbaum/fmridataset/actions/workflows/pkgcheck.yaml/badge.svg)](https://github.com/bbuchsbaum/fmridataset/actions/workflows/pkgcheck.yaml)
 [![pkgdown](https://github.com/bbuchsbaum/fmridataset/actions/workflows/pkgdown.yaml/badge.svg)](https://bbuchsbaum.github.io/fmridataset/)
 [![test-coverage](https://github.com/bbuchsbaum/fmridataset/actions/workflows/test-coverage.yaml/badge.svg)](https://github.com/bbuchsbaum/fmridataset/actions/workflows/test-coverage.yaml)
 [![Codecov test coverage](https://codecov.io/gh/bbuchsbaum/fmridataset/branch/main/graph/badge.svg)](https://app.codecov.io/gh/bbuchsbaum/fmridataset?branch=main)

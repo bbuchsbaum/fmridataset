@@ -17,38 +17,51 @@
 #' identity_descriptor(src)$domain
 #' @export
 identity_descriptor <- function(
-    x,
-    domain = c("auto", "semantic", "schema", "space", "source", "provenance", "content"),
-    content_digest = NULL) {
+  x,
+  domain = c("auto", "semantic", "schema", "space", "source", "provenance", "content"),
+  content_digest = NULL
+) {
   domain <- match.arg(domain)
-  inferred <- if (inherits(x, "fmri_frame_schema")) "schema"
-  else if (inherits(x, "feature_space")) "space"
-  else if (inherits(x, "array_source")) "source"
-  else if (inherits(x, "provenance_graph")) "provenance"
-  else "semantic"
+  inferred <- if (inherits(x, "fmri_frame_schema")) {
+    "schema"
+  } else if (inherits(x, "feature_space")) {
+    "space"
+  } else if (inherits(x, "array_source")) {
+    "source"
+  } else if (inherits(x, "provenance_graph")) {
+    "provenance"
+  } else {
+    "semantic"
+  }
   if (identical(domain, "auto")) domain <- inferred
-  digest_value <- switch(
-    domain,
+  digest_value <- switch(domain,
     schema = frame_schema_digest(x),
     space = space_digest(x),
     source = source_fingerprint(x),
     provenance = provenance_digest(x),
     content = {
       if (!is.character(content_digest) || length(content_digest) != 1L ||
-          is.na(content_digest) || !nzchar(content_digest)) {
+        is.na(content_digest) || !nzchar(content_digest)) {
         .frame_abort(
           "content identity requires one externally computed digest.",
-          "fmridataset_error_identity", field = "content_digest"
+          "fmridataset_error_identity",
+          field = "content_digest"
         )
       }
       content_digest
     },
     semantic = {
-      if (inherits(x, "fmri_frame")) fds_manifest_digest(fds_frame_manifest(x))
-      else if (inherits(x, "fmri_collection")) collection_digest(x)
-      else if (inherits(x, "fmri_study")) study_digest(x)
-      else if (is.list(x) && identical(x$object_type, "fmri_frame")) fds_manifest_digest(x)
-      else .canonical_digest(x)
+      if (inherits(x, "fmri_frame")) {
+        fds_manifest_digest(fds_frame_manifest(x))
+      } else if (inherits(x, "fmri_collection")) {
+        collection_digest(x)
+      } else if (inherits(x, "fmri_study")) {
+        study_digest(x)
+      } else if (is.list(x) && identical(x$object_type, "fmri_frame")) {
+        fds_manifest_digest(x)
+      } else {
+        .canonical_digest(x)
+      }
     }
   )
   structure(

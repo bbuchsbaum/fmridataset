@@ -35,7 +35,8 @@ if (requireNamespace("neurosurf", quietly = TRUE)) {
   Sys.setenv(RGL_USE_NULL = "TRUE")
   vertices <- matrix(c(0, 0, 0, 1, 0, 0, 0, 1, 0), ncol = 3, byrow = TRUE)
   geom <- neurosurf::SurfaceGeometry(
-    vertices, matrix(c(0, 1, 2), nrow = 1), hemi = "lh", label = "pial"
+    vertices, matrix(c(0, 1, 2), nrow = 1),
+    hemi = "lh", label = "pial"
   )
   x <- surface_space_from_neurosurf(geom, template = "toy-surface")
   feature_ids(x)

@@ -215,7 +215,7 @@ fds_study_representations <- function(x) {
         representations[[value$target]], value$target_axis, value$target
       )
       if (any(!value$map$.source_id %in% source_ids) ||
-          any(!value$map$.target_id %in% target_ids)) {
+        any(!value$map$.target_id %in% target_ids)) {
         .fds_schema_abort(
           sprintf("Study link '%s' map contains unknown axis IDs.", name),
           paste0("links.", name, ".map")
@@ -228,8 +228,8 @@ fds_study_representations <- function(x) {
         {
           validate_feature_map(typed_map)
           if (!value$type %in% c("mapping", "alignment") ||
-              !identical(value$source_axis, "feature") ||
-              !identical(value$target_axis, "feature")) {
+            !identical(value$source_axis, "feature") ||
+            !identical(value$target_axis, "feature")) {
             .fds_schema_abort(
               sprintf("Study link '%s' uses an operator outside a feature mapping or alignment.", name),
               paste0("links.", name, ".operator")
@@ -238,7 +238,7 @@ fds_study_representations <- function(x) {
           source_representation <- representations[[value$source]]
           target_representation <- representations[[value$target]]
           if (identical(source_representation$type, "fmri_collection") ||
-              identical(target_representation$type, "fmri_collection")) {
+            identical(target_representation$type, "fmri_collection")) {
             .fds_schema_abort(
               sprintf("Study link '%s' operator endpoints must be single frames.", name),
               paste0("links.", name, ".operator")

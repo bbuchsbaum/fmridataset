@@ -22,7 +22,8 @@ test_that("identity descriptors preserve distinct domains", {
   expect_true(all(vapply(identities, inherits, logical(1), "fmri_identity")))
   expect_identical(identities$content$digest, "receipt-1")
   expect_error(identity_descriptor(frame, domain = "content"),
-               class = "fmridataset_error_identity")
+    class = "fmridataset_error_identity"
+  )
 })
 
 test_that("semantic and schema identities ignore source wrappers", {
@@ -32,8 +33,10 @@ test_that("semantic and schema identities ignore source wrappers", {
     lapply(assays(frame), function(value) counting_source(value$source)),
     observation_axis(frame), feature_axis(frame)
   )
-  expect_identical(identity_descriptor(wrapped)$digest,
-                   identity_descriptor(frame)$digest)
+  expect_identical(
+    identity_descriptor(wrapped)$digest,
+    identity_descriptor(frame)$digest
+  )
   expect_identical(frame_schema_digest(wrapped), frame_schema_digest(frame))
 })
 
@@ -45,7 +48,8 @@ test_that("same_space is exact and compatibility names are migration aliases", {
   expect_identical(compatible_space(x, y), same_space(x, y))
   expect_false(same_space(x, same_shape)$same)
   expect_error(assert_same_space(x, same_shape),
-               class = "fmridataset_error_space_mismatch")
+    class = "fmridataset_error_space_mismatch"
+  )
 })
 
 test_that("identity inspection reads zero numerical bytes", {

@@ -35,17 +35,21 @@
 }
 
 .normalize_alignment_domains <- function(domains) {
-  if (is.null(domains)) return(integer())
+  if (is.null(domains)) {
+    return(integer())
+  }
   if (!is.numeric(domains) || is.null(names(domains)) ||
-      anyNA(domains) || any(domains < 0) ||
-      any(domains != as.integer(domains)) || any(!nzchar(names(domains)))) {
+    anyNA(domains) || any(domains < 0) ||
+    any(domains != as.integer(domains)) || any(!nzchar(names(domains)))) {
     .metadata_abort("Alignment domains must be named non-negative sizes.", "domains")
   }
   stats::setNames(as.integer(domains), names(domains))
 }
 
 .metadata_alignment_label <- function(n, domains) {
-  if (n <= 1L || !length(domains)) return(NULL)
+  if (n <= 1L || !length(domains)) {
+    return(NULL)
+  }
   matches <- names(domains)[domains == n]
   if (!length(matches)) NULL else matches[[1L]]
 }
@@ -94,34 +98,34 @@
 }
 
 .normalize_unaligned_list <- function(value, path, domains) {
-    if (!inherits(value, "unaligned_record")) {
-      .assert_unique_names(
-        value, .metadata_abort,
-        sprintf("Metadata record '%s' must have unique non-empty field names.", path),
-        field = path
+  if (!inherits(value, "unaligned_record")) {
+    .assert_unique_names(
+      value, .metadata_abort,
+      sprintf("Metadata record '%s' must have unique non-empty field names.", path),
+      field = path
+    )
+  }
+  fields <- unclass(value)
+  if (length(fields)) {
+    tokens <- .metadata_field_token(names(fields))
+    bad <- tokens %in% .metadata_diagnostic_names
+    if (any(bad)) {
+      field <- names(fields)[which(bad)[[1L]]]
+      .metadata_abort(
+        sprintf(
+          "Metadata field '%s.%s' is a result diagnostic; store diagnostics as aligned assays, blocks, or typed tables.",
+          path, field
+        ),
+        paste(path, field, sep = ".")
       )
     }
-    fields <- unclass(value)
-    if (length(fields)) {
-      tokens <- .metadata_field_token(names(fields))
-      bad <- tokens %in% .metadata_diagnostic_names
-      if (any(bad)) {
-        field <- names(fields)[which(bad)[[1L]]]
-        .metadata_abort(
-          sprintf(
-            "Metadata field '%s.%s' is a result diagnostic; store diagnostics as aligned assays, blocks, or typed tables.",
-            path, field
-          ),
-          paste(path, field, sep = ".")
-        )
-      }
-      fields <- lapply(names(fields), function(name) {
-        child <- if (nzchar(path)) paste(path, name, sep = ".") else name
-        .normalize_unaligned_value(fields[[name]], child, domains)
-      })
-      names(fields) <- names(unclass(value))
-    }
-    return(structure(fields, class = c("unaligned_record", "list")))
+    fields <- lapply(names(fields), function(name) {
+      child <- if (nzchar(path)) paste(path, name, sep = ".") else name
+      .normalize_unaligned_value(fields[[name]], child, domains)
+    })
+    names(fields) <- names(unclass(value))
+  }
+  return(structure(fields, class = c("unaligned_record", "list")))
 }
 
 #' Construct a typed unaligned metadata record
@@ -249,7 +253,9 @@ validate_unaligned_record <- function(x, domains = NULL) {
 }
 
 .validate_container_provenance <- function(provenance, owner) {
-  if (is.null(provenance)) return(NULL)
+  if (is.null(provenance)) {
+    return(NULL)
+  }
   if (!inherits(provenance, "provenance_graph")) {
     .provenance_abort(sprintf(
       "%s provenance must be NULL or a provenance_graph; use as_provenance_graph() for explicit legacy migration.",
@@ -342,8 +348,8 @@ NULL
 validate_auxiliary_table <- function(x) {
   required <- c("data", "key", "role", "metadata", "schema_version")
   if (!inherits(x, "fmri_auxiliary_table") ||
-      !identical(names(unclass(x)), required) ||
-      !identical(x$schema_version, 1L)) {
+    !identical(names(unclass(x)), required) ||
+    !identical(x$schema_version, 1L)) {
     .table_abort("x is not a valid fmri_auxiliary_table.")
   }
   auxiliary_table(x$data, x$key, x$role, x$metadata)
@@ -353,7 +359,9 @@ validate_auxiliary_table <- function(x) {
 #' @rdname auxiliary-table
 #' @export
 table_data <- function(x) {
-  if (inherits(x, "fmri_event_table")) return(event_data(x))
+  if (inherits(x, "fmri_event_table")) {
+    return(event_data(x))
+  }
   validate_auxiliary_table(x)
   x$data
 }
@@ -361,7 +369,9 @@ table_data <- function(x) {
 #' @rdname auxiliary-table
 #' @export
 table_key <- function(x) {
-  if (inherits(x, "fmri_event_table")) return(event_key(x))
+  if (inherits(x, "fmri_event_table")) {
+    return(event_key(x))
+  }
   validate_auxiliary_table(x)
   x$key
 }
@@ -369,7 +379,9 @@ table_key <- function(x) {
 #' @rdname auxiliary-table
 #' @export
 table_role <- function(x) {
-  if (inherits(x, "fmri_event_table")) return("events")
+  if (inherits(x, "fmri_event_table")) {
+    return("events")
+  }
   validate_auxiliary_table(x)
   x$role
 }
@@ -378,7 +390,9 @@ table_role <- function(x) {
   if (!is.list(tables)) {
     .table_abort(sprintf("%s tables must be a named list.", owner), "tables")
   }
-  if (!length(tables)) return(tables)
+  if (!length(tables)) {
+    return(tables)
+  }
   .assert_unique_names(
     tables, .table_abort,
     sprintf("%s tables require unique non-empty names.", owner),
@@ -388,22 +402,29 @@ table_role <- function(x) {
     value <- tables[[name]]
     tryCatch(
       {
-        if (inherits(value, "fmri_event_table")) validate_event_table(value)
-        else if (inherits(value, "fmri_auxiliary_table")) validate_auxiliary_table(value)
-        else .table_abort(
-          sprintf(
-            "%s table '%s' must be a typed table created by event_table() or auxiliary_table().",
-            owner, name
-          ),
-          paste0("tables.", name)
-        )
+        if (inherits(value, "fmri_event_table")) {
+          validate_event_table(value)
+        } else if (inherits(value, "fmri_auxiliary_table")) {
+          validate_auxiliary_table(value)
+        } else {
+          .table_abort(
+            sprintf(
+              "%s table '%s' must be a typed table created by event_table() or auxiliary_table().",
+              owner, name
+            ),
+            paste0("tables.", name)
+          )
+        }
       },
       fmridataset_error_table = function(error) stop(error),
       error = function(error) {
         .table_abort(
-          sprintf("Invalid %s table '%s': %s", tolower(owner), name,
-                  conditionMessage(error)),
-          paste0("tables.", name), parent = error
+          sprintf(
+            "Invalid %s table '%s': %s", tolower(owner), name,
+            conditionMessage(error)
+          ),
+          paste0("tables.", name),
+          parent = error
         )
       }
     )

@@ -10,15 +10,17 @@
 }
 
 .canonical_names <- function(x) {
-  if (is.null(x)) return(NULL)
+  if (is.null(x)) {
+    return(NULL)
+  }
   .canonical_utf8(as.character(x))
 }
 
 .canonical_record_order <- function(x) {
   names_value <- names(x)
   if (is.null(names_value) || length(names_value) != length(x) ||
-      anyNA(names_value) || any(!nzchar(names_value)) ||
-      anyDuplicated(names_value)) {
+    anyNA(names_value) || any(!nzchar(names_value)) ||
+    anyDuplicated(names_value)) {
     return(seq_along(x))
   }
   order(.canonical_names(names_value), method = "radix")
@@ -26,12 +28,15 @@
 
 .canonical_attributes <- function(x) {
   values <- attributes(x)
-  if (is.null(values)) return(NULL)
+  if (is.null(values)) {
+    return(NULL)
+  }
   names_value <- names(values)
   if (is.null(names_value) || anyNA(names_value) || any(!nzchar(names_value)) ||
-      anyDuplicated(names_value)) {
+    anyDuplicated(names_value)) {
     .identity_abort("Object attributes require unique non-empty names.",
-                    field = "attributes")
+      field = "attributes"
+    )
   }
   names(values) <- .canonical_names(names_value)
   values <- values[order(names(values), method = "radix")]
@@ -69,7 +74,9 @@
       field = "value"
     )
   }
-  if (is.null(x)) return(NULL)
+  if (is.null(x)) {
+    return(NULL)
+  }
   if (is.pairlist(x)) x <- as.list(x)
   if (is.list(x)) {
     attributes_value <- .canonical_attributes(x)
@@ -102,7 +109,8 @@
 .canonical_length <- function(x) {
   if (length(x) != 1L || is.na(x) || x < 0 || x > .Machine$integer.max) {
     .identity_abort("Canonical values exceed the v1 32-bit length limit.",
-                    field = "length")
+      field = "length"
+    )
   }
   .canonical_int32(x)
 }
@@ -110,15 +118,23 @@
 .canonical_tag <- function(x) charToRaw(x)
 
 .canonical_string_bytes <- function(x) {
-  if (is.na(x)) return(.canonical_tag("0"))
+  if (is.na(x)) {
+    return(.canonical_tag("0"))
+  }
   value <- charToRaw(enc2utf8(x))
   c(.canonical_tag("1"), .canonical_length(length(value)), value)
 }
 
 .canonical_double_bytes <- function(x) {
-  if (is.nan(x)) return(.canonical_tag("n"))
-  if (is.na(x)) return(.canonical_tag("a"))
-  if (is.infinite(x)) return(.canonical_tag(if (x > 0) "p" else "m"))
+  if (is.nan(x)) {
+    return(.canonical_tag("n"))
+  }
+  if (is.na(x)) {
+    return(.canonical_tag("a"))
+  }
+  if (is.infinite(x)) {
+    return(.canonical_tag(if (x > 0) "p" else "m"))
+  }
   c(.canonical_tag("f"), writeBin(x, raw(), size = 8L, endian = "big"))
 }
 
@@ -129,7 +145,9 @@
 # per-element encoder was the dominant cost of a fingerprint.
 .canonical_double_vector_bytes <- function(x) {
   n <- length(x)
-  if (!n) return(raw())
+  if (!n) {
+    return(raw())
+  }
   nan <- is.nan(x)
   na <- is.na(x) & !nan
   regular <- !nan & !na & is.finite(x)
@@ -155,15 +173,20 @@
 # UTF-8 payloads are placed by index into one preallocated raw vector.
 .canonical_string_vector_bytes <- function(x) {
   n <- length(x)
-  if (!n) return(raw())
+  if (!n) {
+    return(raw())
+  }
   missing_value <- is.na(x)
   present <- which(!missing_value)
-  if (!length(present)) return(rep(.canonical_tag("0"), n))
+  if (!length(present)) {
+    return(rep(.canonical_tag("0"), n))
+  }
   strings <- enc2utf8(x[present])
   lengths <- nchar(strings, type = "bytes")
   if (any(lengths > .Machine$integer.max)) {
     .identity_abort("Canonical values exceed the v1 32-bit length limit.",
-                    field = "length")
+      field = "length"
+    )
   }
   sizes <- rep(1L, n)
   sizes[present] <- 5L + lengths
@@ -185,12 +208,15 @@
 
 .canonical_attribute_bytes <- function(x) {
   values <- attributes(x)
-  if (is.null(values)) return(c(.canonical_tag("A"), .canonical_length(0L)))
+  if (is.null(values)) {
+    return(c(.canonical_tag("A"), .canonical_length(0L)))
+  }
   names_value <- names(values)
   if (is.null(names_value) || anyNA(names_value) || any(!nzchar(names_value)) ||
-      anyDuplicated(names_value)) {
+    anyDuplicated(names_value)) {
     .identity_abort("Object attributes require unique non-empty names.",
-                    field = "attributes")
+      field = "attributes"
+    )
   }
   names_value <- .canonical_names(names_value)
   order_value <- order(names_value, method = "radix")
@@ -205,14 +231,15 @@
 }
 
 .canonical_value_bytes <- function(x) {
-  if (is.null(x)) return(.canonical_tag("N"))
+  if (is.null(x)) {
+    return(.canonical_tag("N"))
+  }
   attrs <- .canonical_attribute_bytes(x)
   # Attributes are encoded independently above. Strip them before writing the
   # payload so classed atomic vectors such as POSIXct reach writeBin() as their
   # ordinary underlying vector storage.
   attributes(x) <- NULL
-  value <- switch(
-    typeof(x),
+  value <- switch(typeof(x),
     logical = c(
       .canonical_tag("l"), .canonical_length(length(x)),
       as.raw(ifelse(is.na(x), 2L, as.integer(x)))
@@ -275,7 +302,8 @@ canonical_bytes <- function(x) {
 #' @export
 canonical_sha256 <- function(x) {
   digest::digest(
-    canonical_bytes(x), algo = .canonicalization_contract$algorithm,
+    canonical_bytes(x),
+    algo = .canonicalization_contract$algorithm,
     serialize = FALSE
   )
 }

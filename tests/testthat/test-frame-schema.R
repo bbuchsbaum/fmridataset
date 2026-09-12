@@ -44,7 +44,8 @@ test_that("schema mismatches report their first semantic path", {
   frame <- make_frame_fixture()$frame
   changed <- frame
   changed$observations$data$Fac1 <- factor(
-    changed$observations$data$Fac1, levels = c("B", "A")
+    changed$observations$data$Fac1,
+    levels = c("B", "A")
   )
   report <- compare_frame_schema(changed, frame)
   expect_false(report$compatible)
