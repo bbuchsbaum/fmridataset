@@ -139,8 +139,17 @@ fds_schema_version <- function() .fds_schema$version
 #' source descriptors. Storage packages bind assay names to physical array
 #' locations separately and reconstruct frames with `frame_from_fds_manifest()`.
 #'
+#' Version-1 manifests written before the `id_policy` and typed-metadata
+#' fields were added are still version 1: `validate_fds_manifest()` reads an
+#' absent `id_policy` as the `require` policy (a persisted ID is supplied and
+#' durable) and types absent or plain-list container metadata through
+#' [unaligned_record()], which still rejects runtime state and hidden
+#' alignment. `fds_frame_manifest()` always writes the current field set.
+#'
 #' @param x An `fmri_frame`.
-#' @return A serializable backend-neutral manifest.
+#' @return `fds_frame_manifest()` returns a serializable backend-neutral
+#'   manifest; `validate_fds_manifest()` returns the manifest invisibly,
+#'   normalized to the current version-1 field set.
 #' @examples
 #' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
 #' frame <- fmri_frame(
@@ -235,6 +244,69 @@ fds_frame_manifest <- function(x) {
   )
   validate_fds_manifest(manifest)
   manifest
+}
+
+# FDS v1 manifests written before the durable-ID and typed-metadata fields
+# carry the same schema identity, and ADR-002 rule 3 says a version-1 field
+# cannot change meaning: an ID that was persisted is by definition supplied
+# and durable, and container metadata was always an unaligned record whether
+# or not the writer typed it. Readers therefore normalize the older shape
+# instead of refusing it: an absent `id_policy` is the `require` policy,
+# absent axis or entity metadata is an empty list, and absent or plain-list
+# container metadata is typed through unaligned_record(), which still rejects
+# runtime state and hidden alignment. Fields are returned in the writer's
+# order so a normalized old manifest is identical() to a freshly written one.
+# Writers always emit every field.
+.fds_manifest_axis_fields <- c("ids", "id_column", "id_policy", "data", "blocks", "metadata", "space")
+.fds_manifest_entity_fields <- c(
+  "name", "key", "ids", "id_policy", "data", "blocks", "entity_type", "metadata"
+)
+.fds_manifest_fields <- c(
+  "schema", "object_type", "shape", "axes", "arrays", "assays", "entities",
+  "relations", "tables", "active_assay", "metadata", "provenance", "extensions"
+)
+
+.fds_reorder_fields <- function(value, fields) {
+  if (all(names(value) %in% fields)) value[intersect(fields, names(value))] else value
+}
+
+.fds_normalize_axis_manifest <- function(value, fields) {
+  if (!is.list(value)) {
+    return(value)
+  }
+  if (is.null(value$id_policy)) value$id_policy <- .id_policy("require")
+  if (is.null(value$metadata)) value$metadata <- list()
+  .fds_reorder_fields(value, fields)
+}
+
+.normalize_fds_manifest <- function(manifest) {
+  if (!is.list(manifest)) {
+    return(manifest)
+  }
+  if (is.list(manifest$axes)) {
+    for (axis in intersect(c("observation", "feature"), names(manifest$axes))) {
+      manifest$axes[[axis]] <- .fds_normalize_axis_manifest(
+        manifest$axes[[axis]], .fds_manifest_axis_fields
+      )
+    }
+  }
+  if (is.list(manifest$entities) && length(manifest$entities) &&
+    .has_unique_names(manifest$entities)) {
+    manifest$entities[] <- lapply(
+      manifest$entities, .fds_normalize_axis_manifest, .fds_manifest_entity_fields
+    )
+  }
+  if (!inherits(manifest$metadata, "unaligned_record")) {
+    typed <- tryCatch(
+      unaligned_record(manifest$metadata %||% list()),
+      error = function(error) NULL
+    )
+    # A record that cannot be typed is left for validation to reject with the
+    # schema error and field it reports today.
+    if (!is.null(typed)) manifest$metadata <- typed
+  }
+  if (!"provenance" %in% names(manifest)) manifest["provenance"] <- list(NULL)
+  .fds_reorder_fields(manifest, .fds_manifest_fields)
 }
 
 .validate_manifest_entities <- function(values, arrays) {
@@ -477,10 +549,8 @@ fds_frame_manifest <- function(x) {
 #' @rdname fds_frame_manifest
 #' @export
 validate_fds_manifest <- function(manifest) {
-  required <- c(
-    "schema", "object_type", "shape", "axes", "arrays", "assays", "entities",
-    "relations", "tables", "active_assay", "metadata", "provenance", "extensions"
-  )
+  manifest <- .normalize_fds_manifest(manifest)
+  required <- .fds_manifest_fields
   if (!is.list(manifest) || !all(required %in% names(manifest))) {
     .fds_schema_abort("The FDS manifest is missing required fields.", "manifest")
   }
@@ -550,10 +620,10 @@ validate_fds_manifest <- function(manifest) {
       .fds_schema_abort(conditionMessage(error), "entities")
     }
   )
-  tryCatch(
-    validate_unaligned_record(
+  manifest$metadata <- tryCatch(
+    unaligned_record(
       manifest$metadata,
-      .container_alignment_domains(
+      domains = .container_alignment_domains(
         observations = manifest$axes$observation$ids,
         features = manifest$axes$feature$ids,
         entities = manifest_entities
@@ -729,8 +799,10 @@ fds_frame_bindings <- function(x) {
 #' fds_manifest_digest(manifest)
 #' @export
 fds_manifest_digest <- function(manifest) {
-  validate_fds_manifest(manifest)
-  .canonical_digest(manifest)
+  # Digest the normalized manifest so a manifest written before the
+  # id_policy and typed-metadata fields digests exactly like the same frame
+  # rewritten by this build.
+  .canonical_digest(validate_fds_manifest(manifest))
 }
 
 #' Reconstruct a frame from an FDS manifest and physical sources
@@ -753,7 +825,7 @@ fds_manifest_digest <- function(manifest) {
 #' identical(feature_ids(rebuilt), feature_ids(frame))
 #' @export
 frame_from_fds_manifest <- function(manifest, bindings) {
-  validate_fds_manifest(manifest)
+  manifest <- validate_fds_manifest(manifest)
   expected <- names(manifest$arrays)
   if (!is.list(bindings) || is.null(names(bindings)) || anyDuplicated(names(bindings)) ||
     !setequal(names(bindings), expected)) {

@@ -30,7 +30,8 @@
 #' @param x An `fmri_study`.
 #' @param manifest An FDS study manifest.
 #' @return `fds_study_manifest()` returns a serializable source-free manifest;
-#'   `validate_fds_study_manifest()` returns `manifest` invisibly.
+#'   `validate_fds_study_manifest()` returns `manifest` invisibly, with every
+#'   member frame manifest normalized as `validate_fds_manifest()` does.
 #' @examples
 #' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
 #' frame <- fmri_frame(
@@ -117,6 +118,62 @@ fds_study_representations <- function(x) {
   invisible(TRUE)
 }
 
+# The study counterpart of .normalize_fds_manifest(): member frame manifests
+# are normalized in place and a collection representation written without
+# typed metadata is typed the same way. Validation then compares and digests
+# the normalized shape.
+.normalize_fds_study_representation <- function(value) {
+  if (!is.list(value)) {
+    return(value)
+  }
+  if (identical(value$type, "fmri_frame")) {
+    if (is.list(value$manifest)) value$manifest <- .normalize_fds_manifest(value$manifest)
+    return(value)
+  }
+  if (identical(value$type, "fmri_collection")) {
+    if (is.list(value$members) && length(value$members) && .has_unique_names(value$members)) {
+      value$members[] <- lapply(value$members, .normalize_fds_manifest)
+    }
+    if (!inherits(value$metadata, "unaligned_record")) {
+      typed <- tryCatch(
+        unaligned_record(value$metadata %||% list()),
+        error = function(error) NULL
+      )
+      if (!is.null(typed)) value$metadata <- typed
+    }
+    if (!"provenance" %in% names(value)) value["provenance"] <- list(NULL)
+    fields <- c("type", "members", "metadata", "provenance")
+    if (all(names(value) %in% fields)) value <- value[intersect(fields, names(value))]
+  }
+  value
+}
+
+.normalize_fds_study_manifest <- function(manifest) {
+  if (!is.list(manifest)) {
+    return(manifest)
+  }
+  if (is.list(manifest$representations) && length(manifest$representations) &&
+    .has_unique_names(manifest$representations)) {
+    manifest$representations[] <- lapply(
+      manifest$representations, .normalize_fds_study_representation
+    )
+  }
+  if (is.list(manifest$entities) && length(manifest$entities) &&
+    .has_unique_names(manifest$entities)) {
+    manifest$entities[] <- lapply(
+      manifest$entities, .fds_normalize_axis_manifest, .fds_manifest_entity_fields
+    )
+  }
+  if (!inherits(manifest$metadata, "unaligned_record")) {
+    typed <- tryCatch(
+      unaligned_record(manifest$metadata %||% list()),
+      error = function(error) NULL
+    )
+    if (!is.null(typed)) manifest$metadata <- typed
+  }
+  manifest
+}
+
 .validate_study_representation_manifest <- function(value, name) {
   if (!is.list(value) || !is.character(value$type) || length(value$type) != 1L) {
     .fds_schema_abort("Study representation has no valid type.", paste0("representations.", name))
@@ -160,7 +217,7 @@ fds_study_representations <- function(x) {
     }
   }
   tryCatch(
-    validate_unaligned_record(value$metadata, member_domains),
+    unaligned_record(value$metadata, domains = member_domains),
     error = function(error) {
       .fds_schema_abort(conditionMessage(error), paste0("representations.", name, ".metadata"))
     }
@@ -268,6 +325,7 @@ fds_study_representations <- function(x) {
 #' @rdname fds_study_manifest
 #' @export
 validate_fds_study_manifest <- function(manifest) {
+  manifest <- .normalize_fds_study_manifest(manifest)
   required <- c(
     "schema", "object_type", "representations", "arrays", "entities",
     "links", "tables", "metadata", "provenance", "extensions"
@@ -344,8 +402,8 @@ validate_fds_study_manifest <- function(manifest) {
       }
     }
   }
-  tryCatch(
-    validate_unaligned_record(manifest$metadata, metadata_domains),
+  manifest$metadata <- tryCatch(
+    unaligned_record(manifest$metadata, domains = metadata_domains),
     error = function(error) {
       .fds_schema_abort(conditionMessage(error), "metadata")
     }
@@ -549,7 +607,7 @@ fds_study_bindings <- function(x) {
 #' study_ids(rebuilt)
 #' @export
 study_from_fds_manifest <- function(manifest, representations, bindings = list()) {
-  validate_fds_study_manifest(manifest)
+  manifest <- validate_fds_study_manifest(manifest)
   representations <- .validate_bound_representations(manifest, representations)
   expected <- names(manifest$arrays)
   if (!is.list(bindings) ||
@@ -593,6 +651,5 @@ study_from_fds_manifest <- function(manifest, representations, bindings = list()
 #' fds_study_manifest_digest(manifest)
 #' @export
 fds_study_manifest_digest <- function(manifest) {
-  validate_fds_study_manifest(manifest)
-  .canonical_digest(manifest)
+  .canonical_digest(validate_fds_study_manifest(manifest))
 }

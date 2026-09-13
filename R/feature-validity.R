@@ -515,6 +515,47 @@ source_read.validity_masked_source <- function(x, observations = NULL,
   values
 }
 #' @export
+source_realization_cost.validity_masked_source <- function(x, observations = NULL,
+                                                           features = NULL) {
+  observations <- .normalize_source_index(observations, x$shape[1L])
+  features <- .normalize_source_index(features, x$shape[2L])
+  n_observation <- length(observations)
+  n_feature <- length(features)
+  # The child's realized matrix is masked in place and returned, so the
+  # output and the child's buffers are the child's own estimate.
+  child <- source_realization_cost(
+    x$source,
+    observations = observations, features = features
+  )
+  # The mask is cut from the whole bank expanded to a logical matrix, then
+  # held as one logical value per returned cell.
+  bank_bytes <- if (n_observation && n_feature) {
+    4 * as.double(length(x$bank$mask_ids)) * x$bank$n_features
+  } else {
+    0
+  }
+  mask_bytes <- 4 * as.double(n_observation) * n_feature
+  temporary_bytes <- child$estimated_temporary_bytes + bank_bytes + mask_bytes
+  structure(
+    list(
+      shape = c(n_observation, n_feature),
+      values = as.double(n_observation) * n_feature,
+      storage_dtype = child$storage_dtype,
+      storage_bytes = child$storage_bytes,
+      realized_dtype = child$realized_dtype,
+      realized_dtype_bytes = child$realized_dtype_bytes,
+      estimated_output_bytes = child$estimated_output_bytes,
+      child_temporary_bytes = child$estimated_temporary_bytes,
+      mask_bank_bytes = bank_bytes,
+      mask_buffer_bytes = mask_bytes,
+      estimated_temporary_bytes = temporary_bytes,
+      estimated_peak_bytes = child$estimated_output_bytes + temporary_bytes
+    ),
+    class = "source_realization_cost"
+  )
+}
+
+#' @export
 source_read_native.validity_masked_source <- function(x, observations = NULL, ...) {
   .frame_abort(
     "validity_masked_source has no native spatial read path.",
