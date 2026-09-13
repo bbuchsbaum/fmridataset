@@ -80,5 +80,7 @@ frame <- fmri_frame(
 )
 schema <- temporal_schema(frame)
 schema$run_lengths
-as_sampling_frame(frame)
+if (requireNamespace("fmrihrf", quietly = TRUE)) {
+  as_sampling_frame(frame)
+}
 }

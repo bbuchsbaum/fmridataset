@@ -684,7 +684,8 @@ source_view <- function(source, observations = NULL, features = NULL) {
   source <- as_array_source(source)
   shape <- source_shape(source)
   observations <- .normalize_selection(
-    observations, shape[[1L]], axis = "observation"
+    observations, shape[[1L]],
+    axis = "observation"
   )
   features <- .normalize_selection(features, shape[[2L]], axis = "feature")
   if (inherits(source, "source_view")) {
@@ -740,10 +741,12 @@ source_open.source_view <- function(x, ...) {
 #' @export
 source_read.source_view <- function(x, observations = NULL, features = NULL, ...) {
   observations <- .normalize_selection(
-    observations, .selection_length(x$observations), axis = "observation"
+    observations, .selection_length(x$observations),
+    axis = "observation"
   )
   features <- .normalize_selection(
-    features, .selection_length(x$features), axis = "feature"
+    features, .selection_length(x$features),
+    axis = "feature"
   )
   source_read(
     x$source,
@@ -762,7 +765,8 @@ source_read_native.source_view <- function(x, observations = NULL, ...) {
     )
   }
   observations <- .normalize_selection(
-    observations, .selection_length(x$observations), axis = "observation"
+    observations, .selection_length(x$observations),
+    axis = "observation"
   )
   source_read_native(
     x$source,

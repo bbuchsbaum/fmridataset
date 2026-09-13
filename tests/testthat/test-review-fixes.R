@@ -60,7 +60,8 @@ test_that("bind_observations() still refuses genuinely different entity registri
   changed_data <- entity_data(changed)
   changed_data$category[[1L]] <- "house"
   different_data <- entity_frame(
-    changed_data, key = "stimulus_id", blocks = entity_blocks(changed)
+    changed_data,
+    key = "stimulus_id", blocks = entity_blocks(changed)
   )
   other_data <- fmri_frame(
     assays = assays(other), observations = observation_axis(other),
@@ -77,9 +78,11 @@ test_that("bind_observations() still refuses genuinely different entity registri
   values <- axis_block_data(block)
   values[1L, 1L] <- values[1L, 1L] + 1
   different_values <- entity_frame(
-    entity_data(changed), key = "stimulus_id",
+    entity_data(changed),
+    key = "stimulus_id",
     blocks = list(visual_pca = axis_block(
-      memory_source(values), components = block_components(block), role = block$role
+      memory_source(values),
+      components = block_components(block), role = block$role
     ))
   )
   other_values <- fmri_frame(
@@ -115,7 +118,8 @@ local({
   registerS3method("source_chunks", cls, function(x, ...) source_chunks(x$source), envir = ns)
   registerS3method(
     "source_capabilities", cls,
-    function(x, ...) source_capabilities(x$source), envir = ns
+    function(x, ...) source_capabilities(x$source),
+    envir = ns
   )
   registerS3method("source_fingerprint", cls, function(x, ...) {
     .fingerprint_calls$n <- .fingerprint_calls$n + 1L
@@ -244,7 +248,9 @@ test_that("a class with no protocol methods is still named as implementing nothi
 test_that("vectorized canonical string encoding matches the per-element reference", {
   reference <- function(x) {
     unlist(lapply(x, function(value) {
-      if (is.na(value)) return(charToRaw("0"))
+      if (is.na(value)) {
+        return(charToRaw("0"))
+      }
       bytes <- charToRaw(enc2utf8(value))
       c(charToRaw("1"), writeBin(length(bytes), raw(), size = 4L, endian = "big"), bytes)
     }), use.names = FALSE)
@@ -478,7 +484,8 @@ test_that("bound typed tables compare factor cells under one declared level set"
   obs2$.obs_id <- sprintf("other-%03d", seq_len(nrow(obs2)))
   with_table <- function(observations, table) {
     fmri_frame(
-      list(beta = memory_source(fx$beta)), observations = observations,
+      list(beta = memory_source(fx$beta)),
+      observations = observations,
       features = feature_axis(fr), tables = list(contrasts = table)
     )
   }

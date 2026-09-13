@@ -4,11 +4,13 @@
 
 .assert_collection_semantics <- function(reference, candidate, frame_id) {
   report <- compare_frame_schema(candidate, reference, mode = "collection")
-  if (!report$compatible) .collection_abort(
-    sprintf("Frame '%s' has an incompatible schema at '%s'.", frame_id, report$path),
-    frame = frame_id, field = report$path,
-    expected = report$expected, actual = report$actual
-  )
+  if (!report$compatible) {
+    .collection_abort(
+      sprintf("Frame '%s' has an incompatible schema at '%s'.", frame_id, report$path),
+      frame = frame_id, field = report$path,
+      expected = report$expected, actual = report$actual
+    )
+  }
   invisible(TRUE)
 }
 

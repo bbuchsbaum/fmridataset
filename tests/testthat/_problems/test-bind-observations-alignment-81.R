@@ -34,6 +34,6 @@ block_matrix <- function(frame) {
 a <- bind_frame(c("o1", "o2"), c("translation", "rotation"))
 b <- bind_frame(c("o3", "o4"), c("translation", "scaling"))
 expect_error(
-    bind_observations(a, b),
-    class = "fmridataset_error_alignment"
-  )
+  bind_observations(a, b),
+  class = "fmridataset_error_alignment"
+)

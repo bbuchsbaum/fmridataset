@@ -33,7 +33,7 @@ block_matrix <- function(frame) {
 # test -------------------------------------------------------------------------
 a <- bind_frame(c("o1", "o2", "o3"), c("translation", "rotation"))
 b <- bind_frame(
-    c("o4", "o5"), c("rotation", "translation"),
-    block_values = matrix(c(100, 200, 300, 400), 2, 2)
-  )
+  c("o4", "o5"), c("rotation", "translation"),
+  block_values = matrix(c(100, 200, 300, 400), 2, 2)
+)
 ab <- bind_observations(a, b)

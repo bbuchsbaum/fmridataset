@@ -638,8 +638,12 @@ print.provenance_graph <- function(x, ...) {
 #' provenance_tips(g2)
 #' @export
 as_provenance_graph <- function(x) {
-  if (is.null(x)) return(provenance_graph())
-  if (inherits(x, "provenance_graph")) return(provenance_graph(x))
+  if (is.null(x)) {
+    return(provenance_graph())
+  }
+  if (inherits(x, "provenance_graph")) {
+    return(provenance_graph(x))
+  }
   if (.source_contains_runtime_state(x)) {
     .provenance_abort("Provenance cannot contain runtime state.")
   }

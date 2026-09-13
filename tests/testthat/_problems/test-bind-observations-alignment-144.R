@@ -32,6 +32,6 @@ block_matrix <- function(frame) {
 
 # test -------------------------------------------------------------------------
 a <- bind_frame(c("o1", "o2"), c("translation", "rotation"),
-    tables = list(events = tibble::tibble(onset = 1)),
-    metadata = list(source = "shared")
-  )
+  tables = list(events = tibble::tibble(onset = 1)),
+  metadata = list(source = "shared")
+)

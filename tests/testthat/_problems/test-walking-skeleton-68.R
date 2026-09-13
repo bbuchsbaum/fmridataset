@@ -28,10 +28,10 @@
 fixture <- make_walking_skeleton_fixture()
 spec <- .walking_design_spec()
 memory_fit <- fmrigds::fit_group(
-    fixture$frame,
-    estimate = "beta",
-    variance = "variance",
-    design = spec,
-    memory_budget = 256 * 1024^2,
-    block_size = 2L
-  )
+  fixture$frame,
+  estimate = "beta",
+  variance = "variance",
+  design = spec,
+  memory_budget = 256 * 1024^2,
+  block_size = 2L
+)

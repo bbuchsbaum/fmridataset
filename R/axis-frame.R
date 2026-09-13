@@ -55,8 +55,8 @@
     )
   }
   if (!is.character(id_keys) || !length(id_keys) || anyNA(id_keys) ||
-      any(!nzchar(id_keys)) || anyDuplicated(id_keys) ||
-      !all(id_keys %in% names(data))) {
+    any(!nzchar(id_keys)) || anyDuplicated(id_keys) ||
+    !all(id_keys %in% names(data))) {
     .identity_abort(
       "Deterministic ID policy requires unique `id_keys` present in axis data.",
       field = "id_keys", policy = id_policy

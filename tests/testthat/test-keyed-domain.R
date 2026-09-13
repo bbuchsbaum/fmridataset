@@ -332,7 +332,8 @@ test_that("binding frames with blocks preserves component IDs and values", {
       observations = axis_frame(
         tibble::tibble(.obs_id = ids),
         blocks = list(motion = axis_block(
-          data, components = data.frame(.component_id = c("tx", "ty"))
+          data,
+          components = data.frame(.component_id = c("tx", "ty"))
         ))
       ),
       features = feature_axis(

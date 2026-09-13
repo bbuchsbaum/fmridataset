@@ -61,10 +61,12 @@ test_that("binding preserves all compatible semantic annotations", {
 test_that("binding frame metadata is identical by default or explicitly merged", {
   frame <- make_frame_fixture()$frame
   left <- .bind_contract_frame(
-    frame, 1:3, metadata = list(study = "A", acquisition = list(site = "X"))
+    frame, 1:3,
+    metadata = list(study = "A", acquisition = list(site = "X"))
   )
   right <- .bind_contract_frame(
-    frame, 4:7, metadata = list(study = "A", acquisition = list(scanner = "Prisma"))
+    frame, 4:7,
+    metadata = list(study = "A", acquisition = list(scanner = "Prisma"))
   )
 
   expect_error(
@@ -78,7 +80,8 @@ test_that("binding frame metadata is identical by default or explicitly merged",
   expect_identical(bound$metadata$acquisition$scanner, "Prisma")
 
   conflict <- .bind_contract_frame(
-    frame, 4:7, metadata = list(study = "B", acquisition = list(site = "Y"))
+    frame, 4:7,
+    metadata = list(study = "B", acquisition = list(site = "Y"))
   )
   expect_error(
     bind_observations(left, conflict, metadata_policy = "merge"),
@@ -153,10 +156,12 @@ test_that("binding combines lineage under a content-addressed bind node", {
   left_record <- provenance_record("left_import")
   right_record <- provenance_record("right_import")
   left <- .bind_contract_frame(
-    frame, 1:3, provenance = provenance_graph(left_record)
+    frame, 1:3,
+    provenance = provenance_graph(left_record)
   )
   right <- .bind_contract_frame(
-    frame, 4:7, provenance = provenance_graph(right_record)
+    frame, 4:7,
+    provenance = provenance_graph(right_record)
   )
 
   bound <- bind_observations(left, right)

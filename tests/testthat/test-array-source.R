@@ -99,8 +99,10 @@ test_that("instrumentation descriptors remain serializable developer tools", {
   expect_false(contains_runtime_state(counted))
   expect_false(contains_runtime_state(faulted))
   expect_identical(source_counts(counted)$bytes, 0)
-  expect_identical(source_fingerprint(unserialize(serialize(counted, NULL))),
-                   source_fingerprint(counted))
+  expect_identical(
+    source_fingerprint(unserialize(serialize(counted, NULL))),
+    source_fingerprint(counted)
+  )
   expect_error(source_read(faulted, 1L, 1L), class = "fmridataset_error_backend_io")
 })
 

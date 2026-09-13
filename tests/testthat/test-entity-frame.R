@@ -148,7 +148,8 @@ test_that("fmri_frame normalizes and exposes entity registries", {
     assays = list(signal = matrix(1:4, 2, 2)),
     observations = tibble::tibble(.obs_id = c("o1", "o2")),
     space = index_space(
-      2, namespace = "entity-frame", id_policy = "deterministic"
+      2,
+      namespace = "entity-frame", id_policy = "deterministic"
     )
   )
   expect_s3_class(entities(no_entities), "entity_registry")

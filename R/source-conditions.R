@@ -70,7 +70,9 @@ source_error <- function(message, type = c("stale", "io", "contract"), ...) {
 # reported a complete class as implementing nothing.
 .resolve_source_method <- function(generic, cls, envir) {
   method <- utils::getS3method(generic, cls, optional = TRUE, envir = envir)
-  if (!is.null(method)) return(method)
+  if (!is.null(method)) {
+    return(method)
+  }
   name <- paste(generic, cls, sep = ".")
   if (exists(name, envir = envir, mode = "function")) {
     return(get(name, envir = envir, mode = "function"))

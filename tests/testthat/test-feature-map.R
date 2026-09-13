@@ -308,8 +308,10 @@ test_that("study mapping links validate their typed feature operator", {
     "fmri_study"
   )
   expect_invisible(validate_fds_study_manifest(fds_study_manifest(study)))
-  expect_identical(feature_map_digest(link$operator),
-                   feature_map_digest(fx$map))
+  expect_identical(
+    feature_map_digest(link$operator),
+    feature_map_digest(fx$map)
+  )
   positional_metadata <- frame_link(
     "parcel", "native", "correspondence", NULL,
     "feature", "feature", list(legacy = TRUE)
@@ -340,11 +342,13 @@ test_that("mapping-link composition preserves feature-map direction", {
   first_map <- feature_map(source, middle, matrix(c(1, 0, 0, 2), 2L))
   second_map <- feature_map(middle, target, matrix(c(3, 4), 1L))
   first <- frame_link(
-    "native", "parcel", "mapping", source_axis = "feature",
+    "native", "parcel", "mapping",
+    source_axis = "feature",
     target_axis = "feature", operator = first_map
   )
   second <- frame_link(
-    "parcel", "latent", "mapping", source_axis = "feature",
+    "parcel", "latent", "mapping",
+    source_axis = "feature",
     target_axis = "feature", operator = second_map
   )
 

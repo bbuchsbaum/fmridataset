@@ -18,23 +18,28 @@ test_that("deterministic IDs reconstruct from declared keys", {
     stringsAsFactors = FALSE
   )
   first <- axis_frame(
-    data, id_policy = "deterministic",
+    data,
+    id_policy = "deterministic",
     id_keys = c("subject", "run", "index"), id_namespace = "bids-bold"
   )
   second <- axis_frame(
-    data, id_policy = "deterministic",
+    data,
+    id_policy = "deterministic",
     id_keys = c("subject", "run", "index"), id_namespace = "bids-bold"
   )
 
   expect_identical(axis_ids(first), axis_ids(second))
   expect_match(axis_ids(first), "^obs-[0-9a-f]{64}$")
-  expect_identical(axis_id_policy(first)$keys,
-                   c("subject", "run", "index"))
+  expect_identical(
+    axis_id_policy(first)$keys,
+    c("subject", "run", "index")
+  )
   expect_true(ids_are_durable(first))
   expect_identical(axis_ids(first[c(3L, 1L)]), axis_ids(first)[c(3L, 1L)])
 
   reconstructed <- axis_frame(
-    axis_data(first), id_policy = "deterministic",
+    axis_data(first),
+    id_policy = "deterministic",
     id_keys = c("subject", "run", "index"), id_namespace = "bids-bold"
   )
   expect_identical(axis_ids(reconstructed), axis_ids(first))
@@ -44,7 +49,8 @@ test_that("deterministic ID collisions and mismatches fail", {
   duplicate_keys <- data.frame(subject = c("sub-01", "sub-01"), run = 1L)
   expect_error(
     axis_frame(
-      duplicate_keys, id_policy = "deterministic",
+      duplicate_keys,
+      id_policy = "deterministic",
       id_keys = c("subject", "run"), id_namespace = "bids"
     ),
     class = "fmridataset_error_identity",
@@ -54,7 +60,8 @@ test_that("deterministic ID collisions and mismatches fail", {
   mismatched <- data.frame(.obs_id = "wrong", subject = "sub-01", run = 1L)
   expect_error(
     axis_frame(
-      mismatched, id_policy = "deterministic",
+      mismatched,
+      id_policy = "deterministic",
       id_keys = c("subject", "run"), id_namespace = "bids"
     ),
     class = "fmridataset_error_identity",
@@ -64,7 +71,8 @@ test_that("deterministic ID collisions and mismatches fail", {
 
 test_that("ephemeral IDs are visible and cannot be certified or persisted", {
   observations <- axis_frame(
-    data.frame(value = 1:2), id_policy = "ephemeral"
+    data.frame(value = 1:2),
+    id_policy = "ephemeral"
   )
   expect_match(axis_ids(observations), "^ephemeral-obs-")
   expect_false(ids_are_durable(observations))
@@ -105,10 +113,12 @@ test_that("index spaces require durable identity unless explicitly ephemeral", {
   expect_error(index_space(3L), class = "fmridataset_error_identity")
 
   deterministic <- index_space(
-    3L, namespace = "latent-components", id_policy = "deterministic"
+    3L,
+    namespace = "latent-components", id_policy = "deterministic"
   )
   again <- index_space(
-    3L, namespace = "latent-components", id_policy = "deterministic"
+    3L,
+    namespace = "latent-components", id_policy = "deterministic"
   )
   expect_identical(feature_ids(deterministic), feature_ids(again))
   expect_true(ids_are_durable(deterministic))
@@ -128,8 +138,12 @@ test_that("FDS round trips retain explicit axis ID policies", {
   expect_invisible(validate_fds_manifest(manifest))
 
   rebuilt <- frame_from_fds_manifest(manifest, fds_frame_bindings(fx$frame))
-  expect_identical(axis_id_policy(observation_axis(rebuilt)),
-                   axis_id_policy(observation_axis(fx$frame)))
-  expect_identical(axis_id_policy(feature_axis(rebuilt)),
-                   axis_id_policy(feature_axis(fx$frame)))
+  expect_identical(
+    axis_id_policy(observation_axis(rebuilt)),
+    axis_id_policy(observation_axis(fx$frame))
+  )
+  expect_identical(
+    axis_id_policy(feature_axis(rebuilt)),
+    axis_id_policy(feature_axis(fx$frame))
+  )
 })

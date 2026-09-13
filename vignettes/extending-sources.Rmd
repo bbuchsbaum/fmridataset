@@ -185,7 +185,7 @@ source_read.rds_source_handle <- function(x, observations = NULL, features = NUL
   if (is.null(observations)) observations <- seq_len(nrow(values))
   if (is.null(features)) features <- seq_len(ncol(values))
   if (any(observations < 1L | observations > nrow(values)) ||
-      any(features < 1L | features > ncol(values))) {
+    any(features < 1L | features > ncol(values))) {
     stop("rds_source selector is out of bounds.", call. = FALSE)
   }
   values[observations, features, drop = FALSE]

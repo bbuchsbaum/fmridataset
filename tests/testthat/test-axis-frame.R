@@ -38,14 +38,16 @@ test_that("axis blocks validate their leading dimension and components", {
     role = "continuous"
   )
   x <- axis_frame(
-    data.frame(v = 1:3), blocks = list(embed = b), id_policy = "ephemeral"
+    data.frame(v = 1:3),
+    blocks = list(embed = b), id_policy = "ephemeral"
   )
 
   expect_identical(dim(axis_block_data(axis_blocks(x)$embed)), c(3L, 2L))
   expect_identical(block_component_ids(axis_blocks(x)$embed), c("x", "y"))
   expect_error(
     axis_frame(
-      data.frame(v = 1:2), blocks = list(embed = b), id_policy = "ephemeral"
+      data.frame(v = 1:2),
+      blocks = list(embed = b), id_policy = "ephemeral"
     ),
     class = "fmridataset_error_alignment"
   )

@@ -85,7 +85,8 @@ test_that("every ordinary export has one documented audience", {
   expect_identical(anyDuplicated(audiences), 0L)
   expect_setequal(exports, c(audiences, method_exports))
   expect_true(file.exists(system.file(
-    "architecture", "API-AUDIENCES.md", package = "fmridataset"
+    "architecture", "API-AUDIENCES.md",
+    package = "fmridataset"
   )))
 })
 
@@ -101,7 +102,8 @@ test_that("implementation conveniences are absent from the public namespace", {
   expect_length(intersect(c(internal, removed), exports), 0L)
   expect_true(exists(internal, envir = asNamespace("fmridataset"), inherits = FALSE))
   expect_false(any(vapply(
-    removed, exists, logical(1), envir = asNamespace("fmridataset"), inherits = FALSE
+    removed, exists, logical(1),
+    envir = asNamespace("fmridataset"), inherits = FALSE
   )))
 })
 
