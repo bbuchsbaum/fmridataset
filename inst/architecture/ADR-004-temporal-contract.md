@@ -41,6 +41,7 @@ reordering, and binding for free.
 |---|---|---|
 | run | yes | One value per observation naming its acquisition run. Any type, compared as character. No missing or empty values. |
 | `TR` | no | Positive finite seconds, constant within a run. Runs may differ from each other, matching `fmrihrf::sampling_frame()`. |
+| `start_time` | no | Non-negative finite seconds: the offset of the first volume of each run (slice-time-correction reference or other first-volume acquisition time). Constant within a run; runs may differ. When absent, `as_sampling_frame()` leaves the offset to `fmrihrf::sampling_frame()`'s default of `TR/2`. |
 | `censor` | no | Logical, one per observation, `TRUE` where excluded. No missing values. |
 
 ### Which column names the run

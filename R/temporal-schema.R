@@ -23,6 +23,11 @@
 #'   \item{`TR`}{Optional. Repetition time in seconds, positive and finite, and
 #'     constant within each run. Runs may differ from one another, matching
 #'     `fmrihrf::sampling_frame()`.}
+#'   \item{`start_time`}{Optional. Non-negative finite offset in seconds of the
+#'     first volume of each run (the slice-time-correction reference, or any
+#'     other first-volume acquisition time). Constant within each run; runs may
+#'     differ. When absent, `as_sampling_frame()` leaves the offset to
+#'     `fmrihrf::sampling_frame()`'s default of `TR/2`.}
 #'   \item{`censor`}{Optional. Logical, one value per observation, `TRUE` where
 #'     the observation is to be excluded. No missing values.}
 #' }
@@ -38,8 +43,9 @@
 #' reordering it.
 #'
 #' @param x An `fmri_frame` or `fmri_view`.
-#' @param run_col,tr_col,censor_col Observation metadata columns holding the
-#'   run label, repetition time, and censoring indicator.
+#' @param run_col,tr_col,start_time_col,censor_col Observation metadata columns
+#'   holding the run label, repetition time, first-volume offset, and censoring
+#'   indicator.
 #' @param ... Passed to `temporal_schema()`.
 #' @return `temporal_schema()` returns a `frame_temporal_schema`.
 #'   `has_temporal_schema()` returns a scalar logical.
@@ -68,6 +74,7 @@ NULL
 #' @rdname temporal-schema
 #' @export
 temporal_schema <- function(x, run_col = NULL, tr_col = "TR",
+                            start_time_col = "start_time",
                             censor_col = "censor") {
   data <- observations(x)
   run_col <- .resolve_run_column(x, data, run_col)
@@ -84,9 +91,17 @@ temporal_schema <- function(x, run_col = NULL, tr_col = "TR",
       run_lengths = run_lengths,
       n_runs = length(levels),
       TR = .temporal_tr(data, tr_col, block_ids, levels),
+      start_time = .temporal_start_time(
+        data, start_time_col, block_ids, levels
+      ),
       censor = .temporal_censor(data, censor_col, length(run_ids)),
       contiguous = .temporal_contiguous(block_ids, length(levels)),
-      columns = list(run = run_col, tr = tr_col, censor = censor_col)
+      columns = list(
+        run = run_col,
+        tr = tr_col,
+        start_time = start_time_col,
+        censor = censor_col
+      )
     ),
     class = "frame_temporal_schema"
   )
@@ -186,45 +201,77 @@ has_temporal_schema <- function(x, ...) {
 }
 
 .temporal_tr <- function(data, tr_col, block_ids, levels) {
-  if (!tr_col %in% names(data)) {
+  .temporal_per_run_seconds(
+    data = data,
+    column = tr_col,
+    block_ids = block_ids,
+    levels = levels,
+    allow_zero = FALSE,
+    singular_label = "repetition time"
+  )
+}
+
+.temporal_start_time <- function(data, start_time_col, block_ids, levels) {
+  .temporal_per_run_seconds(
+    data = data,
+    column = start_time_col,
+    block_ids = block_ids,
+    levels = levels,
+    allow_zero = TRUE,
+    singular_label = "start time"
+  )
+}
+
+# Optional numeric-seconds columns that are constant within a run (TR,
+# start_time). Positive when allow_zero is FALSE; non-negative otherwise.
+.temporal_per_run_seconds <- function(data, column, block_ids, levels,
+                                      allow_zero, singular_label) {
+  if (!column %in% names(data)) {
     return(NULL)
   }
-  values <- data[[tr_col]]
+  values <- data[[column]]
   if (!is.numeric(values)) {
     .temporal_abort(
       sprintf(
         "Column %s must be numeric seconds, not %s.",
-        encodeString(tr_col, quote = "\""), class(values)[1L]
+        encodeString(column, quote = "\""), class(values)[1L]
       ),
-      column = tr_col
+      column = column
     )
   }
-  if (anyNA(values) || any(!is.finite(values)) || any(values <= 0)) {
+  out_of_range <- if (allow_zero) {
+    any(values < 0)
+  } else {
+    any(values <= 0)
+  }
+  if (anyNA(values) || any(!is.finite(values)) || out_of_range) {
     .temporal_abort(
       sprintf(
-        "Column %s must be positive and finite in every observation.",
-        encodeString(tr_col, quote = "\"")
+        "Column %s must be %s and finite in every observation.",
+        encodeString(column, quote = "\""),
+        if (allow_zero) "non-negative" else "positive"
       ),
-      column = tr_col
+      column = column
     )
   }
 
   per_run <- vapply(seq_along(levels), function(i) {
-    unique_tr <- unique(values[block_ids == i])
-    if (length(unique_tr) != 1L) {
+    unique_vals <- unique(values[block_ids == i])
+    if (length(unique_vals) != 1L) {
       .temporal_abort(
         sprintf(
-          "Run %s has %d different %s values (%s); a run has one repetition time.",
-          encodeString(levels[[i]], quote = "\""), length(unique_tr),
-          encodeString(tr_col, quote = "\""),
-          paste(format(unique_tr), collapse = ", ")
+          "Run %s has %d different %s values (%s); a run has one %s.",
+          encodeString(levels[[i]], quote = "\""), length(unique_vals),
+          encodeString(column, quote = "\""),
+          paste(format(unique_vals), collapse = ", "),
+          singular_label
         ),
-        column = tr_col,
+        column = column,
         run = levels[[i]],
-        actual = unique_tr
+        actual = unique_vals
       )
     }
-    as.numeric(unique_tr)
+    as.numeric(unique_vals)
   }, numeric(1))
 
   names(per_run) <- levels
@@ -301,10 +348,16 @@ as_sampling_frame <- function(x, ...) {
       package = "fmrihrf"
     )
   }
-  fmrihrf::sampling_frame(
+  args <- list(
     blocklens = unname(schema$run_lengths),
     TR = unname(schema$TR)
   )
+  # Omit start_time when the frame does not declare one so fmrihrf keeps its
+  # TR/2 default; an explicit NULL would still override that default.
+  if (!is.null(schema$start_time)) {
+    args$start_time <- unname(schema$start_time)
+  }
+  do.call(fmrihrf::sampling_frame, args)
 }
 
 #' @export
@@ -317,10 +370,20 @@ print.frame_temporal_schema <- function(x, ...) {
   if (x$n_runs) {
     shown <- seq_len(min(x$n_runs, 6L))
     for (i in shown) {
+      extras <- character()
+      if (!is.null(x$TR)) {
+        extras <- c(extras, sprintf("TR %s s", format(x$TR[[i]])))
+      }
+      if (!is.null(x$start_time)) {
+        extras <- c(
+          extras,
+          sprintf("start_time %s s", format(x$start_time[[i]]))
+        )
+      }
       cat(sprintf(
         "  %-16s %4d observations%s\n",
         names(x$run_lengths)[[i]], x$run_lengths[[i]],
-        if (is.null(x$TR)) "" else sprintf("  TR %s s", format(x$TR[[i]]))
+        if (length(extras)) paste0("  ", paste(extras, collapse = "  ")) else ""
       ))
     }
     if (x$n_runs > length(shown)) {
