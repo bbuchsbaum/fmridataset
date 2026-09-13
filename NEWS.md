@@ -1,5 +1,12 @@
 # fmridataset 0.11.0 (Development)
 
+- `temporal_schema()` and `as_sampling_frame()` now honour an optional
+  per-observation `start_time` column (non-negative seconds, constant within
+  each run): the slice-time-correction reference or other first-volume offset.
+  When present it is passed through to `fmrihrf::sampling_frame(start_time =)`;
+  when absent the previous `TR/2` default is unchanged. Rename the column with
+  `start_time_col`. Fixes #94.
+
 - Bumped the development version to `0.11.0.9000` so downstream packages can
   require the frame API (`fmridataset (>= 0.11.0.9000)`) or pin below it while
   migrating. The previous `0.10.0.9000` string was unchanged across the

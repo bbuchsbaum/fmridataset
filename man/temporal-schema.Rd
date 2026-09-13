@@ -7,7 +7,13 @@
 \alias{as_sampling_frame}
 \title{The observation-axis temporal contract}
 \usage{
-temporal_schema(x, run_col = NULL, tr_col = "TR", censor_col = "censor")
+temporal_schema(
+  x,
+  run_col = NULL,
+  tr_col = "TR",
+  start_time_col = "start_time",
+  censor_col = "censor"
+)
 
 has_temporal_schema(x, ...)
 
@@ -16,8 +22,9 @@ as_sampling_frame(x, ...)
 \arguments{
 \item{x}{An \code{fmri_frame} or \code{fmri_view}.}
 
-\item{run_col, tr_col, censor_col}{Observation metadata columns holding the
-run label, repetition time, and censoring indicator.}
+\item{run_col, tr_col, start_time_col, censor_col}{Observation metadata columns
+holding the run label, repetition time, first-volume offset, and censoring
+indicator.}
 
 \item{...}{Passed to \code{temporal_schema()}.}
 }
@@ -52,6 +59,11 @@ run it belongs to. Any type; compared as character. No missing values.}
 \item{\code{TR}}{Optional. Repetition time in seconds, positive and finite, and
 constant within each run. Runs may differ from one another, matching
 \code{fmrihrf::sampling_frame()}.}
+\item{\code{start_time}}{Optional. Non-negative finite offset in seconds of the
+first volume of each run (the slice-time-correction reference, or any
+other first-volume acquisition time). Constant within each run; runs may
+differ. When absent, \code{as_sampling_frame()} leaves the offset to
+\code{fmrihrf::sampling_frame()}'s default of \code{TR/2}.}
 \item{\code{censor}}{Optional. Logical, one value per observation, \code{TRUE} where
 the observation is to be excluded. No missing values.}
 }

@@ -65,6 +65,87 @@ test_that("TR may differ between runs but not within one", {
   expect_error(temporal_schema(inconsistent), "one repetition time")
 })
 
+test_that("start_time is optional and passes through to the sampling frame", {
+  skip_if_not_installed("fmrihrf")
+  # Absent: fmrihrf keeps its TR/2 default (1.1 for TR 2.2).
+  defaulted <- temporal_frame(rep("a", 3), TR = 2.2)
+  expect_null(temporal_schema(defaulted)$start_time)
+  sf_default <- as_sampling_frame(defaulted)
+  expect_equal(sf_default$start_time, 1.1)
+  expect_equal(fmrihrf::samples(sf_default, global = TRUE)[1:3], c(1.1, 3.3, 5.5))
+
+  # Declared: slice-time reference other than TR/2.
+  offset <- temporal_frame(
+    rep("a", 3),
+    TR = 2.2,
+    extra = data.frame(start_time = 0.6)
+  )
+  schema <- temporal_schema(offset)
+  expect_equal(unname(schema$start_time), 0.6)
+  expect_equal(schema$columns$start_time, "start_time")
+  sf <- as_sampling_frame(offset)
+  expect_equal(sf$start_time, 0.6)
+  expect_equal(fmrihrf::samples(sf, global = TRUE)[1:3], c(0.6, 2.8, 5.0))
+})
+
+test_that("start_time may differ between runs but not within one", {
+  skip_if_not_installed("fmrihrf")
+  varying <- temporal_frame(
+    rep(c("a", "b"), each = 3),
+    TR = 2,
+    extra = data.frame(start_time = rep(c(0, 0.6), each = 3))
+  )
+  schema <- temporal_schema(varying)
+  expect_equal(unname(schema$start_time), c(0, 0.6))
+  expect_equal(as_sampling_frame(varying)$start_time, c(0, 0.6))
+
+  inconsistent <- temporal_frame(
+    rep("a", 4),
+    TR = 2,
+    extra = data.frame(start_time = c(0, 0, 0.5, 0))
+  )
+  expect_error(temporal_schema(inconsistent), class = "fmridataset_error_temporal")
+  expect_error(temporal_schema(inconsistent), "one start time")
+})
+
+test_that("invalid start_time values are refused", {
+  for (bad in list(c(0, -0.1, 0, 0), c(0, NA, 0, 0), c(0, Inf, 0, 0))) {
+    expect_error(
+      temporal_schema(temporal_frame(
+        rep("a", 4),
+        extra = data.frame(start_time = bad)
+      )),
+      class = "fmridataset_error_temporal"
+    )
+  }
+  expect_error(
+    temporal_schema(temporal_frame(
+      rep("a", 4),
+      extra = data.frame(start_time = rep("0", 4), stringsAsFactors = FALSE)
+    )),
+    "must be numeric"
+  )
+  # Zero is a valid slice-time reference (fMRIPrep / SPM first-slice).
+  zero <- temporal_frame(rep("a", 3), extra = data.frame(start_time = 0))
+  expect_equal(unname(temporal_schema(zero)$start_time), 0)
+})
+
+test_that("start_time_col renames the column", {
+  skip_if_not_installed("fmrihrf")
+  frame <- temporal_frame(
+    rep("a", 3),
+    TR = 2,
+    extra = data.frame(slice_time_ref = 0.4)
+  )
+  schema <- temporal_schema(frame, start_time_col = "slice_time_ref")
+  expect_equal(unname(schema$start_time), 0.4)
+  expect_equal(schema$columns$start_time, "slice_time_ref")
+  expect_equal(
+    as_sampling_frame(frame, start_time_col = "slice_time_ref")$start_time,
+    0.4
+  )
+})
+
 test_that("invalid TR values are refused", {
   for (bad in list(c(2, 2, -1, 2), c(2, 2, 0, 2), c(2, 2, NA, 2), c(2, 2, Inf, 2))) {
     expect_error(
@@ -229,9 +310,14 @@ test_that("has_temporal_schema reflects validity, not just presence", {
 })
 
 test_that("the schema prints its runs", {
-  out <- capture.output(print(temporal_schema(temporal_frame(rep(c("r1", "r2"), each = 3)))))
+  out <- capture.output(print(temporal_schema(temporal_frame(
+    rep(c("r1", "r2"), each = 3),
+    extra = data.frame(start_time = rep(c(0, 0.6), each = 3))
+  ))))
 
   expect_match(out[1], "2 runs")
   expect_match(paste(out, collapse = "\n"), "r1")
   expect_match(paste(out, collapse = "\n"), "TR 2 s")
+  expect_match(paste(out, collapse = "\n"), "start_time 0 s")
+  expect_match(paste(out, collapse = "\n"), "start_time 0.6 s")
 })
