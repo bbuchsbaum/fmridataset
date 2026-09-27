@@ -1,36 +1,36 @@
-## R CMD check results
+# CRAN submission notes (draft)
 
-0 errors | 1 warning | 1 note
+This is the `0.11.0.9000` development candidate. It is not ready to upload.
 
-## Test environments
+## Local check, 2026-09-27
 
-* local macOS (aarch64-apple-darwin20), R 4.5.1
+On macOS arm64 with R 4.5.1, `R CMD build` followed by `R CMD check
+--as-cran` completed with **0 errors, 0 warnings, and 2 notes**. The check ran
+tests, examples (including `--run-donttest`), rebuilt all four vignettes,
+and built the PDF manual. The isolated library contained `delarr 0.2.0` from
+the pinned source revision, `bidser 0.5.2` from its source checkout, and
+`fmristore 0.1.0.9000` from the pinned revision. The run used an installed
+UTF-8 locale and `RGL_USE_NULL=TRUE`, as CI does on macOS.
 
-## Warnings
+The tests reported 3,797 passes and two skips: the already-tracked `fmrigds`
+result-metadata contract violation, and a negative dependency test that is
+only run when `bidser` is absent or too old.
 
-### Strong dependencies not in mainstream repositories
+The incoming-feasibility note reports a first submission, the development
+version's large component, the `Remotes` field, and optional packages outside
+mainstream repositories. `multidesign` is not currently available from the
+listed R-universe repository. The second note says this machine's HTML Tidy
+is too old for manual HTML validation.
 
-This package depends on `delarr`, `fmrihrf`, and `neuroim2` which are not yet
-on CRAN. These packages are being prepared for CRAN submission. This package
-will only be submitted to CRAN after its dependencies are accepted.
+## Before submission
 
-### Suggests not in mainstream repositories
-
-`bidser` and `fmristore` are optional dependencies from GitHub. They are used
-only for advanced features (BIDS integration and HDF5 fMRI storage) and are
-properly wrapped with `requireNamespace()` checks.
-
-## Notes
-
-### New submission
-
-This is the first submission of this package to CRAN.
-
-### HTML validation
-
-The "tidy doesn't look like recent enough HTML Tidy" note is a tool
-availability issue on the test system, not a package issue.
-
-## Downstream dependencies
-
-There are currently no downstream dependencies for this package on CRAN.
+- Release `delarr >= 0.2.0` to CRAN or Bioconductor. CRAN currently offers
+  `delarr 0.1.0`, which cannot satisfy this package's hard dependency.
+- Cut a release version greater than `0.11.0.9000` (for example `0.11.1`),
+  because downstream packages already require that development version;
+  `0.11.0` would not satisfy their bounds. Remove development-only `Remotes`
+  and recheck the resulting tarball. Resolve distribution for optional
+  packages, particularly `multidesign`.
+- Run the final tarball on the supported hosted platforms and update these
+  notes with the exact results. The local macOS check is not cross-platform
+  evidence.

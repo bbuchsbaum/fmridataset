@@ -38,17 +38,11 @@
   array sources only.
 * `fmrihrf` moved from Imports to Suggests. Only `as_sampling_frame()` needs
   it, and that function now fails with a structured error when it is absent.
-* Retired the `DelayedArray` bridge. `as_delayed_array()` and its methods, the
-  `StorageBackendSeed` and `StudyBackendSeed` classes, and
-  `register_delayed_array_support()` are removed. `as_delarr()` provides the
-  same lazy interface over the same backends (`matrix_backend`,
-  `nifti_backend`, `study_backend`, and a default method) and is the supported
-  replacement.
-* `fmri_series()` no longer accepts `output = "DelayedMatrix"`; `output` is now
-  `"fmri_series"` only. The returned object already carries a `delarr` lazy
-  matrix payload, which `as_delarr()` exposes directly. Note that `delarr` is a
-  hard dependency, so the previous `DelayedArray` fallback path was unreachable
-  in any installable configuration.
+* Retired the `DelayedArray` bridge and its pre-frame backend adapters:
+  `as_delayed_array()`, `StorageBackendSeed`, `StudyBackendSeed`, and
+  `register_delayed_array_support()` are removed. Use `as_delarr()` on an array
+  source for a lazy `delarr` array; `fmri_series()` was removed with the old
+  dataset architecture described above.
 
 # fmridataset 0.10.0 (Development)
 

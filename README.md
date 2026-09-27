@@ -37,12 +37,11 @@ install.packages("remotes")
 remotes::install_github("bbuchsbaum/fmridataset")
 ```
 
-`fmridataset` is not on CRAN. The published
-[R-universe build](https://bbuchsbaum.r-universe.dev/fmridataset) is version
-0.10.0.9000 (from `937e193` onward) and already documents the frame API, not
-the pre-frame dataset surface. Downstream packages that need the frame API
-should require `fmridataset (>= 0.11.0.9000)` once this development line is
-published.
+`fmridataset` is not on CRAN. An
+[R-universe build](https://bbuchsbaum.r-universe.dev/fmridataset) is also
+available; check its version before using it with a development checkout.
+Downstream packages that need the frame API should require
+`fmridataset (>= 0.11.0.9000)`.
 
 ## Quick start
 

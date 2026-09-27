@@ -11,6 +11,8 @@ Description: Provides spatially typed, annotated observation-by-feature
     package aligns lazy numerical assays with observation metadata, feature
     metadata, experimental entities, and explicit neuroimaging spaces while
     retaining compatibility with NIfTI, HDF5, BIDS, and in-memory sources.
+    Optional design workflows use 'multidesign', available from
+    <https://github.com/bbuchsbaum/multidesign>.
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
