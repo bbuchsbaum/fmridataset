@@ -1,27 +1,22 @@
 ---
 title: "Persistence, identity, and import"
 output:
-  rmarkdown::html_vignette:
+  albersdown::albers_vignette:
+    family: red
+    preset: homage
     toc: yes
     toc_depth: 2
-    css: albers.css
-    includes:
-      in_header: albers-header.txt
 vignette: >
   %\VignetteIndexEntry{Persistence, identity, and import}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
-resource_files:
-- albers.css
-- albers.js
 ---
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  message = FALSE,
-  warning = FALSE
+  message = FALSE
 )
 has_fmristore <- requireNamespace("fmristore", quietly = TRUE) &&
   "write_frame_h5" %in% getNamespaceExports("fmristore")
@@ -40,6 +35,7 @@ to be *the same*.
 library(fmridataset)
 ```
 
+This guide follows [Frames](fmridataset.html) and [Feature spaces and maps](feature-spaces.html).
 The running example is a small volume-backed frame with two runs.
 
 ```{r frame}
@@ -47,14 +43,14 @@ set.seed(3)
 voxels <- volume_space(dim = c(3, 3, 2), affine = diag(4), template = "toy")
 n_obs <- 6L
 signal <- matrix(round(rnorm(n_obs * 18), 2), n_obs, 18)
-observations <- data.frame(
+obs <- data.frame(
   .obs_id = sprintf("vol-%02d", seq_len(n_obs)),
   run_id = rep(c("run-1", "run-2"), each = 3),
   TR = 2
 )
 frame <- fmri_frame(
   assays = list(bold = signal),
-  observations = observations,
+  observations = obs,
   space = voxels,
   metadata = list(study = "toy")
 )
@@ -85,7 +81,7 @@ substr(semantic, 1, 16)
 
 chunked <- fmri_frame(
   assays = list(bold = memory_source(signal, chunks = c(2L, 9L))),
-  observations = observations,
+  observations = obs,
   space = voxels,
   metadata = list(study = "toy")
 )
@@ -98,7 +94,7 @@ semantics. Rename one observation, and it changes.
 ```{r manifest-digest-values}
 doubled <- fmri_frame(
   assays = list(bold = signal * 2),
-  observations = observations,
+  observations = obs,
   space = voxels,
   metadata = list(study = "toy")
 )
@@ -106,15 +102,16 @@ identical(fds_manifest_digest(fds_frame_manifest(doubled)), semantic)
 
 renamed <- fmri_frame(
   assays = list(bold = signal),
-  observations = transform(observations, .obs_id = sub("vol", "v", .obs_id)),
+  observations = transform(obs, .obs_id = sub("vol", "v", .obs_id)),
   space = voxels,
   metadata = list(study = "toy")
 )
 identical(fds_manifest_digest(fds_frame_manifest(renamed)), semantic)
 ```
 
-Frames with ephemeral IDs have no manifest at all: `fds_frame_manifest()`
-refuses them, so nothing random can reach disk.
+Frames with ephemeral IDs cannot be exported through the FDS persistence
+contract: replace those axes with durable IDs before calling
+`fds_frame_manifest()` or `write_frame()`.
 
 ## Identity domains
 
@@ -164,8 +161,9 @@ identical(source_fingerprint(a), source_fingerprint(b))
 
 `content_hash()` is the one operation that identifies an array by its values.
 It streams the source in bounded blocks and is proportional to the number of
-values, so nothing calls it implicitly. It agrees across copies, storage
-dtypes, chunk grids, and compositions of the same values.
+values, so nothing calls it implicitly. It agrees across copies, chunk grids,
+and compositions with the same realized values. Changing storage precision
+can change the values and therefore the hash.
 
 ```{r content-hash}
 identical(content_hash(a), content_hash(b))
@@ -176,6 +174,9 @@ identical(content_hash(a), content_hash(as_float32))
 stacked <- row_bound_source(list(memory_source(signal[1:2, ]), memory_source(signal[3:6, ])))
 identical(content_hash(a), content_hash(stacked))
 ```
+
+The `dtype` argument above declares storage metadata; `memory_source()` keeps
+the supplied R values unchanged. It does not simulate rounding to float32.
 
 A fingerprint says *same descriptor, same revision*. A content hash says *same
 numbers*. Neither implies the other. If you want equal-valued memory sources
@@ -211,7 +212,7 @@ recorded in `inst/architecture/ADR-009-source-fingerprints-and-content-hashes.md
 ## HDF5 round trip
 
 `write_frame()` persists a frame as an HDF5 file through the `fmristore`
-package, which owns the certified layout and the atomic commit.
+package, which owns the HDF5 layout and the atomic commit.
 `open_frame()` reads it back. Reopened assays are lazy HDF5 sources; opening a
 frame reads its manifest, not its values. Neither function computes a content
 hash.
@@ -278,7 +279,11 @@ bold <- read_bids_bold(
 
 To show the result without a real dataset, the chunk below writes a minimal
 fMRIPrep-style tree with two three-volume runs into a temporary directory. The
-helper is the same fixture the package's tests use.
+fixture is adapted from the package tests; its construction is included below
+for reproducibility.
+
+<details>
+<summary>Create the synthetic BIDS files</summary>
 
 ```{r bids-fixture, eval = has_bidser}
 make_fixture <- function(root = tempfile("bids-")) {
@@ -322,6 +327,8 @@ make_fixture <- function(root = tempfile("bids-")) {
 root <- make_fixture()
 ```
 
+</details>
+
 ```{r bids-read, eval = has_bidser}
 bold <- read_bids_bold(root, subject = "01", task = "memory", space = "MNI152NLin6Asym")
 bold
@@ -353,12 +360,15 @@ yields the same IDs.
 
 ```{r bids-ids, eval = has_bidser}
 ids_are_durable(bold)
-basename(observation_ids(bold)[1:2])
+identical(observation_ids(bold), observation_ids(
+  read_bids_bold(root, subject = "01", task = "memory", space = "MNI152NLin6Asym")
+))
 ```
 
 Reading is lazy and goes through the NIfTI source. A run filter reads only
 that run's volumes, and because the frame keeps the complete feature domain of
-its volume space, spatial maps can take the native read path.
+its volume space, spatial maps can take the native read path. Compressed
+NIfTI files may still require full-file decompression.
 
 ```{r bids-read-values, eval = has_bidser}
 collect_assay(filter_obs(bold, run_id == "run-2"))
@@ -371,6 +381,15 @@ Matching `events.tsv` files are attached as a keyed event table.
 table_data(bold$tables$events)[, c("onset", "duration", "trial_type")]
 ```
 
+```{r bids-checks, include = FALSE, eval = has_bidser}
+expected <- rbind(cbind(c(2, 10, 18), c(3, 11, 19), c(4, 12, 20)),
+                  cbind(c(102, 110, 118), c(103, 111, 119), c(104, 112, 120)))
+stopifnot(identical(dim(bold), c(6L, 3L)),
+          isTRUE(all.equal(unname(collect_assay(bold)), expected)),
+          identical(unname(temporal_schema(bold)$run_lengths), c(3L, 3L)),
+          nrow(table_data(bold$tables$events)) == 2L)
+```
+
 ```{r bids-cleanup, include = FALSE, eval = has_bidser}
 unlink(root, recursive = TRUE)
 ```
@@ -381,8 +400,11 @@ cat("*The BIDS examples were not evaluated because `bidser` (>= 0.5.0) is not in
 
 ## Choosing the right identity
 
-Use the semantic digest to ask whether two frames mean the same thing, and the
-schema digest to ask whether they could be bound or collected together. Use
+Use the semantic digest to ask whether two frames mean the same thing, and
+`compare_frame_schema(..., mode = "bind")` or `mode = "collection"` to
+check structural compatibility for those operations. Equal schema digests
+mean exact schema equality; they do not check ID collisions or metadata
+conflicts, which the operation itself must still validate. Use
 `same_space()` before any operation that assumes columns line up. Key caches
 and plans on the source fingerprint. Reach for `content_hash()` only when the
 question is about the numbers, accept its cost knowingly, and record the

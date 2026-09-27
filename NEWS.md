@@ -1,5 +1,11 @@
 # fmridataset 0.11.0 (Development)
 
+- Audited all four vignettes against the frame API. Fixed the teaching RDS
+  source's selectors and stale-handle checks, clarified timing, identity,
+  and memory guarantees, and improved the reading sequence. Documentation
+  now uses the CRAN albersdown 2.1.0 vignette format and pkgdown template,
+  replacing the copied theme assets.
+
 - `temporal_schema()` and `as_sampling_frame()` now honour an optional
   per-observation `start_time` column (non-negative seconds, constant within
   each run): the slice-time-correction reference or other first-volume offset.

@@ -33,7 +33,7 @@ Imports:
     utils,
     uuid
 Suggests:
-    albersdown,
+    albersdown (>= 2.1.0),
     bidser (>= 0.5.0),
     blosc,
     fmrihrf,
@@ -52,7 +52,6 @@ Suggests:
     zarr (>= 0.4.2)
 VignetteBuilder: knitr
 Remotes: bbuchsbaum/delarr@4e0cdf6c7560d6c230d04bf0ca36c6c70179782b,
-    bbuchsbaum/albersdown@54a7432e551413fd15253544d361295d3d65f2b5,
     bbuchsbaum/fmrigds@67cc585c53ecb74db3b9a405b0fcb67b26c4eb3c,
     bbuchsbaum/fmrilatent@ceaad61acea6fd6326d6978a0aad23090ec28b18,
     bbuchsbaum/fmristore@e7fbbfca181ebd118acee150774a4f58640e039d,

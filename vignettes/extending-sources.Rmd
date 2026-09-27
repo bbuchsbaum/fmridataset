@@ -1,27 +1,22 @@
 ---
 title: "Implementing an array source"
 output:
-  rmarkdown::html_vignette:
+  albersdown::albers_vignette:
+    family: red
+    preset: homage
     toc: yes
     toc_depth: 2
-    css: albers.css
-    includes:
-      in_header: albers-header.txt
 vignette: >
   %\VignetteIndexEntry{Implementing an array source}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
-resource_files:
-- albers.css
-- albers.js
 ---
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  message = FALSE,
-  warning = FALSE
+  message = FALSE
 )
 ```
 
@@ -32,9 +27,11 @@ methods that read from it. The package ships in-memory, NIfTI, HDF5 (through
 by implementing a small set of generics. It then passes the same conformance
 checks the built-in sources pass.
 
-This vignette implements a complete source backed by an `.rds` file, in about
-sixty lines, and validates it. The file format is deliberately trivial so the
-protocol is the whole lesson.
+This guide is for storage-package authors who have read
+[Frames: aligned fMRI data with explicit identity](fmridataset.html).
+It implements a small source backed by an `.rds` file and validates it.
+RDS requires reading the whole matrix at construction and on each open;
+this example teaches the protocol, but is not a backend for large arrays.
 
 ```{r}
 library(fmridataset)
@@ -49,11 +46,11 @@ and methods for these generics:
 |---|---|
 | `source_shape()` | Two non-negative integers: observations, features |
 | `source_dtype()` | One storage dtype such as `"float64"`, `"float32"`, `"int16"`, `"logical"` |
-| `source_chunks()` | Two positive integers bounded by the shape: the natural read grid |
+| `source_chunks()` | Two positive integers bounded by `pmax(1L, shape)`: the natural read grid |
 | `source_capabilities()` | Unique strings, including `"block_slice"` and `"serializable"` |
 | `source_fingerprint()` | One non-empty string identifying this descriptor and revision |
 | `source_open()` | A handle inheriting from `"array_source_handle"` |
-| `source_read()` | An observation-by-feature matrix for integer selectors, in requested order |
+| `source_read()` | An observation-by-feature matrix for valid positional or logical selectors, in requested order |
 | `source_read_native()` | A native spatial object, or an error if the source has none |
 | `source_close()` | Releases the handle |
 
@@ -89,7 +86,8 @@ rds_source <- function(path, chunks = NULL) {
   path <- normalizePath(path, winslash = "/", mustWork = TRUE)
   values <- readRDS(path)
   if (!is.matrix(values) || !is.numeric(values)) {
-    stop("rds_source() requires a numeric matrix.", call. = FALSE)
+    stop(source_error("rds_source() requires a numeric matrix.",
+                      type = "contract", field = "values"))
   }
   shape <- as.integer(dim(values))
   if (is.null(chunks)) chunks <- pmax(1L, shape)
@@ -99,7 +97,7 @@ rds_source <- function(path, chunks = NULL) {
       path = path,
       shape = shape,
       dtype = "float64",
-      chunks = pmin(as.integer(chunks), pmax(1L, shape)),
+      chunks = chunks,
       size = as.numeric(info$size),
       mtime = as.numeric(info$mtime),
       schema_version = 1L
@@ -137,24 +135,25 @@ construction. When they differ the descriptor is stale. That is not an I/O
 failure: the file opened fine, it is simply not the file the descriptor was
 made from. The package reserves `fmridataset_error_source_stale` for this
 case and `fmridataset_error_backend_io` for genuine failures. Callers rely on
-the distinction. Extension packages raise both as plain conditions with those
-classes.
+the distinction. `source_error()` constructs these public conditions; signal
+them with `stop()`.
 
 ```{r open}
 rds_assert_fresh <- function(x) {
   info <- file.info(x$path)
+  if (is.na(info$size) || is.na(info$mtime)) {
+    stop(source_error("Cannot inspect the RDS file.", type = "io",
+                      file = x$path, operation = "freshness_check"))
+  }
   actual <- list(size = as.numeric(info$size), mtime = as.numeric(info$mtime))
   expected <- list(size = x$size, mtime = x$mtime)
   if (!identical(actual, expected)) {
-    stop(structure(
-      list(
-        message = paste("RDS file changed since the descriptor was built:", x$path),
-        call = NULL,
-        source = list(type = "rds_source", path = x$path),
-        expected = expected,
-        actual = actual
-      ),
-      class = c("fmridataset_error_source_stale", "fmridataset_error", "error", "condition")
+    stop(source_error(
+      paste("RDS file changed since the descriptor was built:", x$path),
+      type = "stale",
+      source = list(type = "rds_source", path = x$path),
+      expected = expected,
+      actual = actual
     ))
   }
   invisible(TRUE)
@@ -162,32 +161,35 @@ rds_assert_fresh <- function(x) {
 
 source_open.rds_source <- function(x, ...) {
   rds_assert_fresh(x)
+  values <- tryCatch(readRDS(x$path), error = function(e) {
+    stop(source_error(conditionMessage(e), type = "io",
+                      file = x$path, operation = "open"))
+  })
   structure(
-    list(source = x, values = readRDS(x$path)),
+    list(source = x, values = values),
     class = c("rds_source_handle", "array_source_handle")
   )
 }
 source_close.rds_source <- function(x, ...) invisible(TRUE)
 ```
 
-Reads take integer selectors on both axes and honor the requested order,
-and return a zero-extent matrix for an empty selection. The selection law
+Reads honor the requested order and return a zero-extent matrix for an empty
+selection. The selection law
 (`inst/architecture/ADR-010-selection-algebra.md`) is checked at the
-`source_read()` generic before your method runs: positions arrive whole, in
-bounds, and never repeated, so a method need not defend against a repeated
-or out-of-range position, though refusing one again is harmless. Reading
+`source_read()` generic before your method runs, but selectors are not
+rewritten. Methods receive the original `NULL`, positive or negative
+positions (possibly including zero), or a logical mask. The generic rejects
+missing, fractional, repeated, mixed-sign, and out-of-range selections.
+Base matrix subsetting handles all the remaining forms here. Reading
 through the handle is the real implementation; reading from the descriptor
 opens, reads, and closes.
 
 ```{r read}
 source_read.rds_source_handle <- function(x, observations = NULL, features = NULL, ...) {
+  rds_assert_fresh(x$source)
   values <- x$values
   if (is.null(observations)) observations <- seq_len(nrow(values))
   if (is.null(features)) features <- seq_len(ncol(values))
-  if (any(observations < 1L | observations > nrow(values)) ||
-    any(features < 1L | features > ncol(values))) {
-    stop("rds_source selector is out of bounds.", call. = FALSE)
-  }
   values[observations, features, drop = FALSE]
 }
 
@@ -198,7 +200,8 @@ source_read.rds_source <- function(x, observations = NULL, features = NULL, ...)
 }
 
 source_read_native.rds_source <- function(x, observations = NULL, ...) {
-  stop("rds_source has no native spatial representation.", call. = FALSE)
+  stop(source_error("rds_source has no native spatial representation.",
+                    type = "contract", field = "native_read"))
 }
 ```
 
@@ -239,8 +242,10 @@ explain(frame)$assays$bold[c("source_type", "chunks")]
 collect_assay(frame[c("t02", "t01"), "f5"])
 ```
 
-The cost estimate the budget checks use comes for free from the shape and
-dtype.
+The standard selection cost estimate comes from the shape and dtype.
+It does not account for this example's full-file `readRDS()` allocation.
+A production backend must implement bounded reads before advertising bounded
+memory use; a small requested block alone does not guarantee it.
 
 ```{r use-cost}
 source_realization_cost(src, observations = 1:2)[c("storage_bytes", "estimated_peak_bytes")]
@@ -283,8 +288,9 @@ order:
   reference, is accepted by `identity_descriptor()` as a content receipt, and
   does not change the fingerprint.
 
-The last law is the one that matters most for interoperability, and the
-cheapest to check by hand.
+For this small fixture, check the content law directly along with descriptor
+and handle behavior. Content hashing reads every value; it is not a cheap
+check on a large source.
 
 ```{r conformance}
 restored <- unserialize(serialize(src, NULL))
@@ -295,6 +301,22 @@ class(handle)
 source_close(handle)
 
 identical(content_hash(src), content_hash(memory_source(reference)))
+```
+
+```{r selection-checks, include = FALSE}
+selectors <- list(NULL, c(6L, 1L), -c(2L, 4L), c(0L, 3L),
+                  rep(c(TRUE, FALSE), 3), integer())
+for (rows in selectors) {
+  expected_rows <- if (is.null(rows)) seq_len(nrow(reference)) else rows
+  stopifnot(identical(source_read(src, rows, c(5L, 2L)),
+                      reference[expected_rows, c(5L, 2L), drop = FALSE]))
+}
+stopifnot(identical(source_read(src, -1L, c(TRUE, FALSE, TRUE, FALSE, TRUE)),
+                    reference[-1L, c(1L, 3L, 5L), drop = FALSE]))
+for (rows in list(c(1L, 1L), NA_integer_, 1.5, c(-1L, 2L), 7L)) {
+  failure <- tryCatch(source_read(src, rows), error = identity)
+  stopifnot(inherits(failure, "fmridataset_error_alignment"))
+}
 ```
 
 `counting_source()` wraps any source and records what reaches it. That is
@@ -314,10 +336,27 @@ fingerprint stored in the descriptor. Every read now fails with the stale
 class, and a fresh descriptor has a new fingerprint.
 
 ```{r stale}
-Sys.sleep(1.1)
+handle <- source_open(src)
 saveRDS(reference * 2, path)
+```
+
+```{r stale-timestamp, include = FALSE}
+# Distinct revision evidence even on filesystems with coarse timestamps.
+stopifnot(Sys.setFileTime(path, as.POSIXct(src$mtime + 2, origin = "1970-01-01")))
+```
+
+```{r stale-result}
 class(tryCatch(source_read(src, 1L, 1L), error = identity))[1]
+class(tryCatch(source_read(handle, 1L, 1L), error = identity))[1]
 identical(source_fingerprint(rds_source(path)), source_fingerprint(src))
+```
+
+```{r stale-checks, include = FALSE}
+stopifnot(
+  inherits(tryCatch(source_read(src), error = identity), "fmridataset_error_source_stale"),
+  inherits(tryCatch(source_read(handle), error = identity), "fmridataset_error_source_stale")
+)
+source_close(handle)
 ```
 
 ## Composition comes for free
@@ -340,11 +379,12 @@ identical(content_hash(sharded), content_hash(memory_source(reference)))
 ```
 
 `as_delarr()` wraps any source as a lazy `delarr` array, so chunk-aware
-numerical plans can pull from it through `source_read()` under the same
-budget.
+numerical plans can pull from it through `source_read()`. Supply an explicit
+`memory_budget` to enable the bridge's cost checks; its default is `Inf`.
+This still cannot bound the full-file allocation of the teaching RDS source.
 
 ```{r delarr}
-lazy <- as_delarr(sharded)
+lazy <- as_delarr(sharded, memory_budget = 1024^2)
 dim(lazy)
 ```
 
@@ -360,6 +400,6 @@ physical evidence, never from values. Raise
 `fmridataset_error_source_stale` when the evidence no longer matches. Raise
 `fmridataset_error_backend_io` when the backend fails. Return blocks in the
 requested order, non-dropping, and refuse out-of-range selectors. Run the
-conformance helper on every source type before release. The frame, view,
-binding, planning, persistence, and hashing machinery will then work without
-a single special case.
+conformance helper on every source type before release. Persistence also
+requires the storage package to encode and reopen your source type; passing
+the read protocol alone does not add a storage format.

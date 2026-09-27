@@ -150,6 +150,7 @@ reference:
 - title: Conformance tools
   desc: Developer-only instruments for certifying zero-I/O, lifecycle, and failure laws.
   contents:
+  - source_error
   - counting_source
   - source_counts
   - reset_source_counts

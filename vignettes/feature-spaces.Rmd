@@ -1,36 +1,32 @@
 ---
 title: "Feature spaces and maps"
 output:
-  rmarkdown::html_vignette:
+  albersdown::albers_vignette:
+    family: red
+    preset: homage
     toc: yes
     toc_depth: 2
-    css: albers.css
-    includes:
-      in_header: albers-header.txt
 vignette: >
   %\VignetteIndexEntry{Feature spaces and maps}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
-resource_files:
-- albers.css
-- albers.js
 ---
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  message = FALSE,
-  warning = FALSE
+  message = FALSE
 )
 ```
 
 The columns of an fMRI array are voxels, or vertices, or parcels, or latent
 components. A frame's *feature space* says which. It names every column with
 a stable ID and knows how to turn a row of values back into a spatial object.
-This vignette builds the space types the package ships with and shows how
-views restrict them. It explains what spatial identity means, then moves a
-frame from one space to another through an explicit, lazy map.
+After [building a frame](fmridataset.html), use this guide to choose a space
+and transform its feature axis. The examples cover volume, parcel, basis,
+index, and composite spaces, and show how views restrict them. We then use
+spatial identity to move a frame from one space to another through an explicit, lazy map.
 
 ```{r}
 library(fmridataset)
@@ -197,6 +193,12 @@ direct <- cbind(rowMeans(signal[, slice == 1]), rowMeans(signal[, slice == 2]))
 all.equal(collect_assay(by_parcel), direct)
 ```
 
+```{r map-parcel-assert, include = FALSE}
+stopifnot(isTRUE(all.equal(collect_assay(by_parcel), direct)),
+          identical(dim(direct), c(6L, 2L)), all(is.finite(direct)),
+          all(apply(direct, 2, stats::sd) > 0))
+```
+
 The transformation is recorded in the new frame's provenance, and a parcel
 frame reconstructs back into the parent volume by spreading each parcel value
 over its member voxels.
@@ -262,9 +264,9 @@ round(collect_assay(scores)[1:2, ], 3)
 range(spatial_map(scores, "vol-01"), na.rm = TRUE)
 ```
 
-Fitted dictionaries from ICA or dictionary learning are often rank-deficient,
-so no exact left inverse exists. Ask for `encoder = "none"` and you get a
-synthesis-only basis. It can reconstruct parent values from scores but has no
+A fitted dictionary can be rank-deficient or have more components than
+parent features. In those cases no exact left inverse exists. Ask for
+`encoder = "none"` and you get a synthesis-only basis. It can reconstruct parent values from scores but has no
 canonical map from the parent. A frame of scores must therefore be
 constructed directly in that space.
 
@@ -299,7 +301,7 @@ the authority for its own identity and reconstruction.
 
 ```{r composite}
 mixed_space <- composite_space(
-  list(cortex = slabs, latent = components),
+  list(parcels = slabs, latent = components),
   composite_type = "toy_composite"
 )
 feature_ids(mixed_space)
@@ -333,3 +335,5 @@ bases through `basis_space_from_fmrilatent()`. `neurosurf` supplies surface
 geometry for `surface_space_from_neurosurf()`. Each hands the package a
 serializable space; the package hands back frames whose columns still mean
 what they meant.
+
+Next, [save a frame or import BIDS data](persistence-and-import.html).

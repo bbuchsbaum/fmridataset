@@ -12,6 +12,20 @@ the pinned source revision, `bidser 0.5.2` from its source checkout, and
 `fmristore 0.1.0.9000` from the pinned revision. The run used an installed
 UTF-8 locale and `RGL_USE_NULL=TRUE`, as CI does on macOS.
 
+After the vignette audit, the same full check was repeated with the CRAN
+`albersdown 2.1.0` source release (published 2026-09-27). All four vignettes now
+use `albersdown::albers_vignette()`, with no copied theme assets. The final
+tarball's SHA-256 is
+`5d8fa7c0f08f27233c5aca05cb64a5dbdec7caa0cc1f24b2930899a912811e7b`.
+The result remained **0 errors, 0 warnings, and 2 notes**. HDF5 and BIDS
+vignette sections executed, including the new behavioral assertions.
+All four standalone vignettes and their pkgdown articles passed browser
+checks at 1280px and 390px, with no horizontal page overflow, JavaScript
+errors, or missing images. Hosted documentation deployment has not run.
+The full pkgdown build completed. It emitted three nonfatal Pandoc TeX
+diagnostics involving `$` field access in the RDS teaching source; the
+rendered code remained intact. These were absent from the package check.
+
 The tests reported 3,797 passes and two skips: the already-tracked `fmrigds`
 result-metadata contract violation, and a negative dependency test that is
 only run when `bidser` is absent or too old.

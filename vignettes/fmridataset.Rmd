@@ -1,27 +1,22 @@
 ---
 title: "Frames: aligned fMRI data with explicit identity"
 output:
-  rmarkdown::html_vignette:
+  albersdown::albers_vignette:
+    family: red
+    preset: homage
     toc: yes
     toc_depth: 2
-    css: albers.css
-    includes:
-      in_header: albers-header.txt
 vignette: >
   %\VignetteIndexEntry{Frames: aligned fMRI data with explicit identity}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
-resource_files:
-- albers.css
-- albers.js
 ---
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  message = FALSE,
-  warning = FALSE
+  message = FALSE
 )
 ```
 
@@ -32,7 +27,8 @@ to lose. `fmridataset` keeps it. Its one data container, the `fmri_frame`,
 holds an observation-by-feature array together with what each observation and
 each feature *is*, and refuses operations that would silently break that link.
 
-This vignette builds a frame from a small synthetic matrix and walks through
+Start here if you are new to the package. This vignette builds a frame from a
+small synthetic matrix and walks through
 the everyday operations: selecting by ID and by metadata, reading values
 lazily, inspecting a frame without reading it, describing its run structure,
 and binding frames together. It ends with the short list of promises every
@@ -155,8 +151,9 @@ source_counts(counted)[c("reads", "values")]
 
 Filtering and subsetting issued no reads. `collect_assay()` issued one, and
 it read exactly the eight values the view stands for, not the full matrix.
-The same holds for file-backed sources, where the difference is a small
-selection against a large volume on disk.
+File-backed sources receive the same selection. The physical I/O depends on
+the backend: compressed files or storage chunks may require reading more
+than the requested values.
 
 `collect_assay()` also checks an estimated memory cost against a budget before
 it reads anything, so a request that would not fit fails early and cheaply.
@@ -193,7 +190,8 @@ substr(unlist(report$digests), 1, 12)
 A frame carries no acquisition timing of its own. When its observations are
 volumes acquired in runs, that is a fact recorded in the observation table,
 under a small validated contract: a run column, an optional `TR` in seconds
-that is constant within each run, and an optional logical `censor` column.
+that is constant within each run, an optional logical `censor` column, and an
+optional `start_time` in seconds that is constant within each run.
 `temporal_schema()` derives the description from those columns each time it is
 asked, so it can never go stale.
 
@@ -208,13 +206,18 @@ The run column is discovered rather than assumed: a relation to a run entity
 wins, then `scan_id`, then `run_id`, and an explicit `run_col` overrides all
 three. When the `fmrihrf` package is installed, `as_sampling_frame()` builds the
 run-length encoded `sampling_frame` that design and modelling code consumes.
+An explicit `start_time` sets the first-volume offset; otherwise the sampling
+frame uses `TR / 2`. Censor flags remain in the temporal schema and must be
+passed separately to modelling code; `as_sampling_frame()` does not apply them.
 
 ```{r sampling-frame, eval = requireNamespace("fmrihrf", quietly = TRUE)}
 as_sampling_frame(frame)
 ```
 
-Because the schema follows the observation order, a filtered view still
-describes itself correctly.
+Because the schema follows the observation order, a filtered view describes
+the rows that remain. A sampling frame uses those rows as consecutive samples;
+it cannot encode gaps left by removing individual volumes. Preserve the rows
+and mark `censor` when their acquisition positions must remain available.
 
 ```{r temporal-view}
 temporal_schema(still)
@@ -224,7 +227,7 @@ A view whose runs are interleaved is a legal frame, but a sampling frame is a
 run-length encoding and cannot represent it. The conversion refuses rather
 than reordering behind your back.
 
-```{r temporal-interleaved, error = TRUE}
+```{r temporal-interleaved, error = TRUE, eval = requireNamespace("fmrihrf", quietly = TRUE)}
 interleaved <- frame[c("vol-01", "vol-05", "vol-02"), ]
 temporal_schema(interleaved)$contiguous
 as_sampling_frame(interleaved)
@@ -361,6 +364,7 @@ you can rely on.
   its sources, never open files, environments, or closures, so it can be
   serialized and rebuilt elsewhere.
 
-`vignette("feature-spaces")` covers the feature-space types and how to move a
-frame between them. `vignette("persistence-and-import")` covers the FDS
-manifest, HDF5 round trips, identity, and BIDS import.
+Continue with [Feature spaces and maps](feature-spaces.html) to move a frame
+between spaces, then [Persistence, identity, and import](persistence-and-import.html)
+to save a frame or import BIDS data. Storage-package authors can then read
+[Implementing an array source](extending-sources.html).
