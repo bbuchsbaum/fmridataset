@@ -203,3 +203,86 @@ test_that("the installed FDS v1 schema envelope is machine readable", {
   expect_true(all(c("schema", "object_type", "shape", "axes", "arrays", "assays") %in% schema$required))
   expect_identical(schema$properties$schema$properties$version$const, 1L)
 })
+
+test_that("FDS manifests reject content the reader cannot rebuild", {
+  fx <- make_frame_fixture()
+  manifest <- fds_frame_manifest(fx$frame)
+  bindings <- fds_frame_bindings(fx$frame)
+  motion <- "axis/observation/blocks/motion"
+  reject <- function(x, pattern) {
+    expect_error(validate_fds_manifest(x), pattern, class = "fmridataset_error_schema")
+  }
+
+  expect_invisible(validate_fds_manifest(manifest[rev(names(manifest))]))
+
+  x <- manifest
+  x$surprise <- list(a = 1)
+  reject(x, "unknown: surprise")
+  reject(manifest[setdiff(names(manifest), "extensions")], "missing: extensions")
+
+  x <- manifest
+  x$extensions <- "not a list"
+  reject(x, "extensions")
+  x$extensions <- list(1)
+  reject(x, "extensions")
+
+  x <- manifest
+  x$schema$object_types <- "nonsense"
+  reject(x, "schema")
+  x <- manifest
+  x$schema$object_types <- NULL
+  reject(x, "schema")
+
+  x <- manifest
+  x$arrays$junk <- list(key = "junk", axes = c("a", "b"), shape = c(1L, 1L), dtype = "float64")
+  reject(x, "not referenced.*junk")
+
+  x <- manifest
+  x$axes$observation$blocks$motion$components$.component_id <- c("a", "a")
+  reject(x, "component IDs")
+  x$axes$observation$blocks$motion$components$.component_id <- c("a", NA)
+  reject(x, "component IDs")
+
+  x <- manifest
+  x$arrays[[motion]]$axes[[2L]] <- "garbage"
+  reject(x, "second array axis")
+
+  x <- manifest
+  x$arrays[[motion]]$dtype <- "banana"
+  reject(x, "invalid declaration")
+  # A supported but wrong block dtype is only detectable against the payload,
+  # which the reader checks when binding.
+  x$arrays[[motion]]$dtype <- "int32"
+  expect_invisible(validate_fds_manifest(x))
+  expect_error(
+    frame_from_fds_manifest(x, bindings), "dtype",
+    class = "fmridataset_error_schema"
+  )
+})
+
+test_that("FDS manifest shapes and active assays fail with structured errors", {
+  fx <- make_frame_fixture()
+  manifest <- fds_frame_manifest(fx$frame)
+  reject <- function(x, pattern) {
+    expect_no_warning(expect_error(
+      validate_fds_manifest(x), pattern,
+      class = "fmridataset_error_schema"
+    ))
+  }
+  for (shape in list(c(7, 1e10), c(7, Inf), c(7, NaN), c(7, 6.5), c(-1, 6), "7")) {
+    x <- manifest
+    x$shape <- shape
+    reject(x, "shape")
+    x <- manifest
+    x$arrays[["assays/beta"]]$shape <- shape
+    reject(x, "invalid declaration")
+    x <- manifest
+    x$assays$beta$shape <- shape
+    reject(x, "shape")
+  }
+  for (active in list(NULL, c("beta", "variance"), NA_character_, "")) {
+    x <- manifest
+    x["active_assay"] <- list(active)
+    reject(x, "active_assay")
+  }
+})

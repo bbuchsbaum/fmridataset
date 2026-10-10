@@ -223,3 +223,43 @@ test_that("the installed FDS study schema envelope is machine readable", {
   ) %in% schema$required))
   expect_identical(schema$properties$schema$properties$version$const, 2L)
 })
+
+test_that("FDS study validation uses field sets, not field order", {
+  fixture <- .make_fds_study_fixture()
+  manifest <- fds_study_manifest(fixture$study)
+  reject <- function(x, pattern) {
+    expect_error(validate_fds_study_manifest(x), pattern, class = "fmridataset_error_schema")
+  }
+
+  expect_invisible(validate_fds_study_manifest(manifest[rev(names(manifest))]))
+  expect_identical(
+    fds_study_manifest_digest(manifest[rev(names(manifest))]),
+    fds_study_manifest_digest(manifest)
+  )
+  x <- manifest
+  x$representations$bold <- rev(x$representations$bold)
+  x$representations$bold$manifest <- rev(x$representations$bold$manifest)
+  x$representations$native <- rev(x$representations$native)
+  expect_invisible(validate_fds_study_manifest(x))
+
+  x <- manifest
+  x$surprise <- 1
+  reject(x, "unknown: surprise")
+  reject(manifest[setdiff(names(manifest), "links")], "missing: links")
+  x <- manifest
+  x$schema <- rev(x$schema)
+  expect_invisible(validate_fds_study_manifest(x))
+  x$schema$extra <- TRUE
+  reject(x, "schema")
+
+  x <- manifest
+  x$extensions <- 5
+  reject(x, "extensions")
+
+  x <- manifest
+  x$arrays$junk <- list(key = "junk", axes = c("a", "b"), shape = c(1L, 1L), dtype = "float64")
+  reject(x, "not referenced.*junk")
+  x <- manifest
+  x$arrays[[1L]]$shape <- c(2, 1e10)
+  expect_no_warning(reject(x, "invalid declaration"))
+})

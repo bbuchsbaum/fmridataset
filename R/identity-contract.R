@@ -9,8 +9,9 @@
 #' @param x A frame, frame schema, feature space, array source, FDS manifest,
 #'   provenance graph, collection, or study.
 #' @param domain Identity domain. Usually inferred from `x`.
-#' @param content_digest Optional externally computed content digest, such as
-#'   the value of [content_hash()].
+#' @param content_digest Externally computed content digest, such as
+#'   the value of [content_hash()]. Required for `domain = "content"` and
+#'   rejected with an `fmridataset_error_identity` error for any other domain.
 #' @return A serializable typed identity descriptor.
 #' @examples
 #' src <- memory_source(matrix(seq_len(6), nrow = 2))
@@ -34,6 +35,16 @@ identity_descriptor <- function(
     "semantic"
   }
   if (identical(domain, "auto")) domain <- inferred
+  if (!is.null(content_digest) && !identical(domain, "content")) {
+    .frame_abort(
+      sprintf(
+        "content_digest is only meaningful for the content domain, not '%s'; use domain = \"content\".",
+        domain
+      ),
+      "fmridataset_error_identity",
+      field = "content_digest", domain = domain
+    )
+  }
   digest_value <- switch(domain,
     schema = frame_schema_digest(x),
     space = space_digest(x),

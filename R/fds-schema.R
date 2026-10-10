@@ -346,6 +346,25 @@ fds_frame_manifest <- function(x) {
         block_field
       )
     }
+    component_axis <- paste0("component:", block$array)
+    if (!identical(array$axes[[2L]], component_axis)) {
+      .fds_schema_abort(
+        sprintf(
+          "%s block %s must declare its second array axis as '%s'.",
+          what, label(name), component_axis
+        ),
+        paste0("arrays.", block$array, ".axes"),
+        expected = component_axis, actual = array$axes[[2L]]
+      )
+    }
+    .assert_stable_keys(
+      block$components$.component_id, .fds_schema_abort,
+      what = "component", field = paste0(block_field, ".components"),
+      message = sprintf(
+        "%s block %s component IDs must be unique, non-missing, non-empty strings.",
+        what, label(name)
+      )
+    )
   }
   invisible(TRUE)
 }
@@ -473,6 +492,84 @@ fds_frame_manifest <- function(x) {
   invisible(TRUE)
 }
 
+# Manifest records are JSON objects: field order is not semantic, but the field
+# set is. Missing and unknown fields are both rejected so that every accepted
+# manifest round-trips through the reader without silently dropping content.
+.fds_assert_fields <- function(value, required, field, what) {
+  if (!is.list(value) || is.data.frame(value)) {
+    .fds_schema_abort(sprintf("%s must be a named list.", what), field)
+  }
+  present <- names(value) %||% character()
+  missing <- setdiff(required, present)
+  unknown <- setdiff(present, required)
+  if (length(missing) || length(unknown) || anyDuplicated(present) ||
+    length(present) != length(value)) {
+    .fds_schema_abort(
+      sprintf(
+        "%s has invalid fields%s%s.",
+        what,
+        if (length(missing)) paste0("; missing: ", paste(missing, collapse = ", ")) else "",
+        if (length(unknown)) paste0("; unknown: ", paste(unknown, collapse = ", ")) else ""
+      ),
+      field,
+      missing = missing, unknown = unknown
+    )
+  }
+  invisible(value)
+}
+
+# A logical array or frame shape: `n` (or at least two) non-negative integer
+# extents that fit R's integer range.
+.fds_is_shape <- function(x, n = NULL) {
+  is.numeric(x) && length(x) >= 2L && (is.null(n) || length(x) == n) &&
+    all(is.finite(x)) && all(x >= 0) && all(x <= .Machine$integer.max) &&
+    all(x == trunc(x))
+}
+
+.validate_fds_array_declaration <- function(value, name, what = "Array") {
+  if (!is.list(value) || length(value) != 4L ||
+    !setequal(names(value), c("key", "axes", "shape", "dtype")) ||
+    !identical(value$key, name) || !is.character(value$axes) ||
+    anyNA(value$axes) || any(!nzchar(value$axes)) ||
+    !.fds_is_shape(value$shape) || length(value$axes) != length(value$shape) ||
+    !.is_one_string(value$dtype) || !value$dtype %in% .supported_source_dtypes) {
+    .fds_schema_abort(
+      sprintf("%s '%s' has an invalid declaration.", what, name),
+      paste0("arrays.", name)
+    )
+  }
+  invisible(TRUE)
+}
+
+.validate_fds_extensions <- function(value) {
+  if (!is.list(value) || is.data.frame(value) || !.has_unique_names(value)) {
+    .fds_schema_abort(
+      "Manifest extensions must be a uniquely named list.",
+      "extensions"
+    )
+  }
+  invisible(TRUE)
+}
+
+.manifest_block_arrays <- function(blocks) {
+  vapply(blocks, function(block) block$array, character(1), USE.NAMES = FALSE)
+}
+
+.validate_fds_array_references <- function(arrays, referenced, what = "Array") {
+  orphans <- setdiff(names(arrays), referenced)
+  if (length(orphans)) {
+    .fds_schema_abort(
+      sprintf(
+        "%s declarations are not referenced by any assay or block: %s.",
+        what, paste(orphans, collapse = ", ")
+      ),
+      "arrays",
+      orphans = orphans
+    )
+  }
+  invisible(TRUE)
+}
+
 #' @param manifest An FDS manifest.
 #' @rdname fds_frame_manifest
 #' @export
@@ -481,12 +578,13 @@ validate_fds_manifest <- function(manifest) {
     "schema", "object_type", "shape", "axes", "arrays", "assays", "entities",
     "relations", "tables", "active_assay", "metadata", "provenance", "extensions"
   )
-  if (!is.list(manifest) || !all(required %in% names(manifest))) {
-    .fds_schema_abort("The FDS manifest is missing required fields.", "manifest")
-  }
+  .fds_assert_fields(manifest, required, "manifest", "The FDS manifest")
   if (!is.list(manifest$schema) ||
+    length(manifest$schema) != length(.fds_schema) ||
+    !setequal(names(manifest$schema), names(.fds_schema)) ||
     !identical(manifest$schema$id, .fds_schema$id) ||
-    !identical(manifest$schema$version, .fds_schema$version)) {
+    !identical(manifest$schema$version, .fds_schema$version) ||
+    !identical(manifest$schema$object_types, .fds_schema$object_types)) {
     .fds_schema_abort(
       "Unsupported FDS schema identity or version.",
       "schema",
@@ -496,6 +594,7 @@ validate_fds_manifest <- function(manifest) {
   if (!identical(manifest$object_type, "fmri_frame")) {
     .fds_schema_abort("FDS v1 currently supports object_type fmri_frame.", "object_type")
   }
+  .validate_fds_extensions(manifest$extensions)
   tryCatch(
     .validate_container_provenance(manifest$provenance, "FDS frame manifest"),
     error = function(error) {
@@ -503,9 +602,11 @@ validate_fds_manifest <- function(manifest) {
     }
   )
   shape <- manifest$shape
-  if (!is.numeric(shape) || length(shape) != 2L || anyNA(shape) ||
-    any(shape < 0) || any(shape != as.integer(shape))) {
-    .fds_schema_abort("Frame shape must contain two non-negative integers.", "shape")
+  if (!.fds_is_shape(shape, 2L)) {
+    .fds_schema_abort(
+      "Frame shape must contain two non-negative integers within the integer range.",
+      "shape"
+    )
   }
   shape <- as.integer(shape)
   array_names <- names(manifest$arrays)
@@ -514,16 +615,7 @@ validate_fds_manifest <- function(manifest) {
     .fds_schema_abort("Frame arrays must be a non-empty uniquely named registry.", "arrays")
   }
   for (name in array_names) {
-    value <- manifest$arrays[[name]]
-    if (!is.list(value) || !all(c("key", "axes", "shape", "dtype") %in% names(value)) ||
-      !identical(value$key, name) || !is.character(value$axes) ||
-      !is.numeric(value$shape) || length(value$shape) < 2L ||
-      length(value$axes) != length(value$shape) || anyNA(value$shape) ||
-      any(value$shape < 0) || any(value$shape != as.integer(value$shape)) ||
-      !is.character(value$dtype) || length(value$dtype) != 1L ||
-      !value$dtype %in% .supported_source_dtypes) {
-      .fds_schema_abort(sprintf("Array '%s' has an invalid declaration.", name), paste0("arrays.", name))
-    }
+    .validate_fds_array_declaration(manifest$arrays[[name]], name)
   }
   if (!is.list(manifest$axes) || !all(c("observation", "feature") %in% names(manifest$axes))) {
     .fds_schema_abort("Frame manifests require observation and feature axes.", "axes")
@@ -582,7 +674,7 @@ validate_fds_manifest <- function(manifest) {
       !value$array %in% names(manifest$arrays)) {
       .fds_schema_abort(sprintf("Assay '%s' has an invalid descriptor.", name), paste0("assays.", name))
     }
-    if (!identical(as.integer(value$shape), shape)) {
+    if (!.fds_is_shape(value$shape, 2L) || !identical(as.integer(value$shape), shape)) {
       .fds_schema_abort(sprintf("Assay '%s' shape does not match the frame shape.", name), paste0("assays.", name, ".shape"))
     }
     array <- manifest$arrays[[value$array]]
@@ -603,10 +695,19 @@ validate_fds_manifest <- function(manifest) {
       .fds_schema_abort(sprintf("Assay '%s' contains physical source fields.", name), paste0("assays.", name))
     }
   }
-  if (!is.character(manifest$active_assay) || length(manifest$active_assay) != 1L ||
+  if (!.is_one_string(manifest$active_assay) ||
     !manifest$active_assay %in% assay_names) {
     .fds_schema_abort("active_assay must name one manifest assay.", "active_assay")
   }
+  referenced <- c(
+    vapply(manifest$assays, function(value) value$array, character(1), USE.NAMES = FALSE),
+    .manifest_block_arrays(manifest$axes$observation$blocks),
+    .manifest_block_arrays(manifest$axes$feature$blocks),
+    unlist(lapply(manifest$entities, function(value) {
+      .manifest_block_arrays(value$blocks)
+    }), use.names = FALSE)
+  )
+  .validate_fds_array_references(manifest$arrays, referenced)
   .assert_no_runtime_state(
     manifest, .fds_schema_abort,
     "FDS manifests cannot contain runtime functions, environments, or external pointers."
