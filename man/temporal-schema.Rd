@@ -12,7 +12,8 @@ temporal_schema(
   run_col = NULL,
   tr_col = "TR",
   start_time_col = "start_time",
-  censor_col = "censor"
+  censor_col = "censor",
+  order_col = NULL
 )
 
 has_temporal_schema(x, ...)
@@ -24,7 +25,14 @@ as_sampling_frame(x, ...)
 
 \item{run_col, tr_col, start_time_col, censor_col}{Observation metadata columns
 holding the run label, repetition time, first-volume offset, and censoring
-indicator.}
+indicator. Each is a single column name; \code{run_col} may also be \code{NULL} (the
+default) to use the key of an observation relation to a run entity, else
+\code{scan_id}, else \code{run_id}. A named column other than
+\code{run_col} that is absent is simply not used.}
+
+\item{order_col}{\code{NULL} (default) to use the first of \code{volume_index} and
+\code{run_time} that is present, or a single column name holding a numeric
+within-run acquisition index or time, which must then exist.}
 
 \item{...}{Passed to \code{temporal_schema()}.}
 }
@@ -56,7 +64,9 @@ reordering, and binding for free.
 \item{\code{run_id}}{Required. One value per observation naming the acquisition
 run it belongs to. Any type; compared as character. No missing values.}
 \item{\code{TR}}{Optional. Repetition time in seconds, positive and finite, and
-constant within each run. Runs may differ from one another, matching
+constant within each run (compared with a relative tolerance of
+\code{sqrt(.Machine$double.eps)}, so floating-point noise is not a second
+value). Runs may differ from one another, matching
 \code{fmrihrf::sampling_frame()}.}
 \item{\code{start_time}}{Optional. Non-negative finite offset in seconds of the
 first volume of each run (the slice-time-correction reference, or any
@@ -65,7 +75,26 @@ differ. When absent, \code{as_sampling_frame()} leaves the offset to
 \code{fmrihrf::sampling_frame()}'s default of \code{TR/2}.}
 \item{\code{censor}}{Optional. Logical, one value per observation, \code{TRUE} where
 the observation is to be excluded. No missing values.}
+\item{order column}{Optional. A numeric within-run acquisition index or
+time, such as \code{volume_index} or \code{run_time} from \code{read_bids_bold()}. No
+missing values.}
 }
+}
+
+\section{Timing of samples}{
+
+\code{read_bids_bold()} emits \code{run_time}, the acquisition onset of each volume
+relative to its run (\code{(volume_index - 1) * TR}). The sampling frame built by
+\code{as_sampling_frame()} places samples at \code{start_time + (volume_index - 1) * TR}, and when no \code{start_time} column is supplied fmrihrf's default
+\code{start_time = TR/2} applies, so sample times are \code{run_time + TR/2}. This
+modelling default is kept on purpose. For onset-aligned sampling, add a
+\code{start_time} column of \code{0} when constructing the frame, or set it on the
+schema before converting:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{schema <- temporal_schema(frame)
+schema$start_time <- stats::setNames(rep(0, schema$n_runs), names(schema$run_lengths))
+as_sampling_frame(schema)
+}\if{html}{\out{</div>}}
 }
 
 \section{Order and contiguity}{
@@ -78,6 +107,17 @@ ID-based reordering both produce legal interleaved views -- but a
 \code{sampling_frame} is a run-length encoding and cannot represent one, so
 \code{as_sampling_frame()} refuses a non-contiguous frame rather than silently
 reordering it.
+
+Contiguity says nothing about order \emph{within} a run. When an order column is
+present (\code{order_col}, by default the first of \code{volume_index} and \code{run_time}
+found), the schema records in \code{ordered} whether it increases strictly within
+every run, and \code{as_sampling_frame()} refuses a frame whose volumes are out of
+acquisition order. Without such a column the order within a run cannot be
+checked: \code{ordered} is \code{NA}, and the observation order is taken as acquisition
+order.
+
+A zero-observation frame has an empty schema but no sampling frame;
+\code{as_sampling_frame()} refuses it.
 }
 
 \examples{

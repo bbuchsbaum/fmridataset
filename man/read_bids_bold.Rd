@@ -44,6 +44,26 @@ IDs, resolves one common volume space, and returns a lazy NIfTI-backed frame.
 BOLD values are not read until an assay or spatial map is explicitly
 collected.
 }
+\details{
+Runs are ordered by session, task, and run number. Numeric run labels are
+compared as integers, so unpadded \code{run-2} precedes \code{run-10}.
+
+Each observation carries \code{scan_id}, \code{subject_id}, \code{session_id}, \code{task_id},
+\code{run_id}, \code{volume_index} (1-based position within its run), \code{run_time}, and
+\code{TR}. \code{run_time} is the acquisition onset of the volume relative to the start
+of its run, \code{(volume_index - 1) * TR}. No \code{start_time} column is emitted, so
+\code{\link[=as_sampling_frame]{as_sampling_frame()}} uses \code{fmrihrf::sampling_frame()}'s default offset of
+\code{TR/2} and its sample times are \code{run_time + TR/2}. This is deliberate: it
+keeps fmrihrf's modelling default. For onset-aligned sampling, set a zero
+offset on the schema before converting:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{schema <- temporal_schema(bold)
+schema$start_time <- stats::setNames(rep(0, schema$n_runs), names(schema$run_lengths))
+sf <- as_sampling_frame(schema)
+}\if{html}{\out{</div>}}
+
+or build the frame with a \code{start_time = 0} observation column.
+}
 \examples{
 \dontrun{
 bold <- read_bids_bold(
