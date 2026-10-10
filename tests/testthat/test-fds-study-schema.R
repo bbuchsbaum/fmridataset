@@ -114,7 +114,7 @@ test_that("FDS study manifests rebuild linked frames collections and shared bloc
   )
 })
 
-test_that("FDS study manifests reject legacy lineage and hidden alignment", {
+test_that("FDS study manifests reject legacy lineage and untyped tables", {
   fixture <- .make_fds_study_fixture()
   manifest <- fds_study_manifest(fixture$study)
 
@@ -126,15 +126,13 @@ test_that("FDS study manifests reject legacy lineage and hidden alignment", {
     class = "fmridataset_error_schema"
   )
 
-  malformed <- manifest
-  malformed$metadata <- unaligned_record(list(
+  # Study metadata is unaligned by definition; a length that coincides with
+  # an entity size is not hidden alignment.
+  coincident <- manifest
+  coincident$metadata <- unaligned_record(list(
     per_subject = seq_len(length(entity(fixture$study, "subject")))
   ))
-  expect_error(
-    validate_fds_study_manifest(malformed),
-    "entity:subject-aligned",
-    class = "fmridataset_error_schema"
-  )
+  expect_no_error(validate_fds_study_manifest(coincident))
 
   malformed <- manifest
   malformed$tables$raw <- data.frame(value = 1L)

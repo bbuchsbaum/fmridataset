@@ -20,9 +20,13 @@ as_fmri_frame.fmri_frame <- function(x, ...) x
 
 #' @export
 as_fmri_frame.default <- function(x, ...) {
-  stop(
-    "No as_fmri_frame method is registered for class '",
-    class(x)[[1L]], "'.",
-    call. = FALSE
+  .frame_abort(
+    sprintf(
+      "No as_fmri_frame method is registered for class '%s'.",
+      class(x)[[1L]]
+    ),
+    "fmridataset_error_config",
+    parameter = "x",
+    value = class(x)
   )
 }

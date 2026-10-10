@@ -7,6 +7,19 @@
   when absent the previous `TR/2` default is unchanged. Rename the column with
   `start_time_col`. Fixes #94.
 
+- Frame input contracts are stricter: binding an ephemeral observation axis
+  now yields an ephemeral (non-persistable) axis; reusing an `aligned_assay`
+  on axes with different IDs or order is refused; `assay()`,
+  `collect_assay()`, and `fmri_frame(active_assay =)` require one assay name;
+  `x[i]` and `x[i, j, k]` on frames are refused (use `x[i, ]` or `x[, j]`);
+  `axis_frame()` refuses an `id` that contradicts the ID column and formats
+  whole-number numeric IDs exactly (`"100000"`, not `"1e+05"`), refusing
+  fractional ones; subsetting a spatial feature axis restricts its space;
+  `bind_observations()` compares retained feature annotations exactly; and
+  container metadata no longer rejects vectors whose length happens to equal
+  an axis size. The unused legacy `fmridataset_error_backend_io()`,
+  `fmridataset_error_config()`, and `stop_fmridataset()` helpers were removed.
+
 - Bumped the development version to `0.11.0.9000` so downstream packages can
   require the frame API (`fmridataset (>= 0.11.0.9000)`) or pin below it while
   migrating. The previous `0.10.0.9000` string was unchanged across the

@@ -232,12 +232,22 @@ axis_frame <- function(data, blocks = list(), id = NULL,
   axis <- match.arg(axis)
   data <- tibble::as_tibble(data)
   id_col <- id_col %||% .axis_id_column(axis)
+  if (!is.null(id) && id_col %in% names(data) &&
+    !identical(.format_axis_ids(id, axis), .format_axis_ids(data[[id_col]], axis))) {
+    .identity_abort(
+      sprintf(
+        "%s IDs were supplied both in `id` and in column `%s`, and they disagree; supply one.",
+        axis, id_col
+      ),
+      field = id_col
+    )
+  }
 
   policy_value <- .normalize_id_policy(
     id_policy, id, data, axis, id_col, id_keys, id_namespace
   )
   id <- policy_value$ids
-  id <- .validate_stable_ids(as.character(id), axis)
+  id <- .validate_stable_ids(.format_axis_ids(id, axis), axis)
   if (length(id) != nrow(data)) {
     .frame_abort(
       sprintf("%s IDs must have one value per metadata row.", axis),
@@ -270,6 +280,33 @@ axis_frame <- function(data, blocks = list(), id = NULL,
     ),
     class = "axis_frame"
   )
+}
+
+# Axis IDs are character. Numeric IDs are accepted only when every value is a
+# whole number, which is formatted exactly ("100000", never "1e+05"); a
+# fractional double has no stable textual identity and is refused. Missing
+# values pass through so stable-key validation reports them.
+.format_axis_ids <- function(ids, axis = "axis") {
+  if (is.factor(ids)) {
+    return(as.character(ids))
+  }
+  if (is.double(ids) && !is.object(ids)) {
+    present <- !is.na(ids)
+    if (any(!is.finite(ids[present]) | ids[present] != trunc(ids[present]))) {
+      .identity_abort(
+        sprintf(
+          "Numeric %s IDs must be finite whole numbers; supply character IDs.",
+          axis
+        ),
+        field = "id"
+      )
+    }
+    out <- rep(NA_character_, length(ids))
+    # Adding 0 turns a negative zero into zero so it never formats as "-0".
+    out[present] <- sprintf("%.0f", ids[present] + 0)
+    return(out)
+  }
+  as.character(ids)
 }
 
 .axis_id_digest <- function(ids) {
@@ -405,6 +442,24 @@ feature_axis.default <- function(data, space = NULL, blocks = list(), metadata =
   out$space <- space
   out$id_policy <- axis_id_policy(space)
   class(out) <- c("spatial_axis_frame", class(out))
+  out
+}
+
+# A spatial feature axis carries its space, so a subset must restrict the space
+# to the same features in the same order; otherwise the result is a plain axis
+# whose feature IDs no longer have a spatial identity.
+#' @export
+`[.spatial_axis_frame` <- function(x, i, ...) {
+  if (missing(i)) {
+    return(x)
+  }
+  selection <- .normalize_selection(i, length(x), ids = axis_ids(x), axis = "feature")
+  if (.selection_is_all(selection)) {
+    return(x)
+  }
+  out <- .subset_axis_frame(x, selection)
+  out$space <- restrict_space(x$space, .selection_expand(selection))
+  class(out) <- c("spatial_axis_frame", setdiff(class(out), "spatial_axis_frame"))
   out
 }
 

@@ -46,15 +46,12 @@
   stats::setNames(as.integer(domains), names(domains))
 }
 
-.metadata_alignment_label <- function(n, domains) {
-  if (n <= 1L || !length(domains)) {
-    return(NULL)
-  }
-  matches <- names(domains)[domains == n]
-  if (!length(matches)) NULL else matches[[1L]]
-}
-
-.normalize_unaligned_value <- function(value, path, domains) {
+# Container metadata is unaligned by definition. A vector whose length happens
+# to equal an axis or entity size (a voxel size of c(2, 2, 2) on a
+# three-observation frame) is not evidence of alignment, so lengths are never
+# compared with alignment domains; only tabular, array-valued, typed, and
+# runtime values are refused.
+.normalize_unaligned_value <- function(value, path) {
   .assert_no_runtime_state(
     value, .metadata_abort,
     sprintf("Metadata field '%s' cannot contain runtime state.", path),
@@ -79,25 +76,13 @@
         path
       )
     }
-    .normalize_unaligned_list(value, path, domains)
+    .normalize_unaligned_list(value, path)
   } else {
-    label <- .metadata_alignment_label(length(value), domains)
-    if (!is.null(label)) {
-      .metadata_abort(
-        sprintf(
-          "Metadata field '%s' appears %s-aligned; store aligned values on the declared axis, entity, block, assay, relation, table, or linked frame.",
-          path, label
-        ),
-        path,
-        alignment = label,
-        size = length(value)
-      )
-    }
     value
   }
 }
 
-.normalize_unaligned_list <- function(value, path, domains) {
+.normalize_unaligned_list <- function(value, path) {
   if (!inherits(value, "unaligned_record")) {
     .assert_unique_names(
       value, .metadata_abort,
@@ -121,7 +106,7 @@
     }
     fields <- lapply(names(fields), function(name) {
       child <- if (nzchar(path)) paste(path, name, sep = ".") else name
-      .normalize_unaligned_value(fields[[name]], child, domains)
+      .normalize_unaligned_value(fields[[name]], child)
     })
     names(fields) <- names(unclass(value))
   }
@@ -132,12 +117,13 @@
 #'
 #' Container metadata is deliberately unaligned. Array- or table-valued data
 #' belong in assays, axis blocks, relations, typed tables, or linked frames.
-#' When `domains` are supplied, vector lengths matching an observation,
-#' feature, or entity domain are rejected as probable hidden alignment.
+#' A vector field is an unaligned value whatever its length; a length that
+#' coincides with an axis or entity size is not treated as alignment.
 #'
 #' @param x A named serializable list.
-#' @param domains Optional named observation, feature, or entity sizes used to
-#'   detect hidden alignment.
+#' @param domains Optional named non-negative observation, feature, or entity
+#'   sizes of the owning container. They are validated but never compared
+#'   with field lengths.
 #' @return An `unaligned_record`.
 #' @examples
 #' rec <- unaligned_record(list(task = "rest", tr = 2))
@@ -153,7 +139,7 @@ unaligned_record <- function(x = list(), domains = NULL) {
     "Unaligned metadata must have unique non-empty field names.",
     field = "metadata"
   )
-  domains <- .normalize_alignment_domains(domains)
+  .normalize_alignment_domains(domains)
   if (length(x)) {
     tokens <- .metadata_field_token(names(x))
     bad <- tokens %in% .metadata_diagnostic_names
@@ -167,7 +153,7 @@ unaligned_record <- function(x = list(), domains = NULL) {
       )
     }
   }
-  .normalize_unaligned_value(x, "metadata", domains)
+  .normalize_unaligned_value(x, "metadata")
 }
 
 #' Validate a typed unaligned metadata record
