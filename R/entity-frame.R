@@ -2,6 +2,38 @@
   .frame_abort(message, "fmridataset_error_entity", ...)
 }
 
+# Stable keys are compared as strings. Character and factor keys are used as
+# is; whole-number keys are formatted exactly, so 100000 and 100000L both become
+# "100000" rather than "1e+05". Fractional or non-finite numbers and other
+# types are rejected because no exact string identity exists for them.
+.canonical_key_values <- function(x, abort = .entity_abort, field = "key") {
+  if (is.factor(x)) x <- as.character(x)
+  if (is.character(x)) {
+    return(as.vector(x))
+  }
+  if (is.object(x) || !(is.integer(x) || is.double(x))) {
+    abort(
+      "Keys must be character, factor, or whole-number numeric values.",
+      field = field
+    )
+  }
+  if (is.integer(x)) {
+    return(as.character(as.vector(x)))
+  }
+  present <- !is.na(x)
+  values <- as.vector(x)[present]
+  if (any(!is.finite(values)) || any(values != trunc(values))) {
+    abort(
+      "Numeric keys must be finite whole numbers; use character keys otherwise.",
+      field = field
+    )
+  }
+  values[values == 0] <- 0
+  out <- rep(NA_character_, length(x))
+  out[present] <- sprintf("%.0f", values)
+  out
+}
+
 .validate_entity_scalar_data <- function(data, key) {
   if (!is.data.frame(data)) {
     .entity_abort("Entity data must be a data frame.", field = "data")
@@ -62,7 +94,7 @@ entity_frame <- function(data, key, blocks = list(), entity_type = NULL,
   out <- axis_frame(
     data = data,
     blocks = blocks,
-    id = as.character(data[[key]]),
+    id = .canonical_key_values(data[[key]], field = key),
     axis = "entity",
     id_col = key,
     metadata = metadata
@@ -145,41 +177,19 @@ print.entity_frame <- function(x, ...) {
 }
 
 .coerce_entity_registry_entry <- function(value, name) {
-  if (inherits(value, "entity_frame")) {
-    return(value)
-  }
-  if (!is.list(value) || is.null(value$data)) {
+  if (!inherits(value, "entity_frame")) {
     .entity_abort(
       sprintf("Registry entry '%s' must be an entity_frame.", name),
-      entity = name
-    )
-  }
-  key <- value$key
-  if (is.null(key)) {
-    conventional <- paste0(name, "_id")
-    if (conventional %in% names(value$data)) key <- conventional
-  }
-  if (is.null(key)) {
-    .entity_abort(
-      sprintf("Legacy registry entry '%s' must declare its key.", name),
       entity = name,
-      field = "key"
+      field = "entities"
     )
   }
-  entity_frame(
-    data = value$data,
-    key = key,
-    blocks = value$blocks %||% list(),
-    entity_type = value$entity_type %||% name,
-    metadata = value$metadata %||% list()
-  )
+  value
 }
 
 #' Construct and validate an entity registry
 #'
-#' @param entities A named list of `entity_frame` objects. For evolutionary
-#'   compatibility, a named legacy entry with `data`, `blocks`, and either
-#'   `key` or a conventional `<name>_id` column is normalized immediately.
+#' @param entities A named list of `entity_frame` objects.
 #' @param ... Alternatively, named `entity_frame` objects.
 #' @return A named `entity_registry`.
 #' @examples
@@ -195,6 +205,12 @@ entity_registry <- function(entities = list(), ...) {
   if (inherits(entities, "entity_registry") && !length(dots)) {
     validate_entity_registry(entities)
     return(entities)
+  }
+  if (inherits(entities, "entity_frame")) {
+    .entity_abort(
+      "Supply entity frames by name, for example entity_registry(subject = x), or as a named list.",
+      field = "entities"
+    )
   }
   if (length(dots)) {
     if (length(entities)) {
@@ -253,7 +269,7 @@ validate_entity_registry <- function(x) {
         )
       }
       .validate_stable_ids(entity_ids(value), paste0("entity:", name))
-      if (!identical(as.character(value$data[[value$key]]), entity_ids(value))) {
+      if (!identical(.canonical_key_values(value$data[[value$key]], field = value$key), entity_ids(value))) {
         .entity_abort(
           sprintf("Entity registry entry '%s' has keys out of alignment.", name),
           entity = name,

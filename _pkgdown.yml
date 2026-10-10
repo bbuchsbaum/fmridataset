@@ -94,7 +94,6 @@ reference:
   - matches("^mask_bank|^mask_values|^n_masks|^validate_mask_bank")
   - matches("validity")
   - matches("^event")
-  - matches("^events$")
   - validate_event_table
 
 - title: Collections and studies

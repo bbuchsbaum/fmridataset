@@ -24,6 +24,9 @@ There is no public legacy migration surface. The pre-frame 0.x architecture
 was removed rather than adapted (see `NEWS.md` for the boundary revision), and
 the upgrade helpers for provisional version-one study descriptors written by
 unreleased development builds are internal for one release before removal.
+Convenience aliases are not part of the 1.0 surface either: study tables are
+read with `study_table(x, "events")` (the `events()` alias was removed), and
+`entity_registry()` accepts only named `entity_frame` objects.
 
 ## Extension API
 

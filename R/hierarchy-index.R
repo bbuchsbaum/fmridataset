@@ -220,8 +220,20 @@ hierarchy_index <- function(x, levels, relations = NULL) {
     .select_hierarchy_relation(registry, edges[i, , drop = FALSE], selection)
   }, character(1))
 
+  # Every reachable path must agree before a chain is reported complete;
+  # frame construction enforces this too, but the index never trusts it.
+  resolved <- tryCatch(
+    .resolve_entity_maps(x),
+    fmridataset_error_resolution = function(error) {
+      .hierarchy_abort(
+        paste("Hierarchy paths conflict:", conditionMessage(error)),
+        entity = error$entity
+      )
+    }
+  )
+
   current_ids <- observation_ids(x)
-  ids_by_level <- stats::setNames(vector("list", length(levels)), levels)
+  ids_by_level <-stats::setNames(vector("list", length(levels)), levels)
   relation_by_level <- stats::setNames(rep(NA_character_, length(levels)), levels)
   for (i in seq_len(nrow(edges))) {
     edge <- edges[i, , drop = FALSE]
@@ -232,13 +244,26 @@ hierarchy_index <- function(x, levels, relations = NULL) {
     parent_ids <- rep(NA_character_, length(current_ids))
     present <- !is.na(positions)
     if (any(present)) {
-      parent_ids[present] <- as.character(
-        domain$data[[descriptor$key]][positions[present]]
+      parent_ids[present] <- .canonical_key_values(
+        domain$data[[descriptor$key]][positions[present]],
+        .hierarchy_abort, descriptor$key
       )
     }
     ids_by_level[[edge$level]] <- parent_ids
     relation_by_level[[edge$level]] <- relation_name
     current_ids <- parent_ids
+  }
+
+  for (level in levels) {
+    reachable <- resolved[[paste0("entity:", level)]]
+    chain <- ids_by_level[[level]]
+    both <- !is.na(reachable) & !is.na(chain)
+    if (is.null(reachable) || any(reachable[both] != chain[both])) {
+      .hierarchy_abort(
+        sprintf("Hierarchy level '%s' conflicts with another relation path.", level),
+        level = level
+      )
+    }
   }
 
   id_table <- tibble::tibble(.obs_id = observation_ids(x))

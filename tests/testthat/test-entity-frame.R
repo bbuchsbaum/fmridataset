@@ -115,9 +115,19 @@ test_that("entity registries are named validated semantic collections", {
   expect_error(entity(registry, "run"), class = "fmridataset_error_entity")
 
   expect_error(entity_registry(list(subjects)), "named")
+  # The pre-1.0 list-entry form is gone: entries must be entity frames, even
+  # when a conventional `<name>_id` column could have supplied the key.
   expect_error(
-    entity_registry(list(subject = list(data = tibble::tibble(label = "sub-1")))),
-    "key"
+    entity_registry(list(subject = list(data = tibble::tibble(subject_id = "sub-1")))),
+    "must be an entity_frame",
+    class = "fmridataset_error_entity"
+  )
+  # An entity_frame passed positionally is rejected with a clear message
+  # instead of being read as a list of registry entries.
+  expect_error(
+    entity_registry(subjects),
+    "by name",
+    class = "fmridataset_error_entity"
   )
   unsafe <- unclass(registry)
   unsafe$bad <- list(data = tibble::tibble(bad_id = "bad"), key = "bad_id")
@@ -238,4 +248,46 @@ test_that("entity registries survive HDF5 round trips", {
     axis_block_data(entity_blocks(entity(fixture$frame, "stimulus"))$visual_pca),
     tolerance = 0
   )
+})
+
+test_that("numeric entity and foreign keys use exact whole-number identity", {
+  subjects <- entity_frame(
+    data.frame(subject_id = c(100000, 200000), age = c(20, 60)),
+    key = "subject_id"
+  )
+  expect_identical(entity_ids(subjects), c("100000", "200000"))
+  expect_identical(
+    entity_ids(entity_frame(data.frame(k = c(1e15, -0, 7L)), key = "k")),
+    c("1000000000000000", "0", "7")
+  )
+  expect_error(
+    entity_frame(data.frame(k = c(0.1 + 0.2, 0.3)), key = "k"),
+    "whole numbers",
+    class = "fmridataset_error_entity"
+  )
+  expect_error(
+    entity_frame(data.frame(k = c(1, Inf)), key = "k"),
+    class = "fmridataset_error_entity"
+  )
+  expect_error(
+    entity_frame(data.frame(k = c(TRUE, FALSE)), key = "k"),
+    class = "fmridataset_error_entity"
+  )
+
+  make <- function(foreign) {
+    fmri_frame(
+      assays = list(bold = matrix(as.double(1:8), nrow = 2)),
+      observations = data.frame(.obs_id = c("o1", "o2"), subject_id = foreign),
+      space = index_space(4, ids = paste0("f", 1:4), namespace = "numeric-keys"),
+      entities = list(subject = subjects),
+      relations = list(os = key_relation("subject_id", target = "subject"))
+    )
+  }
+  # Integer and double foreign keys both match the double primary keys.
+  for (foreign in list(c(100000L, 200000L), c(100000, 200000), c("100000", "200000"))) {
+    resolved <- observations(make(foreign), resolve = TRUE)
+    expect_identical(resolved$subject.age, c(20, 60))
+  }
+  expect_error(make(c(100000.5, 200000)), class = "fmridataset_error_relation")
+  expect_invisible(validate_entity_registry(entity_registry(subject = subjects)))
 })
