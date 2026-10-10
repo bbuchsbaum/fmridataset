@@ -6,7 +6,6 @@
 \alias{study_link}
 \alias{study_tables}
 \alias{study_table}
-\alias{events}
 \title{Study link and table accessors}
 \usage{
 study_links(x)
@@ -16,8 +15,6 @@ study_link(x, name)
 study_tables(x)
 
 study_table(x, name)
-
-events(x, name = "events")
 }
 \arguments{
 \item{x}{An \code{fmri_study}.}
