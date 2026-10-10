@@ -43,9 +43,23 @@
   lapply(values, .canonical_normalize)
 }
 
+# Sparse matrices are encoded by their values, not their storage layout:
+# implicit unit diagonals and symmetric halves are materialized by coercing to
+# general compressed storage, and explicitly stored zeros are dropped so that
+# they hash like the implicit zeros they equal. Stored negative zero is kept,
+# matching the dense encoding where `-0` and `0` are distinct values.
 .canonical_sparse_matrix <- function(x) {
-  compressed <- methods::as(x, "CsparseMatrix")
+  compressed <- methods::as(methods::as(x, "CsparseMatrix"), "generalMatrix")
   entries <- Matrix::summary(compressed)
+  if (nrow(entries) && !is.null(entries$x)) {
+    values <- entries$x
+    stored_zero <- if (is.double(values)) {
+      !is.na(values) & values == 0 & 1 / values > 0
+    } else {
+      !is.na(values) & values == 0
+    }
+    entries <- entries[!stored_zero, , drop = FALSE]
+  }
   if (nrow(entries)) entries <- entries[order(entries$j, entries$i), , drop = FALSE]
   list(
     .canonical_type = "sparse_matrix",
@@ -58,9 +72,22 @@
   )
 }
 
-.canonical_normalize <- function(x) {
+# `.canonical_type` is a reserved record field: it marks the internal record a
+# sparse matrix is encoded as, so ordinary lists may not carry it (otherwise a
+# plain list could hash identically to a real sparse matrix).
+.canonical_reject_reserved <- function(x) {
+  if (".canonical_type" %in% names(x)) {
+    .identity_abort(
+      "Lists may not use the reserved field name '.canonical_type'.",
+      field = ".canonical_type"
+    )
+  }
+  invisible(x)
+}
+
+.canonical_normalize <- function(x, reserved = FALSE) {
   if (methods::is(x, "sparseMatrix")) {
-    return(.canonical_normalize(.canonical_sparse_matrix(x)))
+    return(.canonical_normalize(.canonical_sparse_matrix(x), reserved = TRUE))
   }
   if (isS4(x)) {
     .identity_abort(
@@ -84,6 +111,7 @@
     # `[[` by returning another object of the same class (numeric_version is a
     # common example), which otherwise causes unbounded recursive dispatch.
     x <- unclass(x)
+    if (!reserved) .canonical_reject_reserved(x)
     order_value <- .canonical_record_order(x)
     x <- x[order_value]
     names_value <- .canonical_names(names(x))

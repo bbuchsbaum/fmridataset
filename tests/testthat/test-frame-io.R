@@ -49,6 +49,35 @@ test_that("public frame writer preserves atomic failure semantics", {
   expect_length(list.files(parent, pattern = "partial", all.files = TRUE), 0L)
 })
 
+test_that("frame I/O fails with a structured error without fmristore", {
+  frame <- make_frame_fixture()$frame
+  local_mocked_bindings(.frame_store_available = function() FALSE)
+  expect_error(
+    write_frame(frame, tempfile(fileext = ".h5")),
+    "r-universe", class = "fmridataset_error_backend_io"
+  )
+  expect_error(
+    open_frame(tempfile(fileext = ".h5")),
+    "fmristore", class = "fmridataset_error_backend_io"
+  )
+})
+
+test_that("frame I/O fails with a structured error when fmristore lacks frame support", {
+  frame <- make_frame_fixture()$frame
+  local_mocked_bindings(
+    .frame_store_available = function() TRUE,
+    .frame_store_exports = function() character()
+  )
+  expect_error(
+    write_frame(frame, tempfile(fileext = ".h5")),
+    "write_frame_h5", class = "fmridataset_error_backend_io"
+  )
+  expect_error(
+    open_frame(tempfile(fileext = ".h5")),
+    "open_frame_h5", class = "fmridataset_error_backend_io"
+  )
+})
+
 test_that("frame I/O rejects unknown formats", {
   frame <- make_frame_fixture()$frame
   expect_error(write_frame(frame, tempfile(), format = "zarr"), "arg")

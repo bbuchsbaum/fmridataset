@@ -33,6 +33,19 @@
   `events()` alias (use `study_table(x, "events")`) and the list-entry form of
   `entity_registry()`.
 
+- Identity and schema contracts are stricter: sparse matrices hash by value
+  (unit diagonals, symmetric storage, and stored `+0` no longer change the
+  digest) and lists may not use the reserved `.canonical_type` field;
+  `validate_fds_manifest()`, `validate_fds_study_manifest()`, and
+  `validate_frame_schema()` reject unknown fields, orphan arrays, malformed
+  block components, out-of-range shapes, and malformed sections with structured
+  errors while accepting reordered fields; `compare_frame_schema()` ignores
+  column and assay order, matching `frame_schema_digest()`; frame schemas
+  record POSIXct time zones and difftime units; `identity_descriptor()`
+  rejects `content_digest` outside the content domain; the JSON schemas now
+  declare every study link field, enumerate array dtypes, and accept `[]` for
+  empty registries; and the unused `fds-study-v1.schema.json` is removed.
+
 - `temporal_schema()` and `as_sampling_frame()` now honour an optional
   per-observation `start_time` column (non-negative seconds, constant within
   each run): the slice-time-correction reference or other first-volume offset.
