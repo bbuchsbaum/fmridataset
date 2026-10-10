@@ -19,15 +19,12 @@
   "float64"
 }
 
+# The voxel-to-world transform neuroim2 attaches to every image it reads from
+# this header. Rebuilding a NeuroSpace from spacing, origin, and axes alone
+# dropped axis flips (an RAS image with a negative x step came back with a
+# positive one), so the source's affine disagreed with its own native volumes.
 .nifti_header_affine <- function(header) {
-  spatial_dim <- as.integer(methods::slot(header, "dims")[1:3])
-  neurospace <- neuroim2::NeuroSpace(
-    dim = spatial_dim,
-    spacing = methods::slot(header, "spacing")[1:3],
-    origin = methods::slot(header, "origin"),
-    axes = methods::slot(header, "spatial_axes")
-  )
-  unname(neuroim2::trans(neurospace))
+  unname(neuroim2::trans(header))
 }
 
 .nifti_file_state <- function(paths) {
