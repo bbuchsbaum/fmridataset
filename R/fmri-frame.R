@@ -230,10 +230,7 @@ fmri_frame <- function(assays, observations, features = NULL, space = NULL,
     entities
   )
   tables <- .validate_table_registry(tables, "Frame")
-  metadata <- .normalize_container_metadata(
-    metadata,
-    .frame_alignment_domains(observations, feature_axis_value, entities)
-  )
+  metadata <- .normalize_container_metadata(metadata)
   provenance <- .validate_container_provenance(provenance, "Frame")
 
   structure(

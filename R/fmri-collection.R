@@ -52,13 +52,10 @@
 #' collection_ids(collection)
 #' @export
 fmri_collection <- function(frames, metadata = list(), provenance = NULL) {
-  .build_fmri_collection(frames, metadata, provenance, detect_alignment = TRUE)
+  .build_fmri_collection(frames, metadata, provenance)
 }
 
-# `detect_alignment = FALSE` keeps already-validated metadata from being
-# re-tested against member axis sizes that subsetting or filtering changed.
-.build_fmri_collection <- function(frames, metadata, provenance,
-                                   detect_alignment) {
+.build_fmri_collection <- function(frames, metadata, provenance) {
   if (!is.list(frames) || !length(frames)) {
     .collection_abort("frames must be a non-empty named list.", field = "frames")
   }
@@ -79,10 +76,7 @@ fmri_collection <- function(frames, metadata = list(), provenance = NULL) {
       .assert_collection_semantics(frames[[1L]], frames[[i]], ids[[i]])
     }
   }
-  metadata <- .normalize_container_metadata(
-    metadata,
-    if (isTRUE(detect_alignment)) .collection_alignment_domains(frames)
-  )
+  metadata <- .normalize_container_metadata(metadata)
   provenance <- .validate_container_provenance(provenance, "Collection")
   out <- structure(
     list(
@@ -122,8 +116,7 @@ validate_fmri_collection <- function(x) {
     .collection_abort("x is not a valid fmri_collection.")
   }
   .build_fmri_collection(
-    x$frames, x$metadata, x$provenance,
-    detect_alignment = FALSE
+    x$frames, x$metadata, x$provenance
   )
   invisible(x)
 }
@@ -204,8 +197,7 @@ names.fmri_collection <- function(x) names(x$frames)
   .build_fmri_collection(
     x$frames[i],
     metadata = x$metadata,
-    provenance = x$provenance,
-    detect_alignment = FALSE
+    provenance = x$provenance
   )
 }
 

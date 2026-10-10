@@ -589,17 +589,11 @@ compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
 #' @export
 fmri_study <- function(frames, entities = list(), links = list(), tables = list(),
                        metadata = list(), provenance = NULL) {
-  .build_fmri_study(
-    frames, entities, links, tables, metadata, provenance,
-    detect_alignment = TRUE
-  )
+  .build_fmri_study(frames, entities, links, tables, metadata, provenance)
 }
 
-# `detect_alignment = FALSE` is for metadata that already passed the aligned
-# value check at construction. Axis sizes change under filtering, so re-running
-# the length heuristic would reject metadata that was valid when supplied.
 .build_fmri_study <- function(frames, entities, links, tables, metadata,
-                              provenance, detect_alignment) {
+                              provenance) {
   if (!is.list(frames) || !length(frames)) {
     .study_abort("frames must be a non-empty named list.", field = "frames")
   }
@@ -620,10 +614,7 @@ fmri_study <- function(frames, entities = list(), links = list(), tables = list(
   }
   links <- .validate_study_links(links, frames)
   tables <- .validate_study_tables(tables, entities_value)
-  metadata <- .normalize_container_metadata(
-    metadata,
-    if (isTRUE(detect_alignment)) .study_alignment_domains(frames, entities_value)
-  )
+  metadata <- .normalize_container_metadata(metadata)
   provenance <- .validate_container_provenance(provenance, "Study")
   out <- structure(
     list(
@@ -646,8 +637,7 @@ fmri_study <- function(frames, entities = list(), links = list(), tables = list(
       shared = shared, restrict = restrict
     )
     return(.build_fmri_collection(
-      members, value$metadata, value$provenance,
-      detect_alignment = FALSE
+      members, value$metadata, value$provenance
     ))
   }
   assay_sources <- lapply(names(assays(value)), function(name) .frame_assay_source(value, name))
@@ -668,7 +658,7 @@ fmri_study <- function(frames, entities = list(), links = list(), tables = list(
     provenance = value$provenance %||% value$base$provenance
   )
   out$metadata <- .normalize_container_metadata(
-    value$metadata %||% value$base$metadata %||% list(), NULL
+    value$metadata %||% value$base$metadata %||% list()
   )
   out
 }
@@ -697,8 +687,7 @@ validate_fmri_study <- function(x) {
     .study_abort("x is not a valid fmri_study.")
   }
   .build_fmri_study(
-    x$frames, x$entities, x$links, x$tables, x$metadata, x$provenance,
-    detect_alignment = FALSE
+    x$frames, x$entities, x$links, x$tables, x$metadata, x$provenance
   )
   invisible(x)
 }
@@ -886,8 +875,7 @@ study_table <- function(x, name) {
       selections = selections, primary = primary, shared = shared
     )
     return(.build_fmri_collection(
-      members, value$metadata, value$provenance,
-      detect_alignment = FALSE
+      members, value$metadata, value$provenance
     ))
   }
   contextual <- .contextualize_study_frame(value, shared)
@@ -1003,8 +991,7 @@ filter_entities <- function(x, entity, predicate) {
   # sizes must not reinterpret it as aligned.
   .build_fmri_study(
     frames = frames, entities = restricted, links = links, tables = tables,
-    metadata = x$metadata, provenance = x$provenance,
-    detect_alignment = FALSE
+    metadata = x$metadata, provenance = x$provenance
   )
 }
 

@@ -636,21 +636,14 @@ validate_fds_manifest <- function(manifest) {
       .fds_schema_abort(conditionMessage(error), "tables")
     }
   )
-  manifest_entities <- tryCatch(
+  tryCatch(
     .manifest_entity_registry(manifest$entities),
     error = function(error) {
       .fds_schema_abort(conditionMessage(error), "entities")
     }
   )
   tryCatch(
-    validate_unaligned_record(
-      manifest$metadata,
-      .container_alignment_domains(
-        observations = manifest$axes$observation$ids,
-        features = manifest$axes$feature$ids,
-        entities = manifest_entities
-      )
-    ),
+    validate_unaligned_record(manifest$metadata),
     error = function(error) {
       .fds_schema_abort(conditionMessage(error), "metadata")
     }

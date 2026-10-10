@@ -4,14 +4,10 @@
 \alias{unaligned_record}
 \title{Construct a typed unaligned metadata record}
 \usage{
-unaligned_record(x = list(), domains = NULL)
+unaligned_record(x = list())
 }
 \arguments{
 \item{x}{A named serializable list.}
-
-\item{domains}{Optional named non-negative observation, feature, or entity
-sizes of the owning container. They are validated but never compared
-with field lengths.}
 }
 \value{
 An \code{unaligned_record}.

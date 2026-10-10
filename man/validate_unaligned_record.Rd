@@ -4,12 +4,10 @@
 \alias{validate_unaligned_record}
 \title{Validate a typed unaligned metadata record}
 \usage{
-validate_unaligned_record(x, domains = NULL)
+validate_unaligned_record(x)
 }
 \arguments{
 \item{x}{An \code{unaligned_record}.}
-
-\item{domains}{Optional named alignment-domain sizes.}
 }
 \value{
 \code{x}, invisibly.

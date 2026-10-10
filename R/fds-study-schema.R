@@ -133,21 +133,8 @@ fds_study_representations <- function(x) {
       .fds_schema_abort(conditionMessage(error), paste0("representations.", name, ".provenance"))
     }
   )
-  member_domains <- integer()
-  for (member_name in member_names) {
-    member <- value$members[[member_name]]
-    sizes <- c(
-      observation = length(member$axes$observation$ids),
-      feature = length(member$axes$feature$ids)
-    )
-    sizes <- sizes[sizes > 1L]
-    if (length(sizes)) {
-      names(sizes) <- paste0("member:", member_name, ":", names(sizes))
-      member_domains <- c(member_domains, sizes)
-    }
-  }
   tryCatch(
-    validate_unaligned_record(value$metadata, member_domains),
+    validate_unaligned_record(value$metadata),
     error = function(error) {
       .fds_schema_abort(conditionMessage(error), paste0("representations.", name, ".metadata"))
     }
@@ -305,44 +292,8 @@ validate_fds_study_manifest <- function(manifest) {
       )
     }
   )
-  metadata_domains <- integer()
-  for (name in names(manifest$entities)) {
-    size <- length(manifest$entities[[name]]$ids)
-    if (size > 1L) metadata_domains[[paste0("entity:", name)]] <- size
-  }
-  for (name in representation_names) {
-    representation <- representations[[name]]
-    if (identical(representation$type, "fmri_frame")) {
-      observation_size <- length(representation$manifest$axes$observation$ids)
-      feature_size <- length(representation$manifest$axes$feature$ids)
-      if (observation_size > 1L) {
-        metadata_domains[[paste0("representation:", name, ":observation")]] <-
-          observation_size
-      }
-      if (feature_size > 1L) {
-        metadata_domains[[paste0("representation:", name, ":feature")]] <-
-          feature_size
-      }
-    } else {
-      for (member_name in names(representation$members)) {
-        member <- representation$members[[member_name]]
-        observation_size <- length(member$axes$observation$ids)
-        feature_size <- length(member$axes$feature$ids)
-        if (observation_size > 1L) {
-          metadata_domains[[paste0(
-            "representation:", name, ":member:", member_name, ":observation"
-          )]] <- observation_size
-        }
-        if (feature_size > 1L) {
-          metadata_domains[[paste0(
-            "representation:", name, ":member:", member_name, ":feature"
-          )]] <- feature_size
-        }
-      }
-    }
-  }
   tryCatch(
-    validate_unaligned_record(manifest$metadata, metadata_domains),
+    validate_unaligned_record(manifest$metadata),
     error = function(error) {
       .fds_schema_abort(conditionMessage(error), "metadata")
     }

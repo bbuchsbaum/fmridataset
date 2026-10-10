@@ -1,5 +1,9 @@
 # fmridataset 0.11.0 (Development)
 
+- Removed the `domains` argument of `unaligned_record()` and
+  `validate_unaligned_record()`. Container metadata is never compared with
+  axis or entity sizes, so the argument had no effect.
+
 - Correctness fixes: `read_bids_bold()` orders unpadded runs numerically
   (`run-2` before `run-10`); `temporal_schema()` gains `order_col` and
   `as_sampling_frame()` refuses runs whose `volume_index`/`run_time` is out of
