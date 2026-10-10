@@ -7,6 +7,19 @@
   when absent the previous `TR/2` default is unchanged. Rename the column with
   `start_time_col`. Fixes #94.
 
+- Array-source fixes: NIfTI `UBYTE`/`USHORT`/`ULONG` images report unsigned
+  dtypes; reads return the declared dtype's R mode on every path (an integer
+  `memory_source()` reads as double, logical NIfTI as logical) and
+  `memory_source()` rejects data its `dtype` cannot hold; `as_delarr()`
+  applies `memory_budget` per pull rather than to the whole source; Zarr
+  reads coalesce scattered selections into chunk-aligned or bounding-box
+  reads; `fault_source()` handles keep their fault stage; and
+  `source_realization_cost()` accepts open handles. Removed the
+  `row_bound_source()` alias (use `row_sharded_source()`) and the duplicate
+  block-plan fields `dtype_bytes`, `max_block_bytes`, `total_bytes`, and
+  manifest `.bytes` (use `output_dtype_bytes`, `max_peak_bytes`,
+  `total_output_bytes`, and `.peak_bytes`).
+
 - Bumped the development version to `0.11.0.9000` so downstream packages can
   require the frame API (`fmridataset (>= 0.11.0.9000)`) or pin below it while
   migrating. The previous `0.10.0.9000` string was unchanged across the

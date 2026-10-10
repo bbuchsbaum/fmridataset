@@ -17,7 +17,7 @@
   "feature_mapped_source", "frame_from_fds_manifest", "hierarchy_complete",
   "hierarchy_digest", "hierarchy_groups", "hierarchy_ids", "hierarchy_levels",
   "hierarchy_relations", "locate_source_rows", "mask_bank_digest", "plan_blocks",
-  "provenance_digest", "relation_registry_digest", "row_bound_source",
+  "provenance_digest", "relation_registry_digest",
   "row_sharded_source", "shard_manifest", "source_capabilities", "source_chunks",
   "source_close", "source_descriptor", "source_dtype", "source_error",
   "source_fingerprint",

@@ -30,7 +30,7 @@ test_that("row-bound and row-sharded sources conform", {
   b <- matrix(as.double(101:108), 2, 4)
 
   expect_array_source_conformance(
-    row_bound_source(list(memory_source(a), memory_source(b))),
+    row_sharded_source(list(memory_source(a), memory_source(b))),
     rbind(a, b)
   )
   expect_array_source_conformance(
@@ -155,7 +155,7 @@ test_that("every dispatchable source and space is covered or excused", {
   # Exercised above, or in the type's own test file through the same helper.
   covered_sources <- c(
     "counting_source", "feature_mapped_source", "memory_source",
-    "nifti_array_source", "row_bound_source", "row_index_source",
+    "nifti_array_source", "row_index_source",
     "row_sharded_source", "source_view", "sparse_entity_source",
     "validity_masked_source", "zarr_array_source"
   )

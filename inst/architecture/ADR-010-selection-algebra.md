@@ -148,7 +148,7 @@ the source itself. The built-in declarations are:
 | `zarr_array_source` | all, range | chunked range reads; positions are decomposed into runs |
 | `feature_mapped_source`, `validity_masked_source`, sparse entity and lifted row sources | all, range, positions | any selector resolves directly to operator rows, mask rows, or Matrix indexing |
 | `source_view`, `counting_source`, `fault_source` | the child's | they forward what they receive |
-| `row_bound_source`, `row_sharded_source` | the intersection of the children's | routing preserves the form; a composition can push down only what every child can |
+| `row_sharded_source` | the intersection of the children's | routing preserves the form; a composition can push down only what every child can |
 
 Declarations are ordinary capability strings, so they serialize and pass the
 existing source contract; `validate_array_source()` does not require them, and

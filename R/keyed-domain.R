@@ -251,7 +251,7 @@
     )
   }
   if (any(vapply(values, inherits, logical(1), what = "array_source"))) {
-    return(row_bound_source(lapply(values, as_array_source)))
+    return(row_sharded_source(lapply(values, as_array_source)))
   }
   do.call(rbind, values)
 }

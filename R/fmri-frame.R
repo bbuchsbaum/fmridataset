@@ -932,7 +932,7 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
 
 .flatten_bound_sources <- function(sources) {
   unlist(lapply(sources, function(source) {
-    if (inherits(source, "row_bound_source")) {
+    if (inherits(source, "row_sharded_source")) {
       .flatten_bound_sources(source$sources)
     } else {
       list(source)
@@ -949,7 +949,7 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
     return(source_view(flattened[[1L]], observations = integer()))
   }
   flattened <- flattened[nonempty]
-  if (length(flattened) == 1L) flattened[[1L]] else row_bound_source(flattened)
+  if (length(flattened) == 1L) flattened[[1L]] else row_sharded_source(flattened)
 }
 
 # The bound frame keeps the first frame's entity registry. Two registries

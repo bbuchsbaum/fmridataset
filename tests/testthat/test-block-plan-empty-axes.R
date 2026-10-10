@@ -31,7 +31,7 @@ test_that("frames emptied on either axis plan zero blocks in every layout", {
       plan <- plan_blocks(frame, layout = layout)
       expect_s3_class(plan, "frame_block_plan")
       expect_equal(plan$n_blocks, 0L, info = paste(label, layout))
-      expect_equal(plan$total_bytes, 0, info = paste(label, layout))
+      expect_equal(plan$total_output_bytes, 0, info = paste(label, layout))
     }
   }
 })

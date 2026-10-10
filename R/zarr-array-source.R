@@ -317,15 +317,28 @@ source_open.zarr_array_source <- function(x, ...) {
   handle
 }
 
-.zarr_empty_matrix <- function(dtype, nrow, ncol) {
-  prototype <- if (identical(dtype, "logical")) {
-    logical()
-  } else if (startsWith(dtype, "complex")) {
-    complex()
-  } else {
-    numeric()
+# Merge sorted, disjoint runs into read regions. With `all = TRUE` the regions
+# collapse to the bounding run. Otherwise consecutive runs merge when the next
+# one starts in a chunk the current region already touches, so each region
+# spans whole chunks the backend must decode anyway.
+.zarr_coalesce_runs <- function(runs, chunk, all = FALSE) {
+  if (length(runs) <= 1L) {
+    return(runs)
   }
-  matrix(prototype, nrow = nrow, ncol = ncol)
+  if (isTRUE(all)) {
+    return(list(c(runs[[1L]][[1L]], runs[[length(runs)]][[2L]])))
+  }
+  chunk_of <- function(position) (position - 1L) %/% chunk
+  regions <- list(runs[[1L]])
+  for (run in runs[-1L]) {
+    last <- regions[[length(regions)]]
+    if (chunk_of(run[[1L]]) <= chunk_of(last[[2L]])) {
+      regions[[length(regions)]] <- c(last[[1L]], run[[2L]])
+    } else {
+      regions[[length(regions) + 1L]] <- run
+    }
+  }
+  regions
 }
 
 .zarr_read_handle <- function(handle, observations, features) {
@@ -349,27 +362,46 @@ source_open.zarr_array_source <- function(x, ...) {
   n_observation <- .selection_length(observation_selection)
   n_feature <- .selection_length(feature_selection)
   if (!n_observation || !n_feature) {
-    return(.zarr_empty_matrix(source$dtype, n_observation, n_feature))
+    return(.realized_empty_matrix(source$dtype, n_observation, n_feature))
   }
 
-  # The normalized form supplies the chunk-aligned runs directly: a select-all
-  # or range axis is one run, and only arbitrary positions are decomposed.
   observation_index <- .selection_sorted(observation_selection)
   feature_index <- .selection_sorted(feature_selection)
-  selected <- .zarr_empty_matrix(
+  selected <- .realized_na_matrix(
     source$dtype,
     length(observation_index),
     length(feature_index)
   )
-  observation_runs <- .selection_runs(observation_selection)
-  feature_runs <- .selection_runs(feature_selection)
+  # One backend read per (observation run x feature run) made a scattered
+  # selection cost |runs|^2 round trips, each decoding the same chunks again.
+  # Runs are instead coalesced into regions: the whole bounding box when it
+  # fits the target block size, otherwise runs that touch a common chunk.
+  # Reading the gap between runs inside one chunk costs no extra decoding.
+  bounding_values <- as.double(diff(range(observation_index)) + 1) *
+    (diff(range(feature_index)) + 1)
+  coalesce_all <- bounding_values * .realized_dtype_bytes(source$dtype) <=
+    getOption("fmridataset.target_block_bytes", 4 * 1024^2)
+  observation_regions <- .zarr_coalesce_runs(
+    .selection_runs(observation_selection), source$chunks[[1L]], coalesce_all
+  )
+  feature_regions <- .zarr_coalesce_runs(
+    .selection_runs(feature_selection), source$chunks[[2L]], coalesce_all
+  )
   logical_axes <- c("observation", "feature")
 
-  for (observation_run in observation_runs) {
-    for (feature_run in feature_runs) {
+  for (observation_region in observation_regions) {
+    observation_rows <- which(
+      observation_index >= observation_region[[1L]] &
+        observation_index <= observation_region[[2L]]
+    )
+    for (feature_region in feature_regions) {
+      feature_cols <- which(
+        feature_index >= feature_region[[1L]] &
+          feature_index <= feature_region[[2L]]
+      )
       logical_selection <- list(
-        observation = observation_run,
-        feature = feature_run
+        observation = observation_region,
+        feature = feature_region
       )
       physical_selection <- unname(
         logical_selection[match(source$physical_axes, logical_axes)]
@@ -382,10 +414,14 @@ source_open.zarr_array_source <- function(x, ...) {
       if (identical(source$physical_axes, c("feature", "observation"))) {
         block <- t(block)
       }
-      selected[
-        match(seq.int(observation_run[[1L]], observation_run[[2L]]), observation_index),
-        match(seq.int(feature_run[[1L]], feature_run[[2L]]), feature_index)
-      ] <- block
+      selected[observation_rows, feature_cols] <- .realize_dtype_values(
+        block[
+          observation_index[observation_rows] - observation_region[[1L]] + 1L,
+          feature_index[feature_cols] - feature_region[[1L]] + 1L,
+          drop = FALSE
+        ],
+        source$dtype
+      )
     }
   }
   if (identical(observation_selection$form, "positions")) {

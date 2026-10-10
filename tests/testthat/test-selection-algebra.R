@@ -386,7 +386,7 @@ test_that("every built-in source declares its selector pushdown forms honestly",
   expect_identical(forms(counting_source(memory)), all_forms)
   expect_identical(forms(fault_source(memory, "read")), all_forms)
   expect_identical(forms(source_view(memory, observations = c(5L, 1L))), all_forms)
-  expect_identical(forms(row_bound_source(list(memory, memory_source(m[1:2, ])))), all_forms)
+  expect_identical(forms(row_sharded_source(list(memory, memory_source(m[1:2, ])))), all_forms)
   expect_identical(forms(row_sharded_source(list(memory, memory_source(m[1:2, ])))), all_forms)
 
   from <- index_space(4L, ids = sprintf("s%d", 1:4), namespace = "from")
@@ -405,7 +405,7 @@ test_that("every built-in source declares its selector pushdown forms honestly",
   expect_identical(forms(counting_source(zarr)), c("all", "range"))
 
   # A composition can only push down what every child can.
-  mixed <- row_bound_source(list(memory_source(m[1:3, 1:7 %% 4 + 1L]), zarr))
+  mixed <- row_sharded_source(list(memory_source(m[1:3, 1:7 %% 4 + 1L]), zarr))
   expect_identical(forms(mixed), c("all", "range"))
 
   expect_identical(forms(fmridataset:::.sparse_entity_source(Matrix::Matrix(m, sparse = TRUE))), all_forms)
