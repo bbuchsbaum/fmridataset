@@ -42,7 +42,8 @@ feature_blocks(x, ...)
 
 \item{...}{Additional method arguments.}
 
-\item{name}{Assay name.}
+\item{name}{One assay name; defaults to the active assay. Positions,
+vectors, and missing values are refused.}
 
 \item{resolve}{Whether to append reachable, namespaced entity annotations or
 lazily lifted entity blocks.}
