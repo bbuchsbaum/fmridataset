@@ -14,8 +14,7 @@ open_frame(path, format = "hdf5", ...)
 
 \item{path}{Destination or source path.}
 
-\item{format}{Storage format. The walking-skeleton implementation supports
-\code{"hdf5"}.}
+\item{format}{Storage format. Only \code{"hdf5"} is supported.}
 
 \item{...}{Arguments passed to the physical store implementation.}
 }
@@ -25,11 +24,18 @@ with forward slashes on every platform. \code{open_frame()} returns an
 \code{fmri_frame}.
 }
 \description{
-These functions provide the semantic-package entry point while delegating
-physical HDF5 work to \code{fmristore}. Reopened assays are reconstructible lazy
-sources; opening a frame does not read assay values.
+\code{write_frame()} writes an \code{fmri_frame} to an HDF5 file and \code{open_frame()}
+reopens one. Both require the \code{fmristore} package, which performs the
+physical HDF5 work. \code{fmristore} is not on CRAN; install it from
+\url{https://bbuchsbaum.r-universe.dev}, for example with
+\code{install.packages("fmristore", repos = c("https://bbuchsbaum.r-universe.dev", getOption("repos")))}. Without it, or with a version that lacks frame
+support, both functions fail with an error of class
+\code{fmridataset_error_backend_io}.
 }
 \details{
+Reopened assays are lazy sources: opening a frame does not read assay
+values.
+
 Neither function computes a content hash. Persistence records semantic
 manifest digests and source fingerprints only; a caller who wants a value
 receipt for the written or reopened arrays requests it explicitly with
