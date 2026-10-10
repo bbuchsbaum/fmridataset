@@ -1,35 +1,35 @@
+## Pre-submission checklist
+
+These items must be resolved before this file is used for a submission:
+
+* `delarr` is a hard dependency (Imports). It must be on CRAN first.
+* Confirm that `neuroim2` and `fmrihrf` are current on CRAN at the required
+  versions.
+* Remove the `Remotes:` field from DESCRIPTION and set a release version
+  (no `.9000` component).
+* Re-run `R CMD check --as-cran` with a LaTeX toolchain and network access,
+  plus win-builder and R-hub.
+
 ## R CMD check results
 
-0 errors | 1 warning | 1 note
+Last local run: R 4.3.3, Ubuntu 24.04, offline, without LaTeX. Examples,
+`--run-donttest` examples, tests, and vignettes all passed. The only
+findings were:
 
-## Test environments
+* NOTE: `Remotes` field, development version number (see the checklist).
+* NOTE: Suggests not available on CRAN (see below).
+* ERROR/WARNING: PDF manual not built because `pdflatex` was not installed.
+  This must be re-checked on a machine with LaTeX.
 
-* local macOS (aarch64-apple-darwin20), R 4.5.1
+## Suggests not in mainstream repositories
 
-## Warnings
-
-### Strong dependencies not in mainstream repositories
-
-This package depends on `delarr`, `fmrihrf`, and `neuroim2` which are not yet
-on CRAN. These packages are being prepared for CRAN submission. This package
-will only be submitted to CRAN after its dependencies are accepted.
-
-### Suggests not in mainstream repositories
-
-`bidser` and `fmristore` are optional dependencies from GitHub. They are used
-only for advanced features (BIDS integration and HDF5 fMRI storage) and are
-properly wrapped with `requireNamespace()` checks.
-
-## Notes
-
-### New submission
-
-This is the first submission of this package to CRAN.
-
-### HTML validation
-
-The "tidy doesn't look like recent enough HTML Tidy" note is a tool
-availability issue on the test system, not a package issue.
+`albersdown`, `fmristore`, `fmrigds`, `fmrilatent`, `multidesign`,
+`neuroatlas`, and `neurosurf` are available from
+<https://bbuchsbaum.r-universe.dev>, which DESCRIPTION declares in
+`Additional_repositories`. Every use is conditional on `requireNamespace()`:
+tests skip, examples and vignette chunks are guarded, and functions that need
+one of them (`write_frame()` and `open_frame()` need `fmristore`) fail with a
+structured error that names the missing package.
 
 ## Downstream dependencies
 
