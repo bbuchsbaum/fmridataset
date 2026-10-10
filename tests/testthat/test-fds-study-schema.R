@@ -59,7 +59,7 @@
       onset = c(0, 2), duration = c(1, 1)
     ))),
     metadata = list(title = "FDS study fixture"),
-    provenance = as_provenance_graph(list(step = "test"))
+    provenance = provenance_graph(provenance_record("test"))
   )
   list(study = study, phenotype = phenotype)
 }
@@ -203,11 +203,11 @@ test_that("provisional FDS v1 study manifests migrate explicitly", {
   ), class = "frame_link")
 
   expect_error(validate_fds_study_manifest(manifest), "Unsupported")
-  migrated <- upgrade_fds_study_manifest(manifest)
+  migrated <- fmridataset:::.upgrade_fds_study_manifest(manifest)
   expect_invisible(validate_fds_study_manifest(migrated))
   expect_identical(migrated$links$beta_from_bold$source, "bold")
   expect_identical(migrated$links$beta_from_bold$target, "beta")
-  expect_identical(upgrade_fds_study_manifest(migrated), migrated)
+  expect_identical(fmridataset:::.upgrade_fds_study_manifest(migrated), migrated)
 })
 
 test_that("the installed FDS study schema envelope is machine readable", {

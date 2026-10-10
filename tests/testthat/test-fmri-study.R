@@ -438,7 +438,7 @@ test_that("provisional frame links migrate explicitly to source-target links", {
     schema_version = 1L
   ), class = "frame_link")
 
-  migrated <- upgrade_frame_link(legacy)
+  migrated <- fmridataset:::.upgrade_frame_link(legacy)
   expect_identical(migrated$source, "native")
   expect_identical(migrated$target, "parcel")
   expect_identical(migrated$type, "mapping")
@@ -447,7 +447,7 @@ test_that("provisional frame links migrate explicitly to source-target links", {
   expect_s3_class(migrated$operator, "feature_map")
   expect_null(migrated$metadata$feature_map)
   expect_true(migrated$metadata$note == "legacy")
-  expect_identical(upgrade_frame_link(migrated), migrated)
+  expect_identical(fmridataset:::.upgrade_frame_link(migrated), migrated)
 })
 
 test_that("frame links compose in source-to-target order", {

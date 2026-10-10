@@ -106,7 +106,7 @@ test_that("auxiliary tables are typed and frame table registries reject data fra
   )
 })
 
-test_that("lineage requires a provenance graph and legacy lists migrate explicitly", {
+test_that("lineage requires a provenance graph", {
   fx <- make_frame_fixture()
   args <- list(
     assays = lapply(assays(fx$frame), function(value) value$source),
@@ -118,10 +118,10 @@ test_that("lineage requires a provenance graph and legacy lists migrate explicit
 
   expect_error(
     do.call(fmri_frame, c(args, list(provenance = list(step = "legacy")))),
-    "as_provenance_graph",
+    "provenance_graph",
     class = "fmridataset_error_provenance"
   )
-  graph <- as_provenance_graph(list(step = "legacy"))
+  graph <- fmridataset:::.as_provenance_graph(list(step = "legacy"))
   frame <- do.call(fmri_frame, c(args, list(provenance = graph)))
   expect_s3_class(frame$provenance, "provenance_graph")
   record <- provenance_records(frame$provenance)[[1L]]

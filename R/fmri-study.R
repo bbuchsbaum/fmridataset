@@ -222,19 +222,15 @@ frame_link <- function(source, target,
   invisible(x)
 }
 
-#' Upgrade a provisional frame-link descriptor
-#'
-#' Version-one links used reverse `*_from` endpoints for derivation, mapping,
-#' and alignment and stored feature operators in metadata. This explicit
-#' migration converts them to the canonical source-to-target version-two form.
-#'
-#' @param x A provisional version-one or canonical version-two `frame_link`.
-#' @return A canonical version-two `frame_link`.
-#' @examples
-#' link <- frame_link("bold", "surface", type = "derivation")
-#' identical(upgrade_frame_link(link), link)
-#' @export
-upgrade_frame_link <- function(x) {
+# Upgrade a provisional frame-link descriptor.
+#
+# Version-one links, written only by unreleased development builds, used
+# reverse `*_from` endpoints for derivation, mapping, and alignment and stored
+# feature operators in metadata. This converts them to the canonical
+# source-to-target version-two form. Internal for one release so that stored
+# development descriptors can still be migrated with
+# `fmridataset:::.upgrade_frame_link()`; it is scheduled for removal.
+.upgrade_frame_link <- function(x) {
   if (inherits(x, "frame_link") && identical(x$schema_version, 2L)) {
     .validate_frame_link(x)
     return(x)
@@ -345,7 +341,7 @@ compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
         field = "operator"
       )
     }
-    assert_compatible_space(
+    assert_same_space(
       feature_map_target_space(first$operator),
       feature_map_source_space(second$operator)
     )
@@ -496,11 +492,11 @@ compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
             link = id
           )
         }
-        assert_compatible_space(
+        assert_same_space(
           feature_map_source_space(typed_map),
           space(source_frame)
         )
-        assert_compatible_space(
+        assert_same_space(
           feature_map_target_space(typed_map),
           space(target_frame)
         )

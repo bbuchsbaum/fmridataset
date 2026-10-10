@@ -200,7 +200,7 @@ entity_feature_validity <- function(entity, entity_ids, masks, space,
   if (inherits(masks, "mask_bank")) {
     bank <- masks
     validate_mask_bank(bank)
-    assert_compatible_space(bank$space, space)
+    assert_same_space(bank$space, space)
   } else {
     bank <- mask_bank(masks, space)
   }

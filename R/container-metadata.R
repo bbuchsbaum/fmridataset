@@ -258,7 +258,7 @@ validate_unaligned_record <- function(x, domains = NULL) {
   }
   if (!inherits(provenance, "provenance_graph")) {
     .provenance_abort(sprintf(
-      "%s provenance must be NULL or a provenance_graph; use as_provenance_graph() for explicit legacy migration.",
+      "%s provenance must be NULL or a provenance_graph; build one with provenance_graph() and provenance_record().",
       owner
     ))
   }

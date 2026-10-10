@@ -22,9 +22,9 @@ test_that("space compatibility uses digest and feature IDs", {
   y <- volume_space(c(2, 2, 2), affine = diag(4), support = 1:4)
   z <- volume_space(c(2, 2, 2), affine = diag(4), support = 2:5)
 
-  expect_true(compatible_space(x, y)$compatible)
-  expect_false(compatible_space(x, z)$compatible)
-  expect_error(assert_compatible_space(x, z), class = "fmridataset_error_space_mismatch")
+  expect_true(same_space(x, y)$same)
+  expect_false(same_space(x, z)$same)
+  expect_error(assert_same_space(x, z), class = "fmridataset_error_space_mismatch")
 })
 
 test_that("volume vectorization and reconstruction round trip", {
@@ -106,9 +106,9 @@ test_that("surface identity includes topology geometry and support", {
   y$geometry$data[1L, 1L] <- 999
   y$geometry$digest <- digest::digest(y$geometry$data, algo = "sha256", serialize = TRUE)
 
-  expect_true(compatible_space(x, .surface_fixture())$compatible)
-  expect_false(compatible_space(x, y)$compatible)
-  expect_false(compatible_space(x, restrict_space(x, 1:3))$compatible)
+  expect_true(same_space(x, .surface_fixture())$same)
+  expect_false(same_space(x, y)$same)
+  expect_false(same_space(x, restrict_space(x, 1:3))$same)
 })
 
 test_that("surface identity respects neurosurf world transforms", {
@@ -117,7 +117,7 @@ test_that("surface identity respects neurosurf world transforms", {
   y$surf_to_world[1L, 4L] <- 10
 
   expect_false(identical(space_digest(x), space_digest(y)))
-  expect_false(compatible_space(x, y)$compatible)
+  expect_false(same_space(x, y)$same)
   expect_identical(
     restrict_space(x, c(1L, 3L))$surf_to_world,
     x$surf_to_world
@@ -267,8 +267,8 @@ test_that("parcel adjacency is induced through the parent space", {
 
 test_that("parcel identity includes parent, atlas, membership, and aggregation", {
   x <- .parcel_fixture()
-  expect_true(compatible_space(x, .parcel_fixture())$compatible)
-  expect_false(compatible_space(x, .parcel_fixture("sum"))$compatible)
+  expect_true(same_space(x, .parcel_fixture())$same)
+  expect_false(same_space(x, .parcel_fixture("sum"))$same)
 
   y <- .parcel_fixture()
   y$atlas$version <- "2"
@@ -505,8 +505,8 @@ test_that("dense sparse and lazy basis operators are equivalent", {
     as.numeric(reconstruct_space(dense, coefficients)),
     tolerance = 1e-12
   )
-  expect_true(compatible_space(dense, sparse)$compatible)
-  expect_true(compatible_space(dense, lazy)$compatible)
+  expect_true(same_space(dense, sparse)$same)
+  expect_true(same_space(dense, lazy)$same)
 })
 
 test_that("basis restriction preserves parent and revalidates coordinates", {
@@ -547,7 +547,7 @@ test_that("encode-only basis spaces fail reconstruction explicitly", {
 
 test_that("basis identity includes operators ordering type and provenance", {
   x <- .basis_fixture()
-  expect_true(compatible_space(x, .basis_fixture())$compatible)
+  expect_true(same_space(x, .basis_fixture())$same)
 
   reordered <- restrict_space(x, c(2L, 1L))
   expect_false(identical(space_digest(x), space_digest(reordered)))
@@ -788,7 +788,7 @@ test_that("composite adjacency is block diagonal in routed feature order", {
 
 test_that("composite identity includes ordered part names spaces and routing", {
   x <- make_composite_space_fixture()
-  expect_true(compatible_space(x, make_composite_space_fixture())$compatible)
+  expect_true(same_space(x, make_composite_space_fixture())$same)
 
   reordered <- composite_space(composite_parts(x)[c(2L, 1L, 3L)],
     composite_type = x$composite_type

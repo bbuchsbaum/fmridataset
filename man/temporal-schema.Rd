@@ -44,8 +44,7 @@ reinvented it and none could rely on it.
 \details{
 These functions make it a contract. \code{temporal_schema()} derives a validated
 description from the observation metadata; \code{as_sampling_frame()} reconstructs
-the \code{fmrihrf::sampling_frame} that the legacy accessors and the design
-machinery expect.
+the \code{fmrihrf::sampling_frame} that design and HRF modelling code expects.
 
 The schema is derived, never stored. The columns are the truth, so the schema
 cannot go stale, needs no serialization of its own, and follows subsetting,

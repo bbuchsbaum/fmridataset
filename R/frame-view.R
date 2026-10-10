@@ -72,12 +72,6 @@
 dim.fmri_view <- function(x) {
   c(.selection_length(x$observation), .selection_length(x$feature))
 }
-#' @rdname frame-accessors
-#' @export
-nrow.fmri_view <- function(x) .selection_length(x$observation)
-#' @rdname frame-accessors
-#' @export
-ncol.fmri_view <- function(x) .selection_length(x$feature)
 #' @export
 assays.fmri_view <- function(x, ...) {
   observation_digest <- .axis_digest(observation_axis(x))

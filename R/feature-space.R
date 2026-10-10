@@ -50,9 +50,10 @@ canonicalization_contract <- function() .canonicalization_contract
 #'   string; `restrict_space()` and `reconstruct_space()` return an object of
 #'   the same feature-space class; `vectorize_space()` returns a numeric
 #'   vector; `adjacency()` returns a sparse adjacency matrix or `NULL`;
-#'   `same_space()` and `compatible_space()` return a `space_compatibility`
-#'   list; `assert_same_space()` and `assert_compatible_space()` return the
-#'   compatibility report invisibly and signal an error when incompatible.
+#'   `same_space()` returns a `space_comparison` list whose `same` field is
+#'   `TRUE` only when class, digest, and ordered feature IDs all agree;
+#'   `assert_same_space()` returns that report invisibly and signals an
+#'   `fmridataset_error_space_mismatch` error otherwise.
 #' @examples
 #' x <- index_space(3, ids = c("a", "b", "c"))
 #' n_features(x)
@@ -108,7 +109,6 @@ same_space <- function(x, y, ...) {
   structure(
     list(
       same = ok,
-      compatible = ok,
       same_class = same_class,
       same_digest = same_digest,
       same_feature_ids = same_ids,
@@ -116,7 +116,7 @@ same_space <- function(x, y, ...) {
       y_digest = space_digest(y),
       reason = if (ok) NULL else "Feature spaces differ in type, digest, or IDs."
     ),
-    class = "space_compatibility"
+    class = "space_comparison"
   )
 }
 
@@ -124,7 +124,7 @@ same_space <- function(x, y, ...) {
 #' @export
 assert_same_space <- function(x, y, ...) {
   report <- same_space(x, y, ...)
-  if (!isTRUE(report$compatible)) {
+  if (!isTRUE(report$same)) {
     .frame_abort(
       report$reason,
       "fmridataset_error_space_mismatch",
@@ -133,14 +133,6 @@ assert_same_space <- function(x, y, ...) {
   }
   invisible(report)
 }
-
-#' @rdname feature-space
-#' @export
-compatible_space <- function(x, y, ...) same_space(x, y, ...)
-
-#' @rdname feature-space
-#' @export
-assert_compatible_space <- function(x, y, ...) assert_same_space(x, y, ...)
 
 #' Construct a generic indexed feature space
 #'
@@ -615,7 +607,7 @@ vectorize_space.surface_space <- function(x, spatial_object, ...) {
       template = x$template,
       units = x$units
     )
-    assert_compatible_space(x, candidate)
+    assert_same_space(x, candidate)
     values <- rep(NA_real_, length(x$vertex_ids))
     values[indices] <- data
   } else if (inherits(spatial_object, "surface_map")) {

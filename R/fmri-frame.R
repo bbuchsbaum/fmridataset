@@ -128,7 +128,7 @@ fmri_frame <- function(assays, observations, features = NULL, space = NULL,
     # A spatial feature axis already carries its space. Silently preferring it
     # over an explicit `space` argument discarded contradictory input, which is
     # exactly the ambiguity the frame contract says to reject early.
-    if (!is.null(space) && !isTRUE(compatible_space(features$space, space)$compatible)) {
+    if (!is.null(space) && !isTRUE(same_space(features$space, space)$same)) {
       .frame_abort(
         paste(
           "features already carries a feature space that disagrees with the",
@@ -336,12 +336,6 @@ space.default <- function(x, ...) neuroim2::space(x, ...)
 #' @rdname frame-accessors
 #' @export
 dim.fmri_frame <- function(x) c(length(observation_axis(x)), length(feature_axis(x)))
-#' @rdname frame-accessors
-#' @export
-nrow.fmri_frame <- function(x) dim(x)[1L]
-#' @rdname frame-accessors
-#' @export
-ncol.fmri_frame <- function(x) dim(x)[2L]
 
 #' @export
 print.fmri_frame <- function(x, ...) {
@@ -1068,7 +1062,7 @@ bind_observations <- function(...,
   metadata_policy <- match.arg(metadata_policy)
   first <- xs[[1L]]
   for (x in xs[-1L]) {
-    assert_compatible_space(space(first), space(x))
+    assert_same_space(space(first), space(x))
     .assert_entity_registries_agree(entities(first), entities(x))
     validate_against_schema(x, first, mode = "bind")
     # The schema check compares contracts. The bound frame also keeps the first

@@ -12,11 +12,7 @@
 \alias{obs_blocks}
 \alias{feature_blocks}
 \alias{dim.fmri_frame}
-\alias{nrow.fmri_frame}
-\alias{ncol.fmri_frame}
 \alias{dim.fmri_view}
-\alias{nrow.fmri_view}
-\alias{ncol.fmri_view}
 \title{Frame accessors}
 \usage{
 assays(x, ...)
@@ -39,15 +35,7 @@ feature_blocks(x, ...)
 
 \method{dim}{fmri_frame}(x)
 
-nrow.fmri_frame(x)
-
-ncol.fmri_frame(x)
-
 \method{dim}{fmri_view}(x)
-
-nrow.fmri_view(x)
-
-ncol.fmri_view(x)
 }
 \arguments{
 \item{x}{An \code{fmri_frame} or \code{fmri_view}.}

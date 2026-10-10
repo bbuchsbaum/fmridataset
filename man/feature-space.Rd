@@ -13,8 +13,6 @@
 \alias{adjacency}
 \alias{same_space}
 \alias{assert_same_space}
-\alias{compatible_space}
-\alias{assert_compatible_space}
 \alias{reconstruct_space.surface_space}
 \title{Feature-space contract}
 \usage{
@@ -39,10 +37,6 @@ adjacency(x, ...)
 same_space(x, y, ...)
 
 assert_same_space(x, y, ...)
-
-compatible_space(x, y, ...)
-
-assert_compatible_space(x, y, ...)
 
 \method{reconstruct_space}{surface_space}(x, vector, format = c("surface_map", "neurosurf"), ...)
 }
@@ -71,9 +65,10 @@ of per-feature metadata; \code{space_digest()} returns a content digest
 string; \code{restrict_space()} and \code{reconstruct_space()} return an object of
 the same feature-space class; \code{vectorize_space()} returns a numeric
 vector; \code{adjacency()} returns a sparse adjacency matrix or \code{NULL};
-\code{same_space()} and \code{compatible_space()} return a \code{space_compatibility}
-list; \code{assert_same_space()} and \code{assert_compatible_space()} return the
-compatibility report invisibly and signal an error when incompatible.
+\code{same_space()} returns a \code{space_comparison} list whose \code{same} field is
+\code{TRUE} only when class, digest, and ordered feature IDs all agree;
+\code{assert_same_space()} returns that report invisibly and signals an
+\code{fmridataset_error_space_mismatch} error otherwise.
 }
 \description{
 Every feature-space class (such as \code{\link[=volume_space]{volume_space()}}, \code{\link[=surface_space]{surface_space()}},

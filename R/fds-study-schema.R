@@ -244,11 +244,11 @@ fds_study_representations <- function(x) {
               paste0("links.", name, ".operator")
             )
           }
-          assert_compatible_space(
+          assert_same_space(
             feature_map_source_space(typed_map),
             source_representation$manifest$axes$feature$space
           )
-          assert_compatible_space(
+          assert_same_space(
             feature_map_target_space(typed_map),
             target_representation$manifest$axes$feature$space
           )
@@ -357,26 +357,14 @@ validate_fds_study_manifest <- function(manifest) {
   invisible(manifest)
 }
 
-#' Upgrade a provisional FDS study manifest
-#'
-#' Converts an FDS study v1 manifest, including its reverse-direction
-#' provisional frame links, to the canonical v2 schema. Canonical v2 manifests
-#' are validated and returned unchanged.
-#'
-#' @param manifest An FDS study v1 or v2 manifest.
-#' @return A validated FDS study v2 manifest.
-#' @examples
-#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
-#' frame <- fmri_frame(
-#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
-#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
-#'   space = voxels
-#' )
-#' study <- fmri_study(list(main = frame))
-#' manifest <- fds_study_manifest(study)
-#' identical(upgrade_fds_study_manifest(manifest), manifest)
-#' @export
-upgrade_fds_study_manifest <- function(manifest) {
+# Upgrade a provisional FDS study manifest.
+#
+# Converts an FDS study v1 manifest, written only by unreleased development
+# builds, including its reverse-direction provisional frame links, to the
+# canonical v2 schema. Canonical v2 manifests are validated and returned
+# unchanged. Internal for one release (`fmridataset:::.upgrade_fds_study_manifest()`);
+# it is scheduled for removal.
+.upgrade_fds_study_manifest <- function(manifest) {
   if (!is.list(manifest) || is.null(manifest$schema)) {
     .fds_schema_abort("The FDS study manifest has no schema descriptor.", "schema")
   }
@@ -391,7 +379,7 @@ upgrade_fds_study_manifest <- function(manifest) {
   if (!is.list(manifest$links)) {
     .fds_schema_abort("Study links must be a named list.", "links")
   }
-  manifest$links <- lapply(manifest$links, upgrade_frame_link)
+  manifest$links <- lapply(manifest$links, .upgrade_frame_link)
   manifest$schema <- .fds_study_schema
   validate_fds_study_manifest(manifest)
   manifest

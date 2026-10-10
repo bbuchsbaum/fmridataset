@@ -622,22 +622,11 @@ print.provenance_graph <- function(x, ...) {
   invisible(x)
 }
 
-#' Coerce serializable lineage to a provenance graph
-#'
-#' Canonical containers accept only `NULL` or a validated `provenance_graph`.
-#' Any other serializable lineage value is wrapped, unchanged, in a single
-#' `legacy_provenance` record so that its origin remains inspectable rather
-#' than being silently reinterpreted.
-#'
-#' @param x `NULL`, a `provenance_graph`, or a serializable lineage value.
-#' @return A validated `provenance_graph`.
-#' @examples
-#' g <- as_provenance_graph(NULL)
-#' provenance_tips(g)
-#' g2 <- as_provenance_graph(list(note = "legacy value"))
-#' provenance_tips(g2)
-#' @export
-as_provenance_graph <- function(x) {
+# Coerce a lineage value to a provenance graph. `NULL` becomes an empty graph
+# and a `provenance_graph` is revalidated; any other serializable value is
+# wrapped, unchanged, in a single `legacy_provenance` record. Public
+# containers accept only `NULL` or a `provenance_graph`.
+.as_provenance_graph <- function(x) {
   if (is.null(x)) {
     return(provenance_graph())
   }
@@ -654,7 +643,6 @@ as_provenance_graph <- function(x) {
   ))
 }
 
-.as_provenance_graph <- as_provenance_graph
 
 .relations_without_feature_domain <- function(x) {
   keep <- vapply(x, function(value) {
@@ -720,9 +708,9 @@ map_features <- function(x, target = NULL, map = NULL,
     map <- feature_map_from_target(target)
   } else {
     validate_feature_map(map)
-    if (!is.null(target)) assert_compatible_space(target, map$to)
+    if (!is.null(target)) assert_same_space(target, map$to)
   }
-  assert_compatible_space(space(x), map$from)
+  assert_same_space(space(x), map$from)
 
   assay_names <- names(assays(x))
   if (length(assay_rules) == 1L && is.null(names(assay_rules))) {

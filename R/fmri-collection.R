@@ -255,7 +255,7 @@ collection_common_space <- function(x) {
   }
   reference <- space(x$frames[[1L]])
   all(vapply(x$frames[-1L], function(frame) {
-    isTRUE(compatible_space(reference, space(frame))$compatible)
+    isTRUE(same_space(reference, space(frame))$same)
   }, logical(1)))
 }
 

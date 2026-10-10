@@ -360,7 +360,7 @@ relation_registry <- function(relations = list(), ...) {
           relation = name, domain = domain
         )
       }
-      assert_compatible_space(value$bank$space, space(features))
+      assert_same_space(value$bank$space, space(features))
       value
     } else {
       .resolve_sparse_relation(value, observations, features, entities, name)
