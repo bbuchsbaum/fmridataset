@@ -41,6 +41,9 @@ aligned_assay_set <- function(assays, observations, features) {
   out <- lapply(names(assays), function(nm) {
     value <- assays[[nm]]
     .assert_assay_dimnames(value, nm, observations, features)
+    if (inherits(value, "aligned_assay")) {
+      .assert_assay_axis_digests(value, nm, obs_digest, feature_digest)
+    }
     source <- if (inherits(value, "aligned_assay")) value$source else as_array_source(value)
     validate_array_source(source)
     annotation <- if (is.list(value) && !inherits(value, "array_source")) value else list()
@@ -78,6 +81,55 @@ aligned_assay_set <- function(assays, observations, features) {
   names(out) <- names(assays)
   class(out) <- c("aligned_assay_set", "list")
   out
+}
+
+# An aligned_assay records the digests of the axes it was aligned to. Reusing
+# it on different axes would relabel its rows or columns even when the shape
+# still matches, so a recorded digest must describe the new axis. Descriptors
+# without digests (sources being re-annotated) carry no claim to check.
+.assert_assay_axis_digests <- function(value, name, observation_digest,
+                                       feature_digest) {
+  check <- function(recorded, expected, axis) {
+    if (is.null(recorded) || identical(recorded, expected)) {
+      return(invisible(TRUE))
+    }
+    .frame_abort(
+      sprintf(
+        paste(
+          "Assay '%s' was aligned to a different %s axis (its %s IDs or",
+          "their order differ); pass its source to realign it explicitly."
+        ),
+        name, axis, axis
+      ),
+      "fmridataset_error_alignment",
+      assay = name,
+      axis = axis,
+      expected = expected,
+      actual = recorded
+    )
+  }
+  check(value$observation_digest, observation_digest, "observation")
+  check(value$feature_digest, feature_digest, "feature")
+  invisible(TRUE)
+}
+
+# An assay name selects one assay. Vectors, positions, and missing values are
+# refused rather than used to index the assay registry.
+.assert_assay_name <- function(name, available, field = "name") {
+  .assert_one_string(
+    name, field, .alignment_abort,
+    message = "An assay must be selected by one non-empty assay name."
+  )
+  if (!name %in% available) {
+    .frame_abort(
+      sprintf("Unknown assay '%s'.", name),
+      "fmridataset_error_alignment",
+      field = field,
+      assay = name,
+      available = available
+    )
+  }
+  name
 }
 
 #' Construct a spatially typed annotated matrix
@@ -159,8 +211,15 @@ fmri_frame <- function(assays, observations, features = NULL, space = NULL,
 
   assay_values <- aligned_assay_set(assays, observations, feature_axis_value)
   active_assay <- active_assay %||% names(assay_values)[1L]
+  .assert_one_string(
+    active_assay, "active_assay", .alignment_abort,
+    message = "active_assay must be one non-empty assay name."
+  )
   if (!active_assay %in% names(assay_values)) {
-    .frame_abort("active_assay is not present in assays.", "fmridataset_error_alignment")
+    .frame_abort(
+      "active_assay is not present in assays.", "fmridataset_error_alignment",
+      field = "active_assay"
+    )
   }
   entities <- entity_registry(entities)
   relations <- .resolve_relation_registry(
@@ -231,16 +290,14 @@ assays <- function(x, ...) UseMethod("assays")
 assays.fmri_frame <- function(x, ...) x$assays
 
 #' @rdname frame-accessors
-#' @param name Assay name.
+#' @param name One assay name; defaults to the active assay. Positions,
+#'   vectors, and missing values are refused.
 #' @export
 assay <- function(x, name = active_assay(x), ...) UseMethod("assay")
 #' @export
 assay.fmri_frame <- function(x, name = active_assay(x), ...) {
-  value <- assays(x)[[name]]
-  if (is.null(value)) {
-    .frame_abort(sprintf("Unknown assay '%s'.", name), "fmridataset_error_alignment")
-  }
-  value
+  values <- assays(x)
+  values[[.assert_assay_name(name, names(values))]]
 }
 
 #' @rdname frame-accessors
@@ -363,7 +420,7 @@ print.fmri_frame <- function(x, ...) {
 #' Collect one frame assay under an explicit memory budget
 #'
 #' @param x An `fmri_frame` or view.
-#' @param assay Assay name.
+#' @param assay One assay name; defaults to the active assay.
 #' @param memory_budget Maximum estimated peak bytes, including the retained
 #'   output and source conversion or decompression buffers.
 #' @param force Allow collection above the estimated peak budget.
@@ -616,8 +673,26 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
   invisible(TRUE)
 }
 
+# Bound frames keep the first operand's annotations, so the others must agree
+# exactly: a tolerance would let a different value be silently discarded.
+# Only representation details are normalized: data-frame class and row names,
+# and integer versus double storage of the same numbers.
+.bind_comparable <- function(x) {
+  if (is.data.frame(x)) {
+    columns <- lapply(unclass(x), .bind_comparable)
+    names(columns) <- names(x)
+    return(columns)
+  }
+  if (is.numeric(x) && !is.object(x)) {
+    shape <- dim(x)
+    x <- as.double(x)
+    if (!is.null(shape)) dim(x) <- shape
+  }
+  x
+}
+
 .assert_bind_agreement <- function(reference, candidate, what) {
-  if (isTRUE(all.equal(reference, candidate))) {
+  if (identical(.bind_comparable(reference), .bind_comparable(candidate))) {
     return(invisible(TRUE))
   }
   .frame_abort(
@@ -765,9 +840,12 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
     id_col = first$id_col, metadata = first$metadata
   )
   policies <- lapply(xs, axis_id_policy)
-  out$id_policy <- if (all(vapply(
-    policies, identical, logical(1), policies[[1L]]
-  ))) {
+  durable <- vapply(policies, function(policy) isTRUE(policy$durable), logical(1))
+  # One ephemeral operand makes the bound axis ephemeral: session-only IDs do
+  # not become durable by being bound next to durable ones.
+  out$id_policy <- if (!all(durable)) {
+    .id_policy("ephemeral")
+  } else if (all(vapply(policies, identical, logical(1), policies[[1L]]))) {
     policies[[1L]]
   } else {
     .id_policy("require")
