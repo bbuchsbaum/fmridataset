@@ -321,3 +321,123 @@ test_that("the schema prints its runs", {
   expect_match(paste(out, collapse = "\n"), "start_time 0 s")
   expect_match(paste(out, collapse = "\n"), "start_time 0.6 s")
 })
+
+test_that("volumes out of acquisition order within a run are detected", {
+  frame <- temporal_frame(
+    rep(c("r1", "r2"), each = 3),
+    extra = data.frame(volume_index = rep(1:3, 2))
+  )
+  expect_true(temporal_schema(frame)$ordered)
+  expect_equal(temporal_schema(frame)$columns$order, "volume_index")
+
+  # Each run is still one unbroken stretch, but run r1 is time-reversed.
+  reversed <- frame[c(3, 2, 1, 4, 5, 6), ]
+  schema <- temporal_schema(reversed)
+  expect_true(schema$contiguous)
+  expect_false(schema$ordered)
+  expect_match(capture.output(print(schema))[1], "not in acquisition order")
+  expect_error(as_sampling_frame(reversed), class = "fmridataset_error_temporal")
+  expect_error(as_sampling_frame(reversed), "acquisition order")
+
+  # A repeated volume index is not strictly increasing either.
+  repeated <- temporal_frame(
+    rep("r1", 3),
+    extra = data.frame(volume_index = c(1L, 1L, 2L))
+  )
+  expect_false(temporal_schema(repeated)$ordered)
+
+  # Subsets that keep order still convert.
+  skip_if_not_installed("fmrihrf")
+  expect_equal(as_sampling_frame(frame[c(1, 3, 4, 6), ])$blocklens, c(2, 2))
+})
+
+test_that("run_time orders volumes when volume_index is absent", {
+  frame <- temporal_frame(
+    rep("r1", 3),
+    extra = data.frame(run_time = c(0, 2, 4))
+  )
+  expect_equal(temporal_schema(frame)$columns$order, "run_time")
+  expect_false(temporal_schema(frame[c(2, 1, 3), ])$ordered)
+})
+
+test_that("without an order column, order within a run is not checked", {
+  frame <- temporal_frame(rep(c("r1", "r2"), each = 3))
+  schema <- temporal_schema(frame[c(3, 2, 1, 4, 5, 6), ])
+  expect_true(is.na(schema$ordered))
+  expect_null(schema$columns$order)
+})
+
+test_that("an explicit order column must exist and be finite numeric", {
+  frame <- temporal_frame(
+    rep("r1", 3),
+    extra = data.frame(acq = c(10, 20, 30), label = c("a", "b", "c"))
+  )
+  expect_true(temporal_schema(frame, order_col = "acq")$ordered)
+  expect_error(
+    temporal_schema(frame, order_col = "nope"),
+    class = "fmridataset_error_temporal"
+  )
+  expect_error(
+    temporal_schema(frame, order_col = "label"),
+    class = "fmridataset_error_temporal"
+  )
+})
+
+test_that("column arguments are validated with structured errors", {
+  frame <- temporal_frame(rep("a", 3))
+  for (arg in c("tr_col", "start_time_col", "censor_col")) {
+    for (bad in list(NULL, NA_character_, "", c("TR", "TR"), 1)) {
+      args <- list(frame)
+      args[arg] <- list(bad)
+      expect_error(
+        do.call(temporal_schema, args),
+        class = "fmridataset_error_temporal"
+      )
+    }
+  }
+  expect_error(temporal_schema(frame, run_col = c("run_id", "TR")),
+    class = "fmridataset_error_temporal"
+  )
+  expect_error(temporal_schema(frame, order_col = NA_character_),
+    class = "fmridataset_error_temporal"
+  )
+  expect_error(temporal_schema(frame, tr_col = NULL), "tr_col")
+})
+
+test_that("a zero-observation frame has no sampling frame", {
+  empty <- temporal_frame(rep("a", 3))[integer(0), ]
+  expect_error(
+    as_sampling_frame(empty),
+    class = "fmridataset_error_temporal"
+  )
+  expect_error(as_sampling_frame(empty), "at least one observation")
+})
+
+test_that("TR is compared within a run with a small relative tolerance", {
+  noisy <- temporal_frame(rep("a", 2), TR = c(0.1 * 3, 0.3))
+  expect_equal(unname(temporal_schema(noisy)$TR), 0.3)
+
+  close <- temporal_frame(rep("a", 2), TR = c(2, 2.0000001))
+  expect_error(temporal_schema(close), class = "fmridataset_error_temporal")
+  # Enough digits are printed to tell the values apart.
+  expect_error(temporal_schema(close), "2.0000001", fixed = TRUE)
+})
+
+test_that("run_time differs from the default sampling frame by TR/2", {
+  skip_if_not_installed("fmrihrf")
+  frame <- temporal_frame(
+    rep("r1", 3),
+    extra = data.frame(volume_index = 1:3, run_time = c(0, 2, 4))
+  )
+  sf <- as_sampling_frame(frame)
+  expect_equal(fmrihrf::samples(sf), observations(frame)$run_time + 1)
+
+  schema <- temporal_schema(frame)
+  schema$start_time <- stats::setNames(
+    rep(0, schema$n_runs), names(schema$run_lengths)
+  )
+  expect_equal(
+    fmrihrf::samples(as_sampling_frame(schema)),
+    observations(frame)$run_time
+  )
+})

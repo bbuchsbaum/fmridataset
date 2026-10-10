@@ -1,5 +1,15 @@
 # fmridataset 0.11.0 (Development)
 
+- Correctness fixes: `read_bids_bold()` orders unpadded runs numerically
+  (`run-2` before `run-10`); `temporal_schema()` gains `order_col` and
+  `as_sampling_frame()` refuses runs whose `volume_index`/`run_time` is out of
+  acquisition order, refuses zero-observation frames, and validates column
+  arguments; within-run TR/start_time compare with a small relative tolerance;
+  feature-mapped reads keep IEEE `Inf`/`NaN`/`NA` semantics; and
+  feature-mapped and validity-masked sources return the storage mode of their
+  declared dtype. The `run_time` versus `TR/2` sampling offset is now
+  documented.
+
 - `temporal_schema()` and `as_sampling_frame()` now honour an optional
   per-observation `start_time` column (non-negative seconds, constant within
   each run): the slice-time-correction reference or other first-volume offset.

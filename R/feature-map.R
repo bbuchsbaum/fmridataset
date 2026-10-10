@@ -352,19 +352,22 @@ source_read.feature_mapped_source <- function(x, observations = NULL,
                                               features = NULL, ...) {
   observations <- .normalize_source_index(observations, x$shape[1L])
   features <- .normalize_source_index(features, x$shape[2L])
-  if (!length(observations) || !length(features)) {
-    return(matrix(
+  zeros <- function() {
+    matrix(
       vector(
-        mode = if (grepl("^complex", x$dtype)) "complex" else "numeric",
+        mode = .realized_dtype_mode(x$dtype),
         length = length(observations) * length(features)
       ),
       nrow = length(observations), ncol = length(features)
-    ))
+    )
+  }
+  if (!length(observations) || !length(features)) {
+    return(zeros())
   }
   operator <- .feature_map_operator_rows(x$map, features)
   contributing <- .operator_contributing_columns(operator)
   if (!length(contributing)) {
-    return(matrix(0, nrow = length(observations), ncol = length(features)))
+    return(zeros())
   }
   values <- source_read(
     x$source,
@@ -386,9 +389,12 @@ source_read.feature_mapped_source <- function(x, observations = NULL,
 #
 # A weight of zero means the source feature is not part of the target, so it
 # must not contribute at all. Compute the product over finite values only, then
-# restore non-finiteness exactly where a target's own non-zero weights touch a
-# non-finite source value. The result then depends only on the operator row for
-# that target, which makes reads independent of request shape and of block size.
+# recompute exactly the cells where a target's own non-zero weights touch a
+# non-finite source value, using only those non-zero weights. Ordinary IEEE
+# arithmetic then decides the result: Inf stays Inf (or -Inf under a negative
+# weight), Inf - Inf is NaN, and NA stays NA. The result depends only on the
+# operator row for that target, which makes reads independent of request shape
+# and of block size. Finite blocks keep the single sparse product.
 .feature_map_apply_operator <- function(values, operator) {
   values <- as.matrix(values)
   unusable <- !is.finite(values)
@@ -405,7 +411,15 @@ source_read.feature_mapped_source <- function(x, observations = NULL,
   hits <- unname(as.matrix(
     (unusable * 1) %*% Matrix::t(operator != 0)
   ))
-  result[hits > 0] <- NA_real_
+  for (target in which(colSums(hits) > 0)) {
+    weights <- as.vector(operator[target, , drop = TRUE])
+    used <- which(weights != 0)
+    rows <- which(hits[, target] > 0)
+    block <- values[rows, used, drop = FALSE]
+    result[rows, target] <- rowSums(
+      block * rep(weights[used], each = length(rows))
+    )
+  }
   result
 }
 #' @export

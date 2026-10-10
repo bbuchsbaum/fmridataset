@@ -321,3 +321,69 @@ test_that("read_bids_bold integrates with the released bidser contract", {
   ))
   expect_identical(nrow(event_data(frame$tables$events)), 2L)
 })
+
+test_that("BIDS runs are ordered numerically, not by string", {
+  manifest <- tibble::tibble(
+    session = c("2", "1", "1", "1", "1", NA),
+    task = c("a", "b", "a", "a", "a", "a"),
+    run = c("1", "1", "10", "2", "1", "x"),
+    scan_id = paste0("s", 1:6)
+  )
+  ordered <- manifest[.bids_run_order(manifest), ]
+  expect_identical(ordered$scan_id, c("s5", "s4", "s3", "s2", "s1", "s6"))
+  # Integer runs as bidser may return them order the same way.
+  manifest$run <- c(1L, 1L, 10L, 2L, 1L, NA)
+  expect_identical(manifest$scan_id[.bids_run_order(manifest)][1:3], c("s5", "s4", "s3"))
+})
+
+test_that("read_bids_bold keeps unpadded run-10 after run-2", {
+  skip_if_not_installed("bidser", minimum_version = "0.5.0")
+  root <- tempfile("bids-unpadded-")
+  on.exit(unlink(root, recursive = TRUE), add = TRUE)
+  func_dir <- file.path(root, "derivatives", "fmriprep", "sub-01", "func")
+  dir.create(func_dir, recursive = TRUE)
+  writeLines(
+    '{"Name":"unpadded runs","BIDSVersion":"1.10.0"}',
+    file.path(root, "dataset_description.json")
+  )
+  utils::write.table(
+    data.frame(participant_id = "sub-01"),
+    file.path(root, "participants.tsv"),
+    sep = "\t", row.names = FALSE, quote = FALSE
+  )
+  writeLines(
+    paste0(
+      '{"Name":"fMRIPrep","BIDSVersion":"1.10.0",',
+      '"DatasetType":"derivative","GeneratedBy":[{"Name":"fMRIPrep"}]}'
+    ),
+    file.path(root, "derivatives", "fmriprep", "dataset_description.json")
+  )
+  spatial <- c(2L, 2L, 2L)
+  for (r in c(10L, 2L, 1L)) {
+    stem <- sprintf("sub-01_task-memory_run-%d_space-MNI152NLin6Asym", r)
+    bold <- file.path(func_dir, paste0(stem, "_desc-preproc_bold.nii"))
+    neuroim2::write_vec(
+      neuroim2::NeuroVec(array(r, c(spatial, 2L)), neuroim2::NeuroSpace(c(spatial, 2L))),
+      bold
+    )
+    writeLines('{"RepetitionTime":2}', sub("\\.nii$", ".json", bold))
+    neuroim2::write_vol(
+      neuroim2::LogicalNeuroVol(array(TRUE, spatial), neuroim2::NeuroSpace(spatial)),
+      file.path(func_dir, paste0(stem, "_desc-brain_mask.nii"))
+    )
+  }
+
+  frame <- read_bids_bold(
+    root,
+    subject = "01", task = "memory", space = "MNI152NLin6Asym", events = FALSE
+  )
+
+  expect_identical(unique(observations(frame)$run_id), c("run-1", "run-2", "run-10"))
+  expect_equal(collect_assay(frame)[, 1], c(1, 1, 2, 2, 10, 10))
+  expect_identical(
+    entity_ids(entity(entities(frame), "run")),
+    unique(observations(frame)$scan_id)
+  )
+  expect_identical(observations(frame)$volume_index, rep(1:2, 3))
+  expect_true(temporal_schema(frame)$ordered)
+})

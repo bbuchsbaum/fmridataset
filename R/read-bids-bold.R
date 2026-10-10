@@ -124,6 +124,28 @@
   as.character(data[[name]])
 }
 
+# Acquisition order of the selected scans. BIDS run labels need not be
+# zero-padded, so a string sort of scan IDs would put run-10 before run-2.
+# Order by session and task, then by the integer run where the label parses as
+# one, then by the raw labels, with the stable scan ID as the final tie-breaker.
+# Radix ordering keeps the result independent of the locale's collation.
+.bids_run_order <- function(parsed) {
+  run <- .bids_entity_value(parsed, "run")
+  numeric_run <- !is.na(run) & grepl("^[0-9]+$", run)
+  run_number <- rep(NA_real_, length(run))
+  run_number[numeric_run] <- as.numeric(run[numeric_run])
+  order(
+    .bids_entity_value(parsed, "session"),
+    .bids_entity_value(parsed, "task"),
+    run_number,
+    run,
+    .bids_entity_value(parsed, "acq"),
+    .bids_entity_value(parsed, "dir"),
+    parsed$scan_id,
+    method = "radix"
+  )
+}
+
 .bids_relative_path <- function(paths, root) {
   root <- normalizePath(root, winslash = "/", mustWork = TRUE)
   existing <- file.exists(paths)
@@ -241,7 +263,7 @@
     .bids_abort("Every selected BOLD file must have a finite positive TR.")
   }
 
-  parsed <- parsed[order(parsed$scan_id), , drop = FALSE]
+  parsed <- parsed[.bids_run_order(parsed), , drop = FALSE]
   attr(parsed, "selected_space") <- spaces[[1L]]
   parsed
 }
@@ -494,6 +516,24 @@
 #' @param events Whether to attach matching BIDS events as a keyed event table.
 #' @param chunks Optional observation-by-feature chunk hint passed to
 #'   [nifti_array_source()].
+#' @details
+#' Runs are ordered by session, task, and run number. Numeric run labels are
+#' compared as integers, so unpadded `run-2` precedes `run-10`.
+#'
+#' Each observation carries `scan_id`, `subject_id`, `session_id`, `task_id`,
+#' `run_id`, `volume_index` (1-based position within its run), `run_time`, and
+#' `TR`. `run_time` is the acquisition onset of the volume relative to the start
+#' of its run, `(volume_index - 1) * TR`. No `start_time` column is emitted, so
+#' [as_sampling_frame()] uses `fmrihrf::sampling_frame()`'s default offset of
+#' `TR/2` and its sample times are `run_time + TR/2`. This is deliberate: it
+#' keeps fmrihrf's modelling default. For onset-aligned sampling, set a zero
+#' offset on the schema before converting:
+#' ```
+#' schema <- temporal_schema(bold)
+#' schema$start_time <- stats::setNames(rep(0, schema$n_runs), names(schema$run_lengths))
+#' sf <- as_sampling_frame(schema)
+#' ```
+#' or build the frame with a `start_time = 0` observation column.
 #' @return A lazy `fmri_frame` with a `signal` assay.
 #' @export
 #' @examples
