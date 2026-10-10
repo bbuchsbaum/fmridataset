@@ -6,7 +6,7 @@
 \alias{content_hash.array_source}
 \alias{content_hash.memory_source}
 \alias{content_hash.source_view}
-\alias{content_hash.row_bound_source}
+\alias{content_hash.row_sharded_source}
 \title{Compute a numerical content hash of an array source}
 \usage{
 content_hash(x, ...)
@@ -31,7 +31,7 @@ content_hash(x, ...)
   block_bytes = getOption("fmridataset.target_block_bytes", 4 * 1024^2)
 )
 
-\method{content_hash}{row_bound_source}(
+\method{content_hash}{row_sharded_source}(
   x,
   ...,
   block_bytes = getOption("fmridataset.target_block_bytes", 4 * 1024^2)

@@ -38,7 +38,12 @@ A memory source holds its values in the descriptor, so its revision
 fingerprint cannot be derived from a file state. It is instead derived from
 the shape, dtype, chunk grid, and a per-object identity token assigned once
 at construction, plus the optional caller-supplied \code{revision}. Construction
-therefore never reads or hashes the payload, whatever its size.
+therefore never hashes the payload, whatever its size. It reads values only
+when \code{dtype} narrows the data's natural type (for example \code{"logical"} or an
+integer width over doubles), to verify once that every value is
+representable; incompatible data raise \code{fmridataset_error_source_contract}.
+Reads return the R storage mode the dtype realizes to: doubles for every
+numeric dtype, logical for \code{"logical"}, complex for complex dtypes.
 }
 \details{
 Two independently constructed memory sources with equal values have

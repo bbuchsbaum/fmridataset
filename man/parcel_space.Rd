@@ -30,7 +30,9 @@ conventions match \code{neuroatlas::parcel_data} when present.}
 \item{aggregation}{Either weighted \code{"mean"} or weighted \code{"sum"}.}
 
 \item{decoder}{Optional parent-feature by parcel reconstruction operator.
-The default blends overlapping parcel values by row-normalized membership.}
+The default blends overlapping parcel values by row-normalized membership;
+\code{\link[=restrict_space]{restrict_space()}} rebuilds it from the restricted membership, whereas a
+supplied decoder is subset to the retained parcels.}
 
 \item{metadata}{Additional serializable metadata.}
 }

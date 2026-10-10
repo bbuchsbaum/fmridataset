@@ -45,11 +45,19 @@ assert_same_space(x, y, ...)
 
 \item{...}{Additional arguments for methods.}
 
-\item{index}{Feature positions used to restrict a space.}
+\item{index}{Features to keep, in order: positive or negative positions, a
+logical mask over the features, or character feature IDs. Every built-in
+space resolves these by the same selection law and rejects out-of-bounds,
+duplicated, or unknown selectors with structured errors.}
 
-\item{spatial_object}{A native spatial object to vectorize.}
+\item{spatial_object}{A native spatial object to vectorize. For a
+\code{volume_space}, a \code{NeuroVol} must match the space's dimensions and affine
+and an array must match its dimensions; a dimensionless vector of length
+\code{prod(dim)} is read as the full volume in column-major voxel order.}
 
-\item{vector}{A feature vector to reconstruct.}
+\item{vector}{A feature vector to reconstruct. An unnamed vector is
+positional; a named vector must name every feature ID exactly once and is
+reordered to the space's feature order.}
 
 \item{y}{A second feature-space object.}
 
