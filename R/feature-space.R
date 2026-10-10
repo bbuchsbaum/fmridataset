@@ -39,9 +39,17 @@ canonicalization_contract <- function() .canonicalization_contract
 #'
 #' @param x A feature-space object.
 #' @param y A second feature-space object.
-#' @param index Feature positions used to restrict a space.
-#' @param spatial_object A native spatial object to vectorize.
-#' @param vector A feature vector to reconstruct.
+#' @param index Features to keep, in order: positive or negative positions, a
+#'   logical mask over the features, or character feature IDs. Every built-in
+#'   space resolves these by the same selection law and rejects out-of-bounds,
+#'   duplicated, or unknown selectors with structured errors.
+#' @param spatial_object A native spatial object to vectorize. For a
+#'   `volume_space`, a `NeuroVol` must match the space's dimensions and affine
+#'   and an array must match its dimensions; a dimensionless vector of length
+#'   `prod(dim)` is read as the full volume in column-major voxel order.
+#' @param vector A feature vector to reconstruct. An unnamed vector is
+#'   positional; a named vector must name every feature ID exactly once and is
+#'   reordered to the space's feature order.
 #' @param ... Additional arguments for methods.
 #' @return `n_features()` returns a single integer; `feature_ids()` returns a
 #'   character vector of stable feature identifiers; `native_shape()` returns
@@ -132,6 +140,36 @@ assert_same_space <- function(x, y, ...) {
     )
   }
   invisible(report)
+}
+
+# Align a feature vector to `ids`. An unnamed vector stays positional; a named
+# vector must name every ID exactly once and is reordered to `ids`. Partial,
+# duplicated, missing, or foreign names are rejected rather than producing NA.
+.align_named_vector <- function(vector, ids, what = "feature") {
+  value_names <- names(vector)
+  if (is.null(value_names)) {
+    return(vector)
+  }
+  if (anyNA(value_names) || anyDuplicated(value_names) ||
+    length(value_names) != length(ids) || !setequal(value_names, ids)) {
+    .frame_abort(
+      sprintf("Named vectors must contain every %s ID exactly once.", what),
+      "fmridataset_error_space_mismatch",
+      missing = setdiff(ids, value_names),
+      unexpected = setdiff(value_names, ids)
+    )
+  }
+  vector[ids]
+}
+
+# One selection law for every built-in restrict_space() method: logical masks,
+# signed positions, and character feature IDs resolve identically, and invalid
+# selectors raise the package's structured selection errors.
+.restrict_positions <- function(x, index) {
+  .selection_expand(.normalize_selection(
+    index, n_features(x),
+    ids = feature_ids(x), axis = "feature"
+  ))
 }
 
 #' Construct a generic indexed feature space
@@ -234,6 +272,7 @@ space_digest.index_space <- function(x, ...) {
 }
 #' @export
 restrict_space.index_space <- function(x, index, ...) {
+  index <- .restrict_positions(x, index)
   out <- index_space(
     length(index),
     ids = x$ids[index],
@@ -246,6 +285,9 @@ restrict_space.index_space <- function(x, index, ...) {
 }
 #' @export
 vectorize_space.index_space <- function(x, spatial_object, ...) {
+  if (is.atomic(spatial_object) && is.null(dim(spatial_object))) {
+    spatial_object <- .align_named_vector(spatial_object, x$ids)
+  }
   out <- as.numeric(spatial_object)
   if (length(out) != x$n) {
     .frame_abort("Object does not match index space.", "fmridataset_error_space_mismatch")
@@ -254,6 +296,7 @@ vectorize_space.index_space <- function(x, spatial_object, ...) {
 }
 #' @export
 reconstruct_space.index_space <- function(x, vector, ...) {
+  vector <- .align_named_vector(vector, x$ids)
   if (length(vector) != x$n) {
     .frame_abort("Vector does not match index space.", "fmridataset_error_space_mismatch")
   }
@@ -352,7 +395,7 @@ restrict_space.volume_space <- function(x, index, ...) {
   volume_space(
     dim = x$dim,
     affine = x$affine,
-    support = x$support[index],
+    support = x$support[.restrict_positions(x, index)],
     template = x$template,
     units = x$units,
     metadata = x$metadata
@@ -360,18 +403,40 @@ restrict_space.volume_space <- function(x, index, ...) {
 }
 #' @export
 vectorize_space.volume_space <- function(x, spatial_object, ...) {
-  values <- if (methods::is(spatial_object, "NeuroVol")) {
-    as.numeric(spatial_object)
-  } else {
-    as.numeric(spatial_object)
+  mismatch <- function(detail) {
+    .frame_abort(
+      paste("Spatial object does not match the native volume:", detail),
+      "fmridataset_error_space_mismatch"
+    )
   }
+  if (methods::is(spatial_object, "NeuroVol")) {
+    object_space <- neuroim2::space(spatial_object)
+    object_dim <- as.integer(dim(object_space))
+    if (length(object_dim) < 3L || !identical(object_dim[1:3], x$dim)) {
+      mismatch("its dimensions differ.")
+    }
+    if (!isTRUE(all.equal(
+      unname(neuroim2::trans(object_space)), unname(x$affine),
+      tolerance = 1e-7, check.attributes = FALSE
+    ))) {
+      mismatch("its voxel-to-world affine differs.")
+    }
+  } else if (!is.null(dim(spatial_object))) {
+    if (!identical(as.integer(dim(spatial_object)), x$dim)) {
+      mismatch("its array dimensions differ.")
+    }
+  }
+  # A dimensionless vector carries no shape to check; it is accepted as the
+  # full volume in column-major voxel order when its length is prod(dim).
+  values <- as.numeric(spatial_object)
   if (length(values) != prod(x$dim)) {
-    .frame_abort("Spatial object does not match the native volume shape.", "fmridataset_error_space_mismatch")
+    mismatch("its length differs from the full volume.")
   }
   values[x$support]
 }
 #' @export
 reconstruct_space.volume_space <- function(x, vector, ...) {
+  vector <- .align_named_vector(vector, feature_ids(x))
   if (length(vector) != length(x$support)) {
     .frame_abort("Vector does not match the volume support.", "fmridataset_error_space_mismatch")
   }
@@ -572,7 +637,7 @@ restrict_space.surface_space <- function(x, index, ...) {
   surface_space(
     vertex_ids = x$vertex_ids,
     hemisphere = x$hemisphere,
-    support = x$support[index],
+    support = x$support[.restrict_positions(x, index)],
     topology = x$topology,
     geometry = x$geometry,
     medial_wall = x$medial_wall,
@@ -616,8 +681,7 @@ vectorize_space.surface_space <- function(x, spatial_object, ...) {
     }
     values <- spatial_object$values
   } else {
-    values <- spatial_object
-    if (!is.null(names(values))) values <- values[x$vertex_ids]
+    values <- .align_named_vector(spatial_object, x$vertex_ids, "vertex")
   }
   values <- as.numeric(values)
   if (length(values) != length(x$vertex_ids)) {
@@ -634,6 +698,7 @@ reconstruct_space.surface_space <- function(x, vector,
                                             format = c("surface_map", "neurosurf"),
                                             ...) {
   format <- match.arg(format)
+  vector <- .align_named_vector(vector, feature_ids(x))
   if (length(vector) != length(x$support)) {
     .frame_abort("Vector does not match surface support.", "fmridataset_error_space_mismatch")
   }
@@ -836,6 +901,28 @@ surface_space_from_neurosurf <- function(geometry, vertex_ids = NULL,
   atlas
 }
 
+# The default parcel decoder blends overlapping parcel values by
+# row-normalized membership. It depends on every parcel that shares a parent
+# feature, so it must be rebuilt, not subset, when the parcel axis changes.
+.default_parcel_decoder <- function(membership) {
+  row_totals <- as.numeric(Matrix::rowSums(membership))
+  scale <- ifelse(row_totals > 0, 1 / row_totals, 0)
+  Matrix::Diagonal(x = scale) %*% membership
+}
+
+# Whether a parcel space carries the default decoder. Spaces built before the
+# flag was recorded are classified by comparing with the rebuilt default.
+.parcel_decoder_is_default <- function(x) {
+  if (!is.null(x$decoder_default)) {
+    return(isTRUE(x$decoder_default))
+  }
+  default <- .default_parcel_decoder(x$membership)
+  identical(
+    .operator_digest_payload(methods::as(x$decoder, "CsparseMatrix")),
+    .operator_digest_payload(methods::as(default, "CsparseMatrix"))
+  )
+}
+
 #' Construct a parent-linked parcel feature space
 #'
 #' A `parcel_space` owns only the feature-axis algebra required by
@@ -851,7 +938,9 @@ surface_space_from_neurosurf <- function(geometry, vertex_ids = NULL,
 #' @param atlas Atlas identity list containing at least `id`, or a scalar ID.
 #' @param aggregation Either weighted `"mean"` or weighted `"sum"`.
 #' @param decoder Optional parent-feature by parcel reconstruction operator.
-#'   The default blends overlapping parcel values by row-normalized membership.
+#'   The default blends overlapping parcel values by row-normalized membership;
+#'   [restrict_space()] rebuilds it from the restricted membership, whereas a
+#'   supplied decoder is subset to the retained parcels.
 #' @param metadata Additional serializable metadata.
 #' @return A `parcel_space`.
 #' @examples
@@ -907,10 +996,9 @@ parcel_space <- function(parent, parcel_ids, membership, data = NULL,
   data$.feature_id <- ids
   data <- data[c(".feature_id", setdiff(names(data), ".feature_id"))]
 
-  if (is.null(decoder)) {
-    row_totals <- as.numeric(Matrix::rowSums(membership))
-    scale <- ifelse(row_totals > 0, 1 / row_totals, 0)
-    decoder <- Matrix::Diagonal(x = scale) %*% membership
+  decoder_default <- is.null(decoder)
+  if (decoder_default) {
+    decoder <- .default_parcel_decoder(membership)
   } else {
     decoder <- .sparse_operator(
       decoder, c(n_features(parent), k), "decoder"
@@ -930,6 +1018,7 @@ parcel_space <- function(parent, parcel_ids, membership, data = NULL,
       membership = membership,
       aggregation_operator = aggregation_operator,
       decoder = decoder,
+      decoder_default = decoder_default,
       data = data,
       atlas = atlas,
       aggregation = aggregation,
@@ -961,22 +1050,38 @@ NULL
 #' @export
 parent_space <- function(x) {
   if (!inherits(x, "feature_space") || is.null(x$parent)) {
-    stop("x must be a parent-linked feature_space.", call. = FALSE)
+    .frame_abort(
+      "x must be a parent-linked feature_space.",
+      "fmridataset_error_space_mismatch",
+      actual = class(x)
+    )
   }
   x$parent
+}
+
+.assert_space_class <- function(x, class) {
+  if (!inherits(x, class)) {
+    .frame_abort(
+      sprintf("x must be a %s.", class),
+      "fmridataset_error_space_mismatch",
+      expected = class,
+      actual = class(x)
+    )
+  }
+  invisible(x)
 }
 
 #' @rdname parcel-operators
 #' @export
 parcel_membership <- function(x) {
-  if (!inherits(x, "parcel_space")) stop("x must be a parcel_space.", call. = FALSE)
+  .assert_space_class(x, "parcel_space")
   x$membership
 }
 
 #' @rdname parcel-operators
 #' @export
 parcel_aggregation <- function(x) {
-  if (!inherits(x, "parcel_space")) stop("x must be a parcel_space.", call. = FALSE)
+  .assert_space_class(x, "parcel_space")
   x$aggregation_operator
 }
 
@@ -1003,6 +1108,15 @@ space_digest.parcel_space <- function(x, ...) {
 }
 #' @export
 restrict_space.parcel_space <- function(x, index, ...) {
+  index <- .restrict_positions(x, index)
+  # The default decoder normalizes by every parcel covering a parent feature,
+  # so subsetting it would keep weights from dropped parcels and mis-scale
+  # reconstruction. Passing NULL rebuilds it from the restricted membership.
+  decoder <- if (.parcel_decoder_is_default(x)) {
+    NULL
+  } else {
+    x$decoder[, index, drop = FALSE]
+  }
   parcel_space(
     parent = x$parent,
     parcel_ids = x$parcel_ids[index],
@@ -1010,7 +1124,7 @@ restrict_space.parcel_space <- function(x, index, ...) {
     data = x$data[index, , drop = FALSE],
     atlas = x$atlas,
     aggregation = x$aggregation,
-    decoder = x$decoder[, index, drop = FALSE],
+    decoder = decoder,
     metadata = x$metadata
   )
 }
@@ -1027,7 +1141,7 @@ vectorize_space.parcel_space <- function(x, spatial_object, ...) {
 }
 #' @export
 reconstruct_space.parcel_space <- function(x, vector, ...) {
-  if (!is.null(names(vector))) vector <- vector[feature_ids(x)]
+  vector <- .align_named_vector(vector, feature_ids(x))
   vector <- as.numeric(vector)
   if (length(vector) != n_features(x)) {
     .frame_abort(
@@ -1440,9 +1554,32 @@ basis_space_from_decoder <- function(parent, component_ids, decoder,
     ))
   }
   dense <- as.matrix(.collect_linear_operator(decoder))
-  decomposition <- svd(dense, nu = ncol(dense), nv = ncol(dense))
-  rank_threshold <- max(dim(dense)) * max(decomposition$d) * .Machine$double.eps
-  if (!length(decomposition$d) || any(decomposition$d <= rank_threshold)) {
+  if (!ncol(dense)) {
+    # An empty basis is legal (see basis_space()); its encoder is the empty
+    # component-by-parent operator.
+    return(basis_space(
+      parent = parent,
+      component_ids = component_ids,
+      encoder = matrix(0, nrow = 0L, ncol = nrow(dense)),
+      decoder = decoder,
+      data = data,
+      basis_type = basis_type,
+      provenance = provenance,
+      tolerance = tolerance,
+      metadata = metadata
+    ))
+  }
+  # A wide dictionary (more components than parent features) cannot have full
+  # column rank; svd() would also refuse nu > nrow with an unstructured error.
+  decomposition <- if (ncol(dense) <= nrow(dense)) {
+    svd(dense, nu = ncol(dense), nv = ncol(dense))
+  } else {
+    list(d = numeric())
+  }
+  rank_threshold <- max(dim(dense)) * max(c(0, decomposition$d)) *
+    .Machine$double.eps
+  if (length(decomposition$d) < ncol(dense) ||
+    any(decomposition$d <= rank_threshold)) {
     .frame_abort(
       paste(
         "decoder must have full column rank for an exact least-squares encoder.",
@@ -1488,21 +1625,21 @@ NULL
 #' @rdname basis-operators
 #' @export
 basis_analysis <- function(x) {
-  if (!inherits(x, "basis_space")) stop("x must be a basis_space.", call. = FALSE)
+  .assert_space_class(x, "basis_space")
   x$encoder
 }
 
 #' @rdname basis-operators
 #' @export
 basis_synthesis <- function(x) {
-  if (!inherits(x, "basis_space")) stop("x must be a basis_space.", call. = FALSE)
+  .assert_space_class(x, "basis_space")
   x$decoder
 }
 
 #' @rdname basis-operators
 #' @export
 basis_projection_info <- function(x) {
-  if (!inherits(x, "basis_space")) stop("x must be a basis_space.", call. = FALSE)
+  .assert_space_class(x, "basis_space")
   x$projection
 }
 
@@ -1529,6 +1666,11 @@ space_digest.basis_space <- function(x, ...) {
 }
 #' @export
 restrict_space.basis_space <- function(x, index, ...) {
+  index <- .restrict_positions(x, index)
+  # Encoder rows and decoder columns are subset together. If E D = I then
+  # E[idx, ] D[, idx] = I[idx, idx] = I, so the restricted pair remains a
+  # validated left inverse without replacing a caller's encoder (which need
+  # not be the least-squares one) by a recomputed operator.
   selected_decoder <- if (is.null(x$decoder)) {
     NULL
   } else {
@@ -1538,17 +1680,6 @@ restrict_space.basis_space <- function(x, index, ...) {
     NULL
   } else {
     .subset_linear_operator(x$encoder, observations = index)
-  }
-  # Restricting the component axis changes the least-squares encoder, so it is
-  # recomputed from the restricted decoder rather than subset. A decoder-only
-  # basis stays decoder-only.
-  # solve() cannot invert a 0-by-0 cross-product, and an empty basis has no
-  # least-squares solution to recompute: keep the subset encoder as it is.
-  if (length(index) && !is.null(selected_decoder) && !is.null(selected_encoder)) {
-    selected_encoder <- solve(
-      crossprod(as.matrix(.collect_linear_operator(selected_decoder))),
-      t(as.matrix(.collect_linear_operator(selected_decoder)))
-    )
   }
   basis_space(
     parent = x$parent,
@@ -1586,7 +1717,7 @@ reconstruct_space.basis_space <- function(x, vector, ...) {
       "fmridataset_error_space_mismatch"
     )
   }
-  if (!is.null(names(vector))) vector <- vector[feature_ids(x)]
+  vector <- .align_named_vector(vector, feature_ids(x))
   vector <- as.numeric(vector)
   if (length(vector) != n_features(x)) {
     .frame_abort(
@@ -1891,9 +2022,7 @@ NULL
 #' @rdname composite-parts
 #' @export
 composite_parts <- function(x) {
-  if (!inherits(x, "composite_space")) {
-    stop("x must be a composite_space.", call. = FALSE)
-  }
+  .assert_space_class(x, "composite_space")
   x$parts
 }
 
@@ -1994,7 +2123,7 @@ space_digest.composite_space <- function(x, ...) {
 }
 #' @export
 restrict_space.composite_space <- function(x, index, ...) {
-  index <- .normalize_source_index(index, n_features(x))
+  index <- .restrict_positions(x, index)
   selected_route <- x$route[index, , drop = FALSE]
   keep_names <- if (nrow(selected_route)) {
     names(x$parts)[names(x$parts) %in% unique(selected_route$part)]
@@ -2046,16 +2175,7 @@ vectorize_space.composite_space <- function(x, spatial_object, ...) {
 }
 #' @export
 reconstruct_space.composite_space <- function(x, vector, ...) {
-  if (!is.null(names(vector))) {
-    if (anyNA(names(vector)) || anyDuplicated(names(vector)) ||
-      !setequal(names(vector), feature_ids(x))) {
-      .frame_abort(
-        "Named vectors must contain every composite feature ID exactly once.",
-        "fmridataset_error_space_mismatch"
-      )
-    }
-    vector <- vector[feature_ids(x)]
-  }
+  vector <- .align_named_vector(vector, feature_ids(x), "composite feature")
   vector <- as.numeric(vector)
   if (length(vector) != n_features(x)) {
     .frame_abort(

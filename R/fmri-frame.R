@@ -61,6 +61,7 @@ aligned_assay_set <- function(assays, observations, features) {
         actual = source_shape(source)
       )
     }
+    .assert_source_native_space(source, features[["space"]], nm)
     structure(
       list(
         name = nm,

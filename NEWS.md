@@ -1,5 +1,18 @@
 # fmridataset 0.11.0 (Development)
 
+- Feature spaces are stricter about spatial identity. A frame now rejects a
+  `volume_space` that differs from its NIfTI source's native volume
+  (reordered support or another affine), and `execution_path()` reports
+  `"native"` only when they match; NIfTI source affines now keep the header's
+  axis flips. `vectorize_space()` checks a `NeuroVol`'s dimensions and affine
+  and an array's shape. Named vectors must name every feature ID exactly once
+  in every space. `restrict_space()` accepts logical, negative, and ID
+  selectors identically in every space, keeps a caller's basis encoder (only
+  subsetting it), and rebuilds a parcel space's default decoder from the
+  restricted membership. `basis_space_from_decoder()` rejects wide
+  dictionaries with a structured error and builds an empty basis, and the
+  parcel, basis, and composite accessors raise structured errors.
+
 - `temporal_schema()` and `as_sampling_frame()` now honour an optional
   per-observation `start_time` column (non-negative seconds, constant within
   each run): the slice-time-correction reference or other first-volume offset.

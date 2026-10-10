@@ -2,6 +2,90 @@
   .selection_is_all(.frame_selection(x)$features)
 }
 
+# The volumetric space a source natively realizes, or NULL when the source
+# exposes none. Only NIfTI sources carry a native space; selection and
+# instrumentation wrappers pass it through (a feature-restricted view restricts
+# it). A source without one keeps its declared capabilities unchanged.
+.source_native_space <- function(source) {
+  if (inherits(source, "nifti_array_source")) {
+    return(nifti_source_space(source))
+  }
+  if (inherits(source, "source_view")) {
+    inner <- .source_native_space(source$source)
+    if (is.null(inner) || .selection_is_all(source$features)) {
+      return(inner)
+    }
+    return(restrict_space(inner, .selection_expand(source$features)))
+  }
+  if (inherits(source, c("counting_source", "fault_source")) &&
+    inherits(source$source, "array_source")) {
+    return(.source_native_space(source$source))
+  }
+  NULL
+}
+
+# The source's native space expressed in a frame space's labels. Template and
+# units are frame-level labels the source cannot know, so they are taken from
+# the frame space, and an affine within the tolerance NIfTI headers are already
+# held to is taken from the frame space too. Dimensions, ordered support, and
+# the affine must otherwise agree. Returns NULL when the source has no native
+# space.
+.source_native_space_like <- function(source, spatial) {
+  native <- .source_native_space(source)
+  if (is.null(native) || !inherits(spatial, "volume_space")) {
+    return(native)
+  }
+  affine_close <- isTRUE(all.equal(
+    unname(native$affine), unname(spatial$affine),
+    tolerance = 1e-7, check.attributes = FALSE
+  ))
+  volume_space(
+    dim = native$dim,
+    affine = if (affine_close) spatial$affine else native$affine,
+    support = native$support,
+    template = spatial$template,
+    units = spatial$units,
+    metadata = native$metadata
+  )
+}
+
+# TRUE when the source has no native space or its native space is the frame
+# space; FALSE when a native read would realize a different feature domain.
+.source_native_space_matches <- function(source, spatial) {
+  native <- .source_native_space_like(source, spatial)
+  is.null(native) || isTRUE(same_space(spatial, native)$same)
+}
+
+# Reject a volumetric frame space that disagrees with the native space of the
+# source backing an assay: packed columns would otherwise be labelled with the
+# wrong voxel IDs, and native and reconstructed maps would disagree.
+# Non-volumetric spaces make no voxel claim and are left to the reconstruct
+# path.
+.assert_source_native_space <- function(source, spatial, assay = NULL) {
+  if (!inherits(spatial, "volume_space")) {
+    return(invisible(NULL))
+  }
+  native <- .source_native_space_like(source, spatial)
+  if (is.null(native)) {
+    return(invisible(NULL))
+  }
+  tryCatch(
+    assert_same_space(spatial, native),
+    fmridataset_error_space_mismatch = function(e) {
+      .frame_abort(
+        paste0(
+          if (!is.null(assay)) sprintf("Assay '%s': ", assay) else "",
+          "the source's native volume (dimensions, affine, or ordered ",
+          "support) does not match the frame volume_space."
+        ),
+        "fmridataset_error_space_mismatch",
+        assay = assay,
+        compatibility = e$compatibility
+      )
+    }
+  )
+}
+
 #' Select a matrix or spatial execution path
 #'
 #' Matrix operations always use bounded observation-by-feature blocks. Spatial
@@ -42,8 +126,12 @@ execution_path <- function(
   if (operation == "matrix") {
     return("matrix")
   }
+  # A native read is valid only when the source realizes exactly the frame's
+  # feature space; otherwise vectorizing it would assign values to the wrong
+  # feature IDs.
   native_available <- "native_read" %in% source_capabilities(descriptor$source) &&
-    .has_complete_feature_selection(x)
+    .has_complete_feature_selection(x) &&
+    .source_native_space_matches(descriptor$source, space(x))
   if (path == "native" && !native_available) {
     .frame_abort(
       "A native spatial path is unavailable for this source or feature selection.",
