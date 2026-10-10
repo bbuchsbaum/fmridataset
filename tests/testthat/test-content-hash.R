@@ -71,7 +71,7 @@ test_that("content hashes agree across equal values and differ otherwise", {
   chunked <- memory_source(m, chunks = c(2, 3))
   integer_valued <- memory_source(matrix(1:24, 6, 4))
   narrow <- memory_source(m, dtype = "float32")
-  bound <- row_bound_source(list(
+  bound <- row_sharded_source(list(
     memory_source(m[1:2, , drop = FALSE]),
     memory_source(m[3:3, , drop = FALSE]),
     memory_source(m[4:6, , drop = FALSE])
@@ -185,7 +185,7 @@ test_that("content hashing crosses leaf boundaries independently of block size",
   expect_identical(content_hash(x, block_bytes = 8 * n_col * 11), reference)
   expect_identical(content_hash(x, block_bytes = 8 * n_col * leaf), reference)
   expect_identical(
-    content_hash(row_bound_source(list(
+    content_hash(row_sharded_source(list(
       memory_source(m[seq_len(5000L), , drop = FALSE]),
       memory_source(m[-seq_len(5000L), , drop = FALSE])
     )), block_bytes = 8 * n_col * 999),
@@ -200,7 +200,7 @@ test_that("row-bound content hashing streams shard by shard", {
     matrix(as.double(17:36), 5, 4)
   )
   children <- lapply(parts, function(part) counting_source(memory_source(part, chunks = c(2, 4))))
-  bound <- row_bound_source(children)
+  bound <- row_sharded_source(children)
 
   expect_identical(
     content_hash(bound, block_bytes = 8 * 4 * 2),

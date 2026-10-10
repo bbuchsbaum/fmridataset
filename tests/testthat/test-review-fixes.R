@@ -195,13 +195,6 @@ test_that("fault_source() and row_sharded_source() fingerprint once at construct
   expect_lte(.fingerprint_calls$n, 4L)
   .expect_fingerprint_cached(sharded)
 
-  bound <- row_bound_source(list(child, child))
-  .expect_fingerprint_cached(bound)
-  # row_bound_source() assigns the deterministic default shard IDs.
-  expect_identical(
-    source_fingerprint(bound),
-    source_fingerprint(row_sharded_source(list(child, child)))
-  )
 })
 
 # 3. validate_array_source() resolves methods from the caller's scope ---------

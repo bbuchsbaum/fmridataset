@@ -173,7 +173,7 @@ identical(content_hash(a), content_hash(b))
 as_float32 <- memory_source(signal, dtype = "float32", chunks = c(1L, 18L))
 identical(content_hash(a), content_hash(as_float32))
 
-stacked <- row_bound_source(list(memory_source(signal[1:2, ]), memory_source(signal[3:6, ])))
+stacked <- row_sharded_source(list(memory_source(signal[1:2, ]), memory_source(signal[3:6, ])))
 identical(content_hash(a), content_hash(stacked))
 ```
 

@@ -118,7 +118,7 @@ content_hash.source_view <- function(
 
 #' @rdname content_hash
 #' @export
-content_hash.row_bound_source <- function(
+content_hash.row_sharded_source <- function(
   x, ...,
   block_bytes = getOption("fmridataset.target_block_bytes", 4 * 1024^2)
 ) {

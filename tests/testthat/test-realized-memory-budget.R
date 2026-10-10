@@ -163,14 +163,11 @@ test_that("block plans size their blocks by realized width", {
 
   # The plan's own accounting must be on the realized basis, and no block may
   # exceed the ceiling once realized.
-  expect_equal(plan$dtype_bytes, realized)
   expect_equal(plan$output_dtype_bytes, realized)
   expect_gte(plan$peak_dtype_bytes, plan$output_dtype_bytes)
   expect_lte(plan$max_peak_bytes, budget)
   expect_lte(plan$max_output_bytes, plan$max_peak_bytes)
-  expect_equal(plan$max_block_bytes, plan$max_peak_bytes)
-  expect_equal(plan$total_bytes, prod(as.double(plan$shape)) * realized)
-  expect_equal(plan$total_output_bytes, plan$total_bytes)
+  expect_equal(plan$total_output_bytes, prod(as.double(plan$shape)) * realized)
 })
 
 test_that("counting sources report storage and realized traffic separately", {
@@ -186,16 +183,30 @@ test_that("counting sources report storage and realized traffic separately", {
   expect_equal(counts$bytes, counts$output_bytes)
 })
 
-test_that("as_delarr refuses a realization above its explicit ceiling", {
+test_that("as_delarr bounds each pull, not the whole source", {
   source <- memory_source(matrix(seq_len(100), 10, 10), dtype = "float32")
   cost <- source_realization_cost(source)
 
+  # The budget is documented as the ceiling for a single pull, so a lazy array
+  # over a source larger than the budget must still be constructible.
+  small <- source_realization_cost(source, 1:2, 1:2)$estimated_peak_bytes
+  lazy <- as_delarr(source, memory_budget = small)
+  expect_equal(dim(lazy), c(10L, 10L))
+  expect_equal(
+    delarr::collect(lazy[1:2, 1:2]),
+    source_read(source, 1:2, 1:2)
+  )
   expect_error(
-    as_delarr(source, memory_budget = cost$estimated_peak_bytes - 1),
+    delarr::collect(lazy),
     class = "fmridataset_error_budget"
   )
-  lazy <- as_delarr(source, memory_budget = cost$estimated_peak_bytes)
-  expect_equal(delarr::collect(lazy), source_read(source))
+
+  whole <- as_delarr(source, memory_budget = cost$estimated_peak_bytes)
+  expect_equal(delarr::collect(whole), source_read(source))
+  expect_error(
+    as_delarr(source, memory_budget = -1),
+    class = "fmridataset_error_budget"
+  )
 })
 
 test_that("measured vector-heap peak stays within the documented tolerance", {

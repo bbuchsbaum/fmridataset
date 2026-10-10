@@ -32,7 +32,7 @@ test_that("randomized synchronized views equal dense reference slicing", {
 test_that("row-bound sources preserve row order and push down selections", {
   a <- matrix(1:12, 3, 4)
   b <- matrix(101:108, 2, 4)
-  source <- row_bound_source(list(memory_source(a), memory_source(b)))
+  source <- row_sharded_source(list(memory_source(a), memory_source(b)))
   reference <- rbind(a, b)
 
   expect_array_source_conformance(source, reference)

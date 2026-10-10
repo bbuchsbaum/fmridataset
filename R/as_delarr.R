@@ -2,8 +2,9 @@
 #'
 #' `as_delarr()` wraps a serializable [array source][array-source] as a
 #' `delarr` provider so that bounded, chunk-aware execution can be delegated
-#' to `delarr` without materializing the assay. The realization budget is
-#' enforced before any provider is created.
+#' to `delarr` without materializing the assay. The realization budget bounds
+#' each provider pull, not the whole source, so a lazy array may describe more
+#' data than the budget allows; every pull is checked before it reads.
 #'
 #' @param x An array source, or another object with an `as_delarr()` method.
 #' @param memory_budget Maximum realized bytes permitted for a single pull.
