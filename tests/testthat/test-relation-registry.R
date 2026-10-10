@@ -326,3 +326,24 @@ test_that("relation constructors reject malformed descriptors", {
     class = "fmridataset_error_relation"
   )
 })
+
+test_that("undirected duplicate detection normalizes entity domain spelling", {
+  edges <- data.frame(.from_id = c("s1", "s2"), .to_id = c("s2", "s1"))
+  for (to in c("subject", "entity:subject")) {
+    expect_error(
+      sparse_relation(edges, from = "subject", to = to, directed = FALSE),
+      "duplicate",
+      class = "fmridataset_error_relation"
+    )
+  }
+  expect_error(
+    sparse_relation(edges, from = "entity:subject", to = "subject", directed = FALSE),
+    "duplicate",
+    class = "fmridataset_error_relation"
+  )
+  # Directed edges in both directions remain distinct.
+  expect_s3_class(
+    sparse_relation(edges, from = "subject", to = "entity:subject"),
+    "sparse_relation"
+  )
+})

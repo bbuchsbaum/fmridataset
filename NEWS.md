@@ -23,6 +23,16 @@
   dictionaries with a structured error and builds an empty basis, and the
   parcel, basis, and composite accessors raise structured errors.
 
+- Study and entity contracts tightened: `filter_entities()` cascades through
+  entity key relations, restricts sparse/validity relations, keeps NA-key table
+  rows, supports empty selections, and no longer re-checks validated metadata;
+  numeric keys use exact whole-number IDs (`100000`, not `"1e+05"`); conflicting
+  relation paths, multi-valued `frame_link(type =)`, and lossy
+  `compose_frame_links()` maps are rejected; collection and study digests
+  include member order; shared-entity agreement is exact. Removed the
+  `events()` alias (use `study_table(x, "events")`) and the list-entry form of
+  `entity_registry()`.
+
 - `temporal_schema()` and `as_sampling_frame()` now honour an optional
   per-observation `start_time` column (non-negative seconds, constant within
   each run): the slice-time-correction reference or other first-volume offset.

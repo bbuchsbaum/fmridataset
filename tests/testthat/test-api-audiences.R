@@ -45,7 +45,7 @@
   "composite_part_names", "composite_parts", "composite_space", "entities",
   "entity", "entity_blocks", "entity_data", "entity_feature_validity",
   "entity_frame", "entity_ids", "entity_key", "entity_names", "entity_registry",
-  "event_data", "event_key", "event_table", "events", "execute_spatial", "explain",
+  "event_data", "event_key", "event_table", "execute_spatial", "explain",
   "feature_axis", "feature_blocks", "feature_data", "feature_ids", "feature_map",
   "feature_map_from_target", "features", "filter_entities", "filter_obs",
   "fmri_collection", "fmri_frame", "fmri_study", "frame_link",
@@ -86,7 +86,7 @@ test_that("implementation conveniences are absent from the public namespace", {
   internal <- "%||%"
   removed <- c(
     "compatible_space", "assert_compatible_space", "as_provenance_graph",
-    "upgrade_frame_link", "upgrade_fds_study_manifest",
+    "upgrade_frame_link", "upgrade_fds_study_manifest", "events",
     "nrow.fmri_frame", "ncol.fmri_frame", "nrow.fmri_view", "ncol.fmri_view",
     "analyze_run", "generate_benchmark_data",
     "generate_example_events", "generate_example_fmri_data",

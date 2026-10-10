@@ -293,18 +293,28 @@ test_that("multiple entity paths coalesce agreement and reject conflicts", {
     c(63, 63, 71, 63, 71)
   )
 
-  conflicted <- .make_resolution_frame(
-    direct_subject = TRUE,
-    conflicting_subject = TRUE
-  )$frame
+  # Conflicting paths are rejected when the frame is built, so no frame can
+  # carry ambiguous entity resolution or a falsely complete hierarchy.
   expect_error(
-    observations(conflicted, resolve = TRUE),
+    .make_resolution_frame(direct_subject = TRUE, conflicting_subject = TRUE),
     "conflicting paths",
     class = "fmridataset_error_resolution"
   )
+})
+
+test_that("hierarchy indices reject paths that conflict with other relations", {
+  agreed <- .make_resolution_frame(direct_subject = TRUE)$frame
+  idx <- hierarchy_index(agreed, c("subject", "session", "run"))
+  expect_true(all(hierarchy_complete(idx)))
+
+  # A frame object altered after construction cannot smuggle a conflict past
+  # the index: it re-derives every reachable path before reporting complete.
+  tampered <- agreed
+  tampered$observations$data$subject_id[[1L]] <- "sub-02"
   expect_error(
-    obs_blocks(conflicted, resolve = TRUE),
-    class = "fmridataset_error_resolution"
+    hierarchy_index(tampered, c("subject", "session", "run")),
+    "conflict",
+    class = "fmridataset_error_hierarchy"
   )
 })
 

@@ -9,15 +9,16 @@
   resolve
 }
 
-.resolution_domain <- function(x, domain) {
+.resolution_domain <- function(observation_ids, observation_data, entities,
+                               domain) {
   if (identical(domain, "observation")) {
-    return(list(ids = observation_ids(x), data = axis_data(observation_axis(x))))
+    return(list(ids = observation_ids, data = observation_data))
   }
   if (!startsWith(domain, "entity:")) {
     return(NULL)
   }
   name <- sub("^entity:", "", domain)
-  value <- entity(x, name)
+  value <- entity(entities, name)
   list(ids = entity_ids(value), data = entity_data(value))
 }
 
@@ -35,16 +36,26 @@
 }
 
 .resolve_entity_maps <- function(x) {
-  registry <- relations(x)
-  maps <- list(observation = observation_ids(x))
-  key_names <- relation_names(registry)[vapply(
+  .entity_maps_from_parts(
+    relations(x), observation_ids(x), axis_data(observation_axis(x)),
+    entities(x)
+  )
+}
+
+# Resolve every observation to the entity IDs reachable through resolved key
+# relations. Conflicting paths to one entity are a structured error, raised
+# at frame construction as well as on resolved access.
+.entity_maps_from_parts <- function(registry, observation_ids, observation_data,
+                                    entities) {
+  maps <- list(observation = observation_ids)
+  key_names <- names(registry)[vapply(
     registry, inherits, logical(1), "key_relation"
   )]
   if (!length(key_names)) {
     return(maps)
   }
 
-  max_passes <- length(key_names) + length(entity_names(x)) + 1L
+  max_passes <- length(key_names) + length(entity_names(entities)) + 1L
   for (pass in seq_len(max_passes)) {
     changed <- FALSE
     for (relation_name in key_names) {
@@ -53,14 +64,17 @@
         !startsWith(descriptor$target, "entity:")) {
         next
       }
-      source_domain <- .resolution_domain(x, descriptor$source)
+      source_domain <- .resolution_domain(
+        observation_ids, observation_data, entities, descriptor$source
+      )
       source_ids <- maps[[descriptor$source]]
       positions <- match(source_ids, source_domain$ids)
       target_ids <- rep(NA_character_, length(source_ids))
       present <- !is.na(positions)
       if (any(present)) {
-        target_ids[present] <- as.character(
-          source_domain$data[[descriptor$key]][positions[present]]
+        target_ids[present] <- .canonical_key_values(
+          source_domain$data[[descriptor$key]][positions[present]],
+          .resolution_abort, descriptor$key
         )
       }
       target <- descriptor$target

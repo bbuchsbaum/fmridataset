@@ -181,7 +181,7 @@ test_that("filtered studies persist their visible semantic view", {
 
   expect_identical(entity_ids(entity(rebuilt, "subject")), "sub-02")
   expect_identical(nrow(study_frame(rebuilt, "bold")), 1L)
-  expect_identical(nrow(event_data(events(rebuilt))), 1L)
+  expect_identical(nrow(event_data(study_table(rebuilt, "events"))), 1L)
   expect_identical(nrow(study_link(rebuilt, "beta_from_bold")$map), 1L)
   expect_false(any(c("base", "entity_selections") %in% names(unclass(study))))
 })

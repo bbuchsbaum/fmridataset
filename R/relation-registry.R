@@ -93,8 +93,8 @@ sparse_relation <- function(data, from, to, from_col = ".from_id",
     .relation_abort("Sparse relation edge columns are absent from data.", field = "data")
   }
   .validate_sparse_scalar_data(data)
-  data[[from_col]] <- as.character(data[[from_col]])
-  data[[to_col]] <- as.character(data[[to_col]])
+  data[[from_col]] <- .canonical_key_values(data[[from_col]], .relation_abort, from_col)
+  data[[to_col]] <- .canonical_key_values(data[[to_col]], .relation_abort, to_col)
   if (anyNA(data[[from_col]]) || any(!nzchar(data[[from_col]])) ||
     anyNA(data[[to_col]]) || any(!nzchar(data[[to_col]]))) {
     .relation_abort("Sparse relation edge IDs must be non-missing and non-empty.", field = "data")
@@ -104,7 +104,8 @@ sparse_relation <- function(data, from, to, from_col = ".from_id",
   }
   pairs <- data[c(from_col, to_col)]
   duplicate_pairs <- anyDuplicated(pairs)
-  if (!isTRUE(directed) && identical(from, to)) {
+  if (!isTRUE(directed) &&
+    identical(.relation_domain_spelling(from), .relation_domain_spelling(to))) {
     undirected_pairs <- data.frame(
       from = pmin(data[[from_col]], data[[to_col]]),
       to = pmax(data[[from_col]], data[[to_col]]),
@@ -235,6 +236,15 @@ relation_registry <- function(relations = list(), ...) {
   .relation_abort(sprintf("Relation '%s' has an unknown descriptor type.", name), relation = name)
 }
 
+# Registry-free canonical spelling: "subject" and "entity:subject" name the
+# same entity domain, while "observation" and "feature" are axis domains.
+.relation_domain_spelling <- function(domain) {
+  if (domain %in% c("observation", "feature")) {
+    return(domain)
+  }
+  paste0("entity:", sub("^entity:", "", domain))
+}
+
 .normalize_relation_domain <- function(domain, entities) {
   domain <- .one_relation_string(domain, "domain")
   if (domain %in% c("observation", "feature")) {
@@ -292,6 +302,9 @@ relation_registry <- function(relations = list(), ...) {
   if (is.list(keys) || !is.null(dim(keys))) {
     .relation_abort("Foreign-key columns must contain scalar values.", relation = name, field = "key")
   }
+  keys <- .canonical_key_values(keys, function(message, ...) {
+    .relation_abort(message, relation = name, ...)
+  }, value$key)
   missing <- is.na(keys)
   if (any(missing) && !isTRUE(value$allow_missing)) {
     .relation_abort(
@@ -301,13 +314,13 @@ relation_registry <- function(relations = list(), ...) {
     )
   }
   target_ids <- .relation_domain_value(target, observations, features, entities)$ids
-  unknown <- !missing & !as.character(keys) %in% target_ids
+  unknown <- !missing & !keys %in% target_ids
   if (any(unknown)) {
     .relation_abort(
       sprintf("Relation '%s' contains unknown target IDs.", name),
       relation = name,
       field = "key",
-      values = unique(as.character(keys[unknown]))
+      values = unique(keys[unknown])
     )
   }
   value$source <- source
@@ -368,6 +381,12 @@ relation_registry <- function(relations = list(), ...) {
   })
   names(out) <- names(x)
   class(out) <- c("relation_registry", "list")
+  # Every key-relation path from observations to an entity must agree. A
+  # conflicting path would make resolution and hierarchy indices ambiguous, so
+  # it is rejected here rather than on first resolved access.
+  .entity_maps_from_parts(
+    out, axis_ids(observations), axis_data(observations), entities
+  )
   out
 }
 
@@ -555,6 +574,62 @@ relation_registry_digest <- function(x) {
   })
   names(out) <- names(first)
   relation_registry(out)
+}
+
+# Restrict entity-domain sparse edges and validity rows to the IDs present in
+# `entities`. Used when a study filter removes entity records.
+.restrict_relations_to_entities <- function(x, entities) {
+  if (!length(x)) {
+    return(x)
+  }
+  entity_ids_for <- function(domain) {
+    if (!startsWith(domain, "entity:")) {
+      return(NULL)
+    }
+    name <- sub("^entity:", "", domain)
+    if (!name %in% entity_names(entities)) {
+      return(NULL)
+    }
+    entity_ids(entities[[name]])
+  }
+  out <- lapply(x, function(value) {
+    if (inherits(value, "entity_feature_validity")) {
+      if (!value$entity %in% entity_names(entities)) {
+        return(value)
+      }
+      kept <- entity_ids(entities[[value$entity]])
+      if (identical(kept, value$entity_ids)) {
+        return(value)
+      }
+      positions <- match(kept, value$entity_ids)
+      if (anyNA(positions)) {
+        .relation_abort(
+          "Validity restriction contains unknown entity IDs.",
+          entity = value$entity
+        )
+      }
+      return(entity_feature_validity(
+        entity = value$entity,
+        entity_ids = kept,
+        masks = validity_matrix(value)[positions, , drop = FALSE],
+        space = value$bank$space,
+        metadata = value$metadata
+      ))
+    }
+    if (!inherits(value, "sparse_relation")) {
+      return(value)
+    }
+    keep <- rep(TRUE, nrow(value$data))
+    from_ids <- entity_ids_for(.relation_domain_spelling(value$from))
+    to_ids <- entity_ids_for(.relation_domain_spelling(value$to))
+    if (!is.null(from_ids)) keep <- keep & value$data[[value$from_col]] %in% from_ids
+    if (!is.null(to_ids)) keep <- keep & value$data[[value$to_col]] %in% to_ids
+    value$data <- value$data[keep, , drop = FALSE]
+    value
+  })
+  names(out) <- names(x)
+  class(out) <- c("relation_registry", "list")
+  out
 }
 
 #' @export
