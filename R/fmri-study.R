@@ -34,7 +34,7 @@ event_table <- function(data, key = "event_id", metadata = list()) {
     .event_abort("Event key must name one scalar data column.", field = "key")
   }
   data[[key]] <- .assert_stable_keys(
-    as.character(data[[key]]), .event_abort,
+    .canonical_key_values(data[[key]], .event_abort, key), .event_abort,
     field = key,
     message = "Event keys must be unique, non-missing, and non-empty."
   )
@@ -139,7 +139,7 @@ frame_link <- function(source, target,
   source <- scalar_string(source, "source")
   target <- scalar_string(target, "target")
   allowed <- c("derivation", "mapping", "correspondence", "alignment")
-  type <- if (length(type)) type[[1L]] else type
+  if (missing(type)) type <- allowed[[1L]]
   type <- scalar_string(type, "type")
   if (!type %in% allowed) {
     .study_abort("Unknown frame-link type.", type = type, allowed = allowed)
@@ -222,19 +222,15 @@ frame_link <- function(source, target,
   invisible(x)
 }
 
-#' Upgrade a provisional frame-link descriptor
-#'
-#' Version-one links used reverse `*_from` endpoints for derivation, mapping,
-#' and alignment and stored feature operators in metadata. This explicit
-#' migration converts them to the canonical source-to-target version-two form.
-#'
-#' @param x A provisional version-one or canonical version-two `frame_link`.
-#' @return A canonical version-two `frame_link`.
-#' @examples
-#' link <- frame_link("bold", "surface", type = "derivation")
-#' identical(upgrade_frame_link(link), link)
-#' @export
-upgrade_frame_link <- function(x) {
+# Upgrade a provisional frame-link descriptor.
+#
+# Version-one links, written only by unreleased development builds, used
+# reverse `*_from` endpoints for derivation, mapping, and alignment and stored
+# feature operators in metadata. This converts them to the canonical
+# source-to-target version-two form. Internal for one release so that stored
+# development descriptors can still be migrated with
+# `fmridataset:::.upgrade_frame_link()`; it is scheduled for removal.
+.upgrade_frame_link <- function(x) {
   if (inherits(x, "frame_link") && identical(x$schema_version, 2L)) {
     .validate_frame_link(x)
     return(x)
@@ -321,7 +317,24 @@ compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
     type <- first$type
   }
   map <- NULL
+  if (xor(is.null(first$map), is.null(second$map))) {
+    .study_abort(
+      "Composing an explicit ID map with an unmapped link is ambiguous; supply maps for both links or neither.",
+      field = "map"
+    )
+  }
   if (!is.null(first$map) && !is.null(second$map)) {
+    extra <- union(
+      setdiff(names(first$map), c(".source_id", ".target_id")),
+      setdiff(names(second$map), c(".source_id", ".target_id"))
+    )
+    if (length(extra)) {
+      .study_abort(
+        "Link maps with annotation columns cannot be composed implicitly; compose the annotated map explicitly.",
+        field = "map",
+        columns = extra
+      )
+    }
     left <- first$map[c(".source_id", ".target_id")]
     names(left) <- c(".source_id", ".intermediate_id")
     right <- second$map[c(".source_id", ".target_id")]
@@ -345,7 +358,7 @@ compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
         field = "operator"
       )
     }
-    assert_compatible_space(
+    assert_same_space(
       feature_map_target_space(first$operator),
       feature_map_source_space(second$operator)
     )
@@ -372,8 +385,21 @@ compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
   if (inherits(value, "fmri_collection")) collection_frames(value) else list(value)
 }
 
+# Exact agreement after harmless type coercion: factors compare as character
+# and integer/double compare as double. Values are never compared with a
+# numerical tolerance, and character never matches numeric.
 .study_vector_equal <- function(x, y) {
-  isTRUE(all.equal(x, y, check.attributes = FALSE))
+  if (length(x) != length(y)) {
+    return(FALSE)
+  }
+  if (is.factor(x)) x <- as.character(x)
+  if (is.factor(y)) y <- as.character(y)
+  if (is.numeric(x) && is.numeric(y) && !is.object(x) && !is.object(y)) {
+    x <- as.double(x)
+    y <- as.double(y)
+  }
+  identical(class(x), class(y)) &&
+    identical(as.vector(unclass(x)), as.vector(unclass(y)))
 }
 
 .validate_member_entities <- function(frame, shared, representation) {
@@ -496,11 +522,11 @@ compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
             link = id
           )
         }
-        assert_compatible_space(
+        assert_same_space(
           feature_map_source_space(typed_map),
           space(source_frame)
         )
-        assert_compatible_space(
+        assert_same_space(
           feature_map_target_space(typed_map),
           space(target_frame)
         )
@@ -525,7 +551,9 @@ compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
         entity_value <- entities_value[[entity_name]]
         key <- entity_key(entity_value)
         if (!key %in% names(data)) next
-        values <- as.character(data[[key]])
+        values <- .canonical_key_values(data[[key]], function(message, ...) {
+          .study_abort(message, table = table_name, entity = entity_name, ...)
+        }, key)
         present <- !is.na(values)
         if (any(!values[present] %in% entity_ids(entity_value))) {
           .study_abort(
@@ -561,6 +589,11 @@ compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
 #' @export
 fmri_study <- function(frames, entities = list(), links = list(), tables = list(),
                        metadata = list(), provenance = NULL) {
+  .build_fmri_study(frames, entities, links, tables, metadata, provenance)
+}
+
+.build_fmri_study <- function(frames, entities, links, tables, metadata,
+                              provenance) {
   if (!is.list(frames) || !length(frames)) {
     .study_abort("frames must be a non-empty named list.", field = "frames")
   }
@@ -581,9 +614,7 @@ fmri_study <- function(frames, entities = list(), links = list(), tables = list(
   }
   links <- .validate_study_links(links, frames)
   tables <- .validate_study_tables(tables, entities_value)
-  metadata <- .normalize_container_metadata(
-    metadata, .study_alignment_domains(frames, entities_value)
-  )
+  metadata <- .normalize_container_metadata(metadata)
   provenance <- .validate_container_provenance(provenance, "Study")
   out <- structure(
     list(
@@ -596,24 +627,40 @@ fmri_study <- function(frames, entities = list(), links = list(), tables = list(
   out
 }
 
-.contextualize_study_frame <- function(value, shared) {
+# Rebuild a representation against `shared` entities. With `restrict = TRUE`,
+# entity-domain sparse edges and validity rows are first restricted to the
+# shared entity IDs, as required after a study entity filter. Frame and
+# collection metadata were validated when supplied and are carried as is.
+.contextualize_study_frame <- function(value, shared, restrict = FALSE) {
   if (inherits(value, "fmri_collection")) {
-    members <- lapply(collection_frames(value), .contextualize_study_frame, shared = shared)
-    return(fmri_collection(members, metadata = value$metadata, provenance = value$provenance))
+    members <- lapply(collection_frames(value), .contextualize_study_frame,
+      shared = shared, restrict = restrict
+    )
+    return(.build_fmri_collection(
+      members, value$metadata, value$provenance
+    ))
   }
   assay_sources <- lapply(names(assays(value)), function(name) .frame_assay_source(value, name))
   names(assay_sources) <- names(assays(value))
-  fmri_frame(
+  frame_relations <- relations(value)
+  if (isTRUE(restrict)) {
+    frame_relations <- .restrict_relations_to_entities(frame_relations, shared)
+  }
+  out <- fmri_frame(
     assays = assay_sources,
     observations = observation_axis(value),
     features = feature_axis(value),
     entities = shared,
-    relations = relations(value),
+    relations = frame_relations,
     tables = value$tables %||% value$base$tables,
     active_assay = active_assay(value),
-    metadata = value$metadata %||% value$base$metadata,
+    metadata = list(),
     provenance = value$provenance %||% value$base$provenance
   )
+  out$metadata <- .normalize_container_metadata(
+    value$metadata %||% value$base$metadata %||% list()
+  )
+  out
 }
 
 .study_base <- function(x) x
@@ -639,7 +686,9 @@ validate_fmri_study <- function(x) {
     !identical(x$schema_version, 1L)) {
     .study_abort("x is not a valid fmri_study.")
   }
-  fmri_study(x$frames, x$entities, x$links, x$tables, x$metadata, x$provenance)
+  .build_fmri_study(
+    x$frames, x$entities, x$links, x$tables, x$metadata, x$provenance
+  )
   invisible(x)
 }
 
@@ -735,7 +784,11 @@ study_link <- function(x, name) {
   keep <- rep(TRUE, nrow(data))
   for (entity_name in names(selections)) {
     key <- entity_key(shared[[entity_name]])
-    if (key %in% names(data)) keep <- keep & !is.na(data[[key]]) & data[[key]] %in% selections[[entity_name]]
+    if (!key %in% names(data)) next
+    values <- .canonical_key_values(data[[key]], .study_abort, key)
+    # Rows without a key value do not reference the filtered entity and are
+    # kept; only rows that reference a dropped entity are removed.
+    keep <- keep & (is.na(values) | values %in% selections[[entity_name]])
   }
   data <- data[keep, , drop = FALSE]
   if (inherits(value, "fmri_event_table")) {
@@ -750,6 +803,7 @@ study_link <- function(x, name) {
 #' @rdname study-registries
 #' @export
 study_tables <- function(x) {
+  validate_fmri_study(x)
   x$tables
 }
 #' @rdname study-registries
@@ -761,28 +815,99 @@ study_table <- function(x, name) {
   }
   values[[name]]
 }
-#' @rdname study-registries
-#' @export
-events <- function(x, name = "events") study_table(x, name)
 
-.filter_study_frame_entity <- function(value, entity_name, selected_ids, shared) {
+# Entity-to-entity key relations declared by any study member, as
+# child-source / parent-target pairs.
+.study_entity_key_edges <- function(frames) {
+  edges <- list()
+  for (representation in frames) {
+    for (member in .study_member_frames(representation)) {
+      for (value in relations(member)) {
+        if (inherits(value, "key_relation") &&
+          startsWith(value$source, "entity:") &&
+          startsWith(value$target, "entity:")) {
+          edges[[length(edges) + 1L]] <- list(
+            child = sub("^entity:", "", value$source),
+            parent = sub("^entity:", "", value$target),
+            key = value$key
+          )
+        }
+      }
+    }
+  }
+  unique(edges)
+}
+
+# Start from one entity selection and drop, transitively, every child entity
+# record whose foreign key references a dropped parent. Returns the selections
+# of every entity that lost records (always including the filtered entity).
+.cascade_entity_selections <- function(frames, shared, entity_name, selected_ids) {
+  current <- lapply(shared, entity_ids)
+  current[[entity_name]] <- selected_ids
+  touched <- entity_name
+  edges <- .study_entity_key_edges(frames)
+  repeat {
+    changed <- FALSE
+    for (edge in edges) {
+      if (!edge$child %in% names(shared) || !edge$parent %in% names(shared)) next
+      child <- shared[[edge$child]]
+      data <- entity_data(child)
+      if (!edge$key %in% names(data)) next
+      keys <- .canonical_key_values(data[[edge$key]], .study_abort, edge$key)
+      ids <- entity_ids(child)
+      survives <- ids %in% current[[edge$child]] &
+        (is.na(keys) | keys %in% current[[edge$parent]])
+      kept <- ids[survives]
+      if (length(kept) < length(current[[edge$child]])) {
+        current[[edge$child]] <- kept
+        touched <- union(touched, edge$child)
+        changed <- TRUE
+      }
+    }
+    if (!changed) break
+  }
+  current[touched]
+}
+
+.filter_study_frame_entities <- function(value, selections, primary, shared) {
   if (inherits(value, "fmri_collection")) {
-    members <- lapply(collection_frames(value), .filter_study_frame_entity,
-      entity_name = entity_name, selected_ids = selected_ids,
-      shared = shared
+    members <- lapply(collection_frames(value), .filter_study_frame_entities,
+      selections = selections, primary = primary, shared = shared
     )
-    return(fmri_collection(members, metadata = value$metadata, provenance = value$provenance))
+    return(.build_fmri_collection(
+      members, value$metadata, value$provenance
+    ))
   }
   contextual <- .contextualize_study_frame(value, shared)
   maps <- .resolve_entity_maps(contextual)
-  mapped <- maps[[paste0("entity:", entity_name)]]
-  if (is.null(mapped)) {
+  keep <- rep(TRUE, length(observation_ids(contextual)))
+  mapped_any <- FALSE
+  for (entity_name in names(selections)) {
+    mapped <- maps[[paste0("entity:", entity_name)]]
+    if (is.null(mapped)) next
+    mapped_any <- TRUE
+    selected <- mapped %in% selections[[entity_name]]
+    # Observations must reach a kept record of the filtered entity; for
+    # cascaded entities only a reference to a dropped record removes a row.
+    keep <- keep & if (identical(entity_name, primary)) {
+      !is.na(mapped) & selected
+    } else {
+      is.na(mapped) | selected
+    }
+  }
+  if (!mapped_any) {
     return(value)
   }
-  contextual[which(!is.na(mapped) & mapped %in% selected_ids), ]
+  contextual[which(keep), ]
 }
 
 #' Filter every study representation through one shared entity selection
+#'
+#' Dropping entity records cascades: child entities whose key relation
+#' references a dropped record are dropped too, observations reaching a dropped
+#' record are removed, and sparse edges, validity rows, link maps, and table
+#' rows are restricted to the surviving IDs. Table rows without a key value are
+#' kept.
 #'
 #' @param x An `fmri_study`.
 #' @param entity Bare or quoted shared entity name.
@@ -813,30 +938,36 @@ events <- function(x, name = "events") study_table(x, name)
 filter_entities <- function(x, entity, predicate) {
   validate_fmri_study(x)
   entity_name <- rlang::as_name(rlang::ensym(entity))
-  visible_registry <- entities(x)
-  if (!entity_name %in% entity_names(visible_registry)) {
+  shared <- entities(x)
+  if (!entity_name %in% entity_names(shared)) {
     .study_abort(sprintf("Unknown study entity '%s'.", entity_name), entity = entity_name)
   }
-  visible <- visible_registry[[entity_name]]
+  visible <- shared[[entity_name]]
   keep <- rlang::eval_tidy(rlang::enquo(predicate), data = entity_data(visible))
   if (!is.logical(keep) || length(keep) != length(visible) || anyNA(keep)) {
     .study_abort("Entity predicate must return one non-missing logical value per entity.")
   }
   selected_ids <- entity_ids(visible)[which(keep)]
-  shared <- entities(x)
+  selections <- .cascade_entity_selections(
+    x$frames, shared, entity_name, selected_ids
+  )
   frames <- lapply(
     x$frames,
-    .filter_study_frame_entity,
-    entity_name = entity_name,
-    selected_ids = selected_ids,
+    .filter_study_frame_entities,
+    selections = selections,
+    primary = entity_name,
     shared = shared
   )
-  restricted <- visible_registry
-  # The kept entity IDs select the restricted registry entry through the same
+  restricted <- shared
+  # The kept entity IDs select each restricted registry entry through the same
   # normalization law every other axis uses.
-  restricted[[entity_name]] <- visible[selected_ids]
+  for (name in names(selections)) {
+    restricted[[name]] <- shared[[name]][selections[[name]]]
+  }
   class(restricted) <- c("entity_registry", "list")
-  frames <- lapply(frames, .contextualize_study_frame, shared = restricted)
+  frames <- lapply(frames, .contextualize_study_frame,
+    shared = restricted, restrict = TRUE
+  )
   links <- lapply(x$links, function(value) {
     if (is.null(value$map)) {
       return(value)
@@ -852,12 +983,13 @@ filter_entities <- function(x, entity, predicate) {
     value$map <- value$map[keep_map, , drop = FALSE]
     value
   })
-  selections <- stats::setNames(list(selected_ids), entity_name)
   tables <- lapply(
     x$tables, .filter_study_table,
-    selections = selections, shared = visible_registry
+    selections = selections, shared = shared
   )
-  fmri_study(
+  # Study metadata was validated when the study was built; the filtered axis
+  # sizes must not reinterpret it as aligned.
+  .build_fmri_study(
     frames = frames, entities = restricted, links = links, tables = tables,
     metadata = x$metadata, provenance = x$provenance
   )
@@ -885,6 +1017,9 @@ study_digest <- function(x) {
   validate_fmri_study(x)
   .canonical_digest(list(
     schema_version = 1L,
+    # Representation order is observable through study_ids() and positional
+    # access, so it is part of the study identity.
+    frame_order = names(x$frames),
     frames = lapply(x$frames, .study_representation_digest),
     entities = entities(x),
     links = study_links(x),

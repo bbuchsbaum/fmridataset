@@ -97,22 +97,8 @@ fds_study_representations <- function(x) {
     arrays, .fds_schema_abort, "Study arrays must have unique non-empty names.",
     field = "arrays"
   )
-  array_names <- names(arrays)
-  for (name in array_names) {
-    value <- arrays[[name]]
-    if (!is.list(value) ||
-      !all(c("key", "axes", "shape", "dtype") %in% names(value)) ||
-      !identical(value$key, name) || !is.character(value$axes) ||
-      !is.numeric(value$shape) || length(value$shape) < 2L ||
-      length(value$axes) != length(value$shape) || anyNA(value$shape) ||
-      any(value$shape < 0) || any(value$shape != as.integer(value$shape)) ||
-      !is.character(value$dtype) || length(value$dtype) != 1L ||
-      !value$dtype %in% .supported_source_dtypes) {
-      .fds_schema_abort(
-        sprintf("Study array '%s' has an invalid declaration.", name),
-        paste0("arrays.", name)
-      )
-    }
+  for (name in names(arrays)) {
+    .validate_fds_array_declaration(arrays[[name]], name, what = "Study array")
   }
   invisible(TRUE)
 }
@@ -122,14 +108,15 @@ fds_study_representations <- function(x) {
     .fds_schema_abort("Study representation has no valid type.", paste0("representations.", name))
   }
   if (identical(value$type, "fmri_frame")) {
-    if (!identical(names(value), c("type", "manifest"))) {
+    if (length(value) != 2L || !setequal(names(value), c("type", "manifest"))) {
       .fds_schema_abort("Frame representation has invalid fields.", paste0("representations.", name))
     }
     validate_fds_manifest(value$manifest)
     return(invisible(TRUE))
   }
   if (!identical(value$type, "fmri_collection") ||
-    !identical(names(value), c("type", "members", "metadata", "provenance")) ||
+    length(value) != 4L ||
+    !setequal(names(value), c("type", "members", "metadata", "provenance")) ||
     !is.list(value$members) || !length(value$members)) {
     .fds_schema_abort("Study representation type is unsupported or invalid.", paste0("representations.", name))
   }
@@ -146,21 +133,8 @@ fds_study_representations <- function(x) {
       .fds_schema_abort(conditionMessage(error), paste0("representations.", name, ".provenance"))
     }
   )
-  member_domains <- integer()
-  for (member_name in member_names) {
-    member <- value$members[[member_name]]
-    sizes <- c(
-      observation = length(member$axes$observation$ids),
-      feature = length(member$axes$feature$ids)
-    )
-    sizes <- sizes[sizes > 1L]
-    if (length(sizes)) {
-      names(sizes) <- paste0("member:", member_name, ":", names(sizes))
-      member_domains <- c(member_domains, sizes)
-    }
-  }
   tryCatch(
-    validate_unaligned_record(value$metadata, member_domains),
+    validate_unaligned_record(value$metadata),
     error = function(error) {
       .fds_schema_abort(conditionMessage(error), paste0("representations.", name, ".metadata"))
     }
@@ -244,11 +218,11 @@ fds_study_representations <- function(x) {
               paste0("links.", name, ".operator")
             )
           }
-          assert_compatible_space(
+          assert_same_space(
             feature_map_source_space(typed_map),
             source_representation$manifest$axes$feature$space
           )
-          assert_compatible_space(
+          assert_same_space(
             feature_map_target_space(typed_map),
             target_representation$manifest$axes$feature$space
           )
@@ -272,15 +246,18 @@ validate_fds_study_manifest <- function(manifest) {
     "schema", "object_type", "representations", "arrays", "entities",
     "links", "tables", "metadata", "provenance", "extensions"
   )
-  if (!is.list(manifest) || !identical(names(manifest), required)) {
-    .fds_schema_abort("The FDS study manifest is missing required fields.", "manifest")
-  }
-  if (!identical(manifest$schema, .fds_study_schema)) {
+  .fds_assert_fields(manifest, required, "manifest", "The FDS study manifest")
+  if (!is.list(manifest$schema) ||
+    length(manifest$schema) != length(.fds_study_schema) ||
+    !setequal(names(manifest$schema), names(.fds_study_schema)) ||
+    !identical(manifest$schema$id, .fds_study_schema$id) ||
+    !identical(manifest$schema$version, .fds_study_schema$version)) {
     .fds_schema_abort("Unsupported FDS study schema identity or version.", "schema")
   }
   if (!identical(manifest$object_type, "fmri_study")) {
     .fds_schema_abort("FDS study manifests require object_type fmri_study.", "object_type")
   }
+  .validate_fds_extensions(manifest$extensions)
   tryCatch(
     .validate_container_provenance(manifest$provenance, "FDS study manifest"),
     error = function(error) {
@@ -298,6 +275,13 @@ validate_fds_study_manifest <- function(manifest) {
   }
   .validate_study_array_declarations(manifest$arrays)
   .validate_manifest_entities(manifest$entities, manifest$arrays)
+  .validate_fds_array_references(
+    manifest$arrays,
+    unlist(lapply(manifest$entities, function(value) {
+      .manifest_block_arrays(value$blocks)
+    }), use.names = FALSE),
+    what = "Study array"
+  )
   .validate_study_manifest_links(manifest$links, representations)
   tryCatch(
     .validate_study_tables(manifest$tables, .manifest_entity_registry(manifest$entities)),
@@ -308,44 +292,8 @@ validate_fds_study_manifest <- function(manifest) {
       )
     }
   )
-  metadata_domains <- integer()
-  for (name in names(manifest$entities)) {
-    size <- length(manifest$entities[[name]]$ids)
-    if (size > 1L) metadata_domains[[paste0("entity:", name)]] <- size
-  }
-  for (name in representation_names) {
-    representation <- representations[[name]]
-    if (identical(representation$type, "fmri_frame")) {
-      observation_size <- length(representation$manifest$axes$observation$ids)
-      feature_size <- length(representation$manifest$axes$feature$ids)
-      if (observation_size > 1L) {
-        metadata_domains[[paste0("representation:", name, ":observation")]] <-
-          observation_size
-      }
-      if (feature_size > 1L) {
-        metadata_domains[[paste0("representation:", name, ":feature")]] <-
-          feature_size
-      }
-    } else {
-      for (member_name in names(representation$members)) {
-        member <- representation$members[[member_name]]
-        observation_size <- length(member$axes$observation$ids)
-        feature_size <- length(member$axes$feature$ids)
-        if (observation_size > 1L) {
-          metadata_domains[[paste0(
-            "representation:", name, ":member:", member_name, ":observation"
-          )]] <- observation_size
-        }
-        if (feature_size > 1L) {
-          metadata_domains[[paste0(
-            "representation:", name, ":member:", member_name, ":feature"
-          )]] <- feature_size
-        }
-      }
-    }
-  }
   tryCatch(
-    validate_unaligned_record(manifest$metadata, metadata_domains),
+    validate_unaligned_record(manifest$metadata),
     error = function(error) {
       .fds_schema_abort(conditionMessage(error), "metadata")
     }
@@ -357,26 +305,14 @@ validate_fds_study_manifest <- function(manifest) {
   invisible(manifest)
 }
 
-#' Upgrade a provisional FDS study manifest
-#'
-#' Converts an FDS study v1 manifest, including its reverse-direction
-#' provisional frame links, to the canonical v2 schema. Canonical v2 manifests
-#' are validated and returned unchanged.
-#'
-#' @param manifest An FDS study v1 or v2 manifest.
-#' @return A validated FDS study v2 manifest.
-#' @examples
-#' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
-#' frame <- fmri_frame(
-#'   assays = list(bold = matrix(rnorm(3 * n_features(voxels)), nrow = 3)),
-#'   observations = data.frame(.obs_id = paste0("vol-", 1:3)),
-#'   space = voxels
-#' )
-#' study <- fmri_study(list(main = frame))
-#' manifest <- fds_study_manifest(study)
-#' identical(upgrade_fds_study_manifest(manifest), manifest)
-#' @export
-upgrade_fds_study_manifest <- function(manifest) {
+# Upgrade a provisional FDS study manifest.
+#
+# Converts an FDS study v1 manifest, written only by unreleased development
+# builds, including its reverse-direction provisional frame links, to the
+# canonical v2 schema. Canonical v2 manifests are validated and returned
+# unchanged. Internal for one release (`fmridataset:::.upgrade_fds_study_manifest()`);
+# it is scheduled for removal.
+.upgrade_fds_study_manifest <- function(manifest) {
   if (!is.list(manifest) || is.null(manifest$schema)) {
     .fds_schema_abort("The FDS study manifest has no schema descriptor.", "schema")
   }
@@ -391,7 +327,7 @@ upgrade_fds_study_manifest <- function(manifest) {
   if (!is.list(manifest$links)) {
     .fds_schema_abort("Study links must be a named list.", "links")
   }
-  manifest$links <- lapply(manifest$links, upgrade_frame_link)
+  manifest$links <- lapply(manifest$links, .upgrade_frame_link)
   manifest$schema <- .fds_study_schema
   validate_fds_study_manifest(manifest)
   manifest

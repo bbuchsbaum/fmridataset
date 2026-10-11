@@ -21,7 +21,7 @@ test_that("container metadata is a typed unaligned record", {
   )))
 })
 
-test_that("container metadata rejects hidden alignment and result diagnostics", {
+test_that("container metadata does not infer alignment from vector lengths", {
   fx <- make_frame_fixture(instrument = TRUE)
   rebuild <- function(metadata) {
     fmri_frame(
@@ -34,21 +34,52 @@ test_that("container metadata rejects hidden alignment and result diagnostics", 
     )
   }
 
+  # Lengths that coincide with an axis or entity size are ordinary unaligned
+  # values: container metadata is unaligned by definition.
+  frame <- rebuild(list(
+    per_observation = seq_len(nrow(fx$frame)),
+    nested = list(per_feature = seq_len(ncol(fx$frame))),
+    stimulus_score = seq_len(length(entity(fx$frame, "stimulus")))
+  ))
+  expect_identical(frame$metadata$per_observation, seq_len(nrow(fx$frame)))
+  expect_identical(frame$metadata$nested$per_feature, seq_len(ncol(fx$frame)))
+
+  sp <- index_space(2L, ids = c("f1", "f2"), namespace = "metadata-contract")
+  three <- fmri_frame(
+    list(bold = matrix(1:6, 3L, 2L)),
+    data.frame(.obs_id = c("a", "b", "c")),
+    space = sp, metadata = list(voxel_size = c(2, 2, 2))
+  )
+  expect_identical(three$metadata$voxel_size, c(2, 2, 2))
+  one <- function(id) {
+    fmri_frame(
+      list(bold = matrix(1:2, 1L, 2L)), data.frame(.obs_id = id),
+      space = sp, metadata = list(x = c(1, 2))
+    )
+  }
+  bound <- bind_observations(one("a"), one("b"))
+  expect_identical(bound$metadata$x, c(1, 2))
+
   expect_error(
-    rebuild(list(per_observation = seq_len(nrow(fx$frame)))),
-    "observation-aligned",
+    rebuild(list(state = new.env())),
+    "runtime state",
     class = "fmridataset_error_metadata"
   )
-  expect_error(
-    rebuild(list(nested = list(per_feature = seq_len(ncol(fx$frame))))),
-    "feature-aligned",
-    class = "fmridataset_error_metadata"
-  )
-  expect_error(
-    rebuild(list(stimulus_score = seq_len(length(entity(fx$frame, "stimulus"))))),
-    "entity:stimulus-aligned",
-    class = "fmridataset_error_metadata"
-  )
+})
+
+test_that("container metadata rejects result diagnostics and tabular values", {
+  fx <- make_frame_fixture(instrument = TRUE)
+  rebuild <- function(metadata) {
+    fmri_frame(
+      assays = lapply(assays(fx$frame), function(value) value$source),
+      observations = observation_axis(fx$frame),
+      features = feature_axis(fx$frame),
+      entities = entities(fx$frame),
+      relations = relations(fx$frame),
+      metadata = metadata
+    )
+  }
+
   expect_error(
     rebuild(list(convergence = "success")),
     "diagnostic",
@@ -106,7 +137,7 @@ test_that("auxiliary tables are typed and frame table registries reject data fra
   )
 })
 
-test_that("lineage requires a provenance graph and legacy lists migrate explicitly", {
+test_that("lineage requires a provenance graph", {
   fx <- make_frame_fixture()
   args <- list(
     assays = lapply(assays(fx$frame), function(value) value$source),
@@ -118,10 +149,10 @@ test_that("lineage requires a provenance graph and legacy lists migrate explicit
 
   expect_error(
     do.call(fmri_frame, c(args, list(provenance = list(step = "legacy")))),
-    "as_provenance_graph",
+    "provenance_graph",
     class = "fmridataset_error_provenance"
   )
-  graph <- as_provenance_graph(list(step = "legacy"))
+  graph <- fmridataset:::.as_provenance_graph(list(step = "legacy"))
   frame <- do.call(fmri_frame, c(args, list(provenance = graph)))
   expect_s3_class(frame$provenance, "provenance_graph")
   record <- provenance_records(frame$provenance)[[1L]]
@@ -147,23 +178,19 @@ test_that("lineage requires a provenance graph and legacy lists migrate explicit
     ),
     class = "fmridataset_error_provenance"
   )
-  expect_error(
-    fmri_collection(
-      list(one = frame),
-      metadata = list(per_observation = seq_len(nrow(frame)))
-    ),
-    "observation-aligned",
-    class = "fmridataset_error_metadata"
+  # Collections and studies hold unaligned metadata too; a coincident length
+  # is not refused.
+  collection <- fmri_collection(
+    list(one = frame),
+    metadata = list(per_observation = seq_len(nrow(frame)))
   )
-  expect_error(
-    fmri_study(
-      list(beta = frame),
-      entities = entities(frame),
-      metadata = list(per_feature = seq_len(ncol(frame)))
-    ),
-    "feature-aligned",
-    class = "fmridataset_error_metadata"
+  expect_identical(collection$metadata$per_observation, seq_len(nrow(frame)))
+  study <- fmri_study(
+    list(beta = frame),
+    entities = entities(frame),
+    metadata = list(per_feature = seq_len(ncol(frame)))
   )
+  expect_identical(study$metadata$per_feature, seq_len(ncol(frame)))
 })
 
 test_that("views and FDS preserve typed metadata tables and lineage", {
@@ -192,8 +219,15 @@ test_that("views and FDS preserve typed metadata tables and lineage", {
   expect_identical(rebuilt$provenance, graph)
 
   malformed <- manifest
-  malformed$metadata <- unaligned_record(list(per_observation = 1:2))
-  expect_error(validate_fds_manifest(malformed), "observation-aligned")
+  coincident <- manifest
+  coincident$metadata <- unaligned_record(list(per_observation = 1:2))
+  expect_invisible(validate_fds_manifest(coincident))
+  malformed <- manifest
+  malformed$metadata <- structure(
+    list(state = new.env()),
+    class = c("unaligned_record", "list")
+  )
+  expect_error(validate_fds_manifest(malformed), "runtime state")
   malformed <- manifest
   malformed$provenance <- list(step = "legacy")
   expect_error(validate_fds_manifest(malformed), "provenance_graph")

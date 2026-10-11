@@ -9,8 +9,8 @@ The ordinary user surface covers:
 
 - frame, collection, and study construction;
 - canonical source-to-target study links and explicit link composition;
-- typed unaligned metadata records, typed event/auxiliary tables, and explicit
-  legacy-lineage migration with `as_provenance_graph()`;
+- typed unaligned metadata records, typed event/auxiliary tables, and
+  provenance graphs;
 - observation, feature, entity, relation, assay, and space inspection;
 - the derived observation-axis temporal contract (`temporal_schema()`,
   `has_temporal_schema()`, `as_sampling_frame()`);
@@ -18,12 +18,15 @@ The ordinary user surface covers:
 - bounded numerical and spatial realization;
 - NIfTI, HDF5, Zarr, atlas, surface, and latent interoperability, and the
   narrow `read_bids_bold()` on-ramp;
-- FDS inspection and persistence, with explicit schema upgrades
-  (`upgrade_frame_link()`, `upgrade_fds_study_manifest()`) for provisional
-  version-one study descriptors written by earlier development builds.
+- FDS inspection and persistence.
 
-There is no legacy migration surface for the pre-frame 0.x architecture. It
-was removed rather than adapted; see `NEWS.md` for the boundary revision.
+There is no public legacy migration surface. The pre-frame 0.x architecture
+was removed rather than adapted (see `NEWS.md` for the boundary revision), and
+the upgrade helpers for provisional version-one study descriptors written by
+unreleased development builds are internal for one release before removal.
+Convenience aliases are not part of the 1.0 surface either: study tables are
+read with `study_table(x, "events")` (the `events()` alias was removed), and
+`entity_registry()` accepts only named `entity_frame` objects.
 
 ## Extension API
 
@@ -59,8 +62,7 @@ graphs are joined under a new bind record.
 Study links are source-to-target descriptors. Their maps use `.source_id` and
 `.target_id`; typed feature operators occupy the first-class `operator` field
 and map in the same direction. Provisional version-one `*_from` links and FDS
-study v1 manifests are rejected by current validators and must cross the
-explicit upgrade boundary. `filter_entities()` returns a self-contained study
+study v1 manifests are rejected by current validators. `filter_entities()` returns a self-contained study
 with compact entities, tables, links, and lazy source views rather than an
 object whose public fields expose hidden base state.
 
@@ -72,13 +74,13 @@ The stable extension groups are:
   protocol's stale, I/O, and contract conditions from an extension;
 - spatial protocol: `n_features()`, `feature_ids()`, `native_shape()`,
   `restrict_space()`, `vectorize_space()`, `reconstruct_space()`,
-  `adjacency()`, exact `same_space()`, the migration alias
-  `compatible_space()`, and `space_digest()`;
+  `adjacency()`, exact `same_space()` and `assert_same_space()`, and
+  `space_digest()`;
 - typed `identity_descriptor()` results, the versioned R-only
   `canonicalization_contract()`, and the explicit O(n) value receipt
   `content_hash()` with its `content_hash_contract()` (ADR-009);
-- mapping and provenance: `feature_map*()`, `provenance_*()`, the explicit
-  `as_provenance_graph()` migration boundary, and their validators and digests;
+- mapping and provenance: `feature_map*()`, `provenance_*()`, and their
+  validators and digests;
 - container semantics: `unaligned_record()`, `event_table()`, and
   `auxiliary_table()` keep unaligned records, relational rows, aligned arrays,
   and lineage mechanically distinct;

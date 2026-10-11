@@ -14,7 +14,7 @@ collect_assay(
 \arguments{
 \item{x}{An \code{fmri_frame} or view.}
 
-\item{assay}{Assay name.}
+\item{assay}{One assay name; defaults to the active assay.}
 
 \item{memory_budget}{Maximum estimated peak bytes, including the retained
 output and source conversion or decompression buffers.}

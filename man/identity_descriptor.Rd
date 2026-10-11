@@ -16,8 +16,9 @@ provenance graph, collection, or study.}
 
 \item{domain}{Identity domain. Usually inferred from \code{x}.}
 
-\item{content_digest}{Optional externally computed content digest, such as
-the value of \code{\link[=content_hash]{content_hash()}}.}
+\item{content_digest}{Externally computed content digest, such as
+the value of \code{\link[=content_hash]{content_hash()}}. Required for \code{domain = "content"} and
+rejected with an \code{fmridataset_error_identity} error for any other domain.}
 }
 \value{
 A serializable typed identity descriptor.

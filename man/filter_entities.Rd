@@ -17,7 +17,11 @@ filter_entities(x, entity, predicate)
 A self-contained \code{fmri_study} whose numerical sources remain lazy.
 }
 \description{
-Filter every study representation through one shared entity selection
+Dropping entity records cascades: child entities whose key relation
+references a dropped record are dropped too, observations reaching a dropped
+record are removed, and sparse edges, validity rows, link maps, and table
+rows are restricted to the surviving IDs. Table rows without a key value are
+kept.
 }
 \examples{
 subject_entity <- entity_frame(

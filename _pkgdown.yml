@@ -74,7 +74,7 @@ reference:
   - matches("^basis")
   - matches("^composite")
   - space
-  - matches("space_digest|compatible_space|same_space|restrict_space|vectorize_space|reconstruct_space|parent_space|native_shape|n_features|feature_data|feature_ids|adjacency")
+  - matches("space_digest|same_space|restrict_space|vectorize_space|reconstruct_space|parent_space|native_shape|n_features|feature_data|feature_ids|adjacency")
   - matches("^nifti_source_space")
 
 - title: Feature maps and provenance
@@ -83,7 +83,6 @@ reference:
   - map_features
   - feature_mapped_source
   - matches("^provenance")
-  - as_provenance_graph
   - append_provenance
 
 - title: Entities, relations, hierarchy, and validity
@@ -95,7 +94,6 @@ reference:
   - matches("^mask_bank|^mask_values|^n_masks|^validate_mask_bank")
   - matches("validity")
   - matches("^event")
-  - matches("^events$")
   - validate_event_table
 
 - title: Collections and studies
@@ -108,7 +106,6 @@ reference:
   - validate_fmri_study
   - frame_link
   - compose_frame_links
-  - upgrade_frame_link
   - filter_entities
 
 - title: Array sources and bounded execution
@@ -144,7 +141,6 @@ reference:
   - validate_fds_manifest
   - validate_fds_study_manifest
   - frame_from_fds_manifest
-  - upgrade_fds_study_manifest
   - read_bids_bold
 
 - title: Conformance tools

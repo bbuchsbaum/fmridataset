@@ -14,8 +14,8 @@ test_that("identical explicit feature IDs give compatible spaces", {
 
   expect_identical(feature_ids(a), feature_ids(b))
   expect_identical(space_digest(a), space_digest(b))
-  expect_true(compatible_space(a, b)$compatible)
-  expect_invisible(assert_compatible_space(a, b))
+  expect_true(same_space(a, b)$same)
+  expect_invisible(assert_same_space(a, b))
 })
 
 test_that("an explicit namespace still separates spaces that reuse IDs", {
@@ -23,16 +23,16 @@ test_that("an explicit namespace still separates spaces that reuse IDs", {
   atlas_b <- index_space(2, ids = c("1", "2"), namespace = "atlasB")
   atlas_a2 <- index_space(2, ids = c("1", "2"), namespace = "atlasA")
 
-  expect_false(compatible_space(atlas_a, atlas_b)$compatible)
-  expect_true(compatible_space(atlas_a, atlas_a2)$compatible)
+  expect_false(same_space(atlas_a, atlas_b)$same)
+  expect_true(same_space(atlas_a, atlas_a2)$same)
 })
 
 test_that("a namespaced space is not compatible with an unnamespaced one", {
   expect_false(
-    compatible_space(
+    same_space(
       index_space(2, ids = c("1", "2"), namespace = "atlasA"),
       index_space(2, ids = c("1", "2"))
-    )$compatible
+    )$same
   )
 })
 
@@ -45,7 +45,7 @@ test_that("ephemeral IDs remain unique across independently-built spaces", {
   b <- index_space(3, id_policy = "ephemeral")
 
   expect_false(identical(feature_ids(a), feature_ids(b)))
-  expect_false(compatible_space(a, b)$compatible)
+  expect_false(same_space(a, b)$same)
   expect_false(ids_are_durable(a))
   # The namespace is carried inside the generated IDs and visibly marked, so
   # identity survives without the digest needing a separate copy of it.
@@ -57,7 +57,7 @@ test_that("deterministic IDs are reproducible from the namespace", {
   b <- index_space(3, namespace = "atlas", id_policy = "deterministic")
 
   expect_identical(feature_ids(a), feature_ids(b))
-  expect_true(compatible_space(a, b)$compatible)
+  expect_true(same_space(a, b)$same)
   expect_true(ids_are_durable(a))
 })
 
@@ -66,11 +66,11 @@ test_that("restriction preserves compatibility", {
   b <- index_space(4, ids = c("w", "x", "y", "z"))
 
   expect_true(
-    compatible_space(restrict_space(a, c(1, 3)), restrict_space(b, c(1, 3)))$compatible
+    same_space(restrict_space(a, c(1, 3)), restrict_space(b, c(1, 3)))$same
   )
   # A different restriction is a different space.
   expect_false(
-    compatible_space(restrict_space(a, c(1, 3)), restrict_space(b, c(2, 4)))$compatible
+    same_space(restrict_space(a, c(1, 3)), restrict_space(b, c(2, 4)))$same
   )
 })
 

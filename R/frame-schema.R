@@ -1,12 +1,24 @@
 .frame_schema_version <- 1L
 
+# Column descriptors record the storage type plus the attributes that change
+# a column's meaning: factor levels and ordering, the time zone of a POSIXct
+# instant, and the units of a difftime duration. `tzone` and `units` are only
+# present for those column classes so other descriptors keep their encoding.
 .schema_column <- function(value) {
-  list(
+  out <- list(
     class = class(value),
     typeof = typeof(value),
     levels = if (is.factor(value)) levels(value) else NULL,
     ordered = is.ordered(value)
   )
+  if (inherits(value, "POSIXct")) {
+    tzone <- attr(value, "tzone", exact = TRUE)
+    out$tzone <- if (is.null(tzone)) "" else as.character(tzone)[[1L]]
+  }
+  if (inherits(value, "difftime")) {
+    out$units <- as.character(units(value))
+  }
+  out
 }
 
 .schema_columns <- function(data) {
@@ -162,6 +174,13 @@ frame_schema <- function(x) {
 #'   `collection` permits different observation counts and feature identities;
 #'   `bind` permits different observation counts but requires one feature
 #'   identity.
+#' @details `compare_frame_schema()` treats named records, such as column
+#'   descriptors and the assay, entity, relation, and table registries, as
+#'   unordered: column order and assay registry order are not semantic. This
+#'   matches `frame_schema_digest()`, whose canonical encoding sorts record
+#'   fields by name. Unnamed sequences such as feature and component IDs remain
+#'   order-sensitive. `validate_frame_schema()` checks the shape of every
+#'   section and rejects missing or unknown top-level fields.
 #' @return Validators return their input invisibly. `compare_frame_schema()`
 #'   returns a structured `frame_schema_compatibility` report.
 #'   `frame_schema_digest()` returns a single hex digest string.
@@ -186,21 +205,111 @@ validate_frame_schema <- function(schema) {
     "schema", "assays", "observation", "feature", "entities", "relations",
     "tables", "active_assay"
   )
-  if (!inherits(schema, "fmri_frame_schema") ||
-    !identical(names(unclass(schema)), required) ||
-    !identical(schema$schema$id, "org.fmridataset.frame-schema/v1") ||
-    !identical(schema$schema$version, .frame_schema_version)) {
+  if (!inherits(schema, "fmri_frame_schema")) {
     .fds_schema_abort("Invalid canonical frame schema.", "frame_schema")
   }
-  if (!length(schema$assays) || is.null(names(schema$assays)) ||
-    any(!nzchar(names(schema$assays))) || anyDuplicated(names(schema$assays))) {
+  value <- unclass(schema)
+  .fds_assert_fields(value, required, "frame_schema", "The canonical frame schema")
+  if (!is.list(value$schema) ||
+    !identical(value$schema$id, "org.fmridataset.frame-schema/v1") ||
+    !identical(value$schema$version, .frame_schema_version)) {
+    .fds_schema_abort("Invalid canonical frame schema.", "frame_schema")
+  }
+  if (!is.list(value$assays) || !length(value$assays) ||
+    !.has_unique_names(value$assays)) {
     .fds_schema_abort("Frame schema assays must be uniquely named.", "assays")
   }
-  if (!identical(schema$active_assay$policy, "named") ||
-    !schema$active_assay$name %in% names(schema$assays)) {
+  for (name in names(value$assays)) {
+    assay <- value$assays[[name]]
+    if (!is.list(assay) ||
+      !all(c("dtype", "role", "units", "metadata") %in% names(assay)) ||
+      !.is_one_string(assay$dtype)) {
+      .fds_schema_abort(
+        sprintf("Frame schema assay '%s' is malformed.", name),
+        paste0("assays.", name)
+      )
+    }
+  }
+  .validate_schema_axis(value$observation, "observation")
+  .validate_schema_axis(value$feature, "feature")
+  space <- value$feature$space
+  if (!is.list(space) || !.is_one_string(space$type) ||
+    !.is_one_string(space$digest) || !is.character(space$feature_ids) ||
+    length(space$feature_ids) != value$feature$count) {
+    .fds_schema_abort(
+      "Frame schema feature space must record a type, digest, and one ID per feature.",
+      "feature.space"
+    )
+  }
+  .validate_schema_registry(value$entities, "entities", function(entity, field) {
+    if (!is.list(entity) || !.is_one_string(entity$key)) {
+      .fds_schema_abort("Frame schema entity is malformed.", field)
+    }
+    .validate_schema_columns(entity$columns, paste0(field, ".columns"))
+    .validate_schema_registry(entity$blocks, paste0(field, ".blocks"), .validate_schema_block)
+  })
+  .validate_schema_registry(value$relations, "relations", function(relation, field) {
+    if (!is.list(relation) || !.is_one_string(relation$type)) {
+      .fds_schema_abort("Frame schema relation is malformed.", field)
+    }
+  })
+  .validate_schema_registry(value$tables, "tables", function(table, field) {
+    if (!is.list(table) || !.is_one_string(table$type)) {
+      .fds_schema_abort("Frame schema table is malformed.", field)
+    }
+  })
+  active <- value$active_assay
+  if (!is.list(active) || !identical(active$policy, "named") ||
+    !.is_one_string(active$name) || !active$name %in% names(value$assays)) {
     .fds_schema_abort("Frame schema active assay is invalid.", "active_assay")
   }
   invisible(schema)
+}
+
+.validate_schema_registry <- function(value, field, validate_item) {
+  if (!is.list(value) || is.data.frame(value) || !.has_unique_names(value)) {
+    .fds_schema_abort(
+      sprintf("Frame schema '%s' must be a uniquely named list.", field), field
+    )
+  }
+  for (name in names(value)) validate_item(value[[name]], paste0(field, ".", name))
+  invisible(TRUE)
+}
+
+.validate_schema_columns <- function(columns, field) {
+  .validate_schema_registry(columns, field, function(column, column_field) {
+    if (!is.list(column) || !is.character(column$class) || !length(column$class) ||
+      !.is_one_string(column$typeof) ||
+      length(setdiff(names(column), c("class", "typeof", "levels", "ordered", "tzone", "units")))) {
+      .fds_schema_abort("Frame schema column descriptor is malformed.", column_field)
+    }
+  })
+}
+
+.validate_schema_block <- function(block, field) {
+  if (!is.list(block) ||
+    !all(c("trailing_shape", "component_ids", "components") %in% names(block)) ||
+    !is.character(block$component_ids)) {
+    .fds_schema_abort("Frame schema block is malformed.", field)
+  }
+  .validate_schema_columns(block$components, paste0(field, ".components"))
+}
+
+.validate_schema_axis <- function(axis, field) {
+  required <- c("count", "id_column", "columns", "blocks", "metadata")
+  count <- if (is.list(axis)) axis$count else NULL
+  if (!is.list(axis) || is.data.frame(axis) || !all(required %in% names(axis)) ||
+    !is.numeric(count) || length(count) != 1L || !is.finite(count) ||
+    count < 0 || count > .Machine$integer.max || count != trunc(count) ||
+    !.is_one_string(axis$id_column)) {
+    .fds_schema_abort(
+      sprintf("Frame schema %s axis must record a count, ID column, columns, blocks, and metadata.", field),
+      field
+    )
+  }
+  .validate_schema_columns(axis$columns, paste0(field, ".columns"))
+  .validate_schema_registry(axis$blocks, paste0(field, ".blocks"), .validate_schema_block)
+  invisible(TRUE)
 }
 
 .schema_projection <- function(schema, mode) {
@@ -226,9 +335,41 @@ validate_frame_schema <- function(schema) {
   schema
 }
 
+# Named records (column descriptors, assay and other registries, record
+# fields) are compared as unordered sets of fields, matching the canonical
+# encoding behind frame_schema_digest(), which sorts record fields by name.
+# Unnamed sequences, including ID vectors, stay order-sensitive.
+.schema_is_record <- function(x) {
+  is.list(x) && length(x) && .has_unique_names(x)
+}
+
 .schema_first_mismatch <- function(expected, actual, path = "schema") {
   if (identical(expected, actual)) {
     return(NULL)
+  }
+  if (.schema_is_record(expected) && .schema_is_record(actual)) {
+    expected_names <- sort(names(expected), method = "radix")
+    actual_names <- sort(names(actual), method = "radix")
+    if (!identical(expected_names, actual_names)) {
+      return(list(path = path, expected = expected_names, actual = actual_names))
+    }
+    for (name in expected_names) {
+      mismatch <- .schema_first_mismatch(
+        expected[[name]], actual[[name]], paste0(path, ".", name)
+      )
+      if (!is.null(mismatch)) {
+        return(mismatch)
+      }
+    }
+    strip_names <- function(x) {
+      values <- attributes(x)
+      values$names <- NULL
+      values
+    }
+    if (identical(strip_names(expected), strip_names(actual))) {
+      return(NULL)
+    }
+    return(list(path = path, expected = expected, actual = actual))
   }
   if (is.list(expected) && is.list(actual)) {
     if (!identical(names(expected), names(actual))) {

@@ -10,9 +10,7 @@ entity_registry(entities = list(), ...)
 validate_entity_registry(x)
 }
 \arguments{
-\item{entities}{A named list of \code{entity_frame} objects. For evolutionary
-compatibility, a named legacy entry with \code{data}, \code{blocks}, and either
-\code{key} or a conventional \verb{<name>_id} column is normalized immediately.}
+\item{entities}{A named list of \code{entity_frame} objects.}
 
 \item{...}{Alternatively, named \code{entity_frame} objects.}
 

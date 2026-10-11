@@ -4,7 +4,9 @@
 \alias{fmridataset-errors}
 \title{Custom Error Classes for fmridataset}
 \description{
-A hierarchy of custom S3 error classes for the fmridataset package.
-These provide structured error handling for storage backend operations.
+Errors raised by fmridataset are conditions of class \code{fmridataset_error}
+with a more specific subclass such as \code{fmridataset_error_alignment},
+\code{fmridataset_error_space_mismatch}, or \code{fmridataset_error_backend_io}.
+Structured fields on the condition describe what was rejected.
 }
 \keyword{internal}

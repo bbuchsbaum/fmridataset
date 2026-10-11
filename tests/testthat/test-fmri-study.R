@@ -232,7 +232,7 @@ test_that("fmri_study links distinct frames through shared authoritative entitie
 
 test_that("event tables remain keyed and relational rather than volume aligned", {
   study <- .make_study_fixture()$study
-  events_value <- events(study)
+  events_value <- study_table(study, "events")
 
   expect_s3_class(events_value, "fmri_event_table")
   expect_identical(event_key(events_value), "event_id")
@@ -288,7 +288,7 @@ test_that("entity filters compose across crossed subject and stimulus relations"
   expect_identical(observation_ids(study_frame(selected, "behavior")), "behavior-2")
   expect_identical(entity_ids(entity(selected, "subject")), "sub-02")
   expect_identical(entity_ids(entity(selected, "stimulus")), "stim-2")
-  expect_identical(nrow(event_data(events(selected))), 1L)
+  expect_identical(nrow(event_data(study_table(selected, "events"))), 1L)
   expect_identical(nrow(study_link(selected, "betas_from_bold")$map), 0L)
 })
 
@@ -438,7 +438,7 @@ test_that("provisional frame links migrate explicitly to source-target links", {
     schema_version = 1L
   ), class = "frame_link")
 
-  migrated <- upgrade_frame_link(legacy)
+  migrated <- fmridataset:::.upgrade_frame_link(legacy)
   expect_identical(migrated$source, "native")
   expect_identical(migrated$target, "parcel")
   expect_identical(migrated$type, "mapping")
@@ -447,7 +447,7 @@ test_that("provisional frame links migrate explicitly to source-target links", {
   expect_s3_class(migrated$operator, "feature_map")
   expect_null(migrated$metadata$feature_map)
   expect_true(migrated$metadata$note == "legacy")
-  expect_identical(upgrade_frame_link(migrated), migrated)
+  expect_identical(fmridataset:::.upgrade_frame_link(migrated), migrated)
 })
 
 test_that("frame links compose in source-to-target order", {
@@ -476,4 +476,302 @@ test_that("frame links compose in source-to-target order", {
     "intermediate endpoint",
     class = "fmridataset_error_study"
   )
+})
+
+.chain_study_parts <- function(extra_relations = list()) {
+  subject <- entity_frame(
+    data.frame(subject_id = c("s1", "s2", "s3"), age = c(20, 60, 70)),
+    key = "subject_id"
+  )
+  session <- entity_frame(
+    data.frame(
+      session_id = c("s1-a", "s1-b", "s2-a", "s3-a"),
+      subject_id = c("s1", "s1", "s2", "s3")
+    ),
+    key = "session_id"
+  )
+  observations_data <- data.frame(
+    .obs_id = paste0("o", 1:6),
+    session_id = c("s1-a", "s1-a", "s1-b", "s2-a", "s2-a", "s3-a")
+  )
+  space <- index_space(4, ids = paste0("f", 1:4), namespace = "chain-study")
+  frame <- fmri_frame(
+    assays = list(bold = matrix(as.double(1:24), nrow = 6)),
+    observations = observations_data,
+    space = space,
+    entities = list(subject = subject, session = session),
+    relations = c(list(
+      obs_session = key_relation("session_id", target = "session"),
+      session_subject = key_relation(
+        "subject_id",
+        target = "subject", source = "session"
+      )
+    ), extra_relations)
+  )
+  list(subject = subject, session = session, frame = frame, space = space)
+}
+
+test_that("entity filters cascade through parent key relations", {
+  parts <- .chain_study_parts()
+  study <- fmri_study(
+    list(main = parts$frame),
+    entities = list(subject = parts$subject, session = parts$session),
+    tables = list(visits = auxiliary_table(
+      data.frame(
+        visit = c("v1", "v2", "v3"),
+        session_id = c("s1-a", "s2-a", NA)
+      ),
+      key = "visit", role = "visits"
+    ))
+  )
+
+  older <- filter_entities(study, subject, age > 30)
+  frame <- study_frame(older, "main")
+  expect_identical(observation_ids(frame), c("o4", "o5", "o6"))
+  expect_identical(entity_ids(entity(older, "subject")), c("s2", "s3"))
+  # Sessions of dropped subjects are dropped transitively, in registry order.
+  expect_identical(entity_ids(entity(older, "session")), c("s2-a", "s3-a"))
+  # Cascaded selections also restrict tables; rows without a key survive.
+  expect_identical(
+    table_data(study_table(older, "visits"))$visit,
+    c("v2", "v3")
+  )
+  expect_identical(
+    observations(frame, resolve = TRUE)$subject.age,
+    c(60, 60, 70)
+  )
+
+  # Filtering a leaf leaves parents untouched.
+  leaf <- filter_entities(study, session, session_id == "s2-a")
+  expect_identical(observation_ids(study_frame(leaf, "main")), c("o4", "o5"))
+  expect_identical(entity_ids(entity(leaf, "subject")), c("s1", "s2", "s3"))
+
+  # An empty selection is a valid, empty study rather than an error.
+  none <- filter_entities(study, subject, age > 100)
+  expect_identical(observation_ids(study_frame(none, "main")), character())
+  expect_identical(entity_ids(entity(none, "session")), character())
+  expect_identical(nrow(table_data(study_table(none, "visits"))), 1L)
+  expect_invisible(validate_fmri_study(none))
+})
+
+test_that("entity filters restrict sparse entity edges and validity relations", {
+  subject <- entity_frame(
+    data.frame(subject_id = c("s1", "s2", "s3"), age = c(20, 60, 70)),
+    key = "subject_id"
+  )
+  space <- index_space(4, ids = paste0("f", 1:4), namespace = "sparse-study")
+  validity <- entity_feature_validity(
+    entity = "subject", entity_ids = c("s1", "s2", "s3"),
+    masks = rbind(
+      c(TRUE, TRUE, FALSE, TRUE),
+      c(TRUE, FALSE, TRUE, TRUE),
+      c(FALSE, TRUE, TRUE, TRUE)
+    ),
+    space = space
+  )
+  frame <- fmri_frame(
+    assays = list(bold = matrix(as.double(1:12), nrow = 3)),
+    observations = data.frame(.obs_id = c("o1", "o2", "o3"), subject_id = c("s1", "s2", "s3")),
+    space = space,
+    entities = list(subject = subject),
+    relations = list(
+      os = key_relation("subject_id", target = "subject"),
+      similar = sparse_relation(
+        data.frame(.from_id = c("s1", "s2"), .to_id = c("s2", "s3")),
+        from = "subject", to = "subject"
+      ),
+      valid = validity
+    )
+  )
+  study <- fmri_study(list(m = frame), entities = list(subject = subject))
+
+  older <- filter_entities(study, subject, age > 30)
+  filtered <- study_frame(older, "m")
+  expect_identical(observation_ids(filtered), c("o2", "o3"))
+  edges <- relation(filtered, "similar")$data
+  expect_identical(edges$.from_id, "s2")
+  expect_identical(edges$.to_id, "s3")
+  expect_identical(validity_entity_ids(filtered, "valid"), c("s2", "s3"))
+  expect_identical(
+    unname(validity_matrix(filtered, "valid")),
+    rbind(c(TRUE, FALSE, TRUE, TRUE), c(FALSE, TRUE, TRUE, TRUE))
+  )
+})
+
+test_that("entity filters keep validated study and collection metadata", {
+  subject <- entity_frame(
+    data.frame(subject_id = c("s1", "s2"), age = c(20, 60)),
+    key = "subject_id"
+  )
+  frame <- fmri_frame(
+    assays = list(bold = matrix(as.double(1:24), nrow = 6)),
+    observations = data.frame(
+      .obs_id = paste0("o", 1:6),
+      subject_id = rep(c("s1", "s2"), c(3, 3))
+    ),
+    space = index_space(4, ids = paste0("f", 1:4), namespace = "meta-study"),
+    entities = list(subject = subject),
+    relations = list(os = key_relation("subject_id", target = "subject"))
+  )
+  # Length 3 matches no axis of the unfiltered study, so it is accepted.
+  study <- fmri_study(
+    list(main = frame),
+    entities = list(subject = subject),
+    metadata = list(w = 1:3)
+  )
+  older <- filter_entities(study, subject, age > 30)
+  expect_identical(observation_ids(study_frame(older, "main")), c("o4", "o5", "o6"))
+  expect_identical(unclass(older$metadata)$w, 1:3)
+  expect_invisible(validate_fmri_study(older))
+
+  collection <- fmri_collection(list(a = frame, b = frame), metadata = list(w = 1:3))
+  collected <- fmri_study(list(c = collection), entities = list(subject = subject))
+  filtered <- filter_entities(collected, subject, age > 30)
+  expect_identical(
+    unclass(study_frame(filtered, "c")$metadata)$w,
+    1:3
+  )
+})
+
+test_that("study table filters keep rows whose entity key is missing", {
+  subject <- entity_frame(
+    data.frame(subject_id = c("s1", "s2"), age = c(20, 60)),
+    key = "subject_id"
+  )
+  frame <- fmri_frame(
+    assays = list(bold = matrix(as.double(1:8), nrow = 2)),
+    observations = data.frame(.obs_id = c("o1", "o2"), subject_id = c("s1", "s2")),
+    space = index_space(4, ids = paste0("f", 1:4), namespace = "na-table"),
+    entities = list(subject = subject),
+    relations = list(os = key_relation("subject_id", target = "subject"))
+  )
+  table <- auxiliary_table(
+    data.frame(k = c("a", "b", "c"), subject_id = c("s2", NA, "s1")),
+    key = "k", role = "notes"
+  )
+  study <- fmri_study(list(m = frame), entities = list(subject = subject), tables = list(t = table))
+  everyone <- filter_entities(study, subject, age > 0)
+  expect_identical(table_data(study_table(everyone, "t"))$k, c("a", "b", "c"))
+  older <- filter_entities(study, subject, age > 30)
+  expect_identical(table_data(study_table(older, "t"))$k, c("a", "b"))
+})
+
+test_that("shared entity agreement is exact after type coercion", {
+  shared <- entity_frame(
+    data.frame(subject_id = c("s1", "s2"), age = c(20, 60), site = c("x", "y")),
+    key = "subject_id"
+  )
+  local_frame <- function(local) {
+    fmri_frame(
+      assays = list(bold = matrix(as.double(1:8), nrow = 2)),
+      observations = data.frame(.obs_id = c("o1", "o2"), subject_id = c("s1", "s2")),
+      space = index_space(4, ids = paste0("f", 1:4), namespace = "exact-study"),
+      entities = list(subject = local),
+      relations = list(os = key_relation("subject_id", target = "subject"))
+    )
+  }
+  near <- entity_frame(
+    data.frame(subject_id = c("s1", "s2"), age = c(20 + 1e-9, 60)),
+    key = "subject_id"
+  )
+  expect_error(
+    fmri_study(list(m = local_frame(near)), entities = list(subject = shared)),
+    "disagrees",
+    class = "fmridataset_error_study"
+  )
+  # Integer versus double and factor versus character are harmless coercions.
+  coerced <- entity_frame(
+    data.frame(
+      subject_id = c("s1", "s2"), age = c(20L, 60L),
+      site = factor(c("x", "y"))
+    ),
+    key = "subject_id"
+  )
+  expect_s3_class(
+    fmri_study(list(m = local_frame(coerced)), entities = list(subject = shared)),
+    "fmri_study"
+  )
+  # Character never matches numeric.
+  text <- entity_frame(
+    data.frame(subject_id = c("s1", "s2"), age = c("20", "60")),
+    key = "subject_id"
+  )
+  expect_error(
+    fmri_study(list(m = local_frame(text)), entities = list(subject = shared)),
+    class = "fmridataset_error_study"
+  )
+})
+
+test_that("study digests include representation order", {
+  parts <- .chain_study_parts()
+  other <- parts$frame
+  forward <- fmri_study(
+    list(a = parts$frame, b = other),
+    entities = list(subject = parts$subject, session = parts$session)
+  )
+  reverse <- fmri_study(
+    list(b = other, a = parts$frame),
+    entities = list(subject = parts$subject, session = parts$session)
+  )
+  expect_false(identical(study_digest(forward), study_digest(reverse)))
+  expect_identical(
+    study_digest(forward),
+    study_digest(fmri_study(
+      list(a = parts$frame, b = other),
+      entities = list(subject = parts$subject, session = parts$session)
+    ))
+  )
+})
+
+test_that("frame links require exactly one type", {
+  expect_identical(frame_link("a", "b")$type, "derivation")
+  expect_error(
+    frame_link("a", "b",
+      type = c("alignment", "derivation"),
+      source_axis = "feature", target_axis = "feature"
+    ),
+    class = "fmridataset_error_study"
+  )
+})
+
+test_that("link composition rejects one-sided and annotated maps", {
+  mapped <- frame_link("a", "b",
+    type = "correspondence",
+    map = data.frame(.source_id = "o1", .target_id = "p1")
+  )
+  unmapped <- frame_link("b", "c", type = "correspondence")
+  expect_error(
+    compose_frame_links(mapped, unmapped),
+    "unmapped",
+    class = "fmridataset_error_study"
+  )
+  expect_error(
+    compose_frame_links(frame_link("z", "a", type = "correspondence"), mapped),
+    "unmapped",
+    class = "fmridataset_error_study"
+  )
+  weighted_first <- frame_link("a", "b",
+    type = "correspondence",
+    map = data.frame(.source_id = "o1", .target_id = "p1", w = 0.5)
+  )
+  weighted_second <- frame_link("b", "c",
+    type = "correspondence",
+    map = data.frame(.source_id = "p1", .target_id = "q1", w = 2)
+  )
+  expect_error(
+    compose_frame_links(weighted_first, weighted_second),
+    "annotation columns",
+    class = "fmridataset_error_study"
+  )
+  plain <- frame_link("b", "c",
+    type = "correspondence",
+    map = data.frame(.source_id = "p1", .target_id = "q1")
+  )
+  expect_identical(compose_frame_links(mapped, plain)$map$.target_id, "q1")
+})
+
+test_that("study table accessors validate their input", {
+  expect_error(study_tables(list(tables = 1)), class = "fmridataset_error_study")
+  expect_error(study_table(list(tables = 1), "events"), class = "fmridataset_error_study")
+  expect_false(exists("events", envir = asNamespace("fmridataset"), inherits = FALSE))
 })

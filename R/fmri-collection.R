@@ -52,6 +52,10 @@
 #' collection_ids(collection)
 #' @export
 fmri_collection <- function(frames, metadata = list(), provenance = NULL) {
+  .build_fmri_collection(frames, metadata, provenance)
+}
+
+.build_fmri_collection <- function(frames, metadata, provenance) {
   if (!is.list(frames) || !length(frames)) {
     .collection_abort("frames must be a non-empty named list.", field = "frames")
   }
@@ -72,9 +76,7 @@ fmri_collection <- function(frames, metadata = list(), provenance = NULL) {
       .assert_collection_semantics(frames[[1L]], frames[[i]], ids[[i]])
     }
   }
-  metadata <- .normalize_container_metadata(
-    metadata, .collection_alignment_domains(frames)
-  )
+  metadata <- .normalize_container_metadata(metadata)
   provenance <- .validate_container_provenance(provenance, "Collection")
   out <- structure(
     list(
@@ -113,7 +115,9 @@ validate_fmri_collection <- function(x) {
     !identical(x$schema_version, 1L)) {
     .collection_abort("x is not a valid fmri_collection.")
   }
-  fmri_collection(x$frames, metadata = x$metadata, provenance = x$provenance)
+  .build_fmri_collection(
+    x$frames, x$metadata, x$provenance
+  )
   invisible(x)
 }
 
@@ -190,7 +194,7 @@ names.fmri_collection <- function(x) names(x$frames)
       reason = "empty_collection"
     )
   }
-  fmri_collection(
+  .build_fmri_collection(
     x$frames[i],
     metadata = x$metadata,
     provenance = x$provenance
@@ -255,7 +259,7 @@ collection_common_space <- function(x) {
   }
   reference <- space(x$frames[[1L]])
   all(vapply(x$frames[-1L], function(frame) {
-    isTRUE(compatible_space(reference, space(frame))$compatible)
+    isTRUE(same_space(reference, space(frame))$same)
   }, logical(1)))
 }
 
@@ -275,8 +279,11 @@ collection_common_space <- function(x) {
 #' @export
 collection_digest <- function(x) {
   validate_fmri_collection(x)
+  # Member order is behavioral (collection_ids(), positional `[[`, and the
+  # reference member for schema checks), so it is part of the identity.
   .canonical_digest(list(
     schema_version = x$schema_version,
+    frame_order = names(x$frames),
     frames = lapply(x$frames, .collection_frame_descriptor),
     metadata = x$metadata,
     provenance = x$provenance

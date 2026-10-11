@@ -59,7 +59,7 @@
       onset = c(0, 2), duration = c(1, 1)
     ))),
     metadata = list(title = "FDS study fixture"),
-    provenance = as_provenance_graph(list(step = "test"))
+    provenance = provenance_graph(provenance_record("test"))
   )
   list(study = study, phenotype = phenotype)
 }
@@ -114,7 +114,7 @@ test_that("FDS study manifests rebuild linked frames collections and shared bloc
   )
 })
 
-test_that("FDS study manifests reject legacy lineage and hidden alignment", {
+test_that("FDS study manifests reject legacy lineage and untyped tables", {
   fixture <- .make_fds_study_fixture()
   manifest <- fds_study_manifest(fixture$study)
 
@@ -126,15 +126,13 @@ test_that("FDS study manifests reject legacy lineage and hidden alignment", {
     class = "fmridataset_error_schema"
   )
 
-  malformed <- manifest
-  malformed$metadata <- unaligned_record(list(
+  # Study metadata is unaligned by definition; a length that coincides with
+  # an entity size is not hidden alignment.
+  coincident <- manifest
+  coincident$metadata <- unaligned_record(list(
     per_subject = seq_len(length(entity(fixture$study, "subject")))
   ))
-  expect_error(
-    validate_fds_study_manifest(malformed),
-    "entity:subject-aligned",
-    class = "fmridataset_error_schema"
-  )
+  expect_no_error(validate_fds_study_manifest(coincident))
 
   malformed <- manifest
   malformed$tables$raw <- data.frame(value = 1L)
@@ -183,7 +181,7 @@ test_that("filtered studies persist their visible semantic view", {
 
   expect_identical(entity_ids(entity(rebuilt, "subject")), "sub-02")
   expect_identical(nrow(study_frame(rebuilt, "bold")), 1L)
-  expect_identical(nrow(event_data(events(rebuilt))), 1L)
+  expect_identical(nrow(event_data(study_table(rebuilt, "events"))), 1L)
   expect_identical(nrow(study_link(rebuilt, "beta_from_bold")$map), 1L)
   expect_false(any(c("base", "entity_selections") %in% names(unclass(study))))
 })
@@ -203,11 +201,11 @@ test_that("provisional FDS v1 study manifests migrate explicitly", {
   ), class = "frame_link")
 
   expect_error(validate_fds_study_manifest(manifest), "Unsupported")
-  migrated <- upgrade_fds_study_manifest(manifest)
+  migrated <- fmridataset:::.upgrade_fds_study_manifest(manifest)
   expect_invisible(validate_fds_study_manifest(migrated))
   expect_identical(migrated$links$beta_from_bold$source, "bold")
   expect_identical(migrated$links$beta_from_bold$target, "beta")
-  expect_identical(upgrade_fds_study_manifest(migrated), migrated)
+  expect_identical(fmridataset:::.upgrade_fds_study_manifest(migrated), migrated)
 })
 
 test_that("the installed FDS study schema envelope is machine readable", {
@@ -222,4 +220,44 @@ test_that("the installed FDS study schema envelope is machine readable", {
     "links", "tables", "metadata", "provenance", "extensions"
   ) %in% schema$required))
   expect_identical(schema$properties$schema$properties$version$const, 2L)
+})
+
+test_that("FDS study validation uses field sets, not field order", {
+  fixture <- .make_fds_study_fixture()
+  manifest <- fds_study_manifest(fixture$study)
+  reject <- function(x, pattern) {
+    expect_error(validate_fds_study_manifest(x), pattern, class = "fmridataset_error_schema")
+  }
+
+  expect_invisible(validate_fds_study_manifest(manifest[rev(names(manifest))]))
+  expect_identical(
+    fds_study_manifest_digest(manifest[rev(names(manifest))]),
+    fds_study_manifest_digest(manifest)
+  )
+  x <- manifest
+  x$representations$bold <- rev(x$representations$bold)
+  x$representations$bold$manifest <- rev(x$representations$bold$manifest)
+  x$representations$native <- rev(x$representations$native)
+  expect_invisible(validate_fds_study_manifest(x))
+
+  x <- manifest
+  x$surprise <- 1
+  reject(x, "unknown: surprise")
+  reject(manifest[setdiff(names(manifest), "links")], "missing: links")
+  x <- manifest
+  x$schema <- rev(x$schema)
+  expect_invisible(validate_fds_study_manifest(x))
+  x$schema$extra <- TRUE
+  reject(x, "schema")
+
+  x <- manifest
+  x$extensions <- 5
+  reject(x, "extensions")
+
+  x <- manifest
+  x$arrays$junk <- list(key = "junk", axes = c("a", "b"), shape = c(1L, 1L), dtype = "float64")
+  reject(x, "not referenced.*junk")
+  x <- manifest
+  x$arrays[[1L]]$shape <- c(2, 1e10)
+  expect_no_warning(reject(x, "invalid declaration"))
 })

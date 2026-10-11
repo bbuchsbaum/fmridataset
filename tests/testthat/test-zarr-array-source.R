@@ -95,7 +95,9 @@ test_that("Zarr source reads preserve arbitrary order and reject repeats", {
         tolerance = 0
       )
       expect_true(runtime$closed)
-      expect_gt(length(runtime$reads), 1L)
+      # The bounding box fits the target block size, so the scattered
+      # selection is one backend read subset in memory.
+      expect_length(runtime$reads, 1L)
       expect_true(all(vapply(runtime$reads, function(x) {
         all(vapply(x, function(axis) diff(axis) >= 0L, logical(1)))
       }, logical(1))))
@@ -354,7 +356,19 @@ test_that("Zarr reads consume range selections as one chunk-aligned request", {
       expect_equal(source_read(source_view(source, observations = 4L)), reference[4L, , drop = FALSE], tolerance = 0)
       expect_identical(runtime$reads, list(list(c(4L, 4L), c(1L, 7L))))
 
-      # Arbitrary positions are the only form decomposed into runs.
+      # Arbitrary positions within the target block size are read as their
+      # bounding box.
+      runtime$reads <- list()
+      expect_equal(
+        source_read(source, c(6L, 1L, 2L), NULL),
+        reference[c(6L, 1L, 2L), , drop = FALSE],
+        tolerance = 0
+      )
+      expect_identical(runtime$reads, list(list(c(1L, 6L), c(1L, 7L))))
+
+      # Above it, positions are decomposed into chunk-aligned regions; runs in
+      # chunks that do not touch stay separate reads.
+      withr::local_options(fmridataset.target_block_bytes = 8)
       runtime$reads <- list()
       expect_equal(
         source_read(source, c(6L, 1L, 2L), NULL),
@@ -362,6 +376,63 @@ test_that("Zarr reads consume range selections as one chunk-aligned request", {
         tolerance = 0
       )
       expect_identical(runtime$reads, list(list(c(1L, 2L), c(1L, 7L)), list(c(6L, 6L), c(1L, 7L))))
+    }
+  )
+})
+
+test_that("Zarr reads coalesce scattered selections instead of one read per run pair", {
+  logical_ref <- matrix(as.double(seq_len(6 * 7)), 6, 7)
+  # Feature-first physical storage with logical chunks of 2 observations by
+  # 3 features.
+  runtime <- .fake_zarr_runtime(t(logical_ref), c(3, 2))
+  runtime$nreads <- 0L
+
+  with_mocked_bindings(
+    .zarr_provider_open = function(uri, array_path) {
+      runtime$closed <- FALSE
+      runtime
+    },
+    .zarr_provider_metadata = function(handle) {
+      list(shape = handle$shape, chunks = handle$chunks, dtype = handle$dtype)
+    },
+    .zarr_provider_read = function(handle, selection) {
+      handle$nreads <- handle$nreads + 1L
+      handle$reads[[length(handle$reads) + 1L]] <- selection
+      handle$data[
+        seq.int(selection[[1L]][[1L]], selection[[1L]][[2L]]),
+        seq.int(selection[[2L]][[1L]], selection[[2L]][[2L]]),
+        drop = FALSE
+      ]
+    },
+    .zarr_provider_close = function(handle) handle$closed <- TRUE,
+    .package = "fmridataset",
+    {
+      source <- zarr_array_source(
+        "fixture.zarr",
+        physical_axes = c("feature", "observation")
+      )
+      expect_identical(source_chunks(source), c(2L, 3L))
+      rows <- c(5L, 1L, 3L)
+      cols <- c(7L, 1L, 5L, 3L)
+
+      # 3 observation runs x 4 feature runs used to be 12 reads; the bounding
+      # box fits the default target block size, so it is now one.
+      expect_equal(source_read(source, rows, cols), logical_ref[rows, cols], tolerance = 0)
+      expect_identical(runtime$nreads, 1L)
+
+      # Under a tiny target, runs merge only within chunks: features 1 and 3
+      # share chunk 1, so the 4 feature runs become 3 regions (3 x 3 reads).
+      withr::local_options(fmridataset.target_block_bytes = 8)
+      runtime$nreads <- 0L
+      expect_equal(source_read(source, rows, cols), logical_ref[rows, cols], tolerance = 0)
+      expect_identical(runtime$nreads, 9L)
+
+      # Empty selections never touch the backend and keep the declared type.
+      runtime$nreads <- 0L
+      empty <- source_read(source, integer(), cols)
+      expect_identical(dim(empty), c(0L, 4L))
+      expect_identical(storage.mode(empty), "double")
+      expect_identical(runtime$nreads, 0L)
     }
   )
 })

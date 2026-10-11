@@ -13,8 +13,6 @@
 \alias{adjacency}
 \alias{same_space}
 \alias{assert_same_space}
-\alias{compatible_space}
-\alias{assert_compatible_space}
 \alias{reconstruct_space.surface_space}
 \title{Feature-space contract}
 \usage{
@@ -40,10 +38,6 @@ same_space(x, y, ...)
 
 assert_same_space(x, y, ...)
 
-compatible_space(x, y, ...)
-
-assert_compatible_space(x, y, ...)
-
 \method{reconstruct_space}{surface_space}(x, vector, format = c("surface_map", "neurosurf"), ...)
 }
 \arguments{
@@ -51,11 +45,19 @@ assert_compatible_space(x, y, ...)
 
 \item{...}{Additional arguments for methods.}
 
-\item{index}{Feature positions used to restrict a space.}
+\item{index}{Features to keep, in order: positive or negative positions, a
+logical mask over the features, or character feature IDs. Every built-in
+space resolves these by the same selection law and rejects out-of-bounds,
+duplicated, or unknown selectors with structured errors.}
 
-\item{spatial_object}{A native spatial object to vectorize.}
+\item{spatial_object}{A native spatial object to vectorize. For a
+\code{volume_space}, a \code{NeuroVol} must match the space's dimensions and affine
+and an array must match its dimensions; a dimensionless vector of length
+\code{prod(dim)} is read as the full volume in column-major voxel order.}
 
-\item{vector}{A feature vector to reconstruct.}
+\item{vector}{A feature vector to reconstruct. An unnamed vector is
+positional; a named vector must name every feature ID exactly once and is
+reordered to the space's feature order.}
 
 \item{y}{A second feature-space object.}
 
@@ -71,9 +73,10 @@ of per-feature metadata; \code{space_digest()} returns a content digest
 string; \code{restrict_space()} and \code{reconstruct_space()} return an object of
 the same feature-space class; \code{vectorize_space()} returns a numeric
 vector; \code{adjacency()} returns a sparse adjacency matrix or \code{NULL};
-\code{same_space()} and \code{compatible_space()} return a \code{space_compatibility}
-list; \code{assert_same_space()} and \code{assert_compatible_space()} return the
-compatibility report invisibly and signal an error when incompatible.
+\code{same_space()} returns a \code{space_comparison} list whose \code{same} field is
+\code{TRUE} only when class, digest, and ordered feature IDs all agree;
+\code{assert_same_space()} returns that report invisibly and signals an
+\code{fmridataset_error_space_mismatch} error otherwise.
 }
 \description{
 Every feature-space class (such as \code{\link[=volume_space]{volume_space()}}, \code{\link[=surface_space]{surface_space()}},

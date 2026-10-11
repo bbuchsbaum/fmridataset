@@ -260,3 +260,17 @@ test_that("collection constructor requires stable unique frame names", {
     class = "fmridataset_error_metadata"
   )
 })
+
+test_that("collection digests include member order", {
+  first <- .make_collection_frame("sub-01", 2L, 1L)
+  second <- .make_collection_frame("sub-02", 3L, 2L)
+  collection <- fmri_collection(list(a = first$frame, b = second$frame))
+  reordered <- collection[c("b", "a")]
+
+  expect_identical(collection_ids(reordered), c("b", "a"))
+  expect_false(identical(collection_digest(collection), collection_digest(reordered)))
+  expect_identical(
+    collection_digest(reordered[c("a", "b")]),
+    collection_digest(collection)
+  )
+})

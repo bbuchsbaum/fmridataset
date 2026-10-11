@@ -23,11 +23,40 @@
   if (.selection_is_all(selection)) axis else .subset_axis_frame(axis, selection)
 }
 
-#' @export
-`[.fmri_frame` <- function(x, i, j, ..., drop = FALSE) {
+# Frames are two-dimensional and slicing is always written x[i, j]. A single
+# index (x[i]) does not say which axis it addresses, and a third index has no
+# axis at all; both are refused rather than silently reinterpreted or ignored.
+# `n_index` is nargs() minus x and any supplied drop argument.
+.assert_frame_index_form <- function(n_index, n_extra, missing_i, drop) {
+  if (n_extra > 0L) {
+    .frame_abort(
+      "fmri_frame slicing takes at most two indices: x[i, j].",
+      "fmridataset_error_alignment",
+      reason = "extra_index",
+      actual = n_index
+    )
+  }
+  if (n_index < 2L && !missing_i) {
+    .frame_abort(
+      paste(
+        "fmri_frame slicing needs both axes: use x[i, ] to select observations",
+        "or x[, j] to select features."
+      ),
+      "fmridataset_error_alignment",
+      reason = "single_index"
+    )
+  }
   if (!identical(drop, FALSE)) {
     .frame_abort("fmri_frame slicing is always non-dropping.", "fmridataset_error_alignment")
   }
+  invisible(TRUE)
+}
+
+#' @export
+`[.fmri_frame` <- function(x, i, j, ..., drop = FALSE) {
+  .assert_frame_index_form(
+    nargs() - 1L - !missing(drop), ...length(), missing(i), drop
+  )
   i <- if (missing(i)) {
     .selection_all(nrow(x))
   } else {
@@ -43,9 +72,9 @@
 
 #' @export
 `[.fmri_view` <- function(x, i, j, ..., drop = FALSE) {
-  if (!identical(drop, FALSE)) {
-    .frame_abort("fmri_frame slicing is always non-dropping.", "fmridataset_error_alignment")
-  }
+  .assert_frame_index_form(
+    nargs() - 1L - !missing(drop), ...length(), missing(i), drop
+  )
   # A view of a view composes into one view over the base frame; the composed
   # selection stays compact when both levels are select-all or ranges.
   i <- if (missing(i)) {
@@ -72,12 +101,6 @@
 dim.fmri_view <- function(x) {
   c(.selection_length(x$observation), .selection_length(x$feature))
 }
-#' @rdname frame-accessors
-#' @export
-nrow.fmri_view <- function(x) .selection_length(x$observation)
-#' @rdname frame-accessors
-#' @export
-ncol.fmri_view <- function(x) .selection_length(x$feature)
 #' @export
 assays.fmri_view <- function(x, ...) {
   observation_digest <- .axis_digest(observation_axis(x))
@@ -97,11 +120,8 @@ assays.fmri_view <- function(x, ...) {
 }
 #' @export
 assay.fmri_view <- function(x, name = active_assay(x), ...) {
-  value <- assays(x)[[name]]
-  if (is.null(value)) {
-    .frame_abort(sprintf("Unknown assay '%s'.", name), "fmridataset_error_alignment")
-  }
-  value
+  values <- assays(x)
+  values[[.assert_assay_name(name, names(values))]]
 }
 #' @export
 active_assay.fmri_view <- function(x, ...) active_assay(x$base)

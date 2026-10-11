@@ -1,5 +1,5 @@
 # Composing sources preallocated matrix(NA_real_, ...) regardless of dtype, so
-# reading a logical assay through row_bound_source() or row_sharded_source()
+# reading a logical assay through row_sharded_source()
 # handed back doubles while source_dtype() still reported "logical". The
 # descriptor and the data disagreed, which matters because the descriptor is
 # what budgets, manifests, and downstream consumers are entitled to trust.
@@ -24,9 +24,9 @@ test_that("realized mode agrees with the declared dtype", {
   )
 })
 
-test_that("row_bound_source preserves a logical assay", {
+test_that("row_sharded_source keeps logical values in shard order", {
   child <- logical_source()
-  bound <- row_bound_source(list(child, child))
+  bound <- row_sharded_source(list(child, child))
 
   expect_identical(source_dtype(bound), "logical")
   expect_identical(storage.mode(source_read(bound)), "logical")
@@ -43,7 +43,7 @@ test_that("row_sharded_source preserves a logical assay", {
 })
 
 test_that("empty selections keep the declared type", {
-  bound <- row_bound_source(list(logical_source(), logical_source()))
+  bound <- row_sharded_source(list(logical_source(), logical_source()))
 
   expect_identical(
     storage.mode(source_read(bound, observations = integer(0))),
@@ -58,7 +58,7 @@ test_that("empty selections keep the declared type", {
 
 test_that("numeric assays are unaffected", {
   child <- memory_source(matrix(as.double(1:6), 3, 2))
-  bound <- row_bound_source(list(child, child))
+  bound <- row_sharded_source(list(child, child))
 
   expect_identical(source_dtype(bound), "float64")
   expect_identical(storage.mode(source_read(bound)), "double")
@@ -67,7 +67,7 @@ test_that("numeric assays are unaffected", {
 
 test_that("reordered and partial reads keep the declared type", {
   child <- logical_source(n_obs = 3, n_feat = 2)
-  bound <- row_bound_source(list(child, child))
+  bound <- row_sharded_source(list(child, child))
 
   out <- source_read(bound, observations = c(5L, 1L), features = 2L)
   expect_identical(storage.mode(out), "logical")

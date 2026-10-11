@@ -40,7 +40,10 @@
         layout = layout
       )
     }
-    return(c(min(n_observation, max(1L, floor(capacity / n_feature))), n_feature))
+    return(as.integer(c(
+      min(n_observation, max(1L, floor(capacity / n_feature))),
+      n_feature
+    )))
   }
   if (layout == "featurewise") {
     if (n_observation > capacity) {
@@ -52,7 +55,10 @@
         layout = layout
       )
     }
-    return(c(n_observation, min(n_feature, max(1L, floor(capacity / n_observation)))))
+    return(as.integer(c(
+      n_observation,
+      min(n_feature, max(1L, floor(capacity / n_observation)))
+    )))
   }
 
   chunks <- pmin(as.integer(chunks), pmax(1L, shape))
@@ -99,8 +105,7 @@
       .feature_end = integer(),
       .n_feature = integer(),
       .output_bytes = numeric(),
-      .peak_bytes = numeric(),
-      .bytes = numeric()
+      .peak_bytes = numeric()
     ))
   }
   index <- if (layout == "imagewise") {
@@ -119,9 +124,8 @@
   )
   n_value <- as.double(out$.n_observation) * out$.n_feature
   out$.output_bytes <- n_value * output_dtype_bytes
+  # .peak_bytes is the quantity constrained by memory_budget.
   out$.peak_bytes <- n_value * peak_dtype_bytes
-  # Compatibility alias: .bytes is the quantity constrained by memory_budget.
-  out$.bytes <- out$.peak_bytes
   out
 }
 
@@ -180,7 +184,6 @@ plan_blocks <- function(
       "The block memory budget cannot hold one assay value.",
       "fmridataset_error_budget",
       dtype = descriptor$dtype,
-      dtype_bytes = output_dtype_bytes,
       output_dtype_bytes = output_dtype_bytes,
       peak_dtype_bytes = peak_dtype_bytes,
       memory_budget = memory_budget
@@ -211,7 +214,6 @@ plan_blocks <- function(
       layout = layout,
       shape = shape,
       dtype = descriptor$dtype,
-      dtype_bytes = output_dtype_bytes,
       output_dtype_bytes = output_dtype_bytes,
       peak_dtype_bytes = peak_dtype_bytes,
       source_chunks = as.integer(chunks),
@@ -220,11 +222,9 @@ plan_blocks <- function(
       block_shape = block_shape,
       blocks = blocks,
       n_blocks = nrow(blocks),
-      max_block_bytes = max_peak_bytes,
       max_output_bytes = max_output_bytes,
       max_peak_bytes = max_peak_bytes,
       total_values = prod(as.double(shape)),
-      total_bytes = prod(as.double(shape)) * output_dtype_bytes,
       total_output_bytes = prod(as.double(shape)) * output_dtype_bytes,
       memory_budget = memory_budget,
       target_block_bytes = target_block_bytes
@@ -316,6 +316,6 @@ print.frame_block_plan <- function(x, ...) {
   cat("  shape:", paste(x$shape, collapse = " x "), "\n")
   cat("  block shape:", paste(x$block_shape, collapse = " x "), "\n")
   cat("  blocks:", x$n_blocks, "\n")
-  cat("  maximum block bytes:", format(x$max_block_bytes, scientific = FALSE), "\n")
+  cat("  maximum block bytes:", format(x$max_peak_bytes, scientific = FALSE), "\n")
   invisible(x)
 }

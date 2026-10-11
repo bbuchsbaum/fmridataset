@@ -27,8 +27,8 @@ identity.
 - Arrays are always observations by features. Keep axis IDs, order, metadata,
   entities, and relations aligned through every subset, reorder, bind, and
   serialization round trip.
-- Spatial identity is semantic. Use `compatible_space()` or
-  `assert_compatible_space()`; matching dimensions or feature counts is not
+- Spatial identity is semantic. Use `same_space()` or
+  `assert_same_space()`; matching dimensions or feature counts is not
   evidence that two spaces align.
 - Keep feature IDs stable and explicit. Composite-space IDs are part-qualified,
   and routing order is authoritative.

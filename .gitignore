@@ -19,3 +19,7 @@ fmridataset_*.tar.gz
 *.db
 .beads-credential-key
 .mote/
+
+# testthat failure dumps
+tests/testthat/_problems/
+tests/testthat/testthat-problems.rds

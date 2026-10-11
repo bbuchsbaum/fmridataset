@@ -200,7 +200,7 @@ entity_feature_validity <- function(entity, entity_ids, masks, space,
   if (inherits(masks, "mask_bank")) {
     bank <- masks
     validate_mask_bank(bank)
-    assert_compatible_space(bank$space, space)
+    assert_same_space(bank$space, space)
   } else {
     bank <- mask_bank(masks, space)
   }
@@ -503,6 +503,9 @@ source_read.validity_masked_source <- function(x, observations = NULL,
   observations <- .normalize_source_index(observations, x$shape[1L])
   features <- .normalize_source_index(features, x$shape[2L])
   values <- source_read(x$source, observations, features, ...)
+  # Realize the declared dtype: an integer or logical child is float64 here,
+  # and the returned storage mode must agree with source_dtype().
+  storage.mode(values) <- .realized_dtype_mode(source_dtype(x))
   if (!length(observations) || !length(features)) {
     return(values)
   }

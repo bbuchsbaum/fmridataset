@@ -9,8 +9,7 @@
 #'
 #' These functions make it a contract. `temporal_schema()` derives a validated
 #' description from the observation metadata; `as_sampling_frame()` reconstructs
-#' the `fmrihrf::sampling_frame` that the legacy accessors and the design
-#' machinery expect.
+#' the `fmrihrf::sampling_frame` that design and HRF modelling code expects.
 #'
 #' The schema is derived, never stored. The columns are the truth, so the schema
 #' cannot go stale, needs no serialization of its own, and follows subsetting,
@@ -21,7 +20,9 @@
 #'   \item{`run_id`}{Required. One value per observation naming the acquisition
 #'     run it belongs to. Any type; compared as character. No missing values.}
 #'   \item{`TR`}{Optional. Repetition time in seconds, positive and finite, and
-#'     constant within each run. Runs may differ from one another, matching
+#'     constant within each run (compared with a relative tolerance of
+#'     `sqrt(.Machine$double.eps)`, so floating-point noise is not a second
+#'     value). Runs may differ from one another, matching
 #'     `fmrihrf::sampling_frame()`.}
 #'   \item{`start_time`}{Optional. Non-negative finite offset in seconds of the
 #'     first volume of each run (the slice-time-correction reference, or any
@@ -30,7 +31,25 @@
 #'     `fmrihrf::sampling_frame()`'s default of `TR/2`.}
 #'   \item{`censor`}{Optional. Logical, one value per observation, `TRUE` where
 #'     the observation is to be excluded. No missing values.}
+#'   \item{order column}{Optional. A numeric within-run acquisition index or
+#'     time, such as `volume_index` or `run_time` from `read_bids_bold()`. No
+#'     missing values.}
 #' }
+#'
+#' @section Timing of samples:
+#' `read_bids_bold()` emits `run_time`, the acquisition onset of each volume
+#' relative to its run (`(volume_index - 1) * TR`). The sampling frame built by
+#' `as_sampling_frame()` places samples at `start_time + (volume_index - 1) *
+#' TR`, and when no `start_time` column is supplied fmrihrf's default
+#' `start_time = TR/2` applies, so sample times are `run_time + TR/2`. This
+#' modelling default is kept on purpose. For onset-aligned sampling, add a
+#' `start_time` column of `0` when constructing the frame, or set it on the
+#' schema before converting:
+#' ```
+#' schema <- temporal_schema(frame)
+#' schema$start_time <- stats::setNames(rep(0, schema$n_runs), names(schema$run_lengths))
+#' as_sampling_frame(schema)
+#' ```
 #'
 #' @section Order and contiguity:
 #' Runs are numbered in order of first appearance, not by sorting, so
@@ -42,10 +61,27 @@
 #' `as_sampling_frame()` refuses a non-contiguous frame rather than silently
 #' reordering it.
 #'
+#' Contiguity says nothing about order *within* a run. When an order column is
+#' present (`order_col`, by default the first of `volume_index` and `run_time`
+#' found), the schema records in `ordered` whether it increases strictly within
+#' every run, and `as_sampling_frame()` refuses a frame whose volumes are out of
+#' acquisition order. Without such a column the order within a run cannot be
+#' checked: `ordered` is `NA`, and the observation order is taken as acquisition
+#' order.
+#'
+#' A zero-observation frame has an empty schema but no sampling frame;
+#' `as_sampling_frame()` refuses it.
+#'
 #' @param x An `fmri_frame` or `fmri_view`.
 #' @param run_col,tr_col,start_time_col,censor_col Observation metadata columns
 #'   holding the run label, repetition time, first-volume offset, and censoring
-#'   indicator.
+#'   indicator. Each is a single column name; `run_col` may also be `NULL` (the
+#'   default) to use the key of an observation relation to a run entity, else
+#'   `scan_id`, else `run_id`. A named column other than
+#'   `run_col` that is absent is simply not used.
+#' @param order_col `NULL` (default) to use the first of `volume_index` and
+#'   `run_time` that is present, or a single column name holding a numeric
+#'   within-run acquisition index or time, which must then exist.
 #' @param ... Passed to `temporal_schema()`.
 #' @return `temporal_schema()` returns a `frame_temporal_schema`.
 #'   `has_temporal_schema()` returns a scalar logical.
@@ -75,7 +111,13 @@ NULL
 #' @export
 temporal_schema <- function(x, run_col = NULL, tr_col = "TR",
                             start_time_col = "start_time",
-                            censor_col = "censor") {
+                            censor_col = "censor", order_col = NULL) {
+  .temporal_column_arg(run_col, "run_col", allow_null = TRUE)
+  .temporal_column_arg(tr_col, "tr_col")
+  .temporal_column_arg(start_time_col, "start_time_col")
+  .temporal_column_arg(censor_col, "censor_col")
+  .temporal_column_arg(order_col, "order_col", allow_null = TRUE)
+
   data <- observations(x)
   run_col <- .resolve_run_column(x, data, run_col)
   run_ids <- .temporal_run_ids(data[[run_col]], run_col)
@@ -83,6 +125,7 @@ temporal_schema <- function(x, run_col = NULL, tr_col = "TR",
   block_ids <- match(run_ids, levels)
   run_lengths <- tabulate(block_ids, nbins = length(levels))
   names(run_lengths) <- levels
+  order_col <- .temporal_order_column(data, order_col)
 
   structure(
     list(
@@ -96,11 +139,13 @@ temporal_schema <- function(x, run_col = NULL, tr_col = "TR",
       ),
       censor = .temporal_censor(data, censor_col, length(run_ids)),
       contiguous = .temporal_contiguous(block_ids, length(levels)),
+      ordered = .temporal_ordered(data, order_col, block_ids, length(levels)),
       columns = list(
         run = run_col,
         tr = tr_col,
         start_time = start_time_col,
-        censor = censor_col
+        censor = censor_col,
+        order = order_col
       )
     ),
     class = "frame_temporal_schema"
@@ -255,15 +300,21 @@ has_temporal_schema <- function(x, ...) {
     )
   }
 
+  # Values within a run are compared with a small relative tolerance so that
+  # floating-point noise (0.1 * 3 vs 0.3) is not mistaken for a second value.
+  tolerance <- sqrt(.Machine$double.eps)
   per_run <- vapply(seq_along(levels), function(i) {
-    unique_vals <- unique(values[block_ids == i])
-    if (length(unique_vals) != 1L) {
+    run_vals <- values[block_ids == i]
+    reference <- run_vals[[1L]]
+    scale <- pmax(abs(run_vals), abs(reference), 1)
+    if (any(abs(run_vals - reference) > tolerance * scale)) {
+      unique_vals <- unique(run_vals)
       .temporal_abort(
         sprintf(
           "Run %s has %d different %s values (%s); a run has one %s.",
           encodeString(levels[[i]], quote = "\""), length(unique_vals),
           encodeString(column, quote = "\""),
-          paste(format(unique_vals), collapse = ", "),
+          paste(format(unique_vals, digits = 15), collapse = ", "),
           singular_label
         ),
         column = column,
@@ -271,7 +322,7 @@ has_temporal_schema <- function(x, ...) {
         actual = unique_vals
       )
     }
-    as.numeric(unique_vals)
+    as.numeric(reference)
   }, numeric(1))
 
   names(per_run) <- levels
@@ -316,6 +367,65 @@ has_temporal_schema <- function(x, ...) {
   length(rle(block_ids)$lengths) == n_runs
 }
 
+.temporal_column_arg <- function(value, arg, allow_null = FALSE) {
+  if (is.null(value) && allow_null) {
+    return(invisible(NULL))
+  }
+  if (!is.character(value) || length(value) != 1L || is.na(value) ||
+    !nzchar(value)) {
+    .temporal_abort(
+      sprintf(
+        "`%s` must be a single non-empty column name%s.",
+        arg, if (allow_null) " or NULL" else ""
+      ),
+      argument = arg
+    )
+  }
+  invisible(value)
+}
+
+# The column that orders volumes within a run, or NULL when none is present.
+.temporal_order_column <- function(data, order_col) {
+  if (!is.null(order_col)) {
+    if (!order_col %in% names(data)) {
+      .temporal_abort(
+        sprintf(
+          "Observation metadata has no %s column to order volumes by.",
+          encodeString(order_col, quote = "\"")
+        ),
+        column = order_col, available = names(data)
+      )
+    }
+    return(order_col)
+  }
+  found <- intersect(c("volume_index", "run_time"), names(data))
+  if (length(found)) found[[1L]] else NULL
+}
+
+# TRUE when the order column increases strictly within every run, FALSE when
+# it does not, and NA when there is no order column to check against.
+.temporal_ordered <- function(data, order_col, block_ids, n_runs) {
+  if (is.null(order_col)) {
+    return(NA)
+  }
+  values <- data[[order_col]]
+  if (!is.numeric(values) || anyNA(values) || any(!is.finite(values))) {
+    .temporal_abort(
+      sprintf(
+        "Column %s must be finite numeric acquisition order in every observation.",
+        encodeString(order_col, quote = "\"")
+      ),
+      column = order_col
+    )
+  }
+  for (i in seq_len(n_runs)) {
+    if (any(diff(values[block_ids == i]) <= 0)) {
+      return(FALSE)
+    }
+  }
+  TRUE
+}
+
 #' @rdname temporal-schema
 #' @export
 as_sampling_frame <- function(x, ...) {
@@ -339,6 +449,26 @@ as_sampling_frame <- function(x, ...) {
       ),
       contiguous = FALSE,
       n_runs = schema$n_runs
+    )
+  }
+  if (isFALSE(schema$ordered)) {
+    .temporal_abort(
+      sprintf(
+        paste(
+          "A sampling frame needs volumes in acquisition order, but column %s",
+          "does not increase strictly within every run. Restore acquisition",
+          "order before converting, or work from temporal_schema() directly."
+        ),
+        encodeString(schema$columns$order, quote = "\"")
+      ),
+      column = schema$columns$order,
+      ordered = FALSE
+    )
+  }
+  if (!length(schema$run_ids)) {
+    .temporal_abort(
+      "A sampling frame needs at least one observation; this frame has none.",
+      n_observations = 0L
     )
   }
 
@@ -365,7 +495,10 @@ print.frame_temporal_schema <- function(x, ...) {
   cat(sprintf(
     "<frame_temporal_schema> %d observations in %d run%s%s\n",
     length(x$run_ids), x$n_runs, if (x$n_runs == 1L) "" else "s",
-    if (x$contiguous) "" else " (not contiguous)"
+    paste0(
+      if (x$contiguous) "" else " (not contiguous)",
+      if (isFALSE(x$ordered)) " (not in acquisition order)" else ""
+    )
   ))
   if (x$n_runs) {
     shown <- seq_len(min(x$n_runs, 6L))

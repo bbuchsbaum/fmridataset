@@ -91,12 +91,64 @@ test_that("non-finite values still propagate where they are genuinely weighted",
   fs_nan <- map_fixture(matrix(c(1, NaN, 100), nrow = 1), weights)
   expect_true(is.na(source_read(fs_nan)[1, 2]))
 
-  # An infinite contributing value is reported as non-finite, not as a
-  # spurious 0 * Inf = NaN in an unrelated target.
+  # An infinite contributing value stays infinite, not a spurious
+  # 0 * Inf = NaN in an unrelated target.
   fs_inf <- map_fixture(matrix(c(Inf, 10, 100), nrow = 1), weights)
   out_inf <- source_read(fs_inf)
-  expect_true(is.na(out_inf[1, 1]))
+  expect_identical(out_inf[1, 1], Inf)
   expect_equal(out_inf[1, 2], 110)
+})
+
+test_that("weighted non-finite values follow IEEE arithmetic", {
+  # t1 = a, t2 = b - c, t3 = a + b, t4 = c.
+  weights <- rbind(c(1, 0, 0), c(0, 1, -1), c(1, 1, 0), c(0, 0, 2))
+
+  # Inf - Inf is NaN; a negative weight flips the sign of Inf.
+  out <- source_read(map_fixture(matrix(c(Inf, Inf, Inf), nrow = 1), weights))
+  expect_identical(out[1, 1], Inf)
+  expect_true(is.nan(out[1, 2]))
+  expect_identical(out[1, 3], Inf)
+  expect_identical(out[1, 4], Inf)
+
+  out <- source_read(map_fixture(matrix(c(1, 2, -Inf), nrow = 1), weights))
+  expect_identical(out[1, 1], 1)
+  expect_identical(out[1, 2], Inf)
+  expect_identical(out[1, 3], 3)
+  expect_identical(out[1, 4], -Inf)
+
+  # NA stays NA (not NaN), and only where it is weighted.
+  out <- source_read(map_fixture(matrix(c(NA, 2, 3), nrow = 1), weights))
+  expect_true(is.na(out[1, 1]) && !is.nan(out[1, 1]))
+  expect_identical(out[1, 2], -1)
+  expect_true(is.na(out[1, 3]))
+  expect_identical(out[1, 4], 6)
+
+  # The same targets read alone agree with the full read.
+  fs <- map_fixture(matrix(c(Inf, Inf, Inf), nrow = 1), weights)
+  expect_true(is.nan(source_read(fs, features = 2)[1, 1]))
+  expect_identical(source_read(fs, features = c(4, 1))[1, ], c(Inf, Inf))
+})
+
+test_that("an all-zero request realizes the declared dtype", {
+  from <- index_space(2, ids = c("a", "b"), namespace = "zf")
+  to <- index_space(2, ids = c("t1", "t2"), namespace = "zt")
+  map <- feature_map(from, to, rbind(c(1, 0), c(0, 0)))
+
+  complex_fs <- feature_mapped_source(
+    memory_source(
+      matrix(complex(real = 1:4, imaginary = 1), 2, 2),
+      dtype = "complex128"
+    ),
+    map
+  )
+  expect_identical(source_dtype(complex_fs), "complex128")
+  zero <- source_read(complex_fs, features = 2)
+  expect_identical(storage.mode(zero), "complex")
+  expect_identical(zero, matrix(0 + 0i, 2, 1))
+  expect_identical(storage.mode(source_read(complex_fs, features = integer())), "complex")
+
+  real_fs <- feature_mapped_source(memory_source(matrix(1:4, 2, 2)), map)
+  expect_identical(storage.mode(source_read(real_fs, features = 2)), "double")
 })
 
 test_that("request invariance holds for the independent_variance rule", {

@@ -36,6 +36,15 @@ returns a structured \code{frame_schema_compatibility} report.
 \description{
 Validate and compare canonical frame schemas
 }
+\details{
+\code{compare_frame_schema()} treats named records, such as column
+descriptors and the assay, entity, relation, and table registries, as
+unordered: column order and assay registry order are not semantic. This
+matches \code{frame_schema_digest()}, whose canonical encoding sorts record
+fields by name. Unnamed sequences such as feature and component IDs remain
+order-sensitive. \code{validate_frame_schema()} checks the shape of every
+section and rejects missing or unknown top-level fields.
+}
 \examples{
 sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
 frame <- fmri_frame(

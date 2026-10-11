@@ -23,9 +23,10 @@ test_that("block planners are metadata-only and honor layout budgets", {
   for (plan in plans) {
     manifest <- block_manifest(plan)
     expect_s3_class(plan, "frame_block_plan")
-    expect_true(all(manifest$.bytes <= 64))
+    expect_true(all(manifest$.peak_bytes <= 64))
     expect_equal(sum(manifest$.n_observation * manifest$.n_feature), 42)
-    expect_identical(plan$max_block_bytes, max(manifest$.bytes))
+    expect_identical(plan$max_peak_bytes, max(manifest$.peak_bytes))
+    expect_type(plan$block_shape, "integer")
     expect_false(contains_runtime_state(plan))
     expect_identical(
       unserialize(serialize(plan, NULL)),

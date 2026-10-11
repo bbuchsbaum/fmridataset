@@ -122,3 +122,53 @@ test_that("published canonical v1 golden vectors match bytes and SHA-256", {
     )
   }
 })
+
+test_that("sparse canonical bytes depend on values, not storage layout", {
+  zero <- Matrix::sparseMatrix(
+    i = integer(), j = integer(), x = double(), dims = c(3L, 3L)
+  )
+  explicit_identity <- methods::as(
+    methods::as(diag(3), "CsparseMatrix"), "generalMatrix"
+  )
+  expect_identical(canonical_bytes(Matrix::Diagonal(3)), canonical_bytes(explicit_identity))
+  expect_false(identical(canonical_bytes(Matrix::Diagonal(3)), canonical_bytes(zero)))
+  unit_triangular <- methods::new("dtCMatrix",
+    Dim = c(3L, 3L), diag = "U", uplo = "U",
+    p = c(0L, 0L, 0L, 0L), i = integer(), x = double()
+  )
+  expect_identical(canonical_bytes(unit_triangular), canonical_bytes(explicit_identity))
+
+  general <- Matrix::sparseMatrix(
+    i = c(1L, 2L, 1L, 2L), j = c(1L, 1L, 2L, 2L), x = c(2, 1, 1, 2), dims = c(2L, 2L)
+  )
+  expect_identical(
+    canonical_bytes(Matrix::forceSymmetric(general)),
+    canonical_bytes(general)
+  )
+
+  stored_zero <- Matrix::sparseMatrix(
+    i = c(1L, 2L), j = c(1L, 2L), x = c(1, 0), dims = c(2L, 2L)
+  )
+  expect_identical(canonical_bytes(stored_zero), canonical_bytes(Matrix::drop0(stored_zero)))
+  stored_negative_zero <- Matrix::sparseMatrix(
+    i = c(1L, 2L), j = c(1L, 2L), x = c(1, -0), dims = c(2L, 2L)
+  )
+  expect_false(identical(
+    canonical_bytes(stored_negative_zero),
+    canonical_bytes(Matrix::drop0(stored_zero))
+  ))
+})
+
+test_that("lists cannot forge the reserved sparse matrix record", {
+  real <- Matrix::sparseMatrix(i = 1L, j = 1L, x = 2, dims = c(1L, 1L))
+  fake <- list(
+    .canonical_type = "sparse_matrix", value_type = "double",
+    dimensions = c(1L, 1L), dimnames = list(NULL, NULL), i = 1L, j = 1L, x = 2
+  )
+  expect_length(canonical_sha256(real), 1L)
+  expect_error(canonical_bytes(fake), class = "fmridataset_error_identity")
+  expect_error(
+    canonical_bytes(list(outer = list(.canonical_type = "x"))),
+    class = "fmridataset_error_identity"
+  )
+})

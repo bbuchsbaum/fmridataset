@@ -23,8 +23,9 @@ A \code{delarr} lazy array whose pulls route through \code{\link[=source_read]{s
 \description{
 \code{as_delarr()} wraps a serializable \link[=array-source]{array source} as a
 \code{delarr} provider so that bounded, chunk-aware execution can be delegated
-to \code{delarr} without materializing the assay. The realization budget is
-enforced before any provider is created.
+to \code{delarr} without materializing the assay. The realization budget bounds
+each provider pull, not the whole source, so a lazy array may describe more
+data than the budget allows; every pull is checked before it reads.
 }
 \examples{
 src <- memory_source(matrix(seq_len(6), nrow = 2))

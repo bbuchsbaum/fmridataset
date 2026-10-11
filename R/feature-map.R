@@ -352,19 +352,22 @@ source_read.feature_mapped_source <- function(x, observations = NULL,
                                               features = NULL, ...) {
   observations <- .normalize_source_index(observations, x$shape[1L])
   features <- .normalize_source_index(features, x$shape[2L])
-  if (!length(observations) || !length(features)) {
-    return(matrix(
+  zeros <- function() {
+    matrix(
       vector(
-        mode = if (grepl("^complex", x$dtype)) "complex" else "numeric",
+        mode = .realized_dtype_mode(x$dtype),
         length = length(observations) * length(features)
       ),
       nrow = length(observations), ncol = length(features)
-    ))
+    )
+  }
+  if (!length(observations) || !length(features)) {
+    return(zeros())
   }
   operator <- .feature_map_operator_rows(x$map, features)
   contributing <- .operator_contributing_columns(operator)
   if (!length(contributing)) {
-    return(matrix(0, nrow = length(observations), ncol = length(features)))
+    return(zeros())
   }
   values <- source_read(
     x$source,
@@ -386,9 +389,12 @@ source_read.feature_mapped_source <- function(x, observations = NULL,
 #
 # A weight of zero means the source feature is not part of the target, so it
 # must not contribute at all. Compute the product over finite values only, then
-# restore non-finiteness exactly where a target's own non-zero weights touch a
-# non-finite source value. The result then depends only on the operator row for
-# that target, which makes reads independent of request shape and of block size.
+# recompute exactly the cells where a target's own non-zero weights touch a
+# non-finite source value, using only those non-zero weights. Ordinary IEEE
+# arithmetic then decides the result: Inf stays Inf (or -Inf under a negative
+# weight), Inf - Inf is NaN, and NA stays NA. The result depends only on the
+# operator row for that target, which makes reads independent of request shape
+# and of block size. Finite blocks keep the single sparse product.
 .feature_map_apply_operator <- function(values, operator) {
   values <- as.matrix(values)
   unusable <- !is.finite(values)
@@ -405,7 +411,15 @@ source_read.feature_mapped_source <- function(x, observations = NULL,
   hits <- unname(as.matrix(
     (unusable * 1) %*% Matrix::t(operator != 0)
   ))
-  result[hits > 0] <- NA_real_
+  for (target in which(colSums(hits) > 0)) {
+    weights <- as.vector(operator[target, , drop = TRUE])
+    used <- which(weights != 0)
+    rows <- which(hits[, target] > 0)
+    block <- values[rows, used, drop = FALSE]
+    result[rows, target] <- rowSums(
+      block * rep(weights[used], each = length(rows))
+    )
+  }
   result
 }
 #' @export
@@ -622,22 +636,11 @@ print.provenance_graph <- function(x, ...) {
   invisible(x)
 }
 
-#' Coerce serializable lineage to a provenance graph
-#'
-#' Canonical containers accept only `NULL` or a validated `provenance_graph`.
-#' Any other serializable lineage value is wrapped, unchanged, in a single
-#' `legacy_provenance` record so that its origin remains inspectable rather
-#' than being silently reinterpreted.
-#'
-#' @param x `NULL`, a `provenance_graph`, or a serializable lineage value.
-#' @return A validated `provenance_graph`.
-#' @examples
-#' g <- as_provenance_graph(NULL)
-#' provenance_tips(g)
-#' g2 <- as_provenance_graph(list(note = "legacy value"))
-#' provenance_tips(g2)
-#' @export
-as_provenance_graph <- function(x) {
+# Coerce a lineage value to a provenance graph. `NULL` becomes an empty graph
+# and a `provenance_graph` is revalidated; any other serializable value is
+# wrapped, unchanged, in a single `legacy_provenance` record. Public
+# containers accept only `NULL` or a `provenance_graph`.
+.as_provenance_graph <- function(x) {
   if (is.null(x)) {
     return(provenance_graph())
   }
@@ -654,7 +657,6 @@ as_provenance_graph <- function(x) {
   ))
 }
 
-.as_provenance_graph <- as_provenance_graph
 
 .relations_without_feature_domain <- function(x) {
   keep <- vapply(x, function(value) {
@@ -720,9 +722,9 @@ map_features <- function(x, target = NULL, map = NULL,
     map <- feature_map_from_target(target)
   } else {
     validate_feature_map(map)
-    if (!is.null(target)) assert_compatible_space(target, map$to)
+    if (!is.null(target)) assert_same_space(target, map$to)
   }
-  assert_compatible_space(space(x), map$from)
+  assert_same_space(space(x), map$from)
 
   assay_names <- names(assays(x))
   if (length(assay_rules) == 1L && is.null(names(assay_rules))) {

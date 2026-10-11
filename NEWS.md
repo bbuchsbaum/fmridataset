@@ -1,11 +1,87 @@
 # fmridataset 0.11.0 (Development)
 
+- Removed the `domains` argument of `unaligned_record()` and
+  `validate_unaligned_record()`. Container metadata is never compared with
+  axis or entity sizes, so the argument had no effect.
+
+- Correctness fixes: `read_bids_bold()` orders unpadded runs numerically
+  (`run-2` before `run-10`); `temporal_schema()` gains `order_col` and
+  `as_sampling_frame()` refuses runs whose `volume_index`/`run_time` is out of
+  acquisition order, refuses zero-observation frames, and validates column
+  arguments; within-run TR/start_time compare with a small relative tolerance;
+  feature-mapped reads keep IEEE `Inf`/`NaN`/`NA` semantics; and
+  feature-mapped and validity-masked sources return the storage mode of their
+  declared dtype. The `run_time` versus `TR/2` sampling offset is now
+  documented.
+
+- Feature spaces are stricter about spatial identity. A frame now rejects a
+  `volume_space` that differs from its NIfTI source's native volume
+  (reordered support or another affine), and `execution_path()` reports
+  `"native"` only when they match; NIfTI source affines now keep the header's
+  axis flips. `vectorize_space()` checks a `NeuroVol`'s dimensions and affine
+  and an array's shape. Named vectors must name every feature ID exactly once
+  in every space. `restrict_space()` accepts logical, negative, and ID
+  selectors identically in every space, keeps a caller's basis encoder (only
+  subsetting it), and rebuilds a parcel space's default decoder from the
+  restricted membership. `basis_space_from_decoder()` rejects wide
+  dictionaries with a structured error and builds an empty basis, and the
+  parcel, basis, and composite accessors raise structured errors.
+
+- Study and entity contracts tightened: `filter_entities()` cascades through
+  entity key relations, restricts sparse/validity relations, keeps NA-key table
+  rows, supports empty selections, and no longer re-checks validated metadata;
+  numeric keys use exact whole-number IDs (`100000`, not `"1e+05"`); conflicting
+  relation paths, multi-valued `frame_link(type =)`, and lossy
+  `compose_frame_links()` maps are rejected; collection and study digests
+  include member order; shared-entity agreement is exact. Removed the
+  `events()` alias (use `study_table(x, "events")`) and the list-entry form of
+  `entity_registry()`.
+
+- Identity and schema contracts are stricter: sparse matrices hash by value
+  (unit diagonals, symmetric storage, and stored `+0` no longer change the
+  digest) and lists may not use the reserved `.canonical_type` field;
+  `validate_fds_manifest()`, `validate_fds_study_manifest()`, and
+  `validate_frame_schema()` reject unknown fields, orphan arrays, malformed
+  block components, out-of-range shapes, and malformed sections with structured
+  errors while accepting reordered fields; `compare_frame_schema()` ignores
+  column and assay order, matching `frame_schema_digest()`; frame schemas
+  record POSIXct time zones and difftime units; `identity_descriptor()`
+  rejects `content_digest` outside the content domain; the JSON schemas now
+  declare every study link field, enumerate array dtypes, and accept `[]` for
+  empty registries; and the unused `fds-study-v1.schema.json` is removed.
+
 - `temporal_schema()` and `as_sampling_frame()` now honour an optional
   per-observation `start_time` column (non-negative seconds, constant within
   each run): the slice-time-correction reference or other first-volume offset.
   When present it is passed through to `fmrihrf::sampling_frame(start_time =)`;
   when absent the previous `TR/2` default is unchanged. Rename the column with
   `start_time_col`. Fixes #94.
+
+- Frame input contracts are stricter: binding an ephemeral observation axis
+  now yields an ephemeral (non-persistable) axis; reusing an `aligned_assay`
+  on axes with different IDs or order is refused; `assay()`,
+  `collect_assay()`, and `fmri_frame(active_assay =)` require one assay name;
+  `x[i]` and `x[i, j, k]` on frames are refused (use `x[i, ]` or `x[, j]`);
+  `axis_frame()` refuses an `id` that contradicts the ID column and formats
+  whole-number numeric IDs exactly (`"100000"`, not `"1e+05"`), refusing
+  fractional ones; subsetting a spatial feature axis restricts its space;
+  `bind_observations()` compares retained feature annotations exactly; and
+  container metadata no longer rejects vectors whose length happens to equal
+  an axis size. The unused legacy `fmridataset_error_backend_io()`,
+  `fmridataset_error_config()`, and `stop_fmridataset()` helpers were removed.
+
+- Array-source fixes: NIfTI `UBYTE`/`USHORT`/`ULONG` images report unsigned
+  dtypes; reads return the declared dtype's R mode on every path (an integer
+  `memory_source()` reads as double, logical NIfTI as logical) and
+  `memory_source()` rejects data its `dtype` cannot hold; `as_delarr()`
+  applies `memory_budget` per pull rather than to the whole source; Zarr
+  reads coalesce scattered selections into chunk-aligned or bounding-box
+  reads; `fault_source()` handles keep their fault stage; and
+  `source_realization_cost()` accepts open handles. Removed the
+  `row_bound_source()` alias (use `row_sharded_source()`) and the duplicate
+  block-plan fields `dtype_bytes`, `max_block_bytes`, `total_bytes`, and
+  manifest `.bytes` (use `output_dtype_bytes`, `max_peak_bytes`,
+  `total_output_bytes`, and `.peak_bytes`).
 
 - Bumped the development version to `0.11.0.9000` so downstream packages can
   require the frame API (`fmridataset (>= 0.11.0.9000)`) or pin below it while

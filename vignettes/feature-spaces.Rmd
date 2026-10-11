@@ -119,8 +119,8 @@ sum(!is.na(spatial_map(pair, "vol-01")))
 ## Same space, not merely same size
 
 `same_space()` reports exact semantic identity: the two spaces must agree on
-class, digest, and ordered feature IDs. `compatible_space()` is an alias for
-the same check, kept for the 1.0 transition. Neither word means a map exists.
+class, digest, and ordered feature IDs. Being the same space says nothing
+about whether a map between two different spaces exists.
 
 An independently constructed space with the same grid, affine, support, and
 template is the same space.
@@ -141,12 +141,12 @@ report <- same_space(brain, rescaled)
 report[c("same", "same_class", "same_digest", "same_feature_ids")]
 ```
 
-`assert_compatible_space()` turns that report into a structured error, and it
+`assert_same_space()` turns that report into a structured error, and it
 is what `bind_observations()` and `map_features()` call before doing anything
 else.
 
 ```{r assert-space, error = TRUE}
-assert_compatible_space(brain, rescaled)
+assert_same_space(brain, rescaled)
 ```
 
 ## Parcels over a volume

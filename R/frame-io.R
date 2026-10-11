@@ -1,12 +1,21 @@
+# Indirections so tests can exercise the missing-package error path whether or
+# not fmristore is installed.
+.frame_store_available <- function() requireNamespace("fmristore", quietly = TRUE)
+
+.frame_store_exports <- function() getNamespaceExports("fmristore")
+
 .require_frame_store <- function(function_name) {
-  if (!requireNamespace("fmristore", quietly = TRUE)) {
+  if (!.frame_store_available()) {
     .frame_abort(
-      "HDF5 frame I/O requires the optional fmristore package.",
+      paste(
+        "HDF5 frame I/O requires the fmristore package, which is not on CRAN;",
+        "install it from https://bbuchsbaum.r-universe.dev."
+      ),
       "fmridataset_error_backend_io",
       operation = function_name
     )
   }
-  if (!function_name %in% getNamespaceExports("fmristore")) {
+  if (!function_name %in% .frame_store_exports()) {
     .frame_abort(
       paste0(
         "The installed fmristore does not provide `",
@@ -22,9 +31,17 @@
 
 #' Persist and reopen an fmri frame
 #'
-#' These functions provide the semantic-package entry point while delegating
-#' physical HDF5 work to `fmristore`. Reopened assays are reconstructible lazy
-#' sources; opening a frame does not read assay values.
+#' `write_frame()` writes an `fmri_frame` to an HDF5 file and `open_frame()`
+#' reopens one. Both require the `fmristore` package, which performs the
+#' physical HDF5 work. `fmristore` is not on CRAN; install it from
+#' <https://bbuchsbaum.r-universe.dev>, for example with
+#' `install.packages("fmristore", repos = c("https://bbuchsbaum.r-universe.dev",
+#' getOption("repos")))`. Without it, or with a version that lacks frame
+#' support, both functions fail with an error of class
+#' `fmridataset_error_backend_io`.
+#'
+#' Reopened assays are lazy sources: opening a frame does not read assay
+#' values.
 #'
 #' Neither function computes a content hash. Persistence records semantic
 #' manifest digests and source fingerprints only; a caller who wants a value
@@ -33,8 +50,7 @@
 #'
 #' @param x An `fmri_frame`.
 #' @param path Destination or source path.
-#' @param format Storage format. The walking-skeleton implementation supports
-#'   `"hdf5"`.
+#' @param format Storage format. Only `"hdf5"` is supported.
 #' @param ... Arguments passed to the physical store implementation.
 #' @return `write_frame()` invisibly returns the committed path, normalized
 #'   with forward slashes on every platform. `open_frame()` returns an

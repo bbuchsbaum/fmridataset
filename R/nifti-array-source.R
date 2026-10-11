@@ -1,33 +1,44 @@
+# neuroim2 storage labels to ArraySource dtypes. The labels follow neuroim2's
+# historical spelling: BYTE/SHORT/INT/LONG are signed 8/16/32/64-bit and the
+# U-prefixed forms are their unsigned counterparts. Substring matching used to
+# report UBYTE, USHORT, and ULONG as signed, because only "UINT" was recognised
+# as unsigned.
+.nifti_storage_dtypes <- c(
+  BINARY = "logical", LOGICAL = "logical",
+  UBYTE = "uint8", BYTE = "int8",
+  USHORT = "uint16", SHORT = "int16",
+  UINT = "uint32", INT = "int32", INTEGER = "int32",
+  ULONG = "uint64", LONG = "int64",
+  DOUBLE = "float64"
+)
+
 .nifti_header_dtype <- function(header) {
   bits <- 8L * as.integer(methods::slot(header, "bytes_per_element"))
   storage <- toupper(as.character(methods::slot(header, "data_type")))
-  if (grepl("DOUBLE", storage, fixed = TRUE)) {
-    return("float64")
-  }
-  if (grepl("FLOAT", storage, fixed = TRUE)) {
+  if (identical(storage, "FLOAT")) {
     return(if (bits <= 32L) "float32" else "float64")
   }
-  if (grepl("UINT", storage, fixed = TRUE)) {
-    return(paste0("uint", bits))
+  if (length(storage) == 1L && storage %in% names(.nifti_storage_dtypes)) {
+    return(unname(.nifti_storage_dtypes[[storage]]))
   }
-  if (grepl("INT|SHORT|LONG|BYTE", storage)) {
-    return(paste0("int", bits))
-  }
-  if (grepl("BINARY|LOGICAL", storage)) {
-    return("logical")
-  }
-  "float64"
+  .frame_abort(
+    sprintf(
+      "Unsupported NIfTI storage type '%s'.",
+      paste(storage, collapse = ", ")
+    ),
+    "fmridataset_error_source_contract",
+    field = "dtype",
+    actual = storage,
+    supported = c(names(.nifti_storage_dtypes), "FLOAT")
+  )
 }
 
+# The voxel-to-world transform neuroim2 attaches to every image it reads from
+# this header. Rebuilding a NeuroSpace from spacing, origin, and axes alone
+# dropped axis flips (an RAS image with a negative x step came back with a
+# positive one), so the source's affine disagreed with its own native volumes.
 .nifti_header_affine <- function(header) {
-  spatial_dim <- as.integer(methods::slot(header, "dims")[1:3])
-  neurospace <- neuroim2::NeuroSpace(
-    dim = spatial_dim,
-    spacing = methods::slot(header, "spacing")[1:3],
-    origin = methods::slot(header, "origin"),
-    axes = methods::slot(header, "spatial_axes")
-  )
-  unname(neuroim2::trans(neurospace))
+  unname(neuroim2::trans(header))
 }
 
 .nifti_file_state <- function(paths) {
@@ -291,7 +302,7 @@ source_read.nifti_array_source <- function(x, observations = NULL, features = NU
   observations <- .normalize_source_index(observations, x$shape[[1L]])
   features <- .normalize_source_index(features, x$shape[[2L]])
   if (!length(observations) || !length(features)) {
-    return(matrix(numeric(), nrow = length(observations), ncol = length(features)))
+    return(.realized_empty_matrix(x$dtype, length(observations), length(features)))
   }
   selected_mask <- .nifti_selected_mask(x, features)
   selected_support <- x$support[features]
@@ -299,7 +310,9 @@ source_read.nifti_array_source <- function(x, observations = NULL, features = NU
     observations - 1L,
     x$boundaries[-length(x$boundaries)]
   )
-  out <- matrix(NA_real_, nrow = length(observations), ncol = length(features))
+  # Typed by the declared dtype, so a BINARY (logical) image reads as logical
+  # like every other source rather than as doubles.
+  out <- .realized_na_matrix(x$dtype, length(observations), length(features))
   for (file in unique(file_index)) {
     at <- which(file_index == file)
     local <- observations[at] - x$boundaries[[file]]
@@ -309,7 +322,10 @@ source_read.nifti_array_source <- function(x, observations = NULL, features = NU
       mask = selected_mask,
       mode = "normal"
     ))
-    out[at, ] <- neuroim2::series(vec, selected_support, drop = FALSE)
+    out[at, ] <- .realize_dtype_values(
+      neuroim2::series(vec, selected_support, drop = FALSE),
+      x$dtype
+    )
   }
   out
 }

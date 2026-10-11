@@ -3,12 +3,11 @@
 )
 
 .api_extension_exports <- c(
-  "aligned_assay_set", "as_array_source", "as_delarr", "assert_compatible_space",
+  "aligned_assay_set", "as_array_source", "as_delarr",
   "assert_same_space", "canonicalization_contract", "content_hash",
   "content_hash_contract", "identity_descriptor",
   "axis_block_data", "axis_blocks", "axis_data", "axis_ids", "block_component_ids",
-  "block_components", "block_manifest", "collection_digest", "compatible_space",
-  "same_space",
+  "block_components", "block_manifest", "collection_digest", "same_space",
   "entity_registry_digest", "execute_block_plan", "execution_path",
   "fds_frame_bindings", "fds_frame_manifest", "fds_manifest_digest", "fds_schema",
   "fds_schema_version", "fds_study_bindings", "fds_study_manifest",
@@ -18,15 +17,14 @@
   "feature_mapped_source", "frame_from_fds_manifest", "hierarchy_complete",
   "hierarchy_digest", "hierarchy_groups", "hierarchy_ids", "hierarchy_levels",
   "hierarchy_relations", "locate_source_rows", "mask_bank_digest", "plan_blocks",
-  "provenance_digest", "relation_registry_digest", "row_bound_source",
+  "provenance_digest", "relation_registry_digest",
   "row_sharded_source", "shard_manifest", "source_capabilities", "source_chunks",
   "source_close", "source_descriptor", "source_dtype", "source_error",
   "source_fingerprint",
   "source_open", "source_read", "source_read_native", "source_realization_cost",
   "source_shape", "source_view",
   "study_digest", "study_from_fds_manifest", "validate_array_source",
-  "upgrade_fds_study_manifest", "upgrade_frame_link",
-  "validate_entity_feature_validity", "validate_entity_registry", "validate_event_table",
+    "validate_entity_feature_validity", "validate_entity_registry", "validate_event_table",
   "validate_fds_manifest", "validate_fds_study_manifest", "validate_feature_map",
   "validate_frame_schema", "validate_against_schema",
   "validate_fmri_collection", "validate_fmri_study", "validate_mask_bank",
@@ -35,8 +33,7 @@
 
 .api_user_exports <- c(
   "active_assay", "adjacency", "append_provenance", "append_source_shards",
-  "apply_feature_validity", "as_fmri_frame", "as_provenance_graph",
-  "as_sampling_frame", "assay", "assays", "auxiliary_table", "axis_block",
+  "apply_feature_validity", "as_fmri_frame",   "as_sampling_frame", "assay", "assays", "auxiliary_table", "axis_block",
   "axis_id_policy",
   "axis_frame", "basis_analysis", "basis_projection_info", "basis_space",
   "basis_space_from_decoder", "basis_space_from_fmrilatent", "basis_synthesis",
@@ -48,7 +45,7 @@
   "composite_part_names", "composite_parts", "composite_space", "entities",
   "entity", "entity_blocks", "entity_data", "entity_feature_validity",
   "entity_frame", "entity_ids", "entity_key", "entity_names", "entity_registry",
-  "event_data", "event_key", "event_table", "events", "execute_spatial", "explain",
+  "event_data", "event_key", "event_table", "execute_spatial", "explain",
   "feature_axis", "feature_blocks", "feature_data", "feature_ids", "feature_map",
   "feature_map_from_target", "features", "filter_entities", "filter_obs",
   "fmri_collection", "fmri_frame", "fmri_study", "frame_link",
@@ -72,18 +69,13 @@
 
 test_that("every ordinary export has one documented audience", {
   exports <- getNamespaceExports("fmridataset")
-  method_exports <- grep(
-    "^(nrow|ncol)\\.(fmri_frame|fmri_view)$",
-    exports,
-    value = TRUE
-  )
   audiences <- c(.api_user_exports, .api_extension_exports, .api_developer_exports)
 
   expect_length(intersect(.api_developer_exports, .api_extension_exports), 0L)
   expect_length(intersect(.api_user_exports, .api_extension_exports), 0L)
   expect_length(intersect(.api_user_exports, .api_developer_exports), 0L)
   expect_identical(anyDuplicated(audiences), 0L)
-  expect_setequal(exports, c(audiences, method_exports))
+  expect_setequal(exports, audiences)
   expect_true(file.exists(system.file(
     "architecture", "API-AUDIENCES.md",
     package = "fmridataset"
@@ -93,6 +85,9 @@ test_that("every ordinary export has one documented audience", {
 test_that("implementation conveniences are absent from the public namespace", {
   internal <- "%||%"
   removed <- c(
+    "compatible_space", "assert_compatible_space", "as_provenance_graph",
+    "upgrade_frame_link", "upgrade_fds_study_manifest", "events",
+    "nrow.fmri_frame", "ncol.fmri_frame", "nrow.fmri_view", "ncol.fmri_view",
     "analyze_run", "generate_benchmark_data",
     "generate_example_events", "generate_example_fmri_data",
     "generate_example_mask", "generate_example_paths", "print_dataset_info"

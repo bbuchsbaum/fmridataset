@@ -4,13 +4,10 @@
 \alias{unaligned_record}
 \title{Construct a typed unaligned metadata record}
 \usage{
-unaligned_record(x = list(), domains = NULL)
+unaligned_record(x = list())
 }
 \arguments{
 \item{x}{A named serializable list.}
-
-\item{domains}{Optional named observation, feature, or entity sizes used to
-detect hidden alignment.}
 }
 \value{
 An \code{unaligned_record}.
@@ -18,8 +15,8 @@ An \code{unaligned_record}.
 \description{
 Container metadata is deliberately unaligned. Array- or table-valued data
 belong in assays, axis blocks, relations, typed tables, or linked frames.
-When \code{domains} are supplied, vector lengths matching an observation,
-feature, or entity domain are rejected as probable hidden alignment.
+A vector field is an unaligned value whatever its length; a length that
+coincides with an axis or entity size is not treated as alignment.
 }
 \examples{
 rec <- unaligned_record(list(task = "rest", tr = 2))

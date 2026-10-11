@@ -196,6 +196,34 @@ test_that("validity_masked_source lazily returns NA outside coverage", {
   expect_true(all(is.na(source_read(invalid_source))))
 })
 
+test_that("validity_masked_source returns the storage mode its dtype declares", {
+  space <- index_space(3, ids = paste0("v", 1:3), namespace = "validity-dtype")
+  bank <- mask_bank(rbind(c(TRUE, FALSE, TRUE)), space)
+  ids <- rep(bank$mask_ids, 2L)
+
+  integer_source <- validity_masked_source(
+    memory_source(matrix(1:6, 2)), ids, bank
+  )
+  expect_identical(source_dtype(integer_source), "float64")
+  values <- source_read(integer_source)
+  expect_identical(storage.mode(values), "double")
+  expect_identical(values, matrix(c(1, 2, NA, NA, 5, 6), 2))
+  expect_identical(
+    storage.mode(source_read(integer_source, features = integer())),
+    "double"
+  )
+
+  complex_source <- validity_masked_source(
+    memory_source(
+      matrix(complex(real = 1:6, imaginary = 1), 2),
+      dtype = "complex128"
+    ),
+    ids, bank
+  )
+  expect_identical(source_dtype(complex_source), "complex128")
+  expect_identical(storage.mode(source_read(complex_source)), "complex")
+})
+
 test_that("apply_feature_validity masks selected assays and records provenance", {
   fx <- .validity_fixture(instrument = TRUE)
   masked <- apply_feature_validity(fx$frame, "subject_feature_validity")

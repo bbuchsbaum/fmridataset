@@ -26,6 +26,28 @@ test_that("identity descriptors preserve distinct domains", {
   )
 })
 
+test_that("content digests are rejected outside the content domain", {
+  frame <- make_frame_fixture()$frame
+  source <- assay(frame)$source
+  expect_error(
+    identity_descriptor(source, content_digest = "receipt-1"),
+    "content domain", class = "fmridataset_error_identity"
+  )
+  for (domain in c("semantic", "schema", "space", "source")) {
+    value <- switch(domain,
+      schema = frame_schema(frame),
+      space = space(frame),
+      source = source,
+      frame
+    )
+    expect_error(
+      identity_descriptor(value, domain = domain, content_digest = "receipt-1"),
+      class = "fmridataset_error_identity"
+    )
+  }
+  expect_null(identity_descriptor(source)$content_digest)
+})
+
 test_that("semantic and schema identities ignore source wrappers", {
   frame <- make_frame_fixture()$frame
   wrapped <- frame
@@ -40,12 +62,11 @@ test_that("semantic and schema identities ignore source wrappers", {
   expect_identical(frame_schema_digest(wrapped), frame_schema_digest(frame))
 })
 
-test_that("same_space is exact and compatibility names are migration aliases", {
+test_that("same_space is exact and ignores shape-only agreement", {
   x <- volume_space(c(2L, 2L, 2L), support = 1:4, template = "exact")
   y <- volume_space(c(2L, 2L, 2L), support = 1:4, template = "exact")
   same_shape <- volume_space(c(2L, 2L, 2L), support = 5:8, template = "exact")
   expect_true(same_space(x, y)$same)
-  expect_identical(compatible_space(x, y), same_space(x, y))
   expect_false(same_space(x, same_shape)$same)
   expect_error(assert_same_space(x, same_shape),
     class = "fmridataset_error_space_mismatch"

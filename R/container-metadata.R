@@ -34,27 +34,12 @@
   tolower(gsub("[^[:alnum:]]", "", x))
 }
 
-.normalize_alignment_domains <- function(domains) {
-  if (is.null(domains)) {
-    return(integer())
-  }
-  if (!is.numeric(domains) || is.null(names(domains)) ||
-    anyNA(domains) || any(domains < 0) ||
-    any(domains != as.integer(domains)) || any(!nzchar(names(domains)))) {
-    .metadata_abort("Alignment domains must be named non-negative sizes.", "domains")
-  }
-  stats::setNames(as.integer(domains), names(domains))
-}
-
-.metadata_alignment_label <- function(n, domains) {
-  if (n <= 1L || !length(domains)) {
-    return(NULL)
-  }
-  matches <- names(domains)[domains == n]
-  if (!length(matches)) NULL else matches[[1L]]
-}
-
-.normalize_unaligned_value <- function(value, path, domains) {
+# Container metadata is unaligned by definition. A vector whose length happens
+# to equal an axis or entity size (a voxel size of c(2, 2, 2) on a
+# three-observation frame) is not evidence of alignment, so field lengths are
+# never compared with axis sizes; only tabular, array-valued, typed, and
+# runtime values are refused.
+.normalize_unaligned_value <- function(value, path) {
   .assert_no_runtime_state(
     value, .metadata_abort,
     sprintf("Metadata field '%s' cannot contain runtime state.", path),
@@ -79,25 +64,13 @@
         path
       )
     }
-    .normalize_unaligned_list(value, path, domains)
+    .normalize_unaligned_list(value, path)
   } else {
-    label <- .metadata_alignment_label(length(value), domains)
-    if (!is.null(label)) {
-      .metadata_abort(
-        sprintf(
-          "Metadata field '%s' appears %s-aligned; store aligned values on the declared axis, entity, block, assay, relation, table, or linked frame.",
-          path, label
-        ),
-        path,
-        alignment = label,
-        size = length(value)
-      )
-    }
     value
   }
 }
 
-.normalize_unaligned_list <- function(value, path, domains) {
+.normalize_unaligned_list <- function(value, path) {
   if (!inherits(value, "unaligned_record")) {
     .assert_unique_names(
       value, .metadata_abort,
@@ -121,7 +94,7 @@
     }
     fields <- lapply(names(fields), function(name) {
       child <- if (nzchar(path)) paste(path, name, sep = ".") else name
-      .normalize_unaligned_value(fields[[name]], child, domains)
+      .normalize_unaligned_value(fields[[name]], child)
     })
     names(fields) <- names(unclass(value))
   }
@@ -132,18 +105,16 @@
 #'
 #' Container metadata is deliberately unaligned. Array- or table-valued data
 #' belong in assays, axis blocks, relations, typed tables, or linked frames.
-#' When `domains` are supplied, vector lengths matching an observation,
-#' feature, or entity domain are rejected as probable hidden alignment.
+#' A vector field is an unaligned value whatever its length; a length that
+#' coincides with an axis or entity size is not treated as alignment.
 #'
 #' @param x A named serializable list.
-#' @param domains Optional named observation, feature, or entity sizes used to
-#'   detect hidden alignment.
 #' @return An `unaligned_record`.
 #' @examples
 #' rec <- unaligned_record(list(task = "rest", tr = 2))
 #' rec$task
 #' @export
-unaligned_record <- function(x = list(), domains = NULL) {
+unaligned_record <- function(x = list()) {
   if (inherits(x, "unaligned_record")) x <- unclass(x)
   if (!is.list(x)) {
     .metadata_abort("Unaligned metadata must be a named list.", "metadata")
@@ -153,7 +124,6 @@ unaligned_record <- function(x = list(), domains = NULL) {
     "Unaligned metadata must have unique non-empty field names.",
     field = "metadata"
   )
-  domains <- .normalize_alignment_domains(domains)
   if (length(x)) {
     tokens <- .metadata_field_token(names(x))
     bad <- tokens %in% .metadata_diagnostic_names
@@ -167,89 +137,27 @@ unaligned_record <- function(x = list(), domains = NULL) {
       )
     }
   }
-  .normalize_unaligned_value(x, "metadata", domains)
+  .normalize_unaligned_value(x, "metadata")
 }
 
 #' Validate a typed unaligned metadata record
 #'
 #' @param x An `unaligned_record`.
-#' @param domains Optional named alignment-domain sizes.
 #' @return `x`, invisibly.
 #' @examples
 #' rec <- unaligned_record(list(task = "rest", tr = 2))
 #' validate_unaligned_record(rec)
 #' @export
-validate_unaligned_record <- function(x, domains = NULL) {
+validate_unaligned_record <- function(x) {
   if (!inherits(x, "unaligned_record")) {
     .metadata_abort("x is not an unaligned_record.", "metadata")
   }
-  unaligned_record(x, domains = domains)
+  unaligned_record(x)
   invisible(x)
 }
 
-.container_alignment_domains <- function(observations = NULL, features = NULL,
-                                         entities = NULL, prefix = NULL) {
-  out <- integer()
-  label <- function(x) if (is.null(prefix)) x else paste0(prefix, x)
-  if (!is.null(observations) && length(observations) > 1L) {
-    out[[label("observation")]] <- length(observations)
-  }
-  if (!is.null(features) && length(features) > 1L) {
-    out[[label("feature")]] <- length(features)
-  }
-  if (!is.null(entities)) {
-    for (name in entity_names(entities)) {
-      if (length(entities[[name]]) > 1L) {
-        out[[label(paste0("entity:", name))]] <- length(entities[[name]])
-      }
-    }
-  }
-  out
-}
-
-.frame_alignment_domains <- function(observations, features, entities) {
-  .container_alignment_domains(observations, features, entities)
-}
-
-.collection_alignment_domains <- function(frames) {
-  out <- integer()
-  for (name in names(frames)) {
-    value <- frames[[name]]
-    current <- .container_alignment_domains(
-      observation_axis(value), feature_axis(value), entities(value),
-      prefix = paste0("frame:", name, ":")
-    )
-    out <- c(out, current)
-  }
-  out
-}
-
-.study_alignment_domains <- function(frames, entities) {
-  out <- .container_alignment_domains(entities = entities)
-  for (name in names(frames)) {
-    members <- if (inherits(frames[[name]], "fmri_collection")) {
-      collection_frames(frames[[name]])
-    } else {
-      stats::setNames(list(frames[[name]]), name)
-    }
-    for (member_name in names(members)) {
-      prefix <- if (inherits(frames[[name]], "fmri_collection")) {
-        paste0("representation:", name, ":member:", member_name, ":")
-      } else {
-        paste0("representation:", name, ":")
-      }
-      out <- c(out, .container_alignment_domains(
-        observation_axis(members[[member_name]]),
-        feature_axis(members[[member_name]]),
-        prefix = prefix
-      ))
-    }
-  }
-  out
-}
-
-.normalize_container_metadata <- function(metadata, domains) {
-  unaligned_record(metadata, domains = domains)
+.normalize_container_metadata <- function(metadata) {
+  unaligned_record(metadata)
 }
 
 .validate_container_provenance <- function(provenance, owner) {
@@ -258,7 +166,7 @@ validate_unaligned_record <- function(x, domains = NULL) {
   }
   if (!inherits(provenance, "provenance_graph")) {
     .provenance_abort(sprintf(
-      "%s provenance must be NULL or a provenance_graph; use as_provenance_graph() for explicit legacy migration.",
+      "%s provenance must be NULL or a provenance_graph; build one with provenance_graph() and provenance_record().",
       owner
     ))
   }

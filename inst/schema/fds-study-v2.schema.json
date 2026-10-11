@@ -32,20 +32,31 @@
       "additionalProperties": {"$ref": "#/$defs/representation"}
     },
     "arrays": {
-      "type": "object",
-      "additionalProperties": {"$ref": "#/$defs/array"}
+      "anyOf": [
+        {"type": "object", "additionalProperties": {"$ref": "#/$defs/array"}},
+        {"type": "array", "maxItems": 0}
+      ]
     },
-    "entities": {"type": "object"},
+    "entities": {"$ref": "#/$defs/record"},
     "links": {
-      "type": "object",
-      "additionalProperties": {"$ref": "#/$defs/link"}
+      "anyOf": [
+        {"type": "object", "additionalProperties": {"$ref": "#/$defs/link"}},
+        {"type": "array", "maxItems": 0}
+      ]
     },
-    "tables": {"type": "object"},
-    "metadata": {"type": "object"},
+    "tables": {"$ref": "#/$defs/record"},
+    "metadata": {"$ref": "#/$defs/record"},
     "provenance": {},
-    "extensions": {"type": "object"}
+    "extensions": {"$ref": "#/$defs/record"}
   },
   "$defs": {
+    "record": {
+      "description": "A named record or registry. jsonlite serializes an empty R list as [], so an empty array is accepted as the empty record.",
+      "anyOf": [
+        {"type": "object"},
+        {"type": "array", "maxItems": 0}
+      ]
+    },
     "array": {
       "type": "object",
       "required": ["key", "axes", "shape", "dtype"],
@@ -61,7 +72,7 @@
           "minItems": 2,
           "items": {"type": "integer", "minimum": 0}
         },
-        "dtype": {"type": "string", "minLength": 1}
+        "dtype": {"enum": ["logical", "uint8", "int8", "uint16", "int16", "float16", "bfloat16", "uint32", "int32", "float32", "uint64", "int64", "float64", "complex64", "complex128"]}
       }
     },
     "link": {
@@ -76,8 +87,17 @@
         "type": {
           "enum": ["derivation", "mapping", "correspondence", "alignment"]
         },
+        "map": {
+          "description": "null, or the row records of a .source_id/.target_id map.",
+          "type": ["array", "object", "null"]
+        },
         "source_axis": {"enum": ["observation", "feature"]},
         "target_axis": {"enum": ["observation", "feature"]},
+        "operator": {
+          "description": "null, or a typed feature-map operator for feature mappings and alignments.",
+          "type": ["object", "null"]
+        },
+        "metadata": {"$ref": "#/$defs/record"},
         "schema_version": {"const": 2}
       },
       "additionalProperties": false
@@ -103,7 +123,7 @@
               "minProperties": 1,
               "additionalProperties": {"type": "object"}
             },
-            "metadata": {"type": "object"},
+            "metadata": {"$ref": "#/$defs/record"},
             "provenance": {}
           },
           "additionalProperties": false
