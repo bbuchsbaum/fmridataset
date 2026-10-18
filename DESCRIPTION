@@ -26,8 +26,8 @@ Imports:
     neuroim2,
     rlang,
     stats,
-    stringi (>= 1.8.0),
     tibble,
+    utf8 (>= 1.2.0),
     utils,
     uuid
 Suggests:
@@ -45,6 +45,7 @@ Suggests:
     neuroatlas,
     neurosurf,
     rmarkdown,
+    stringi,
     testthat (>= 3.0.0),
     withr,
     zarr (>= 0.4.2)

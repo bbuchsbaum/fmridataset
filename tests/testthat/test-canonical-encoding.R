@@ -172,3 +172,76 @@ test_that("lists cannot forge the reserved sparse matrix record", {
     class = "fmridataset_error_identity"
   )
 })
+
+test_that("canonical strings are NFC and repair ill-formed UTF-8 like ICU", {
+  canon <- fmridataset:::.canonical_utf8
+  codepoints <- function(x) lapply(x, function(value) as.numeric(utf8ToInt(value)))
+  from_hex <- function(hex) {
+    value <- rawToChar(as.raw(strtoi(strsplit(hex, " ")[[1]], 16L)))
+    Encoding(value) <- "UTF-8"
+    value
+  }
+
+  composed <- canon(c(
+    "é", "Å", "각", "abc", "", NA,
+    "ẛ̣"
+  ))
+  expect_identical(
+    codepoints(composed),
+    list(0xE9, 0xC5, 0xAC01, c(0x61, 0x62, 0x63), numeric(), NA_real_,
+      c(0x1E9B, 0x0323))
+  )
+  expect_identical(Encoding(composed[c(1, 4)]), c("UTF-8", "unknown"))
+  expect_identical(canon(c(a = "é"))[["a"]], "é")
+  expect_identical(canon(character()), character())
+
+  ill_formed <- vapply(c(
+    "61 ff 62", "e2 82", "e2 82 61", "c0 af", "ed a0 80", "f4 90 80 80",
+    "f0 9f 98 61", "80 80", "e0 80 80", "c3", "65 cc 81 ff"
+  ), from_hex, character(1), USE.NAMES = FALSE)
+  expect_identical(
+    codepoints(canon(ill_formed)),
+    list(
+      c(0x61, 0xFFFD, 0x62), 0xFFFD, c(0xFFFD, 0x61), rep(0xFFFD, 2),
+      rep(0xFFFD, 3), rep(0xFFFD, 4), c(0xFFFD, 0x61), rep(0xFFFD, 2),
+      rep(0xFFFD, 3), 0xFFFD, c(0xE9, 0xFFFD)
+    )
+  )
+
+  bytes <- "\xc3\xa9"
+  Encoding(bytes) <- "bytes"
+  expect_error(canon(bytes), class = "fmridataset_error_identity")
+})
+
+test_that("canonical NFC matches the stringi/ICU normalizer it replaced", {
+  skip_if_not_installed("stringi")
+  reference <- function(x) {
+    present <- !is.na(x)
+    x[present] <- stringi::stri_trans_nfc(enc2utf8(x[present]))
+    Encoding(x[present]) <- "UTF-8"
+    x
+  }
+  cp <- c(1:0xD7FF, 0xE000:0x10FFFF)
+  singles <- c(intToUtf8(cp, multiple = TRUE), NA)
+  expect_identical(fmridataset:::.canonical_utf8(singles), reference(singles))
+
+  withr::local_seed(20261018)
+  pool <- as.raw(c(
+    0x41, 0x61, 0x80:0xBF, 0xC0:0xC3, 0xCC, 0xCD, 0xDF, 0xE0:0xE2,
+    0xEC:0xEF, 0xF0:0xF5, 0xFF
+  ))
+  random <- vapply(seq_len(5000), function(i) {
+    value <- rawToChar(sample(pool, sample.int(10L, 1L), replace = TRUE))
+    Encoding(value) <- "UTF-8"
+    value
+  }, character(1))
+  marks <- c(0x41:0x5A, 0x300:0x36F, 0x1100:0x11FF, 0xAC00:0xAC40, 0x0F71:0x0F84)
+  sequences <- vapply(seq_len(5000), function(i) {
+    intToUtf8(sample(marks, sample.int(6L, 1L), replace = TRUE))
+  }, character(1))
+  values <- c(random, sequences)
+  expect_identical(
+    lapply(fmridataset:::.canonical_utf8(values), charToRaw),
+    lapply(reference(values), charToRaw)
+  )
+})

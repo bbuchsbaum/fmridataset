@@ -2,11 +2,84 @@
   .frame_abort(message, "fmridataset_error_identity", ...)
 }
 
+# Strings are canonicalized to UTF-8 Normalization Form C. Base R has no
+# Unicode normalizer, so NFC comes from `utf8`, which is already a dependency
+# of `tibble` (through `pillar`). Ill-formed UTF-8 is first repaired the way
+# ICU does it (each maximal subpart of an ill-formed sequence becomes one
+# U+FFFD), so hashes do not depend on which normalizer is installed.
 .canonical_utf8 <- function(x) {
   present <- !is.na(x)
-  x[present] <- stringi::stri_trans_nfc(enc2utf8(x[present]))
+  if (!any(present)) {
+    return(x)
+  }
+  values <- x[present]
+  if (any(Encoding(values) == "bytes")) {
+    .identity_abort(
+      "Canonical encoding does not accept strings marked with \"bytes\" encoding.",
+      field = "value"
+    )
+  }
+  values <- enc2utf8(values)
+  invalid <- !validUTF8(values)
+  if (any(invalid)) {
+    values[invalid] <- vapply(values[invalid], .utf8_repair, character(1),
+      USE.NAMES = FALSE
+    )
+  }
+  Encoding(values) <- "UTF-8"
+  x[present] <- utf8::utf8_normalize(values)
   Encoding(x[present]) <- "UTF-8"
   x
+}
+
+# Replace each maximal subpart of an ill-formed UTF-8 sequence with U+FFFD
+# (Unicode Standard, section 3.9, "U+FFFD Substitution of Maximal Subparts").
+.utf8_repair <- function(x) {
+  bytes <- as.integer(charToRaw(x))
+  n <- length(bytes)
+  replacement <- as.integer(charToRaw(enc2utf8("\ufffd")))
+  out <- vector("list", n)
+  k <- 0L
+  i <- 1L
+  while (i <= n) {
+    lead <- bytes[[i]]
+    if (lead <= 0x7F) {
+      need <- 0L
+    } else if (lead >= 0xC2 && lead <= 0xDF) {
+      need <- 1L
+      low <- 0x80
+      high <- 0xBF
+    } else if (lead >= 0xE0 && lead <= 0xEF) {
+      need <- 2L
+      low <- if (lead == 0xE0) 0xA0 else 0x80
+      high <- if (lead == 0xED) 0x9F else 0xBF
+    } else if (lead >= 0xF0 && lead <= 0xF4) {
+      need <- 3L
+      low <- if (lead == 0xF0) 0x90 else 0x80
+      high <- if (lead == 0xF4) 0x8F else 0xBF
+    } else {
+      k <- k + 1L
+      out[[k]] <- replacement
+      i <- i + 1L
+      next
+    }
+    j <- i + 1L
+    taken <- 0L
+    while (taken < need && j <= n) {
+      byte <- bytes[[j]]
+      if (byte < low || byte > high) break
+      taken <- taken + 1L
+      j <- j + 1L
+      low <- 0x80
+      high <- 0xBF
+    }
+    k <- k + 1L
+    out[[k]] <- if (taken == need) bytes[i:(j - 1L)] else replacement
+    i <- j
+  }
+  value <- rawToChar(as.raw(unlist(out[seq_len(k)], use.names = FALSE)))
+  Encoding(value) <- "UTF-8"
+  value
 }
 
 .canonical_names <- function(x) {
