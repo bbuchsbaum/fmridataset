@@ -1,11 +1,17 @@
 # fmridataset 0.11.0 (Development)
 
 - Dropped the `stringi` dependency, which made the package heavy to install
-  under webR. Canonical-encoding NFC normalization now uses `utf8` (already
-  required through `tibble`/`pillar`), and ill-formed UTF-8 is repaired with
-  the same maximal-subpart U+FFFD substitution ICU applies, so canonical bytes
-  and SHA-256 digests are unchanged. Strings marked with `"bytes"` encoding
-  remain an error, now a classed `fmridataset_error_identity`.
+  under webR. Canonical-encoding NFC normalization now uses `utf8` (>= 1.2.3,
+  already required through `tibble`/`pillar`), and ill-formed UTF-8 is
+  repaired with the same maximal-subpart U+FFFD substitution ICU applies.
+  Canonical bytes and SHA-256 digests match the previous `stringi` encoding
+  for text within Unicode 14. NFC is now pinned to `utf8`'s Unicode tables
+  (Unicode 14 as of `utf8` 1.2.x) and no longer depends on the ICU version a
+  `stringi` build links against; text using characters or combining classes
+  introduced in Unicode 15 or later can therefore hash differently than it
+  did under a `stringi` built on ICU 72 or newer. Strings marked with
+  `"bytes"` encoding remain an error, now a classed
+  `fmridataset_error_identity`.
 
 - Removed the `domains` argument of `unaligned_record()` and
   `validate_unaligned_record()`. Container metadata is never compared with

@@ -19,7 +19,9 @@ interchangeable.
 Canonicalization v1 is `org.fmridataset.r-canonical/v1`: SHA-256 over a
 package-owned tagged binary encoding. Lengths and numeric payloads use
 big-endian byte order; named fields and attributes are ordered
-lexicographically; strings are UTF-8 NFC; sparse matrices use canonical
+lexicographically; strings are UTF-8 NFC as computed by the `utf8` package's
+Unicode 14 tables (`utf8` >= 1.2.3), after ill-formed UTF-8 is replaced with
+U+FFFD per maximal subpart; sparse matrices use canonical
 column-major triplets; and missing, null, NA, NaN, infinities, and negative
 zero remain explicitly distinguished. It is R-only because no non-R reference
 decoder is part of v1. Cross-language identity requires a future specified

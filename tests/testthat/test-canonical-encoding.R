@@ -192,6 +192,18 @@ test_that("canonical strings are NFC and repair ill-formed UTF-8 like ICU", {
       c(0x1E9B, 0x0323))
   )
   expect_identical(Encoding(composed[c(1, 4)]), c("UTF-8", "unknown"))
+
+  # NFC is pinned to Unicode 14 tables. U+0898 gained combining class 230 in
+  # Unicode 14, so it reorders after U+0323 and lets a + U+0323 compose; utf8
+  # < 1.2.3 (Unicode 13) leaves 61 0898 0323 and would change digests.
+  expect_identical(codepoints(canon("a\u0898\u0323")), list(c(0x1EA1, 0x0898)))
+  # Unicode 15 marks are not in the pinned tables: U+1E4EC (ccc 232 since
+  # Unicode 15) stays a blocker. If this changes, the NFC tables moved and
+  # canonical digests of such text change with them.
+  expect_identical(
+    codepoints(canon("a\U0001E4EC\u0323")),
+    list(c(0x61, 0x1E4EC, 0x0323))
+  )
   expect_identical(canon(c(a = "é"))[["a"]], "é")
   expect_identical(canon(character()), character())
 

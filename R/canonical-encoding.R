@@ -6,7 +6,8 @@
 # Unicode normalizer, so NFC comes from `utf8`, which is already a dependency
 # of `tibble` (through `pillar`). Ill-formed UTF-8 is first repaired the way
 # ICU does it (each maximal subpart of an ill-formed sequence becomes one
-# U+FFFD), so hashes do not depend on which normalizer is installed.
+# U+FFFD). NFC therefore follows utf8's Unicode tables (14 as of utf8 1.2.x),
+# not the ICU version of whatever stringi build is installed.
 .canonical_utf8 <- function(x) {
   present <- !is.na(x)
   if (!any(present)) {
@@ -379,7 +380,10 @@
 #' Canonicalization version 1 normalizes semantic R values and writes a tagged,
 #' length-prefixed package binary format. It is an explicitly R-only format.
 #' Named lists and attributes use lexicographic field
-#' order; unnamed list order is preserved. Strings are UTF-8 NFC, sparse matrix
+#' order; unnamed list order is preserved. Strings are UTF-8 NFC under the
+#' Unicode 14 tables of the \pkg{utf8} package (>= 1.2.3), independent of
+#' the system ICU version; ill-formed UTF-8 is first replaced with U+FFFD per
+#' maximal subpart. Sparse matrix
 #' storage layouts are normalized, and NaN payloads use one R value while
 #' remaining distinct from `NA_real_`. Negative zero remains distinct from zero.
 #'

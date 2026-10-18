@@ -27,7 +27,7 @@ Imports:
     rlang,
     stats,
     tibble,
-    utf8 (>= 1.2.0),
+    utf8 (>= 1.2.3),
     utils,
     uuid
 Suggests:
