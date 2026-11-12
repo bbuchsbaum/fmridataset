@@ -19,9 +19,11 @@ test_that("randomized synchronized views equal dense reference slicing", {
     cols <- sample(seq_len(ncol(fx$beta)), sample.int(ncol(fx$beta) + 1L, 1L) - 1L)
     view <- fx$frame[rows, cols]
 
+    expected <- fx$beta[rows, cols, drop = FALSE]
+    dimnames(expected) <- list(observation_ids(view), feature_ids(view))
     expect_equal(
       collect_assay(view),
-      fx$beta[rows, cols, drop = FALSE],
+      expected,
       info = paste("random view", iteration)
     )
     expect_identical(observation_ids(view), observation_ids(fx$frame)[rows])

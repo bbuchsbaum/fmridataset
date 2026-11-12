@@ -5,7 +5,9 @@ test_that("feature spaces print a compact summary", {
   lines <- .print_lines(voxels)
   expect_identical(lines[[1L]], "<volume_space> 10 voxels in a 4 x 4 x 2 grid")
   expect_match(lines[[3L]], substr(space_digest(voxels), 1, 12), fixed = TRUE)
-  expect_invisible(print(voxels))
+  capture.output(printed <- withVisible(print(voxels)))
+  expect_false(printed$visible)
+  expect_identical(printed$value, voxels)
 
   surface <- surface_space(sprintf("v%d", 1:6), rep(c("left", "right"), each = 3))
   expect_identical(.print_lines(surface)[[1L]], "<surface_space> 6 vertices (left 3, right 3)")

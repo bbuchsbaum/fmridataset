@@ -58,16 +58,21 @@ canonicalization_contract <- function() .canonicalization_contract
 #'   string; `restrict_space()` and `reconstruct_space()` return an object of
 #'   the same feature-space class; `vectorize_space()` returns a numeric
 #'   vector; `adjacency()` returns a sparse adjacency matrix or `NULL`;
-#'   `same_space()` returns a `space_comparison` list whose `same` field is
-#'   `TRUE` only when class, digest, and ordered feature IDs all agree;
-#'   `assert_same_space()` returns that report invisibly and signals an
-#'   `fmridataset_error_space_mismatch` error otherwise.
+#'   `same_space()` returns `TRUE` only when class, digest, and ordered
+#'   feature IDs all agree, and `FALSE` otherwise, so it can be used directly
+#'   in `if ()`. The value is a `space_comparison`: `x$same_class`,
+#'   `x$same_digest`, `x$same_feature_ids`, and `x$reason` say which part
+#'   differs, and printing it shows the same. `assert_same_space()` returns that
+#'   report invisibly and signals an `fmridataset_error_space_mismatch` error
+#'   naming the differing parts otherwise.
 #' @examples
 #' x <- index_space(3, ids = c("a", "b", "c"))
 #' n_features(x)
 #' feature_ids(x)
 #' y <- restrict_space(x, 1:2)
-#' same_space(x, x)$same
+#' same_space(x, x)
+#' same_space(x, y)
+#' if (same_space(x, x)) "aligned"
 #' @name feature-space
 NULL
 
@@ -111,21 +116,71 @@ adjacency <- function(x, ...) UseMethod("adjacency")
 #' @export
 same_space <- function(x, y, ...) {
   same_class <- identical(class(x), class(y))
-  same_digest <- identical(space_digest(x), space_digest(y))
+  x_digest <- space_digest(x)
+  y_digest <- space_digest(y)
+  same_digest <- identical(x_digest, y_digest)
   same_ids <- identical(feature_ids(x), feature_ids(y))
   ok <- same_class && same_digest && same_ids
+  differs <- c(
+    "class" = !same_class, "digest" = !same_digest, "feature IDs" = !same_ids
+  )
+  # A length-one logical, so `if (same_space(a, b))` works, carrying the
+  # component checks as attributes; `$` reads them (see `$.space_comparison`).
   structure(
-    list(
-      same = ok,
-      same_class = same_class,
-      same_digest = same_digest,
-      same_feature_ids = same_ids,
-      x_digest = space_digest(x),
-      y_digest = space_digest(y),
-      reason = if (ok) NULL else "Feature spaces differ in type, digest, or IDs."
+    ok,
+    same_class = same_class,
+    same_digest = same_digest,
+    same_feature_ids = same_ids,
+    x_digest = x_digest,
+    y_digest = y_digest,
+    reason = if (ok) NULL else sprintf(
+      "Feature spaces differ: %s %s.",
+      paste(names(differs)[differs], collapse = " and "),
+      if (sum(differs) == 1L) "differs" else "differ"
     ),
     class = "space_comparison"
   )
+}
+
+.space_comparison_fields <- c(
+  "same", "same_class", "same_digest", "same_feature_ids",
+  "x_digest", "y_digest", "reason"
+)
+
+#' @export
+`$.space_comparison` <- function(x, name) {
+  if (identical(name, "same")) {
+    return(as.vector(unclass(x)))
+  }
+  attr(x, name, exact = TRUE)
+}
+
+#' @export
+`[[.space_comparison` <- function(x, i, ...) {
+  if (is.character(i)) `$.space_comparison`(x, i) else as.vector(unclass(x))[[i]]
+}
+
+#' @export
+names.space_comparison <- function(x) .space_comparison_fields
+
+#' @export
+as.list.space_comparison <- function(x, ...) {
+  stats::setNames(lapply(.space_comparison_fields, function(name) `$.space_comparison`(x, name)), .space_comparison_fields)
+}
+
+#' @export
+print.space_comparison <- function(x, ...) {
+  if (isTRUE(x$same)) {
+    cat("<space_comparison> TRUE: the same feature space\n")
+  } else {
+    cat("<space_comparison> FALSE:", sub("^Feature spaces differ: ", "", x$reason), "\n")
+    verdict <- function(same) if (same) "same" else "differs"
+    cat(sprintf(
+      "  class: %s   digest: %s   feature IDs: %s\n",
+      verdict(x$same_class), verdict(x$same_digest), verdict(x$same_feature_ids)
+    ))
+  }
+  invisible(x)
 }
 
 #' @rdname feature-space
@@ -530,7 +585,8 @@ adjacency.volume_space <- function(x, ...) {
 #' Construct a packed cortical surface feature space
 #'
 #' @param vertex_ids Stable IDs for every vertex in the full mesh.
-#' @param hemisphere One `"left"` or `"right"` label per full-mesh vertex.
+#' @param hemisphere One `"left"` or `"right"` label per full-mesh vertex,
+#'   or a single label when the whole mesh is one hemisphere.
 #' @param support Active vertex positions or IDs. By default, all non-medial-wall
 #'   vertices are active.
 #' @param topology A three-column face matrix or asset descriptor with
@@ -558,6 +614,9 @@ surface_space <- function(vertex_ids, hemisphere, support = NULL,
   vertex_ids <- .validate_stable_ids(as.character(vertex_ids), "vertex")
   n <- length(vertex_ids)
   hemisphere <- as.character(hemisphere)
+  # One label for a single-hemisphere mesh is a documented scalar, not
+  # recycling: every vertex is in that hemisphere.
+  if (length(hemisphere) == 1L) hemisphere <- rep(hemisphere, n)
   if (length(hemisphere) != n || anyNA(hemisphere) ||
     any(!hemisphere %in% c("left", "right"))) {
     .frame_abort("hemisphere must label every vertex as left or right.", "fmridataset_error_space_mismatch")

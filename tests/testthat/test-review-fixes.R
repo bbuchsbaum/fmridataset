@@ -229,9 +229,10 @@ test_that("a class with no protocol methods is still named as implementing nothi
   bogus <- structure(list(), class = c("review_bogus_source", "array_source"))
   err <- expect_error(validate_array_source(bogus), class = "fmridataset_error_source_contract")
   expect_identical(err$field, "methods")
+  # source_close() has a default for descriptors, which hold nothing open.
   expect_setequal(err$missing, c(
     "source_shape", "source_dtype", "source_chunks", "source_capabilities",
-    "source_fingerprint", "source_open", "source_read", "source_close"
+    "source_fingerprint", "source_open", "source_read"
   ))
   expect_match(conditionMessage(err), "review_bogus_source")
 })

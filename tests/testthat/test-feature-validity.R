@@ -237,7 +237,7 @@ test_that("apply_feature_validity masks selected assays and records provenance",
     relation_registry_digest(masked),
     relation_registry_digest(fx$frame)
   )
-  expect_equal(collect_assay(masked), expected)
+  expect_equal(collect_assay(masked, dimnames = FALSE), expected)
   record <- tail(provenance_records(masked$provenance), 1L)[[1L]]
   expect_identical(record$operation, "apply_feature_validity")
 })

@@ -118,8 +118,8 @@ test_that("FDS manifests rebuild frames from separately bound sources", {
   expect_identical(rebuilt$relations, fx$frame$relations)
   expect_identical(rebuilt$tables, fx$frame$tables)
   expect_identical(active_assay(rebuilt), active_assay(fx$frame))
-  expect_equal(collect_assay(rebuilt, "beta"), fx$beta)
-  expect_equal(collect_assay(rebuilt, "variance"), fx$variance)
+  expect_equal(collect_assay(rebuilt, "beta", dimnames = FALSE), fx$beta)
+  expect_equal(collect_assay(rebuilt, "variance", dimnames = FALSE), fx$variance)
 })
 
 test_that("FDS manifests and bindings preserve lazy frame-view selectors", {

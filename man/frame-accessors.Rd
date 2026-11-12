@@ -12,6 +12,7 @@
 \alias{observation_blocks}
 \alias{feature_blocks}
 \alias{dim.fmri_frame}
+\alias{n_observations}
 \alias{dim.fmri_view}
 \title{Frame accessors}
 \usage{
@@ -35,6 +36,8 @@ feature_blocks(x, ...)
 
 \method{dim}{fmri_frame}(x)
 
+n_observations(x, ...)
+
 \method{dim}{fmri_view}(x)
 }
 \arguments{
@@ -53,6 +56,7 @@ lazily lifted entity blocks.}
 one \code{aligned_assay} from it. \code{active_assay()} returns a single assay
 name. \code{observation_axis()} returns an \code{axis_frame}; \code{observations()} and
 \code{features()} return a data frame of the corresponding metadata.
+\code{n_observations()} and \code{n_features()} return single integers.
 \code{observation_ids()} and \code{feature_ids()} return character vectors of
 stable IDs. \code{observation_blocks()} and \code{feature_blocks()} return named lists of
 \code{axis_block}s. \code{dim()} returns a length-2 integer vector, and \code{nrow()}

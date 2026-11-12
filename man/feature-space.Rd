@@ -73,10 +73,13 @@ of per-feature metadata; \code{space_digest()} returns a content digest
 string; \code{restrict_space()} and \code{reconstruct_space()} return an object of
 the same feature-space class; \code{vectorize_space()} returns a numeric
 vector; \code{adjacency()} returns a sparse adjacency matrix or \code{NULL};
-\code{same_space()} returns a \code{space_comparison} list whose \code{same} field is
-\code{TRUE} only when class, digest, and ordered feature IDs all agree;
-\code{assert_same_space()} returns that report invisibly and signals an
-\code{fmridataset_error_space_mismatch} error otherwise.
+\code{same_space()} returns \code{TRUE} only when class, digest, and ordered
+feature IDs all agree, and \code{FALSE} otherwise, so it can be used directly
+in \verb{if ()}. The value is a \code{space_comparison}: \code{x$same_class},
+\code{x$same_digest}, \code{x$same_feature_ids}, and \code{x$reason} say which part
+differs, and printing it shows the same. \code{assert_same_space()} returns that
+report invisibly and signals an \code{fmridataset_error_space_mismatch} error
+naming the differing parts otherwise.
 }
 \description{
 Every feature-space class (such as \code{\link[=volume_space]{volume_space()}}, \code{\link[=surface_space]{surface_space()}},
@@ -89,5 +92,7 @@ x <- index_space(3, ids = c("a", "b", "c"))
 n_features(x)
 feature_ids(x)
 y <- restrict_space(x, 1:2)
-same_space(x, x)$same
+same_space(x, x)
+same_space(x, y)
+if (same_space(x, x)) "aligned"
 }

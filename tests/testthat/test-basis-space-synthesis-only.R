@@ -112,7 +112,7 @@ test_that("a synthesis-only basis works as a frame's feature space", {
   )
 
   expect_equal(feature_ids(frame), c("c1", "c2"))
-  expect_equal(collect_assay(frame), scores)
+  expect_equal(collect_assay(frame, dimnames = FALSE), scores)
   expect_equal(feature_ids(frame[, "c2"]), "c2")
 })
 

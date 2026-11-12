@@ -20,7 +20,8 @@ surface_space(
 \arguments{
 \item{vertex_ids}{Stable IDs for every vertex in the full mesh.}
 
-\item{hemisphere}{One \code{"left"} or \code{"right"} label per full-mesh vertex.}
+\item{hemisphere}{One \code{"left"} or \code{"right"} label per full-mesh vertex,
+or a single label when the whole mesh is one hemisphere.}
 
 \item{support}{Active vertex positions or IDs. By default, all non-medial-wall
 vertices are active.}

@@ -48,7 +48,9 @@ Selectors follow the package's normalization law: positions must be
 whole numbers, may reorder, may be negative but not mixed with positive,
 drop zero, must be in bounds, and may not repeat an element; masks must
 match the axis length with no \code{NA}; an empty selection is legal. The law
-is checked at the generic before a method is dispatched.}
+is checked at the generic, which then passes methods a normalized
+selector: \code{NULL} for the whole axis, otherwise unique, in-bounds, positive
+integer positions in request order (possibly empty).}
 
 \item{features}{Optional feature selector, under the same law.}
 }

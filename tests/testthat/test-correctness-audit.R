@@ -88,7 +88,7 @@ test_that("complex assays map through sparse operators", {
     space = voxels
   )
   expect_equal(
-    collect_assay(map_features(frame, target = parcels)),
+    collect_assay(map_features(frame, target = parcels), dimnames = FALSE),
     unname(values %*% t(as.matrix(parcel_aggregation(parcels))))
   )
 })
@@ -470,7 +470,7 @@ test_that("a sparse NeuroVec must cover the mask", {
     sparse,
     mask = neuroim2::LogicalNeuroVol(own, neuroim2::NeuroSpace(dims))
   )
-  expect_equal(collect_assay(covered), matrix(as.double(1:15), 5))
+  expect_equal(collect_assay(covered, dimnames = FALSE), matrix(as.double(1:15), 5))
 })
 
 test_that("read_nifti_bold keeps the caller's space and a location-free manifest", {

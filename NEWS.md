@@ -1,5 +1,35 @@
 # fmridataset 0.11.0 (Development)
 
+- API changes found while rewriting the vignettes:
+  - `same_space()` now returns `TRUE` or `FALSE`, so `if (same_space(a, b))`
+    works. The value still carries the comparison: `$same_class`,
+    `$same_digest`, `$same_feature_ids`, and `$reason` read as before, and it
+    prints which part differs. `assert_same_space()` names that part.
+  - `collect_assay()` labels its result with the observation and feature IDs
+    (`dimnames = FALSE` turns this off), and `as.matrix()` on a frame or view
+    is `collect_assay()` for the active assay. `as.matrix()` on a view used to
+    return a broken object.
+  - New accessors `frame_metadata()`, `frame_tables()`, `frame_table()`,
+    `provenance()`, and `n_observations()`; `n_features()` now works on frames
+    and views.
+  - `fds_frame_manifest_digest()` accepts a frame as well as a manifest.
+  - `source_read()` and `source_read_native()` now hand methods normalized
+    selectors (`NULL` or unique, in-bounds, positive positions); logical
+    masks, negative positions, and zeros no longer reach a storage backend.
+    Descriptors get a default no-op `source_close()`, so a storage package
+    puts cleanup on its handle class only.
+  - New `check_array_source()` runs the array-source conformance laws for
+    storage packages, which previously had to copy a test helper that is not
+    installed.
+  - `read_bids_bold()`, `read_nifti_bold()`, and `as_fmri_frame()` on volumes
+    name their assay `bold` (was `signal`); `read_bids_bold()` gains `assay`.
+  - `surface_space()` accepts one hemisphere label for a one-hemisphere mesh.
+  - Error messages name what disagreed: the unknown ID in a selector, the row
+    or column counts when assays and metadata differ, and the metadata fields
+    that differ when binding. Long messages are split onto lines.
+  - The package ships a tiny fMRIPrep tree, `inst/extdata/fmriprep-toy.tar.gz`,
+    for examples and vignettes.
+
 - Feature spaces (volume, surface, parcel, basis, index, composite), provenance
   graphs, and unaligned metadata records now print a compact summary instead
   of their raw fields. `explain()` returns a `frame_explanation`, still a plain

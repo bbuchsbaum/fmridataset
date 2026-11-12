@@ -9,7 +9,7 @@
 )
 
 .api_extension_exports <- c(
-  "aligned_assay_set", "as_array_source", "as_delarr",
+  "aligned_assay_set", "as_array_source", "as_delarr", "check_array_source",
   "assert_same_space", "canonicalization_contract", "content_hash",
   "content_hash_contract", "identity_descriptor",
   "axis_block_data", "axis_blocks", "axis_data", "axis_ids", "block_component_ids",
@@ -54,6 +54,7 @@
   "event_data", "event_key", "event_table", "execute_spatial", "explain",
   "feature_axis", "feature_blocks", "feature_data", "feature_ids", "feature_map",
   "feature_map_from_target", "features", "filter_entities", "filter_observations",
+  "frame_metadata", "frame_table", "frame_tables", "n_observations", "provenance",
   "fmri_collection", "fmri_frame", "fmri_study", "frame_link",
   "has_temporal_schema", "hierarchy_index", "ids_are_durable",
   "index_space", "key_relation", "map_features", "mask_bank", "mask_values",

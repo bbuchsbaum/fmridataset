@@ -32,7 +32,7 @@ test_that("public frame I/O delegates to lazy HDF5 storage", {
   restored_plan <- unserialize(serialize(plan, NULL))
   expect_equal(
     delarr::collect(restored_plan[c(7L, 1L), c(6L, 2L)]),
-    collect_assay(frame, "beta")[c(7L, 1L), c(6L, 2L), drop = FALSE]
+    collect_assay(frame, "beta", dimnames = FALSE)[c(7L, 1L), c(6L, 2L), drop = FALSE]
   )
 })
 

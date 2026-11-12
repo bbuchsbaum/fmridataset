@@ -30,7 +30,9 @@
 #'   whole numbers, may reorder, may be negative but not mixed with positive,
 #'   drop zero, must be in bounds, and may not repeat an element; masks must
 #'   match the axis length with no `NA`; an empty selection is legal. The law
-#'   is checked at the generic before a method is dispatched.
+#'   is checked at the generic, which then passes methods a normalized
+#'   selector: `NULL` for the whole axis, otherwise unique, in-bounds, positive
+#'   integer positions in request order (possibly empty).
 #' @param features Optional feature selector, under the same law.
 #' @param ... Additional method arguments.
 #' @name array-source
@@ -103,35 +105,71 @@ source_open <- function(x, ...) UseMethod("source_open")
 #' @rdname array-source
 #' @export
 source_read <- function(x, observations = NULL, features = NULL, ...) {
-  .assert_source_selectors(x, observations, features)
+  selection <- .normalize_source_selectors(x, observations, features)
+  if (!identical(selection$observations, observations) ||
+    !identical(selection$features, features)) {
+    return(.redispatch_source(source_read, x, selection, list(...), parent.frame()))
+  }
   UseMethod("source_read")
 }
 
 #' @rdname array-source
 #' @export
 source_read_native <- function(x, observations = NULL, ...) {
-  .assert_source_selectors(x, observations)
+  selection <- .normalize_source_selectors(x, observations)
+  if (!identical(selection$observations, observations)) {
+    selection$features <- NULL
+    return(.redispatch_source(source_read_native, x, selection, list(...), parent.frame()))
+  }
   UseMethod("source_read_native")
+}
+
+# Call `generic` again, from the caller's environment, with normalized
+# selectors. UseMethod() forwards the arguments as the caller wrote them, so a
+# generic cannot rewrite its selectors in place; it re-enters once instead.
+# Normalization is idempotent, so the second call dispatches directly. The
+# call is evaluated in a child of the caller's environment so that S3 lookup
+# sees the methods the caller sees, and its arguments are bound to symbols so
+# a large descriptor is never deparsed into the call.
+.redispatch_source <- function(generic, x, selection, dots, caller) {
+  env <- new.env(parent = caller)
+  assign(".source", x, envir = env)
+  args <- list(quote(.source))
+  for (name in intersect(c("observations", "features"), names(selection))) {
+    symbol <- paste0(".", name)
+    assign(symbol, selection[[name]], envir = env)
+    args[name] <- list(as.name(symbol))
+  }
+  for (i in seq_along(dots)) {
+    symbol <- paste0(".dot", i)
+    assign(symbol, dots[[i]], envir = env)
+    args <- c(args, stats::setNames(list(as.name(symbol)), names(dots)[i] %||% ""))
+  }
+  eval(as.call(c(list(generic), args)), env)
 }
 
 # The selection law is enforced at the generic, before dispatch, so every
 # source -- including extension sources the package does not implement --
 # rejects repeated, missing, fractional, mixed-sign, and out-of-bounds
-# selectors identically. Methods still receive the caller's NULL, integer, or
-# logical selector and expand it themselves; UseMethod() forwards the original
-# arguments, so this is a check rather than a rewrite.
-.assert_source_selectors <- function(x, observations = NULL, features = NULL) {
+# selectors identically. The generic then hands the method the normalized
+# selector: NULL for the whole axis, otherwise unique, in-bounds, positive
+# integer positions in request order. Logical masks, negative positions, and
+# zeros never reach a method, so a backend implements one selector form.
+.normalize_source_selectors <- function(x, observations = NULL, features = NULL) {
   if (is.null(observations) && is.null(features)) {
-    return(invisible(TRUE))
+    return(list(observations = NULL, features = NULL))
   }
   shape <- source_shape(x)
-  if (!is.null(observations)) {
-    .normalize_selection(observations, shape[[1L]], axis = "observation")
+  normalize <- function(index, n, axis) {
+    if (is.null(index)) {
+      return(NULL)
+    }
+    .selection_index(.normalize_selection(index, n, axis = axis))
   }
-  if (!is.null(features)) {
-    .normalize_selection(features, shape[[2L]], axis = "feature")
-  }
-  invisible(TRUE)
+  list(
+    observations = normalize(observations, shape[[1L]], "observation"),
+    features = normalize(features, shape[[2L]], "feature")
+  )
 }
 
 #' @rdname array-source
@@ -327,15 +365,17 @@ source_realization_cost <- function(x, observations = NULL, features = NULL) {
     .frame_abort(
       sprintf(
         paste0(
-          "%s is estimated to retain %s output bytes and peak at %s bytes ",
-          "(%s source values realized as R %s), above memory_budget of %s bytes."
+          "%s would exceed memory_budget of %s bytes.\n",
+          "  It is estimated to retain %s output bytes and peak at %s bytes\n",
+          "  (%s source values realized as R %s).\n",
+          "  Read a smaller view, raise memory_budget, or pass force = TRUE."
         ),
         operation,
+        format(memory_budget, scientific = FALSE),
         format(cost$estimated_output_bytes, scientific = FALSE),
         format(cost$estimated_peak_bytes, scientific = FALSE),
         cost$storage_dtype,
-        cost$realized_dtype,
-        format(memory_budget, scientific = FALSE)
+        cost$realized_dtype
       ),
       "fmridataset_error_budget",
       operation = operation,
@@ -745,6 +785,11 @@ source_read_native.array_source_handle <- function(x, observations = NULL, ...) 
 }
 #' @export
 source_close.array_source_handle <- function(x, ...) invisible(TRUE)
+
+# A descriptor holds no open state by contract, so closing one is a no-op.
+# Storage packages put real cleanup on their handle class instead.
+#' @export
+source_close.array_source <- function(x, ...) invisible(TRUE)
 
 #' Construct a lazy view over an array source
 #'

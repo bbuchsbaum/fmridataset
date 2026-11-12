@@ -251,7 +251,11 @@
     positions <- match(index, ids)
     if (anyNA(positions)) {
       abort(
-        sprintf("Unknown %s ID in selector.", axis),
+        sprintf(
+          "Unknown %s ID%s in selector: %s.", axis,
+          if (sum(is.na(positions)) > 1L) "s" else "",
+          .format_id_sample(unique(index[is.na(positions)]))
+        ),
         axis = axis, reason = "unknown_id",
         unknown = index[is.na(positions)]
       )

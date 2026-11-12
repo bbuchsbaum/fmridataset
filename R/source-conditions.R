@@ -60,7 +60,7 @@ source_error <- function(message, type = c("stale", "io", "contract"), ...) {
 
 .source_generics <- c(
   "source_shape", "source_dtype", "source_chunks", "source_capabilities",
-  "source_fingerprint", "source_open", "source_read", "source_close"
+  "source_fingerprint", "source_open", "source_read"
 )
 
 # Resolve one protocol method the way S3 dispatch from `envir` would: a

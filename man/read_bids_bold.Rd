@@ -14,7 +14,8 @@ read_bids_bold(
   derivative = "fmriprep",
   mask = "intersection",
   events = TRUE,
-  chunks = NULL
+  chunks = NULL,
+  assay = "bold"
 )
 }
 \arguments{
@@ -33,20 +34,27 @@ compatible \code{volume_space}.}
 
 \item{chunks}{Optional observation-by-feature chunk hint passed to
 \code{\link[=nifti_source]{nifti_source()}}.}
+
+\item{assay}{Name of the assay holding the BOLD values.}
 }
 \value{
-A lazy \code{fmri_frame} with a \code{signal} assay.
+A lazy \code{fmri_frame} whose BOLD values are in the assay named by \code{assay}.
 }
 \description{
 \code{read_bids_bold()} is the narrow BIDS on-ramp to the canonical frame API. It
-discovers fMRIPrep \code{desc-preproc} BOLD runs, creates deterministic volume
-IDs, resolves one common volume space, and returns a lazy NIfTI-backed frame.
+discovers fMRIPrep \code{desc-preproc} BOLD runs, gives every volume a stable ID,
+resolves one common volume space, and returns a lazy NIfTI-backed frame.
 BOLD values are not read until an assay or spatial map is explicitly
 collected.
 }
 \details{
 Runs are ordered by session, task, and run number. Numeric run labels are
 compared as integers, so unpadded \code{run-2} precedes \code{run-10}.
+
+Observation IDs are \verb{<scan path>::volume-<n>}, where the scan path is
+relative to the dataset root and \code{n} is the 0-based NIfTI volume number,
+so importing the same tree again gives the same IDs. (\code{volume_index},
+below, is 1-based.)
 
 Each observation carries \code{scan_id}, \code{subject_id}, \code{session_id}, \code{task_id},
 \code{run_id}, \code{volume_index} (1-based position within its run), \code{run_time}, and
@@ -65,14 +73,18 @@ sf <- as_sampling_frame(schema)
 or build the frame with a \code{start_time = 0} observation column.
 }
 \examples{
-\dontrun{
-bold <- read_bids_bold(
-  "/data/my-study",
-  subject = "01",
-  task = "memory",
-  space = "MNI152NLin2009cAsym"
-)
-first_run <- filter_observations(bold, run_id == "run-1")
-map <- spatial_map(bold, observation = 1)
+# A two-run fMRIPrep tree shipped with the package.
+if (requireNamespace("bidser", quietly = TRUE) &&
+  utils::packageVersion("bidser") >= "0.5.0") {
+  root <- file.path(tempdir(), "fmriprep-toy")
+  untar(
+    system.file("extdata", "fmriprep-toy.tar.gz", package = "fmridataset"),
+    exdir = tempdir()
+  )
+  bold <- read_bids_bold(root, subject = "01", task = "memory")
+  bold
+  run_2 <- filter_observations(bold, run_id == "run-2")
+  collect_assay(run_2)
+  unlink(root, recursive = TRUE)
 }
 }

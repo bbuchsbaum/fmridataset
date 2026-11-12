@@ -8,7 +8,8 @@ collect_assay(
   x,
   assay = active_assay(x),
   memory_budget = getOption("fmridataset.collect_budget", 2 * 1024^3),
-  force = FALSE
+  force = FALSE,
+  dimnames = TRUE
 )
 }
 \arguments{
@@ -20,9 +21,15 @@ collect_assay(
 output and source conversion or decompression buffers.}
 
 \item{force}{Allow collection above the estimated peak budget.}
+
+\item{dimnames}{If \code{TRUE} (the default), the returned matrix is labelled
+with the observation IDs as row names and the feature IDs as column
+names, so the values keep their identity once they leave the frame. The
+labels are not counted against \code{memory_budget}; they grow with the number
+of rows plus columns, not with the number of values.}
 }
 \value{
-A dense matrix.
+A dense observation-by-feature matrix.
 }
 \description{
 Collect one frame assay under an explicit memory budget

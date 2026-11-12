@@ -7,7 +7,7 @@ test_that("frame slicing returns a synchronized non-dropping view", {
   expect_identical(dim(y), c(2L, 2L))
   expect_identical(observation_ids(y), observation_ids(x)[c(7, 2)])
   expect_identical(feature_ids(y), feature_ids(x)[c(6, 1)])
-  expect_equal(collect_assay(y), fx$beta[c(7, 2), c(6, 1), drop = FALSE])
+  expect_equal(collect_assay(y, dimnames = FALSE), fx$beta[c(7, 2), c(6, 1), drop = FALSE])
   expect_identical(dim(axis_block_data(observation_blocks(y)$motion)), c(2L, 2L))
   expect_error(x[1, 1, drop = TRUE], class = "fmridataset_error_alignment")
 })
@@ -18,7 +18,7 @@ test_that("views compose selectors back to the base frame", {
   y <- x[c(7, 2, 5), c(6, 1, 4)]
   z <- y[c(3, 1), c(2, 3)]
 
-  expect_equal(collect_assay(z), fx$beta[c(5, 7), c(1, 4), drop = FALSE])
+  expect_equal(collect_assay(z, dimnames = FALSE), fx$beta[c(5, 7), c(1, 4), drop = FALSE])
 })
 
 test_that("view assay descriptors expose the visible rectangle", {
@@ -89,7 +89,7 @@ test_that("filter_observations and select_features are metadata-only", {
 
   expect_identical(dim(y), c(3L, 2L))
   expect_true(all(vapply(assays(x), function(a) source_counts(a$source)$bytes, numeric(1)) == 0))
-  expect_equal(collect_assay(y), fx$beta[c(1, 3, 6), 1:2, drop = FALSE])
+  expect_equal(collect_assay(y, dimnames = FALSE), fx$beta[c(1, 3, 6), 1:2, drop = FALSE])
 })
 
 test_that("zero-length views remain two dimensional", {

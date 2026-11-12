@@ -28,7 +28,7 @@
   run_length = NULL,
   events = NULL,
   censor = NULL,
-  assay = "signal",
+  assay = "bold",
   ...
 )
 
@@ -39,7 +39,7 @@
   run_length = NULL,
   events = NULL,
   censor = NULL,
-  assay = "signal",
+  assay = "bold",
   ...
 )
 
@@ -62,7 +62,7 @@ read_nifti_bold(
   events = NULL,
   censor = NULL,
   chunks = NULL,
-  assay = "signal"
+  assay = "bold"
 )
 }
 \arguments{
@@ -89,7 +89,8 @@ Stored as the logical \code{censor} column, \code{TRUE} meaning excluded.}
 \item{space}{Optional feature space for a matrix. It must have one feature
 per column; \code{feature_ids} is then not allowed.}
 
-\item{assay}{Name of the assay.}
+\item{assay}{Name of the assay. Defaults to \code{"bold"} for volumes and NIfTI
+files, \code{"signal"} for a generic matrix, and \code{"scores"} for latent scores.}
 
 \item{...}{Unused; must be empty.}
 

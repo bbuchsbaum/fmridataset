@@ -7,6 +7,8 @@
 
 expect_array_source_conformance <- function(source, reference) {
   expect_s3_class(source, "array_source")
+  # The exported checker storage packages use must agree with these laws.
+  expect_no_error(check_array_source(source, reference))
   expect_invisible(validate_array_source(source))
   expect_identical(source_shape(source), as.integer(dim(reference)))
 

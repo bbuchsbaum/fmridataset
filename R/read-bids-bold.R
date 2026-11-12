@@ -512,8 +512,8 @@
 #' Read one subject's preprocessed BIDS BOLD data as an fmri_frame
 #'
 #' `read_bids_bold()` is the narrow BIDS on-ramp to the canonical frame API. It
-#' discovers fMRIPrep `desc-preproc` BOLD runs, creates deterministic volume
-#' IDs, resolves one common volume space, and returns a lazy NIfTI-backed frame.
+#' discovers fMRIPrep `desc-preproc` BOLD runs, gives every volume a stable ID,
+#' resolves one common volume space, and returns a lazy NIfTI-backed frame.
 #' BOLD values are not read until an assay or spatial map is explicitly
 #' collected.
 #'
@@ -526,9 +526,15 @@
 #' @param events Whether to attach matching BIDS events as a keyed event table.
 #' @param chunks Optional observation-by-feature chunk hint passed to
 #'   [nifti_source()].
+#' @param assay Name of the assay holding the BOLD values.
 #' @details
 #' Runs are ordered by session, task, and run number. Numeric run labels are
 #' compared as integers, so unpadded `run-2` precedes `run-10`.
+#'
+#' Observation IDs are `<scan path>::volume-<n>`, where the scan path is
+#' relative to the dataset root and `n` is the 0-based NIfTI volume number,
+#' so importing the same tree again gives the same IDs. (`volume_index`,
+#' below, is 1-based.)
 #'
 #' Each observation carries `scan_id`, `subject_id`, `session_id`, `task_id`,
 #' `run_id`, `volume_index` (1-based position within its run), `run_time`, and
@@ -544,25 +550,30 @@
 #' sf <- as_sampling_frame(schema)
 #' ```
 #' or build the frame with a `start_time = 0` observation column.
-#' @return A lazy `fmri_frame` with a `signal` assay.
+#' @return A lazy `fmri_frame` whose BOLD values are in the assay named by `assay`.
 #' @export
 #' @examples
-#' \dontrun{
-#' bold <- read_bids_bold(
-#'   "/data/my-study",
-#'   subject = "01",
-#'   task = "memory",
-#'   space = "MNI152NLin2009cAsym"
-#' )
-#' first_run <- filter_observations(bold, run_id == "run-1")
-#' map <- spatial_map(bold, observation = 1)
+#' # A two-run fMRIPrep tree shipped with the package.
+#' if (requireNamespace("bidser", quietly = TRUE) &&
+#'   utils::packageVersion("bidser") >= "0.5.0") {
+#'   root <- file.path(tempdir(), "fmriprep-toy")
+#'   untar(
+#'     system.file("extdata", "fmriprep-toy.tar.gz", package = "fmridataset"),
+#'     exdir = tempdir()
+#'   )
+#'   bold <- read_bids_bold(root, subject = "01", task = "memory")
+#'   bold
+#'   run_2 <- filter_observations(bold, run_id == "run-2")
+#'   collect_assay(run_2)
+#'   unlink(root, recursive = TRUE)
 #' }
 read_bids_bold <- function(path, subject, task = NULL, session = NULL,
                            run = NULL, space = NULL,
                            derivative = "fmriprep",
                            mask = "intersection", events = TRUE,
-                           chunks = NULL) {
+                           chunks = NULL, assay = "bold") {
   bidser_version <- .bids_require()
+  .assert_one_string(assay, "assay", .alignment_abort)
   if (!is.character(path) || length(path) != 1L || is.na(path) ||
     !nzchar(path) || !dir.exists(path)) {
     .bids_abort("path must name an existing BIDS directory.", field = "path")
@@ -619,7 +630,7 @@ read_bids_bold <- function(path, subject, task = NULL, session = NULL,
   ))
 
   fmri_frame(
-    assays = list(signal = source),
+    assays = stats::setNames(list(source), assay),
     observations = axis_frame(
       observation_data,
       id = observation_data$.obs_id,
@@ -635,7 +646,7 @@ read_bids_bold <- function(path, subject, task = NULL, session = NULL,
       run_subject = key_relation("subject_id", source = "run", target = "subject")
     ),
     tables = table_values,
-    active_assay = "signal",
+    active_assay = assay,
     metadata = list(
       source_format = "BIDS",
       derivative = derivative,

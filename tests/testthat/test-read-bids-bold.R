@@ -106,7 +106,7 @@ test_that("BIDS import reads only selected values on collection", {
       space = "MNI152NLin6Asym", events = FALSE
     )
   })
-  selected <- collect_assay(frame[c(1L, 4L), c(1L, 3L)])
+  selected <- collect_assay(frame[c(1L, 4L), c(1L, 3L)], dimnames = FALSE)
 
   expect_identical(dim(selected), c(2L, 2L))
   reference <- source_read(assay(frame)$source, c(1L, 4L), c(1L, 3L))
@@ -379,7 +379,7 @@ test_that("read_bids_bold keeps unpadded run-10 after run-2", {
   )
 
   expect_identical(unique(observations(frame)$run_id), c("run-1", "run-2", "run-10"))
-  expect_equal(collect_assay(frame)[, 1], c(1, 1, 2, 2, 10, 10))
+  expect_equal(collect_assay(frame, dimnames = FALSE)[, 1], c(1, 1, 2, 2, 10, 10))
   expect_identical(
     entity_ids(entity(entities(frame), "run")),
     unique(observations(frame)$scan_id)

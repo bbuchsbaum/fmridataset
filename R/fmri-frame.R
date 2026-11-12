@@ -204,10 +204,24 @@ fmri_frame <- function(assays, observations, features = NULL, space = NULL,
   }
 
   if (length(observations) != shape[1L]) {
-    .frame_abort("Observation metadata does not match assay rows.", "fmridataset_error_alignment")
+    .frame_abort(
+      sprintf(
+        "The assays have %d rows but the observation metadata has %d.",
+        shape[1L], length(observations)
+      ),
+      "fmridataset_error_alignment",
+      expected = shape[1L], actual = length(observations)
+    )
   }
   if (length(feature_axis_value) != shape[2L]) {
-    .frame_abort("Feature metadata does not match assay columns.", "fmridataset_error_alignment")
+    .frame_abort(
+      sprintf(
+        "The assays have %d columns but the feature space has %d features.",
+        shape[2L], length(feature_axis_value)
+      ),
+      "fmridataset_error_alignment",
+      expected = shape[2L], actual = length(feature_axis_value)
+    )
   }
 
   assay_values <- aligned_assay_set(assays, observations, feature_axis_value)
@@ -264,6 +278,7 @@ fmri_frame <- function(assays, observations, features = NULL, space = NULL,
 #'   one `aligned_assay` from it. `active_assay()` returns a single assay
 #'   name. `observation_axis()` returns an `axis_frame`; `observations()` and
 #'   `features()` return a data frame of the corresponding metadata.
+#'   `n_observations()` and `n_features()` return single integers.
 #'   `observation_ids()` and `feature_ids()` return character vectors of
 #'   stable IDs. `observation_blocks()` and `feature_blocks()` return named lists of
 #'   `axis_block`s. `dim()` returns a length-2 integer vector, and `nrow()`
@@ -392,6 +407,35 @@ space.default <- function(x, ...) neuroim2::space(x, ...)
 #' @export
 dim.fmri_frame <- function(x) c(length(observation_axis(x)), length(feature_axis(x)))
 
+#' @rdname frame-accessors
+#' @export
+n_observations <- function(x, ...) UseMethod("n_observations")
+
+#' @export
+n_observations.fmri_frame <- function(x, ...) dim(x)[[1L]]
+
+#' @export
+n_features.fmri_frame <- function(x, ...) dim(x)[[2L]]
+
+#' Read a frame's active assay as a matrix
+#'
+#' `as.matrix()` on a frame or view is [collect_assay()] for the active assay:
+#' it reads the values under the same memory budget and labels the rows and
+#' columns with the observation and feature IDs.
+#'
+#' @param x An `fmri_frame` or view.
+#' @param ... Passed to [collect_assay()], for example `assay`,
+#'   `memory_budget`, or `dimnames`.
+#' @return A dense observation-by-feature matrix.
+#' @examples
+#' frame <- fmri_frame(
+#'   assays = list(bold = matrix(1:6, 2)),
+#'   observations = data.frame(.obs_id = c("a", "b"))
+#' )
+#' as.matrix(frame[c("b", "a"), ])
+#' @export
+as.matrix.fmri_frame <- function(x, ...) collect_assay(x, ...)
+
 #' @export
 print.fmri_frame <- function(x, ...) {
   cat("<fmri_frame>", dim(x)[1L], "observations x", dim(x)[2L], "features\n")
@@ -422,7 +466,12 @@ print.fmri_frame <- function(x, ...) {
 #' @param memory_budget Maximum estimated peak bytes, including the retained
 #'   output and source conversion or decompression buffers.
 #' @param force Allow collection above the estimated peak budget.
-#' @return A dense matrix.
+#' @param dimnames If `TRUE` (the default), the returned matrix is labelled
+#'   with the observation IDs as row names and the feature IDs as column
+#'   names, so the values keep their identity once they leave the frame. The
+#'   labels are not counted against `memory_budget`; they grow with the number
+#'   of rows plus columns, not with the number of values.
+#' @return A dense observation-by-feature matrix.
 #' @examples
 #' sp <- volume_space(dim = c(2, 2, 2), affine = diag(4))
 #' frame <- fmri_frame(
@@ -434,7 +483,7 @@ print.fmri_frame <- function(x, ...) {
 #' @export
 collect_assay <- function(x, assay = active_assay(x),
                           memory_budget = getOption("fmridataset.collect_budget", 2 * 1024^3),
-                          force = FALSE) {
+                          force = FALSE, dimnames = TRUE) {
   selection <- .frame_selection(x)
   descriptor <- assay(selection$base, assay)
   observations <- .selection_index(selection$observations)
@@ -445,11 +494,15 @@ collect_assay <- function(x, assay = active_assay(x),
     features = features
   )
   .assert_realization_budget(cost, memory_budget, "collect_assay()", force)
-  source_read(
+  values <- source_read(
     descriptor$source,
     observations = observations,
     features = features
   )
+  if (isTRUE(dimnames)) {
+    base::dimnames(values) <- list(observation_ids(x), feature_ids(x))
+  }
+  values
 }
 
 #' Apply a function to bounded feature blocks
@@ -889,10 +942,20 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
   values <- lapply(xs, .frame_container_value, name = "metadata")
   if (identical(policy, "identical")) {
     if (!all(vapply(values, identical, logical(1), values[[1L]]))) {
+      fields <- unique(unlist(lapply(values, names)))
+      differing <- fields[!vapply(fields, function(name) {
+        all(vapply(values, function(v) identical(v[[name]], values[[1L]][[name]]), logical(1)))
+      }, logical(1))]
       .frame_abort(
-        "Bound frame metadata differ; use metadata_policy = 'merge' for a conflict-free record merge.",
+        sprintf(
+          paste0(
+            "Bound frames have different metadata in %s.\n",
+            "  Use metadata_policy = \"merge\" to combine records that do not conflict."
+          ),
+          paste0("'", differing, "'", collapse = ", ")
+        ),
         "fmridataset_error_alignment",
-        field = "metadata"
+        field = "metadata", differing = differing
       )
     }
     return(values[[1L]])

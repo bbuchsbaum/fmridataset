@@ -23,7 +23,7 @@ test_that("a matrix becomes a run-structured frame with derived IDs", {
     observation_ids(frame),
     c(sprintf("run-1-vol-%05d", 1:4), sprintf("run-2-vol-%05d", 1:2))
   )
-  expect_equal(collect_assay(frame), unname(y))
+  expect_equal(collect_assay(frame, dimnames = FALSE), unname(y))
   expect_identical(active_assay(frame), "signal")
 
   schema <- temporal_schema(frame)
@@ -132,10 +132,10 @@ test_that("NeuroVec runs become a frame over the mask's volume space", {
     t(apply(as.array(run_1), 4L, function(volume) volume[support])),
     t(apply(as.array(run_2), 4L, function(volume) volume[support]))
   )
-  expect_equal(collect_assay(frame), expected)
+  expect_equal(collect_assay(frame, dimnames = FALSE), expected)
 
   single <- as_fmri_frame(run_1, mask = mask, TR = 2)
-  expect_equal(collect_assay(single), expected[1:3, , drop = FALSE])
+  expect_equal(collect_assay(single, dimnames = FALSE), expected[1:3, , drop = FALSE])
   expect_identical(observation_ids(single), sprintf("run-1-vol-%05d", 1:3))
 
   # A volume round-trips through the frame's space.
@@ -200,7 +200,7 @@ test_that("read_nifti_bold builds a lazy frame matching the NIfTI source", {
   expect_identical(source_fingerprint(assay(frame)$source), source_fingerprint(source))
   expect_true(same_space(space(frame), nifti_source_space(source))$same)
   expect_equal(unname(temporal_schema(frame)$run_lengths), c(4L, 4L))
-  expect_equal(collect_assay(frame), source_read(source), tolerance = 0)
+  expect_equal(collect_assay(frame, dimnames = FALSE), source_read(source), tolerance = 0)
 
   # An in-memory mask and an explicit run split describe the same data.
   mask <- suppressWarnings(neuroim2::read_vol(path))
@@ -253,7 +253,7 @@ test_that("a LatentNeuroVec becomes scores over a synthesis-only basis space", {
   expect_s3_class(space(frame), "basis_space")
   expect_identical(active_assay(frame), "scores")
   expect_identical(feature_ids(frame), c("component-1", "component-2"))
-  expect_equal(collect_assay(frame), unname(as.matrix(scores)))
+  expect_equal(collect_assay(frame, dimnames = FALSE), unname(as.matrix(scores)))
   expect_identical(n_features(parent_space(space(frame))), 4L)
   expect_equal(
     as.matrix(collect_assay(frame) %*% Matrix::t(basis_synthesis(space(frame)))),

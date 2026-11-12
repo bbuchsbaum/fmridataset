@@ -7,10 +7,12 @@
 fds_frame_manifest_digest(manifest)
 }
 \arguments{
-\item{manifest}{A valid FDS manifest.}
+\item{manifest}{A valid FDS manifest, or an \code{fmri_frame} or view, whose
+manifest is built with \code{\link[=fds_frame_manifest]{fds_frame_manifest()}} first.}
 }
 \value{
-A stable hexadecimal digest over semantic manifest content.
+A stable hexadecimal digest over semantic manifest content: the
+frame's semantic identity, independent of where its values are stored.
 }
 \description{
 Compute a canonical FDS manifest digest
@@ -24,4 +26,5 @@ frame <- fmri_frame(
 )
 manifest <- fds_frame_manifest(frame)
 fds_frame_manifest_digest(manifest)
+identical(fds_frame_manifest_digest(frame), fds_frame_manifest_digest(manifest))
 }

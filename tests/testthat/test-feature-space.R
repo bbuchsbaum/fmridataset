@@ -348,7 +348,7 @@ test_that("parcel spaces survive physical HDF5 frame round trips", {
 
   expect_s3_class(space(restored), "parcel_space")
   expect_identical(space_digest(space(restored)), space_digest(x))
-  expect_equal(collect_assay(restored), matrix(seq_len(4L), nrow = 2L))
+  expect_equal(collect_assay(restored, dimnames = FALSE), matrix(seq_len(4L), nrow = 2L))
 })
 
 test_that("neuroatlas surface coding is delegated through get_roi", {
@@ -624,7 +624,7 @@ test_that("basis spaces survive logical and physical FDS round trips", {
   reopened <- open_frame(path)
   expect_s3_class(space(reopened), "basis_space")
   expect_identical(space_digest(space(reopened)), space_digest(x))
-  expect_equal(collect_assay(reopened), matrix(seq_len(6L), nrow = 3L))
+  expect_equal(collect_assay(reopened, dimnames = FALSE), matrix(seq_len(6L), nrow = 3L))
 })
 
 test_that("fmrilatent loadings adapt without stealing model ownership", {

@@ -444,10 +444,10 @@ as_sampling_frame <- function(x, ...) {
   }
   if (!isTRUE(schema$contiguous)) {
     .temporal_abort(
-      paste(
-        "A sampling frame is a run-length encoding and cannot describe a frame",
-        "whose runs are interleaved or reordered. Restore acquisition order",
-        "before converting, or work from temporal_schema() directly."
+      paste0(
+        "The frame's runs are interleaved or reordered, and a sampling frame\n",
+        "  (a run-length encoding) cannot describe that. Restore acquisition\n",
+        "  order before converting, or work from temporal_schema() directly."
       ),
       contiguous = FALSE,
       n_runs = schema$n_runs

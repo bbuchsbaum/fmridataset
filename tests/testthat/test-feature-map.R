@@ -217,9 +217,9 @@ test_that("map_features changes only the feature domain and declared assay rules
   expect_identical(feature_ids(mapped), feature_ids(fx$target_space))
   expect_identical(space_digest(space(mapped)), space_digest(fx$target_space))
   expect_identical(names(relations(mapped)), "observation_subject")
-  expect_equal(collect_assay(mapped, "beta"), fx$values %*% t(fx$operator))
+  expect_equal(collect_assay(mapped, "beta", dimnames = FALSE), fx$values %*% t(fx$operator))
   expect_equal(
-    collect_assay(mapped, "variance"),
+    collect_assay(mapped, "variance", dimnames = FALSE),
     (fx$values / 100) %*% t(fx$operator^2)
   )
   expect_equal(source_counts(fx$source)$reads, 1)
@@ -248,8 +248,8 @@ test_that("map_features derives canonical maps for parcel and basis spaces", {
   )
   parcel_frame <- map_features(frame, target = parcels)
   expect_equal(
-    collect_assay(parcel_frame),
-    collect_assay(frame) %*% t(as.matrix(parcel_aggregation(parcels)))
+    collect_assay(parcel_frame, dimnames = FALSE),
+    collect_assay(frame, dimnames = FALSE) %*% t(as.matrix(parcel_aggregation(parcels)))
   )
 
   basis <- basis_space_from_decoder(
@@ -259,8 +259,8 @@ test_that("map_features derives canonical maps for parcel and basis spaces", {
   )
   basis_frame <- map_features(frame, target = basis)
   expect_equal(
-    collect_assay(basis_frame),
-    collect_assay(frame) %*% t(basis_analysis(basis))
+    collect_assay(basis_frame, dimnames = FALSE),
+    collect_assay(frame, dimnames = FALSE) %*% t(basis_analysis(basis))
   )
 })
 
@@ -285,7 +285,7 @@ test_that("mapped frames retain feature-map provenance through FDS", {
     provenance_digest(mapped$provenance)
   )
   expect_identical(space_digest(space(restored)), space_digest(fx$target_space))
-  expect_equal(collect_assay(restored), fx$values %*% t(fx$operator))
+  expect_equal(collect_assay(restored, dimnames = FALSE), fx$values %*% t(fx$operator))
 })
 
 test_that("study mapping links validate their typed feature operator", {

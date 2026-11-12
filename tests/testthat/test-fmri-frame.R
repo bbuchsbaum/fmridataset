@@ -134,7 +134,7 @@ test_that("collect_assay enforces its output budget before reading", {
     class = "fmridataset_error_budget"
   )
   expect_equal(source_counts(assays(x)$beta$source)$bytes, 0)
-  expect_equal(collect_assay(x), fx$beta)
+  expect_equal(collect_assay(x, dimnames = FALSE), fx$beta)
 })
 
 test_that("spatial_map reconstructs one observation", {

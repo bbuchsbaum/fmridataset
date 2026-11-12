@@ -281,7 +281,8 @@
 #' @param space Optional feature space for a matrix. It must have one feature
 #'   per column; `feature_ids` is then not allowed.
 #' @param chunks Optional chunk shape passed to [nifti_source()].
-#' @param assay Name of the assay.
+#' @param assay Name of the assay. Defaults to `"bold"` for volumes and NIfTI
+#'   files, `"signal"` for a generic matrix, and `"scores"` for latent scores.
 #' @param ... Unused; must be empty.
 #' @return An `fmri_frame`.
 #' @seealso [fmri_frame()], [read_bids_bold()], [temporal_schema()]
@@ -359,7 +360,7 @@ as_fmri_frame.matrix <- function(x, TR = NULL, run_length = NULL, events = NULL,
 #' @export
 as_fmri_frame.NeuroVec <- function(x, mask, TR = NULL, run_length = NULL,
                                    events = NULL, censor = NULL,
-                                   assay = "signal", ...) {
+                                   assay = "bold", ...) {
   rlang::check_dots_empty()
   .neurovec_runs_frame(list(x), mask, TR, run_length, events, censor, assay)
 }
@@ -368,7 +369,7 @@ as_fmri_frame.NeuroVec <- function(x, mask, TR = NULL, run_length = NULL,
 #' @export
 as_fmri_frame.list <- function(x, mask, TR = NULL, run_length = NULL,
                                events = NULL, censor = NULL,
-                               assay = "signal", ...) {
+                               assay = "bold", ...) {
   rlang::check_dots_empty()
   is_vec <- vapply(x, function(run) {
     methods::is(run, "NeuroVec") && !methods::is(run, "LatentNeuroVec")
@@ -441,7 +442,7 @@ as_fmri_frame.LatentNeuroVec <- function(x, TR = NULL, run_length = NULL,
 #' @export
 read_nifti_bold <- function(paths, mask, TR = NULL, run_length = NULL,
                             events = NULL, censor = NULL, chunks = NULL,
-                            assay = "signal") {
+                            assay = "bold") {
   if (missing(mask) || is.null(mask)) {
     .constructor_abort("mask is required: a NIfTI path, NeuroVol, or volume_space().", "mask")
   }

@@ -119,7 +119,11 @@ test_that("collect_assay never returns an object larger than its budget", {
 
   # The peak estimate includes conversion buffers as well as the retained
   # output. A budget at that conservative peak is honoured.
-  collected <- collect_assay(frame, memory_budget = cost$estimated_peak_bytes)
+  # Labels add O(rows + columns) strings, not values; the budget bounds values.
+  collected <- collect_assay(
+    frame,
+    memory_budget = cost$estimated_peak_bytes, dimnames = FALSE
+  )
   expect_equal(dim(collected), as.integer(shape))
   expect_lte(as.numeric(utils::object.size(collected)) - 216, realized_bytes)
 })

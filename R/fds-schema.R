@@ -164,15 +164,15 @@ fds_frame_manifest <- function(x) {
   )
   if (length(ephemeral)) {
     remedy <- c(
-      observation = "build the observation axis with supplied IDs or id_policy = \"deterministic\"",
-      feature = "pass a feature space (space = ...) with supplied or deterministic IDs instead of letting fmri_frame() mint an ephemeral index_space"
+      observation = "Supply observation IDs, or use id_policy = \"deterministic\".",
+      feature = "Pass space = ... with durable feature IDs; without one, fmri_frame() mints ephemeral ones."
     )
     .identity_abort(
       sprintf(
-        "FDS persistence and semantic certification reject ephemeral axis IDs; the %s axis %s ephemeral IDs. To fix: %s.",
+        "The %s axis %s ephemeral IDs, which cannot be persisted or certified.\nTo fix:\n%s",
         paste(ephemeral, collapse = " and "),
         if (length(ephemeral) > 1L) "carry" else "carries",
-        paste(remedy[ephemeral], collapse = "; ")
+        paste0("  ", remedy[ephemeral], collapse = "\n")
       ),
       field = "axes", policy = "ephemeral", axes = ephemeral
     )
@@ -810,8 +810,10 @@ fds_frame_bindings <- function(x) {
 
 #' Compute a canonical FDS manifest digest
 #'
-#' @param manifest A valid FDS manifest.
-#' @return A stable hexadecimal digest over semantic manifest content.
+#' @param manifest A valid FDS manifest, or an `fmri_frame` or view, whose
+#'   manifest is built with [fds_frame_manifest()] first.
+#' @return A stable hexadecimal digest over semantic manifest content: the
+#'   frame's semantic identity, independent of where its values are stored.
 #' @examples
 #' voxels <- volume_space(dim = c(2, 2, 1), affine = diag(4), template = "toy")
 #' frame <- fmri_frame(
@@ -821,8 +823,12 @@ fds_frame_bindings <- function(x) {
 #' )
 #' manifest <- fds_frame_manifest(frame)
 #' fds_frame_manifest_digest(manifest)
+#' identical(fds_frame_manifest_digest(frame), fds_frame_manifest_digest(manifest))
 #' @export
 fds_frame_manifest_digest <- function(manifest) {
+  # A frame is digested through its manifest, so callers need not spell out
+  # fds_frame_manifest() first; the result is identical.
+  if (inherits(manifest, "fmri_frame")) manifest <- fds_frame_manifest(manifest)
   validate_fds_frame_manifest(manifest)
   .canonical_digest(manifest)
 }
