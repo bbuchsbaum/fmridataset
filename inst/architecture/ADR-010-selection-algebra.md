@@ -86,9 +86,12 @@ a structured `reason`: `unsupported_type`, `positional_axis`, `missing`,
 
 The law is enforced for sources at the `source_read()` and
 `source_read_native()` generics, before dispatch, so extension sources that
-the package does not implement reject the same selectors the same way. Methods
-still receive the caller's `NULL`, integer, or logical selector and expand it
-themselves; a method that also normalizes is redundant, not wrong.
+the package does not implement reject the same selectors the same way. The
+generics then pass methods the normalized selector: `NULL` for the whole axis,
+otherwise positive, in-bounds, unique positions in request order. Logical
+masks, negative positions, and zeros never reach a method, so a backend
+implements one selector form. (Before 0.11.0 methods received the caller's
+selector unchanged; a method that still normalizes is redundant, not wrong.)
 
 ### The two open questions
 
@@ -167,5 +170,6 @@ an extension source that declares none has simply not certified any form.
   scale with a select-all or range axis.
 - Extension sources are held to the law at the generic without changing their
   method signatures; `source_read(x, observations, features)` still accepts
-  `NULL`, integer, and logical selectors. The algebra itself is internal: no
-  constructor is exported.
+  `NULL`, integer, and logical selectors from callers and hands methods
+  normalized positions. The algebra itself is internal: no constructor is
+  exported.

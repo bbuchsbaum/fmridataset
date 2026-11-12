@@ -10,6 +10,7 @@
 [![Codecov test coverage](https://codecov.io/gh/bbuchsbaum/fmridataset/branch/main/graph/badge.svg)](https://app.codecov.io/gh/bbuchsbaum/fmridataset?branch=main)
 <!-- badges: end -->
 
+[Getting started](https://bbuchsbaum.github.io/fmridataset/articles/fmridataset.html) ·
 [Changelog](NEWS.md) ·
 [Canonical data model](inst/architecture/ADR-001-canonical-data-model.md) ·
 [API audiences](inst/architecture/API-AUDIENCES.md) ·

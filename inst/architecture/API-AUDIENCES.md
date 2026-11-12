@@ -13,7 +13,9 @@ The ordinary user surface covers:
 - canonical source-to-target study links and explicit link composition;
 - typed unaligned metadata records, typed event/auxiliary tables, and
   provenance graphs;
-- observation, feature, entity, relation, assay, and space inspection;
+- observation, feature, entity, relation, assay, and space inspection,
+  including `n_observations()`, `frame_metadata()`, `frame_tables()`,
+  `frame_table()`, and `provenance()`;
 - the derived observation-axis temporal contract (`temporal_schema()`,
   `has_temporal_schema()`, `as_sampling_frame()`);
 - lazy filtering, feature mapping, binding, and validity policies;
@@ -47,10 +49,11 @@ are runtime products of `source_open()` and must never become semantic state.
 Methods must preserve requested order, reject ambiguous identity, and return
 non-dropping two-dimensional blocks.
 
-Selectors reach a source method as `NULL` (everything), an integer position
-vector, or a logical mask, already checked against the selection law of
-ADR-010 at the `source_read()` and `source_read_native()` generics: positions
-are whole, in bounds, and never repeated. A source may declare the selector
+Selectors reach a source method as `NULL` (everything) or an integer
+position vector. The `source_read()` and `source_read_native()` generics check
+them against the selection law of ADR-010 and normalize them before dispatch,
+so positions are positive, whole, in bounds, never repeated, and in request
+order; logical masks, negative positions, and zeros never reach a method. A source may declare the selector
 forms it consumes natively as `pushdown:all`, `pushdown:range`, and
 `pushdown:positions` capability strings; the selection algebra itself is
 internal and exports no constructor.
@@ -71,7 +74,8 @@ object whose public fields expose hidden base state.
 The stable extension groups are:
 
 - source protocol: `as_array_source()`, `source_descriptor()`,
-  `validate_array_source()`, `source_realization_cost()`, the
+  `validate_array_source()`, `check_array_source()` (the conformance laws
+  storage packages run in their tests), `source_realization_cost()`, the
   `source_*()` lifecycle generics, and `source_error()` for signalling the
   protocol's stale, I/O, and contract conditions from an extension;
 - spatial protocol: `n_features()`, `feature_ids()`, `native_shape()`,

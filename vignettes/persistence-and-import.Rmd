@@ -240,7 +240,7 @@ reloaded
 entity(reloaded, "run")
 ```
 
-The run table came back from the manifest, and the frame from its HDF5 file.
+The study came back with its shared run table and its frame, which reads its values from the HDF5 file.
 
 ```{r write-cleanup, include = FALSE, eval = has_fmristore}
 unlink(c(path, dir), recursive = TRUE)
