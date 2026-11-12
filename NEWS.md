@@ -1,5 +1,21 @@
 # fmridataset 0.11.0 (Development)
 
+- New `write_study()` and `open_study()` save and reopen a whole
+  `fmri_study`. The saved directory is a BIDS derivative dataset
+  (`dataset_description.json` with `GeneratedBy`, and `participants.tsv` for a
+  subject entity) plus the package's own files, listed in `.bidsignore`:
+  `study.json` (the study manifest, in a new lossless JSON encoding),
+  `storage.json`, one HDF5 file per frame, and `arrays.h5` for entity blocks.
+  Writing is atomic, and opening checks every frame against the digest
+  recorded at write time. See `inst/architecture/ADR-011`. `jsonlite` moves
+  from Suggests to Imports.
+
+- `read_bids_bold()` records the files it read as BIDS URIs
+  (`bids:raw:<path>`) in the frame's provenance. `write_study(dataset_links =)`
+  records where `raw` is.
+
+- `axis_block` objects print a short summary.
+
 - **Changed IDs.** `read_bids_bold()` now names each run by the acquisition it
   records (`scan_id`, for example `sub-01_task-memory_run-01`), built from the
   BIDS entities that distinguish acquisitions (`sub`, `ses`, `task`, `acq`,

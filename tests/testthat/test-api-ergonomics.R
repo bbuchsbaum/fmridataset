@@ -215,7 +215,7 @@ test_that("the bundled fMRIPrep tree imports with a bold assay", {
 test_that("studies and collections say how to save them", {
   frame <- .ergonomic_frame()
   study <- fmri_study(list(main = frame))
-  expect_error(write_frame(study, tempfile()), "fds_study_manifest", class = "fmridataset_error_backend_io")
+  expect_error(write_frame(study, tempfile()), "write_study", class = "fmridataset_error_backend_io")
   expect_error(
     write_frame(fmri_collection(list(a = frame)), tempfile()),
     "not an fmri_collection",

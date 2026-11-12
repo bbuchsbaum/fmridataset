@@ -88,9 +88,7 @@ write_frame <- function(x, path, format = "hdf5", ...) {
     .frame_abort(
       paste0(
         "write_frame() saves one frame, not an ", class(x)[[1L]], ".\n",
-        "  Write each frame with write_frame() and keep the description from\n",
-        "  fds_study_manifest(); study_from_fds_manifest() rebuilds the study.\n",
-        "  See vignette(\"persistence-and-import\")."
+        "  Save a study with write_study(); put a collection in a study first."
       ),
       "fmridataset_error_backend_io",
       operation = "write_frame", actual = class(x)

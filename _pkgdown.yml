@@ -141,6 +141,7 @@ reference:
   contents:
   - write_frame
   - open_frame
+  - study-io
   - matches("^fds_")
   - validate_fds_frame_manifest
   - validate_fds_study_manifest

@@ -559,6 +559,11 @@
 #' @param chunks Optional observation-by-feature chunk hint passed to
 #'   [nifti_source()].
 #' @param assay Name of the assay holding the BOLD values.
+#' @section Provenance:
+#' The frame's provenance records the BOLD files it read as BIDS URIs,
+#' `bids:raw:<path within the dataset>`, where `raw` stands for the dataset at
+#' `path`. When the frame is saved in a study, [write_study()] can record where
+#' that dataset is with `dataset_links = list(raw = ...)`.
 #' @details
 #' Runs are ordered by session, task, and run number. Numeric run labels are
 #' compared as integers, so unpadded `run-2` precedes `run-10`.
@@ -650,7 +655,9 @@ read_bids_bold <- function(path, subject, task = NULL, session = NULL,
   }
   provenance <- provenance_graph(provenance_record(
     "read_bids_bold",
-    inputs = list(scans = manifest$relative_path),
+    # BIDS URIs: "raw" names the dataset at `path` (write_study(dataset_links =)
+    # can record where it is), so provenance survives the study being moved.
+    inputs = list(scans = paste0("bids:raw:", manifest$relative_path)),
     parameters = list(
       subject = sub("^sub-", "", subject), task = task, session = session,
       run = run, space = selected_space, derivative = derivative,

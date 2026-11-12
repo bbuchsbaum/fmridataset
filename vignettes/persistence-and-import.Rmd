@@ -203,49 +203,57 @@ Views over the reopened frame read only what they select.
 collect_assay(reopened[c("vol-06", "vol-01"), c("voxel-2", "voxel-1")])
 ```
 
-A study (`vignette("studies")`) is saved one frame at a time.
-`fds_study_manifest()` describes everything else, the shared entities,
-tables, and links, without reading any values, and
-`study_from_fds_manifest()` rebuilds the study from that description and the
-reopened frames. Here the study holds one frame whose runs are described by a
-run table.
+A whole study (`vignette("studies")`) is saved with `write_study()` and
+reopened with `open_study()`. Here the study holds one frame from one subject,
+with a run table describing its runs.
 
 ```{r save-study, eval = has_fmristore}
+subjects <- entity_frame(
+  data.frame(subject_id = "sub-01", age = 34),
+  key = "subject_id", entity_type = "subject"
+)
 run_info <- entity_frame(
   data.frame(run_id = c("run-1", "run-2"), condition = c("rest", "task")),
-  key = "run_id",
-  entity_type = "run"
+  key = "run_id", entity_type = "run"
 )
 described <- fmri_frame(
   assays = list(bold = values),
-  observations = observations,
+  observations = transform(observations, subject_id = "sub-01"),
   space = voxels,
-  entities = list(run = run_info),
-  relations = list(volume_run = key_relation("run_id", target = "run"))
+  entities = list(subject = subjects, run = run_info),
+  relations = list(
+    volume_subject = key_relation("subject_id", target = "subject"),
+    volume_run = key_relation("run_id", target = "run")
+  )
 )
-study <- fmri_study(list(main = described), entities = list(run = run_info))
+study <- fmri_study(
+  list(main = described),
+  entities = list(subject = subjects, run = run_info)
+)
 
-dir <- file.path(tempdir(), "toy-study")
-dir.create(dir)
-for (id in study_ids(study)) {
-  write_frame(study_frame(study, id), file.path(dir, paste0(id, ".h5")))
-}
-saveRDS(fds_study_manifest(study), file.path(dir, "study.rds"))
-
-manifest <- readRDS(file.path(dir, "study.rds"))
-frames <- lapply(study_ids(study), function(id) {
-  open_frame(file.path(dir, paste0(id, ".h5")))
-})
-names(frames) <- study_ids(study)
-reloaded <- study_from_fds_manifest(manifest, frames)
-reloaded
-entity(reloaded, "run")
+study_dir <- write_study(study, file.path(tempdir(), "toy-study"))
+reopened <- open_study(study_dir)
+reopened
+entity(reopened, "run")
 ```
 
-The study came back with its shared run table and its frame, which reads its values from the HDF5 file.
+The saved study is a BIDS derivative dataset, so BIDS tools recognise it. BIDS
+supplies the dataset description and the participants table; the package adds
+only what BIDS has no place for, its study description (`study.json`, in a
+lossless JSON encoding), the storage index (`storage.json`), and one HDF5 file
+per frame, and lists them in `.bidsignore`.
+
+```{r study-files, eval = has_fmristore}
+list.files(study_dir, recursive = TRUE, all.files = TRUE)
+cat(readLines(file.path(study_dir, "participants.tsv")), sep = "\n")
+```
+
+`open_study()` checks every frame against the digest recorded when the study
+was written, so a frame file that was replaced or rewritten since is reported
+rather than silently used.
 
 ```{r write-cleanup, include = FALSE, eval = has_fmristore}
-unlink(c(path, dir), recursive = TRUE)
+unlink(c(path, study_dir), recursive = TRUE)
 ```
 
 ## What gets saved

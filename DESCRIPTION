@@ -19,6 +19,7 @@ Depends:
 Imports:
     digest,
     fs,
+    jsonlite,
     Matrix,
     methods,
     neuroim2,
@@ -38,7 +39,6 @@ Suggests:
     fmrigds,
     fmristore (>= 0.1.0.9000),
     hdf5r,
-    jsonlite,
     knitr,
     multidesign,
     neuroatlas,

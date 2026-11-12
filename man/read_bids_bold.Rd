@@ -77,6 +77,14 @@ sf <- as_sampling_frame(schema)
 
 or build the frame with a \code{start_time = 0} observation column.
 }
+\section{Provenance}{
+
+The frame's provenance records the BOLD files it read as BIDS URIs,
+\verb{bids:raw:<path within the dataset>}, where \code{raw} stands for the dataset at
+\code{path}. When the frame is saved in a study, \code{\link[=write_study]{write_study()}} can record where
+that dataset is with \code{dataset_links = list(raw = ...)}.
+}
+
 \examples{
 # A two-run fMRIPrep tree shipped with the package.
 if (requireNamespace("bidser", quietly = TRUE) &&

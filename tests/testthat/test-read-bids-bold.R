@@ -421,3 +421,15 @@ test_that("the same acquisition gets the same IDs in every output space", {
   expect_identical(observation_ids(native), observation_ids(mni))
   expect_false(isTRUE(same_space(space(native), space(mni))))
 })
+
+test_that("BIDS imports record their inputs as BIDS URIs", {
+  skip_if_not_installed("bidser", minimum_version = "0.5.0")
+  fixture <- .make_bids_frame_fixture()
+  on.exit(unlink(fixture$root, recursive = TRUE), add = TRUE)
+  frame <- read_bids_bold(fixture$root, subject = "01", task = "memory", space = "MNI152NLin6Asym")
+  record <- provenance_records(provenance(frame))[[1L]]
+  expect_identical(
+    record$inputs$scans,
+    paste0("bids:raw:", as.character(fs::path_rel(fixture$bold, fixture$root)))
+  )
+})

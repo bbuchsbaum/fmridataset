@@ -232,6 +232,6 @@ fmri_study(list(native = cohort, betas = betas), entities = list(
 ))
 ```
 
-`vignette("persistence-and-import")` shows how to save a study: each frame is
-written with `write_frame()`, and the study's entities and links are kept in
-its manifest.
+`write_study()` saves a study, with all its frames, entities, and links, as a
+BIDS derivative dataset, and `open_study()` reopens it; see
+`vignette("persistence-and-import")`.

@@ -71,7 +71,8 @@
   "temporal_schema", "unaligned_record", "validity_coverage",
   "validity_entity", "validity_entity_ids", "validity_mask_bank", "validity_matrix",
   "validity_space", "vectorize_space", "volume_space", "write_frame",
-  "validate_auxiliary_table", "validate_unaligned_record", "zarr_source"
+  "validate_auxiliary_table", "validate_unaligned_record", "zarr_source",
+  "write_study", "open_study"
 )
 
 test_that("every ordinary export has one documented audience", {

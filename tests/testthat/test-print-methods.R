@@ -158,3 +158,10 @@ test_that("numbers get the article they are read with", {
     c("a", "an", "an", "an", "an", "a", "an", "a", "an", "an", "a")
   )
 })
+
+test_that("axis blocks print their shape and components", {
+  block <- axis_block(matrix(as.double(1:8), 4), components = data.frame(.component_id = c("d1", "d2")))
+  expect_identical(.print_lines(block), c("<axis_block> 4 x 2 (continuous)", "  components: d1, d2"))
+  lazy <- axis_block(memory_source(matrix(as.double(1:8), 4)), role = "confound")
+  expect_identical(.print_lines(lazy)[[3L]], "  source:     memory_source")
+})

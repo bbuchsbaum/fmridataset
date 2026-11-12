@@ -22,7 +22,8 @@ The ordinary user surface covers:
 - bounded numerical and spatial realization;
 - NIfTI, HDF5, Zarr, atlas, surface, and latent interoperability, and the
   narrow `read_bids_bold()` on-ramp;
-- FDS inspection and persistence.
+- FDS inspection and persistence, including `write_study()` and
+  `open_study()` for whole studies (ADR-011).
 
 There is no public legacy migration surface. The pre-frame 0.x architecture
 was removed rather than adapted (see `NEWS.md` for the boundary revision), and

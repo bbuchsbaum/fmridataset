@@ -319,3 +319,14 @@ print.frame_link <- function(x, ...) {
   if (!is.null(x$operator)) .line("  operator:", class(x$operator)[[1L]])
   invisible(x)
 }
+
+#' @export
+print.axis_block <- function(x, ...) {
+  data <- axis_block_data(x)
+  shape <- if (inherits(data, "array_source")) source_shape(data) else dim(as.matrix(data))
+  .line("<axis_block>", shape[[1L]], "x", shape[[2L]], sprintf("(%s)", x$role))
+  .line("  components:", .format_id_sample(block_component_ids(x)))
+  if (!is.null(x$units)) .line("  units:     ", paste(x$units, collapse = ", "))
+  if (inherits(data, "array_source")) .line("  source:    ", .explain_source_type(data))
+  invisible(x)
+}
