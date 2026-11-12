@@ -146,6 +146,26 @@
   )
 }
 
+# The acquisition a scan records, as a BIDS-style name: the entities that tell
+# acquisitions apart, in BIDS filename order (sub, ses, task, acq, ce, rec,
+# dir, run, echo, part). Derivative-only entities (space, res, desc), the
+# suffix, and the directory are left out, so the same acquisition has the same
+# ID whatever space it was resampled into and wherever the derivatives live.
+# Labels are taken verbatim from the file name (bidser normalizes "run-01" to
+# "1"), so an ID can be matched against the files it came from.
+.bids_acquisition_keys <- c("sub", "ses", "task", "acq", "ce", "rec", "dir", "run", "echo", "part")
+
+.bids_acquisition_id <- function(paths) {
+  names <- basename(paths)
+  vapply(names, function(name) {
+    pieces <- vapply(.bids_acquisition_keys, function(key) {
+      match <- regmatches(name, regexec(sprintf("(^|_)%s-([A-Za-z0-9]+)", key), name))[[1L]]
+      if (length(match)) paste0(key, "-", match[[3L]]) else NA_character_
+    }, character(1))
+    paste(pieces[!is.na(pieces)], collapse = "_")
+  }, character(1), USE.NAMES = FALSE)
+}
+
 .bids_relative_path <- function(paths, root) {
   root <- normalizePath(root, winslash = "/", mustWork = TRUE)
   existing <- file.exists(paths)
@@ -158,11 +178,11 @@
   outside <- values == ".." | startsWith(values, paste0("..", .Platform$file.sep))
   if (any(outside)) {
     .bids_abort(
-      "Discovered BIDS files must be inside the supplied BIDS root so stable relative IDs can be minted.",
+      "Discovered BIDS files must be inside the supplied BIDS root so their paths can be recorded relative to it.",
       files = paths[outside]
     )
   }
-  gsub("\\\\", "/", values)
+  gsub("\\\\", "/", as.character(values))
 }
 
 .bids_domain_label <- function(value, missing = "native") {
@@ -190,9 +210,21 @@
   }
   parsed$.path <- paths
   parsed$relative_path <- .bids_relative_path(paths, root)
-  parsed$scan_id <- sub("\\.nii(\\.gz)?$", "", parsed$relative_path, ignore.case = TRUE)
+  parsed$scan_id <- .bids_acquisition_id(parsed$relative_path)
   if (anyDuplicated(parsed$scan_id)) {
-    .bids_abort("BOLD discovery produced duplicate stable scan IDs.", scan_ids = parsed$scan_id)
+    duplicated_ids <- unique(parsed$scan_id[duplicated(parsed$scan_id)])
+    .bids_abort(
+      sprintf(
+        paste0(
+          "Several selected BOLD files record the same acquisition: %s.\n",
+          "  Narrow the selection (for example with space = ...) so each\n",
+          "  acquisition is imported once."
+        ),
+        .format_id_sample(duplicated_ids)
+      ),
+      scan_ids = duplicated_ids,
+      files = parsed$relative_path[parsed$scan_id %in% duplicated_ids]
+    )
   }
 
   parsed$subject_id <- paste0("sub-", .bids_entity_value(parsed, "subid"))
@@ -437,7 +469,7 @@
     index <- seq_len(manifest$n_volume[[i]])
     n <- length(index)
     data.frame(
-      .obs_id = sprintf("%s::volume-%06d", manifest$scan_id[[i]], index - 1L),
+      .obs_id = sprintf("%s_vol-%04d", manifest$scan_id[[i]], index),
       scan_id = rep(manifest$scan_id[[i]], n),
       subject_id = rep(manifest$subject_id[[i]], n),
       session_id = rep(manifest$session_id[[i]], n),
@@ -531,10 +563,15 @@
 #' Runs are ordered by session, task, and run number. Numeric run labels are
 #' compared as integers, so unpadded `run-2` precedes `run-10`.
 #'
-#' Observation IDs are `<scan path>::volume-<n>`, where the scan path is
-#' relative to the dataset root and `n` is the 0-based NIfTI volume number,
-#' so importing the same tree again gives the same IDs. (`volume_index`,
-#' below, is 1-based.)
+#' Each run's `scan_id` names its acquisition with the BIDS entities that tell
+#' acquisitions apart, in filename order: `sub`, `ses`, `task`, `acq`, `ce`,
+#' `rec`, `dir`, `run`, `echo`, and `part`, for example
+#' `sub-01_task-memory_run-01`. Derivative-only entities (`space`, `res`,
+#' `desc`) and the directory are left out, so the same acquisition gets the
+#' same ID in every output space and wherever the derivatives are stored; the
+#' file's path is kept in the run table's `relative_path` column. Observation
+#' IDs append the 1-based volume number, matching `volume_index`:
+#' `sub-01_task-memory_run-01_vol-0001`.
 #'
 #' Each observation carries `scan_id`, `subject_id`, `session_id`, `task_id`,
 #' `run_id`, `volume_index` (1-based position within its run), `run_time`, and

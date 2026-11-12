@@ -130,7 +130,7 @@ fMRIPrep derivatives use \code{\link[=read_bids_bold]{read_bids_bold()}}.
 }
 \details{
 Observations are numbered within runs in the order given. Each frame gets
-the columns \code{.obs_id} (\verb{run-<r>-vol-<index>}), \code{run_id} (\verb{run-<r>}), and
+the columns \code{.obs_id} (\verb{run-<r>_vol-<index>}, as in \verb{run-1_vol-0001}), \code{run_id} (\verb{run-<r>}), and
 \code{volume_index}, plus \code{TR} and \code{censor} when supplied. The IDs are derived
 from run and volume position, so the same call always produces the same
 IDs.

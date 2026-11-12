@@ -74,7 +74,7 @@
   run <- rep.int(seq_len(n_runs), run_length)
   index <- sequence(run_length)
   obs <- data.frame(
-    .obs_id = sprintf("run-%d-vol-%05d", run, index),
+    .obs_id = sprintf("run-%d_vol-%04d", run, index),
     run_id = sprintf("run-%d", run),
     volume_index = index,
     stringsAsFactors = FALSE
@@ -243,7 +243,7 @@
 #'
 #' @details
 #' Observations are numbered within runs in the order given. Each frame gets
-#' the columns `.obs_id` (`run-<r>-vol-<index>`), `run_id` (`run-<r>`), and
+#' the columns `.obs_id` (`run-<r>_vol-<index>`, as in `run-1_vol-0001`), `run_id` (`run-<r>`), and
 #' `volume_index`, plus `TR` and `censor` when supplied. The IDs are derived
 #' from run and volume position, so the same call always produces the same
 #' IDs.

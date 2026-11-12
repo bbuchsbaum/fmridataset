@@ -21,7 +21,7 @@ test_that("a matrix becomes a run-structured frame with derived IDs", {
   expect_identical(feature_ids(frame), c("a", "b", "c", "d"))
   expect_identical(
     observation_ids(frame),
-    c(sprintf("run-1-vol-%05d", 1:4), sprintf("run-2-vol-%05d", 1:2))
+    c(sprintf("run-1_vol-%04d", 1:4), sprintf("run-2_vol-%04d", 1:2))
   )
   expect_equal(collect_assay(frame, dimnames = FALSE), unname(y))
   expect_identical(active_assay(frame), "signal")
@@ -136,7 +136,7 @@ test_that("NeuroVec runs become a frame over the mask's volume space", {
 
   single <- as_fmri_frame(run_1, mask = mask, TR = 2)
   expect_equal(collect_assay(single, dimnames = FALSE), expected[1:3, , drop = FALSE])
-  expect_identical(observation_ids(single), sprintf("run-1-vol-%05d", 1:3))
+  expect_identical(observation_ids(single), sprintf("run-1_vol-%04d", 1:3))
 
   # A volume round-trips through the frame's space.
   map <- spatial_map(single, observation = 2L)

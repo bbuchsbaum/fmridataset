@@ -51,10 +51,15 @@ collected.
 Runs are ordered by session, task, and run number. Numeric run labels are
 compared as integers, so unpadded \code{run-2} precedes \code{run-10}.
 
-Observation IDs are \verb{<scan path>::volume-<n>}, where the scan path is
-relative to the dataset root and \code{n} is the 0-based NIfTI volume number,
-so importing the same tree again gives the same IDs. (\code{volume_index},
-below, is 1-based.)
+Each run's \code{scan_id} names its acquisition with the BIDS entities that tell
+acquisitions apart, in filename order: \code{sub}, \code{ses}, \code{task}, \code{acq}, \code{ce},
+\code{rec}, \code{dir}, \code{run}, \code{echo}, and \code{part}, for example
+\verb{sub-01_task-memory_run-01}. Derivative-only entities (\code{space}, \code{res},
+\code{desc}) and the directory are left out, so the same acquisition gets the
+same ID in every output space and wherever the derivatives are stored; the
+file's path is kept in the run table's \code{relative_path} column. Observation
+IDs append the 1-based volume number, matching \code{volume_index}:
+\verb{sub-01_task-memory_run-01_vol-0001}.
 
 Each observation carries \code{scan_id}, \code{subject_id}, \code{session_id}, \code{task_id},
 \code{run_id}, \code{volume_index} (1-based position within its run), \code{run_time}, and

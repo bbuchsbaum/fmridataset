@@ -1,5 +1,19 @@
 # fmridataset 0.11.0 (Development)
 
+- **Changed IDs.** `read_bids_bold()` now names each run by the acquisition it
+  records (`scan_id`, for example `sub-01_task-memory_run-01`), built from the
+  BIDS entities that distinguish acquisitions (`sub`, `ses`, `task`, `acq`,
+  `ce`, `rec`, `dir`, `run`, `echo`, `part`) with labels taken verbatim from
+  the file name. Observation IDs append the 1-based volume number
+  (`sub-01_task-memory_run-01_vol-0001`, matching `volume_index`); they were
+  the file path plus a 0-based `::volume-000000` suffix. The output space,
+  `desc` label, and directory no longer enter the IDs, so the same
+  acquisition imported in two spaces gets the same IDs, and moving or
+  renaming the derivatives folder no longer changes them. The path is kept in
+  the run table's `relative_path` column (now plain character). IDs from
+  earlier development imports do not match the new ones. `as_fmri_frame()`
+  uses the same style: `run-1_vol-0001` (was `run-1-vol-00001`).
+
 - Vignettes rewritten. "Getting started" now begins from your own data
   (`read_nifti_bold()`, `as_fmri_frame()`), a new "Subjects, runs, and
   studies" vignette covers entities, relations, studies, and collections,

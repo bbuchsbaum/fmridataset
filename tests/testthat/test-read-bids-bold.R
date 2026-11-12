@@ -13,16 +13,18 @@ test_that("read_bids_bold constructs a deterministic lazy frame", {
 
   expect_s3_class(frame, "fmri_frame")
   expect_identical(dim(frame), c(6L, 3L))
+  # IDs name the acquisition (no path, space, or desc) and count volumes from 1.
   expect_identical(
     observation_ids(frame),
-    unlist(
-      lapply(
-        sub("\\.nii$", "", fs::path_rel(fixture$bold, fixture$root)),
-        function(scan) sprintf("%s::volume-%06d", scan, 0:2)
-      ),
-      use.names = FALSE
-    )
+    sprintf("sub-01_task-memory_run-%02d_vol-%04d", rep(1:2, each = 3), rep(1:3, 2))
   )
+  expect_identical(
+    unique(observations(frame)$scan_id),
+    sprintf("sub-01_task-memory_run-%02d", 1:2)
+  )
+  relative <- entity_data(entity(entities(frame), "run"))$relative_path
+  expect_type(relative, "character")
+  expect_identical(relative, as.character(fs::path_rel(fixture$bold, fixture$root)))
   expect_identical(features(frame)$.feature_id, paste0("voxel-", fixture$support))
   expect_identical(entity_names(entities(frame)), c("subject", "run"))
   expect_identical(entity_ids(entity(entities(frame), "subject")), "sub-01")
@@ -315,10 +317,10 @@ test_that("read_bids_bold integrates with the released bidser contract", {
   )
 
   expect_identical(dim(frame), c(6L, 3L))
-  expect_identical(observation_ids(frame)[c(1L, 4L)], sprintf(
-    "%s::volume-000000",
-    sub("\\.nii$", "", fs::path_rel(fixture$bold, fixture$root))
-  ))
+  expect_identical(
+    observation_ids(frame)[c(1L, 4L)],
+    sprintf("sub-01_task-memory_run-%02d_vol-0001", 1:2)
+  )
   expect_identical(nrow(event_data(frame$tables$events)), 2L)
 })
 
@@ -386,4 +388,36 @@ test_that("read_bids_bold keeps unpadded run-10 after run-2", {
   )
   expect_identical(observations(frame)$volume_index, rep(1:2, 3))
   expect_true(temporal_schema(frame)$ordered)
+})
+
+test_that("acquisition IDs keep distinguishing entities and drop derivative ones", {
+  paths <- c(
+    "derivatives/fmriprep/sub-01/ses-2/func/sub-01_ses-2_task-rest_acq-mb_dir-AP_run-03_echo-1_space-T1w_desc-preproc_bold.nii.gz",
+    "derivatives/fmriprep/sub-01/func/sub-01_task-rest_run-1_space-MNI152NLin6Asym_desc-preproc_bold.nii",
+    "elsewhere/sub-02_task-rest_space-MNI152NLin6Asym_res-2_desc-preproc_bold.nii.gz"
+  )
+  expect_identical(
+    fmridataset:::.bids_acquisition_id(paths),
+    c(
+      "sub-01_ses-2_task-rest_acq-mb_dir-AP_run-03_echo-1",
+      "sub-01_task-rest_run-1",
+      "sub-02_task-rest"
+    )
+  )
+})
+
+test_that("the same acquisition gets the same IDs in every output space", {
+  skip_if_not_installed("bidser", minimum_version = "0.5.0")
+  fixture <- .make_bids_frame_fixture()
+  on.exit(unlink(fixture$root, recursive = TRUE), add = TRUE)
+  t1w <- sub("MNI152NLin6Asym", "T1w", c(fixture$bold, fixture$masks))
+  file.copy(c(fixture$bold, fixture$masks), t1w)
+  file.copy(
+    sub("\\.nii$", ".json", fixture$bold),
+    sub("\\.nii$", ".json", sub("MNI152NLin6Asym", "T1w", fixture$bold))
+  )
+  mni <- read_bids_bold(fixture$root, subject = "01", task = "memory", space = "MNI152NLin6Asym")
+  native <- read_bids_bold(fixture$root, subject = "01", task = "memory", space = "T1w")
+  expect_identical(observation_ids(native), observation_ids(mni))
+  expect_false(isTRUE(same_space(space(native), space(mni))))
 })

@@ -116,22 +116,24 @@ observations(bold)[, c("run_id", "volume_index", "run_time", "TR")]
 temporal_schema(bold)
 ```
 
-Each run is identified by its file (`scan_id`) rather than by its BIDS run
-label, which is unique only within a session. Each volume's ID is that file's
-path within the dataset plus its volume number, counted from zero as NIfTI
-does. Importing the same tree again gives the same IDs.
+Each run is identified by the acquisition it records (`scan_id`): the BIDS
+entities that tell acquisitions apart, such as subject, session, task, and
+run, rather than its BIDS run label alone, which is unique only within a
+session. The output space, the `desc` label, and the folder are left out, so
+the same acquisition has the same IDs whichever space fMRIPrep resampled it
+into; the file itself is recorded in the run table's `relative_path`. Each
+volume's ID adds its position in the run, counted from one like
+`volume_index`.
 
 ```{r bids-ids, eval = has_bidser}
-observation_ids(bold)[1]
+observation_ids(bold)[1:2]
 ```
 
-Reading is lazy. Selecting a run reads only that run's volumes. The values
-come back labelled with those long IDs; `dimnames = FALSE` leaves them off
-for display.
+Reading is lazy. Selecting a run reads only that run's volumes.
 
 ```{r bids-read-values, eval = has_bidser}
 run_2 <- filter_observations(bold, run_id == "run-2")
-collect_assay(run_2, dimnames = FALSE)
+collect_assay(run_2)
 ```
 
 The matching `events.tsv` files are attached as an event table.
