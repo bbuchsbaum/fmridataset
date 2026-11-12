@@ -17,8 +17,7 @@ return the report without raising.}
 }
 \value{
 A \code{source_conformance} data frame with one row per law and columns
-\code{law}, \code{passed}, and \code{detail}, invisibly when every law passes. It prints
-as a checklist. When the descriptor law fails, the other laws are not
+\code{law}, \code{passed}, and \code{detail}. It prints as a checklist. When the descriptor law fails, the other laws are not
 checked (they would only repeat that failure) and \code{passed} is \code{NA}.
 }
 \description{

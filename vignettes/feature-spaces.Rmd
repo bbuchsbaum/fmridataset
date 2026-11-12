@@ -370,11 +370,11 @@ spatial_map(cifti, "vol-01")
 
 `fmridataset` owns spatial identity, restriction, maps between spaces, and
 applying those maps lazily. It does not register or resample images, fit
-decompositions, choose atlases, or run models. `neuroatlas` supplies parcellations, `fmrilatent` supplies
-fitted bases through `basis_space_from_fmrilatent()`, and `neurosurf` supplies
-surface geometry through `surface_space_from_neurosurf()`. Each hands the
-package a space; the package hands back frames whose columns still mean what
-they meant.
+decompositions, choose atlases, or run models. `neuroatlas` supplies
+parcellations, `fmrilatent` supplies fitted bases through
+`basis_space_from_fmrilatent()`, and `neurosurf` supplies surface geometry
+through `surface_space_from_neurosurf()`. Each hands the package a space; the
+package hands back frames whose columns still mean what they meant.
 
 To save frames in any of these spaces and reload them, see
 `vignette("persistence-and-import")`.

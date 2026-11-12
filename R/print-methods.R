@@ -109,7 +109,12 @@ print.volume_space <- function(x, ...) {
 #' @export
 print.surface_space <- function(x, ...) {
   hemispheres <- table(factor(x$hemisphere[x$support], levels = unique(x$hemisphere)))
-  counts <- paste(names(hemispheres), as.integer(hemispheres), collapse = ", ")
+  hemispheres <- hemispheres[hemispheres > 0L]
+  counts <- if (length(hemispheres) == 1L) {
+    paste(names(hemispheres), "hemisphere")
+  } else {
+    paste(names(hemispheres), as.integer(hemispheres), collapse = ", ")
+  }
   .line(
     "<surface_space>", .plural(n_features(x), "vertex", "vertices"),
     paste0("(", counts, ")")

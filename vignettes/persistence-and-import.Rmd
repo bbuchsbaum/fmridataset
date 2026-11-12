@@ -201,17 +201,27 @@ Views over the reopened frame read only what they select.
 collect_assay(reopened[c("vol-06", "vol-01"), c("voxel-2", "voxel-1")])
 ```
 
-A study is saved one frame at a time. `fds_study_manifest()` describes
-everything else, the shared entities, tables, and links, without reading any
-values, and `study_from_fds_manifest()` rebuilds the study from that
-description and the reopened frames.
+A study (`vignette("studies")`) is saved one frame at a time.
+`fds_study_manifest()` describes everything else, the shared entities,
+tables, and links, without reading any values, and
+`study_from_fds_manifest()` rebuilds the study from that description and the
+reopened frames. Here the study holds one frame whose runs are described by a
+run table.
 
 ```{r save-study, eval = has_fmristore}
-runs <- split(observation_ids(frame), observations(frame)$run_id)
-study <- fmri_study(list(
-  run1 = frame[runs[["run-1"]], ],
-  run2 = frame[runs[["run-2"]], ]
-))
+run_info <- entity_frame(
+  data.frame(run_id = c("run-1", "run-2"), condition = c("rest", "task")),
+  key = "run_id",
+  entity_type = "run"
+)
+described <- fmri_frame(
+  assays = list(bold = values),
+  observations = observations,
+  space = voxels,
+  entities = list(run = run_info),
+  relations = list(volume_run = key_relation("run_id", target = "run"))
+)
+study <- fmri_study(list(main = described), entities = list(run = run_info))
 
 dir <- file.path(tempdir(), "toy-study")
 dir.create(dir)
@@ -227,7 +237,10 @@ frames <- lapply(study_ids(study), function(id) {
 names(frames) <- study_ids(study)
 reloaded <- study_from_fds_manifest(manifest, frames)
 reloaded
+entity(reloaded, "run")
 ```
+
+The run table came back from the manifest, and the frame from its HDF5 file.
 
 ```{r write-cleanup, include = FALSE, eval = has_fmristore}
 unlink(c(path, dir), recursive = TRUE)

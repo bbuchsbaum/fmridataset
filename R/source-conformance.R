@@ -38,8 +38,7 @@
 #'   `fmridataset_error_source_contract` naming every failed law. If `FALSE`,
 #'   return the report without raising.
 #' @return A `source_conformance` data frame with one row per law and columns
-#'   `law`, `passed`, and `detail`, invisibly when every law passes. It prints
-#'   as a checklist. When the descriptor law fails, the other laws are not
+#'   `law`, `passed`, and `detail`. It prints as a checklist. When the descriptor law fails, the other laws are not
 #'   checked (they would only repeat that failure) and `passed` is `NA`.
 #' @examples
 #' reference <- matrix(as.double(1:12), nrow = 3)
@@ -88,7 +87,7 @@ check_array_source <- function(source, reference, error = TRUE) {
       report = report
     )
   }
-  if (isTRUE(all(report$passed))) invisible(report) else report
+  report
 }
 
 #' @export

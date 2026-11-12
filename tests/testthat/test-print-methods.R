@@ -11,6 +11,8 @@ test_that("feature spaces print a compact summary", {
 
   surface <- surface_space(sprintf("v%d", 1:6), rep(c("left", "right"), each = 3))
   expect_identical(.print_lines(surface)[[1L]], "<surface_space> 6 vertices (left 3, right 3)")
+  left_only <- surface_space(sprintf("v%d", 1:3), hemisphere = "left")
+  expect_identical(.print_lines(left_only)[[1L]], "<surface_space> 3 vertices (left hemisphere)")
 
   parcels <- parcel_space(
     voxels, c("a", "b"),

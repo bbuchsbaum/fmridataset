@@ -218,7 +218,7 @@ test_that("studies and collections say how to save them", {
   expect_error(write_frame(study, tempfile()), "fds_study_manifest", class = "fmridataset_error_backend_io")
   expect_error(
     write_frame(fmri_collection(list(a = frame)), tempfile()),
-    "not a fmri_collection",
+    "not an fmri_collection",
     class = "fmridataset_error_backend_io"
   )
 })
