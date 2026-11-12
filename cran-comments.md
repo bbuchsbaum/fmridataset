@@ -2,7 +2,9 @@
 
 These items must be resolved before this file is used for a submission:
 
-* `delarr` is a hard dependency (Imports). It must be on CRAN first.
+* `delarr` is now in Suggests. CRAN has 0.1.0; `as_delarr()` needs 0.2.0,
+  which is on r-universe. Tests, the example, and the vignette chunk that use
+  it are conditional on that version.
 * Confirm that `neuroim2` and `fmrihrf` are current on CRAN at the required
   versions.
 * Remove the `Remotes:` field from DESCRIPTION and set a release version
@@ -12,7 +14,9 @@ These items must be resolved before this file is used for a submission:
 
 ## R CMD check results
 
-Last local run: R 4.3.3, Ubuntu 24.04, offline, without LaTeX. Examples,
+Last local run: R 4.3.3, Ubuntu 24.04, `--as-cran --no-manual
+--run-donttest`, without LaTeX and without `multidesign`, `neurosurf`, and
+`zarr` (not installable on R 4.3). Examples,
 `--run-donttest` examples, tests, and vignettes all passed. The only
 findings were:
 
@@ -23,8 +27,8 @@ findings were:
 
 ## Suggests not in mainstream repositories
 
-`albersdown`, `fmristore`, `fmrigds`, `fmrilatent`, `multidesign`,
-`neuroatlas`, and `neurosurf` are available from
+`fmristore`, `fmrigds`, `fmrilatent`, `multidesign`, `neuroatlas`, and
+`neurosurf`, and the required version of `delarr`, are available from
 <https://bbuchsbaum.r-universe.dev>, which DESCRIPTION declares in
 `Additional_repositories`. Every use is conditional on `requireNamespace()`:
 tests skip, examples and vignette chunks are guarded, and functions that need

@@ -111,6 +111,18 @@
       field = "metadata"
     )
   }
+  whole <- function(value) {
+    is.numeric(value) && !anyNA(value) && all(value == trunc(value)) &&
+      all(abs(value) <= .Machine$integer.max)
+  }
+  if (!whole(metadata$shape) || !whole(metadata$chunks) ||
+    !is.character(metadata$dtype) || length(metadata$dtype) != 1L) {
+    .frame_abort(
+      "Zarr shape and chunks must be whole numbers and dtype one string.",
+      "fmridataset_error_source_contract",
+      field = "metadata"
+    )
+  }
   shape <- as.integer(metadata$shape)
   chunks <- as.integer(metadata$chunks)
   if (length(shape) != 2L || anyNA(shape) || any(shape < 0L)) {
@@ -121,16 +133,18 @@
       actual = metadata$shape
     )
   }
-  if (length(chunks) != 2L || anyNA(chunks) || any(chunks <= 0L) ||
-    any(chunks > pmax(1L, shape))) {
+  if (length(chunks) != 2L || anyNA(chunks) || any(chunks <= 0L)) {
     .frame_abort(
-      "Zarr chunks must be two positive integers bounded by the physical shape.",
+      "Zarr chunks must be two positive integers.",
       "fmridataset_error_source_contract",
       field = "chunks",
       actual = metadata$chunks,
       shape = shape
     )
   }
+  # A chunk larger than the array is legal Zarr (small or appendable arrays);
+  # the effective chunk is the array extent, as other sources clamp it.
+  chunks <- pmin(chunks, pmax(1L, shape))
   dtype <- .zarr_normalize_dtype(metadata$dtype)
   .dtype_bytes(dtype)
   list(shape = shape, chunks = chunks, dtype = dtype)
@@ -146,7 +160,7 @@
 
 #' Construct an experimental Zarr array source
 #'
-#' `zarr_array_source()` describes one two-dimensional Zarr array whose logical
+#' `zarr_source()` describes one two-dimensional Zarr array whose logical
 #' axes are observations and features. The descriptor contains no open store,
 #' R6 object, external pointer, or loader function. Runtime handles are opened
 #' only for metadata discovery and numerical reads.
@@ -175,14 +189,14 @@
 #' @return A serializable `zarr_array_source` descriptor.
 #' @examples
 #' # Metadata-only construction needs no Zarr store and no zarr package.
-#' src <- zarr_array_source(
+#' src <- zarr_source(
 #'   "fixture.zarr",
 #'   shape = c(5L, 6L), dtype = "float64", chunks = c(2L, 3L)
 #' )
 #' source_shape(src)
 #' source_chunks(src)
 #' @export
-zarr_array_source <- function(uri, array_path = "/", shape = NULL,
+zarr_source <- function(uri, array_path = "/", shape = NULL,
                               dtype = NULL, chunks = NULL,
                               physical_axes = c("observation", "feature")) {
   if (!is.character(uri) || length(uri) != 1L || is.na(uri) || !nzchar(uri)) {

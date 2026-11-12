@@ -32,7 +32,7 @@ compatible \code{volume_space}.}
 \item{events}{Whether to attach matching BIDS events as a keyed event table.}
 
 \item{chunks}{Optional observation-by-feature chunk hint passed to
-\code{\link[=nifti_array_source]{nifti_array_source()}}.}
+\code{\link[=nifti_source]{nifti_source()}}.}
 }
 \value{
 A lazy \code{fmri_frame} with a \code{signal} assay.
@@ -72,7 +72,7 @@ bold <- read_bids_bold(
   task = "memory",
   space = "MNI152NLin2009cAsym"
 )
-first_run <- filter_obs(bold, run_id == "run-1")
+first_run <- filter_observations(bold, run_id == "run-1")
 map <- spatial_map(bold, observation = 1)
 }
 }

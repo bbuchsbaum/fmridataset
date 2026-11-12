@@ -24,19 +24,27 @@
   ))
 }
 
-.plan_block_shape <- function(shape, chunks, layout, capacity) {
+# `capacity` is the preferred block size in values (the soft target capped by
+# the budget); `hard_capacity` is what the memory budget alone allows. A whole
+# image or column larger than the preference is still planned, one per block,
+# as long as it fits the budget: only the budget is a reason to refuse.
+.plan_block_shape <- function(shape, chunks, layout, capacity,
+                              hard_capacity = capacity) {
   if (any(shape == 0L)) {
     return(c(0L, 0L))
   }
   n_observation <- shape[[1L]]
   n_feature <- shape[[2L]]
   if (layout == "imagewise") {
+    if (n_feature > capacity && n_feature <= hard_capacity) {
+      return(as.integer(c(1L, n_feature)))
+    }
     if (n_feature > capacity) {
       .frame_abort(
         "One complete image exceeds the block memory budget; use layout = 'balanced'.",
         "fmridataset_error_budget",
         required_values = n_feature,
-        available_values = capacity,
+        available_values = hard_capacity,
         layout = layout
       )
     }
@@ -46,12 +54,15 @@
     )))
   }
   if (layout == "featurewise") {
+    if (n_observation > capacity && n_observation <= hard_capacity) {
+      return(as.integer(c(n_observation, 1L)))
+    }
     if (n_observation > capacity) {
       .frame_abort(
         "One complete feature column exceeds the block memory budget; use layout = 'balanced'.",
         "fmridataset_error_budget",
         required_values = n_observation,
-        available_values = capacity,
+        available_values = hard_capacity,
         layout = layout
       )
     }
@@ -76,7 +87,7 @@
   # A zero-length axis anywhere in the frame makes .plan_block_shape() return
   # c(0L, 0L), so the OTHER axis arrives here with block_size 0 and a non-zero
   # length. seq.int(1L, n, by = 0L) then raised a base-R
-  # "invalid '(to - from)/by'" for any frame that a filter_obs() or
+  # "invalid '(to - from)/by'" for any frame that a filter_observations() or
   # select_features() had emptied - legal frames that subset, collect, and
   # round-trip correctly everywhere else. There is nothing to read, so the
   # axis contributes no ranges and the plan holds no blocks.
@@ -191,7 +202,10 @@ plan_blocks <- function(
   }
   shape <- as.integer(dim(x))
   chunks <- pmin(source_chunks(descriptor$source), pmax(1L, shape))
-  block_shape <- .plan_block_shape(shape, chunks, layout, capacity)
+  block_shape <- .plan_block_shape(
+    shape, chunks, layout, capacity,
+    hard_capacity = floor(memory_budget / peak_dtype_bytes)
+  )
   blocks <- .block_grid(
     shape, block_shape, output_dtype_bytes, peak_dtype_bytes, layout
   )

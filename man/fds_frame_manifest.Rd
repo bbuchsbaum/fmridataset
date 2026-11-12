@@ -2,12 +2,12 @@
 % Please edit documentation in R/fds-schema.R
 \name{fds_frame_manifest}
 \alias{fds_frame_manifest}
-\alias{validate_fds_manifest}
+\alias{validate_fds_frame_manifest}
 \title{Construct and validate an FDS v1 frame manifest}
 \usage{
 fds_frame_manifest(x)
 
-validate_fds_manifest(manifest)
+validate_fds_frame_manifest(manifest)
 }
 \arguments{
 \item{x}{An \code{fmri_frame}.}
@@ -31,5 +31,5 @@ frame <- fmri_frame(
 )
 manifest <- fds_frame_manifest(frame)
 manifest$shape
-validate_fds_manifest(manifest)
+validate_fds_frame_manifest(manifest)
 }

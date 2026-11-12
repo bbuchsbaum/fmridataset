@@ -157,7 +157,7 @@ test_that("resolved observations flatten reachable entity scalar metadata", {
 
 test_that("resolved metadata powers zero-read filtering and follows views", {
   fixture <- .make_resolution_frame()
-  selected <- filter_obs(
+  selected <- filter_observations(
     fixture$frame,
     subject.age >= 70 & stimulus.category != "scene"
   )
@@ -174,7 +174,7 @@ test_that("resolved metadata powers zero-read filtering and follows views", {
 
 test_that("entity blocks lift lazily to the observation axis", {
   fixture <- .make_resolution_frame()
-  blocks <- obs_blocks(fixture$frame, resolve = TRUE)
+  blocks <- observation_blocks(fixture$frame, resolve = TRUE)
 
   expect_identical(
     names(blocks),
@@ -208,7 +208,7 @@ test_that("entity blocks lift lazily to the observation axis", {
 
 test_that("lifted blocks satisfy the reusable array-source contract", {
   source <- axis_block_data(
-    obs_blocks(.make_resolution_frame()$frame, resolve = TRUE)$stimulus.visual_pca
+    observation_blocks(.make_resolution_frame()$frame, resolve = TRUE)$stimulus.visual_pca
   )
   reference <- matrix(
     c(.1, .2, .3, .4, .1, .2, .5, .6, .3, .4),
@@ -250,7 +250,7 @@ test_that("sparse entity blocks remain sparse beneath the lazy gather", {
     relations = relations(frame)
   )
   source <- axis_block_data(
-    obs_blocks(rebuilt, resolve = TRUE)$subject.sparse_scores
+    observation_blocks(rebuilt, resolve = TRUE)$subject.sparse_scores
   )
   expected <- as.matrix(sparse_data[c(2L, 2L, 1L, 2L, 1L), , drop = FALSE])
 
@@ -262,7 +262,7 @@ test_that("sparse entity blocks remain sparse beneath the lazy gather", {
 test_that("lifted blocks preserve lazy selection and duplicate observation order", {
   fixture <- .make_resolution_frame()
   view <- fixture$frame[c(5L, 1L, 3L), ]
-  block <- obs_blocks(view, resolve = TRUE)$stimulus.visual_pca
+  block <- observation_blocks(view, resolve = TRUE)$stimulus.visual_pca
   source <- axis_block_data(block)
 
   expect_identical(source_shape(source), c(3L, 2L))
@@ -277,7 +277,7 @@ test_that("missing entity keys yield NA metadata and lazy block rows", {
   fixture <- .make_resolution_frame(missing_stimulus = TRUE)
   resolved <- observations(fixture$frame, resolve = TRUE)
   source <- axis_block_data(
-    obs_blocks(fixture$frame, resolve = TRUE)$stimulus.visual_pca
+    observation_blocks(fixture$frame, resolve = TRUE)$stimulus.visual_pca
   )
   lifted <- source_read(source)
 
@@ -328,7 +328,7 @@ test_that("resolved names never overwrite canonical observation annotations", {
     class = "fmridataset_error_resolution"
   )
   expect_error(
-    obs_blocks(block_collision, resolve = TRUE),
+    observation_blocks(block_collision, resolve = TRUE),
     "collides",
     class = "fmridataset_error_resolution"
   )
@@ -339,8 +339,9 @@ test_that("resolved names never overwrite canonical observation annotations", {
 })
 
 test_that("lifted entity sources serialize and execute through delarr", {
+  skip_if_not_installed("delarr", "0.2.0")
   source <- axis_block_data(
-    obs_blocks(.make_resolution_frame()$frame, resolve = TRUE)$run.qc
+    observation_blocks(.make_resolution_frame()$frame, resolve = TRUE)$run.qc
   )
   restored <- unserialize(serialize(source, NULL))
 

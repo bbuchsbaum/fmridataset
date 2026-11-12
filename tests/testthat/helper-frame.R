@@ -216,3 +216,9 @@ make_walking_skeleton_fixture <- function(instrument = FALSE) {
     feature_space = feature_space
   )
 }
+
+# delarr is a suggested package; as_delarr() needs 0.2.0 or newer.
+delarr_available <- function() {
+  requireNamespace("delarr", quietly = TRUE) &&
+    utils::packageVersion("delarr") >= "0.2.0"
+}

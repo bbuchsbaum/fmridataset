@@ -55,7 +55,7 @@ test_that("realization cost separates storage, output, conversion, and peak", {
 })
 
 test_that("compressed sources include a decompression buffer", {
-  source <- zarr_array_source(
+  source <- zarr_source(
     "memory://budget-test",
     shape = c(5, 7),
     dtype = "float32",
@@ -94,7 +94,7 @@ test_that("collect_assay never returns an object larger than its budget", {
   path <- system.file("extdata", "global_mask_v4.nii", package = "neuroim2")
   skip_if(!file.exists(path), "neuroim2 NIfTI fixture is unavailable")
 
-  source <- nifti_array_source(path, path)
+  source <- nifti_source(path, path)
   expect_identical(source_dtype(source), "float32")
 
   shape <- source_shape(source)
@@ -184,6 +184,7 @@ test_that("counting sources report storage and realized traffic separately", {
 })
 
 test_that("as_delarr bounds each pull, not the whole source", {
+  skip_if_not_installed("delarr", "0.2.0")
   source <- memory_source(matrix(seq_len(100), 10, 10), dtype = "float32")
   cost <- source_realization_cost(source)
 

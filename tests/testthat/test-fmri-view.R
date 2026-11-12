@@ -8,7 +8,7 @@ test_that("frame slicing returns a synchronized non-dropping view", {
   expect_identical(observation_ids(y), observation_ids(x)[c(7, 2)])
   expect_identical(feature_ids(y), feature_ids(x)[c(6, 1)])
   expect_equal(collect_assay(y), fx$beta[c(7, 2), c(6, 1), drop = FALSE])
-  expect_identical(dim(axis_block_data(obs_blocks(y)$motion)), c(2L, 2L))
+  expect_identical(dim(axis_block_data(observation_blocks(y)$motion)), c(2L, 2L))
   expect_error(x[1, 1, drop = TRUE], class = "fmridataset_error_alignment")
 })
 
@@ -80,11 +80,11 @@ test_that("duplicate missing and out-of-range selectors are rejected", {
   expect_error(x[8, ], class = "fmridataset_error_alignment")
 })
 
-test_that("filter_obs and select_features are metadata-only", {
+test_that("filter_observations and select_features are metadata-only", {
   fx <- make_frame_fixture(instrument = TRUE)
   x <- fx$frame
   y <- x |>
-    filter_obs(Fac1 == "A" & accuracy > .85) |>
+    filter_observations(Fac1 == "A" & accuracy > .85) |>
     select_features(parcel == "hippocampus")
 
   expect_identical(dim(y), c(3L, 2L))

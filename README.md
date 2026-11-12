@@ -115,6 +115,20 @@ The run column is discovered from a run-typed relation, `scan_id`, or
 structure, such as beta estimates, simply report `has_temporal_schema()` as
 `FALSE`.
 
+### Start from a matrix, volumes, or NIfTI files
+
+`fmri_frame()` is the general constructor. For data acquired in runs,
+`as_fmri_frame()` and `read_nifti_bold()` write the run metadata for you:
+
+```r
+frame <- as_fmri_frame(Y, TR = 2, run_length = c(150, 150), events = events)
+frame <- as_fmri_frame(list(run_1, run_2), mask = mask, TR = 2)   # neuroim2 NeuroVec
+frame <- read_nifti_bold(c("run-1.nii.gz", "run-2.nii.gz"), mask = "mask.nii.gz", TR = 2)
+```
+
+`read_nifti_bold()` reads headers and the mask only; voxel values stay on disk
+until they are requested.
+
 ### Load one BIDS subject
 
 With `bidser` 0.5.0 or newer, a subject's fMRIPrep BOLD runs open as one lazy
@@ -128,7 +142,7 @@ bold <- read_bids_bold(
   space = "MNI152NLin2009cAsym"
 )
 
-run_1 <- filter_obs(bold, run_id == "run-1")
+run_1 <- filter_observations(bold, run_id == "run-1")
 map <- spatial_map(bold, observation = 1)
 ```
 

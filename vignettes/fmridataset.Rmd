@@ -99,14 +99,14 @@ collect_assay(view)
 ```
 
 Metadata predicates do the same job when you know a property rather than an
-ID. `filter_obs()` evaluates an expression against the observation table and
+ID. `filter_observations()` evaluates an expression against the observation table and
 `select_features()` against the feature table.
 
 ```{r select-metadata}
-run_2 <- filter_obs(frame, run_id == "run-2")
+run_2 <- filter_observations(frame, run_id == "run-2")
 observation_ids(run_2)
 
-still <- filter_obs(frame, motion < 0.5)
+still <- filter_observations(frame, motion < 0.5)
 observation_ids(still)
 
 top_slice <- select_features(frame, k == 2)
@@ -145,7 +145,7 @@ lazy <- fmri_frame(
   space = voxels
 )
 
-subset <- filter_obs(lazy, run_id == "run-1")[, c("voxel-1", "voxel-2")]
+subset <- filter_observations(lazy, run_id == "run-1")[, c("voxel-1", "voxel-2")]
 source_counts(counted)$reads
 
 values <- collect_assay(subset)
@@ -233,6 +233,23 @@ as_sampling_frame(interleaved)
 Frames without run structure, such as a matrix of beta estimates, are
 first-class; for them `has_temporal_schema()` is simply `FALSE`.
 
+You rarely need to write those columns by hand. `as_fmri_frame()` builds a
+run-structured frame from a matrix, from `neuroim2` volumes and a mask, or
+from a latent decomposition, and `read_nifti_bold()` does the same lazily for
+NIfTI files. Each generates the observation IDs and run columns from `TR` and
+`run_length`.
+
+```{r constructors}
+quick <- as_fmri_frame(
+  matrix(rnorm(6 * 3), nrow = 6),
+  TR = 2,
+  run_length = c(4, 2),
+  censor = 3
+)
+observations(quick)
+temporal_schema(quick)$run_lengths
+```
+
 ## Durable and ephemeral IDs
 
 Every axis has a declared ID policy. The default, `require`, means the caller
@@ -283,7 +300,7 @@ read. Observation order follows the operand order, IDs must not collide, and
 the spaces must be the same space, not merely the same size.
 
 ```{r bind}
-run_1 <- filter_obs(frame, run_id == "run-1")
+run_1 <- filter_observations(frame, run_id == "run-1")
 both <- bind_observations(run_2, run_1)
 both
 observation_ids(both)

@@ -16,7 +16,7 @@ heterogeneous frames through shared entities and typed links.
 }
 \details{
 Numerical values live behind serializable array sources
-(\code{\link[=memory_source]{memory_source()}}, \code{\link[=nifti_array_source]{nifti_array_source()}}, \code{\link[=zarr_array_source]{zarr_array_source()}}, and the
+(\code{\link[=memory_source]{memory_source()}}, \code{\link[=nifti_source]{nifti_source()}}, \code{\link[=zarr_source]{zarr_source()}}, and the
 sources provided by storage packages) and are read only on request, under a
 realization budget. The logical frame contract is persisted through FDS
 manifests (\code{\link[=fds_frame_manifest]{fds_frame_manifest()}}) and HDF5 via \code{\link[=write_frame]{write_frame()}}.
@@ -35,6 +35,11 @@ Useful links:
 }
 \author{
 \strong{Maintainer}: Bradley Buchsbaum \email{bbuchsbaum@gmail.com} (\href{https://orcid.org/0000-0001-5800-9890}{ORCID})
+
+Authors:
+\itemize{
+  \item Bradley Buchsbaum \email{bbuchsbaum@gmail.com} (\href{https://orcid.org/0000-0001-5800-9890}{ORCID})
+}
 
 }
 \keyword{internal}

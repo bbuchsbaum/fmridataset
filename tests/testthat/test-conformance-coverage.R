@@ -53,7 +53,7 @@ test_that("NIfTI sources conform against an independent read", {
   path <- system.file("extdata", "global_mask_v4.nii", package = "neuroim2")
   skip_if(!file.exists(path), "neuroim2 NIfTI fixture is unavailable")
 
-  source <- nifti_array_source(path, path)
+  source <- nifti_source(path, path)
   mask <- suppressWarnings(neuroim2::read_vol(path))
   reference <- as.matrix(neuroim2::series(
     suppressWarnings(neuroim2::read_vec(path)),

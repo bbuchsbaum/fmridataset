@@ -111,7 +111,7 @@ fds_study_representations <- function(x) {
     if (length(value) != 2L || !setequal(names(value), c("type", "manifest"))) {
       .fds_schema_abort("Frame representation has invalid fields.", paste0("representations.", name))
     }
-    validate_fds_manifest(value$manifest)
+    validate_fds_frame_manifest(value$manifest)
     return(invisible(TRUE))
   }
   if (!identical(value$type, "fmri_collection") ||
@@ -126,7 +126,7 @@ fds_study_representations <- function(x) {
     field = paste0("representations.", name, ".members")
   )
   member_names <- names(value$members)
-  for (member_name in member_names) validate_fds_manifest(value$members[[member_name]])
+  for (member_name in member_names) validate_fds_frame_manifest(value$members[[member_name]])
   tryCatch(
     .validate_container_provenance(value$provenance, "FDS collection representation"),
     error = function(error) {

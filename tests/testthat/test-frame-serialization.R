@@ -13,6 +13,7 @@ test_that("canonical frames serialize without runtime state", {
 })
 
 test_that("runtime delarr plans are derived rather than stored", {
+  skip_if_not_installed("delarr", "0.2.0")
   fx <- make_frame_fixture()
   expect_false(any(vapply(assays(fx$frame), function(x) inherits(x$source, "delarr"), logical(1))))
   lazy <- as_delarr(assay(fx$frame)$source)

@@ -203,10 +203,10 @@ test_that("FDS declares entity blocks as source-free named-axis arrays", {
 
   duplicate <- manifest
   duplicate$entities$stimulus$ids[[2L]] <- duplicate$entities$stimulus$ids[[1L]]
-  expect_error(validate_fds_manifest(duplicate), class = "fmridataset_error_schema")
+  expect_error(validate_fds_frame_manifest(duplicate), class = "fmridataset_error_schema")
   missing_array <- manifest
   missing_array$entities$stimulus$blocks$visual_pca$array <- "missing"
-  expect_error(validate_fds_manifest(missing_array), class = "fmridataset_error_schema")
+  expect_error(validate_fds_frame_manifest(missing_array), class = "fmridataset_error_schema")
 
   bindings <- fds_frame_bindings(fixture$frame)
   expect_true(inherits(bindings[[key]], "array_source"))

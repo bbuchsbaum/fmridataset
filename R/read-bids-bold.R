@@ -459,12 +459,18 @@
     task = .bids_entity_value(events, ".task"),
     run = .bids_entity_value(events, ".run")
   )
+  # NA marks an event of a run that is not among the selected BOLD runs (no
+  # derivative in this space, or an excluded run); the caller drops it. Only a
+  # row matching more than one run is ambiguous.
   vapply(seq_len(nrow(events)), function(i) {
     matched <- .bids_entity_match(
       event_entities[i, , drop = FALSE], manifest,
       c("subid", "session", "task", "run")
     )
     positions <- which(matched$keep)
+    if (!length(positions)) {
+      return(NA_character_)
+    }
     if (length(positions) != 1L) {
       .bids_abort("An event row could not be associated with exactly one selected BOLD run.",
         event_row = i
@@ -480,6 +486,10 @@
     return(NULL)
   }
   events$scan_id <- .bids_event_scan_ids(events, manifest)
+  events <- events[!is.na(events$scan_id), , drop = FALSE]
+  if (!nrow(events)) {
+    return(NULL)
+  }
   file_column <- if ("file" %in% names(events)) "file" else if (".file" %in% names(events)) ".file" else NULL
   if (is.null(file_column)) {
     event_source <- paste0(events$scan_id, "::events")
@@ -515,7 +525,7 @@
 #'   compatible `volume_space`.
 #' @param events Whether to attach matching BIDS events as a keyed event table.
 #' @param chunks Optional observation-by-feature chunk hint passed to
-#'   [nifti_array_source()].
+#'   [nifti_source()].
 #' @details
 #' Runs are ordered by session, task, and run number. Numeric run labels are
 #' compared as integers, so unpadded `run-2` precedes `run-10`.
@@ -544,7 +554,7 @@
 #'   task = "memory",
 #'   space = "MNI152NLin2009cAsym"
 #' )
-#' first_run <- filter_obs(bold, run_id == "run-1")
+#' first_run <- filter_observations(bold, run_id == "run-1")
 #' map <- spatial_map(bold, observation = 1)
 #' }
 read_bids_bold <- function(path, subject, task = NULL, session = NULL,
@@ -576,7 +586,7 @@ read_bids_bold <- function(path, subject, task = NULL, session = NULL,
   resolved <- .bids_resolve_space(
     project, path, manifest, mask, subject, session, selected_space
   )
-  source <- nifti_array_source(manifest$.path, resolved$space, chunks = chunks)
+  source <- nifti_source(manifest$.path, resolved$space, chunks = chunks)
   observation_data <- .bids_expand_observations(manifest)
 
   subject_data <- unique(manifest["subject_id"])

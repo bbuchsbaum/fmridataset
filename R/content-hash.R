@@ -199,13 +199,16 @@ content_hash.row_sharded_source <- function(
   # One representation for NaN and one for NA. Arithmetic NaNs carry
   # platform-dependent sign and payload bits; R decides which of the two a
   # value is, and the encoding records that decision, nothing more.
-  values[is.nan(values)] <- NaN
-  values[is.na(values) & !is.nan(values)] <- NA_real_
+  # anyNA() is TRUE for NaN as well as NA, so clean blocks skip both rewrites.
+  if (anyNA(values)) {
+    values[is.nan(values)] <- NaN
+    values[is.na(values) & !is.nan(values)] <- NA_real_
+  }
   writeBin(values, raw(), size = 8L, endian = "big")
 }
 
 .content_hash_push <- function(state, bytes) {
-  buffer <- c(state$carry, bytes)
+  buffer <- if (length(state$carry)) c(state$carry, bytes) else bytes
   leaf_bytes <- .content_hash_contract$leaf_values * state$width
   n_leaf <- length(buffer) %/% leaf_bytes
   for (leaf in seq_len(n_leaf)) {

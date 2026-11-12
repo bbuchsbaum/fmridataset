@@ -19,9 +19,15 @@ A self-contained \code{fmri_study} whose numerical sources remain lazy.
 \description{
 Dropping entity records cascades: child entities whose key relation
 references a dropped record are dropped too, observations reaching a dropped
-record are removed, and sparse edges, validity rows, link maps, and table
-rows are restricted to the surviving IDs. Table rows without a key value are
-kept.
+record are removed, and sparse edges, validity rows, link maps, and study and
+frame table rows are restricted to the surviving IDs. Table rows without a
+key value are kept. Observations with no record of the filtered entity (a
+missing key) are removed, because they cannot satisfy the predicate.
+}
+\details{
+Features are never dropped. If features reference the filtered entity
+through a feature key relation and a referenced record would be dropped,
+the filter is refused; select the matching features first.
 }
 \examples{
 subject_entity <- entity_frame(

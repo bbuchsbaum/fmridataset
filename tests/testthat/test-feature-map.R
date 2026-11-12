@@ -106,7 +106,9 @@ test_that("feature_mapped_source is lazy and backend invariant", {
       source_read(source, observations = c(5L, 2L), features = c(3L, 1L)),
       expected[c(5L, 2L), c(3L, 1L), drop = FALSE]
     )
-    expect_equal(delarr::collect(as_delarr(source)), expected)
+    if (delarr_available()) {
+      expect_equal(delarr::collect(as_delarr(source)), expected)
+    }
   }
 })
 

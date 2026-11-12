@@ -334,7 +334,7 @@
     }
     return(.selection_positions(n, seq_len(n)[-dropped]))
   }
-  index <- index[index != 0L]
+  if (any(index == 0L)) index <- index[index != 0L]
   if (any(index > n)) {
     abort(
       sprintf("%s selector is out of bounds.", axis),
@@ -342,7 +342,11 @@
       actual = index[index > n]
     )
   }
-  if (anyDuplicated(index)) {
+  # A strictly increasing selector cannot repeat an element. Block execution
+  # reads ranges almost exclusively, and the sortedness test is a single pass
+  # (constant time for a compact `a:b` sequence), where anyDuplicated() builds
+  # a hash table on every read.
+  if (is.unsorted(index, strictly = TRUE) && anyDuplicated(index)) {
     abort(
       sprintf("%s selector repeats an element.", axis),
       axis = axis, reason = "duplicate"

@@ -339,11 +339,12 @@ locate_source_rows(sharded, c(5L, 1L))[, c(".observation", ".shard_id", ".local_
 identical(content_hash(sharded), content_hash(memory_source(reference)))
 ```
 
+With the suggested `delarr` package (0.2.0 or newer) installed,
 `as_delarr()` wraps any source as a lazy `delarr` array, so chunk-aware
 numerical plans can pull from it through `source_read()` under the same
 budget.
 
-```{r delarr}
+```{r delarr, eval = requireNamespace("delarr", quietly = TRUE) && utils::packageVersion("delarr") >= "0.2.0"}
 lazy <- as_delarr(sharded)
 dim(lazy)
 ```

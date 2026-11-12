@@ -25,9 +25,10 @@ reference:
     explanation, binding, and coercion.
   contents:
   - fmri_frame
+  - frame-constructors
   - frame-accessors
   - aligned_assay_set
-  - filter_obs
+  - filter_observations
   - select_features
   - bind_observations
   - explain
@@ -116,8 +117,8 @@ reference:
   - array-source
   - matches("^source_")
   - memory_source
-  - nifti_array_source
-  - zarr_array_source
+  - nifti_source
+  - zarr_source
   - matches("^row_")
   - matches("shard")
   - locate_source_rows
@@ -138,10 +139,15 @@ reference:
   - write_frame
   - open_frame
   - matches("^fds_")
-  - validate_fds_manifest
+  - validate_fds_frame_manifest
   - validate_fds_study_manifest
   - frame_from_fds_manifest
   - read_bids_bold
+
+- title: Deprecated
+  desc: Old names kept for one release.
+  contents:
+  - fmridataset-deprecated
 
 - title: Conformance tools
   desc: Developer-only instruments for certifying zero-I/O, lifecycle, and failure laws.

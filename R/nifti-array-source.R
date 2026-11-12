@@ -108,12 +108,12 @@
 #' # A small NIfTI fixture shipped with neuroim2 stands in for real data.
 #' path <- system.file("extdata", "global_mask_v4.nii", package = "neuroim2")
 #' if (nzchar(path)) {
-#'   src <- nifti_array_source(path, path)
+#'   src <- nifti_source(path, path)
 #'   source_shape(src)
 #'   source_dtype(src)
 #' }
 #' @export
-nifti_array_source <- function(paths, mask, chunks = NULL) {
+nifti_source <- function(paths, mask, chunks = NULL) {
   if (!is.character(paths) || !length(paths) || anyNA(paths) || any(!nzchar(paths))) {
     .frame_abort(
       "paths must contain one or more non-empty NIfTI file names.",
@@ -165,7 +165,10 @@ nifti_array_source <- function(paths, mask, chunks = NULL) {
   mask_uri <- NA_character_
   if (inherits(mask, "volume_space")) {
     if (!identical(as.integer(mask$dim), spatial_dims[[1L]]) ||
-      !isTRUE(all.equal(mask$affine, affines[[1L]], tolerance = 1e-7))) {
+      !isTRUE(all.equal(
+        unname(mask$affine), affines[[1L]],
+        tolerance = 1e-7, check.attributes = FALSE
+      ))) {
       .frame_abort(
         "Mask volume_space is incompatible with the NIfTI files.",
         "fmridataset_error_space_mismatch"
@@ -186,6 +189,16 @@ nifti_array_source <- function(paths, mask, chunks = NULL) {
     if (!identical(as.integer(dim(mask_volume)), spatial_dims[[1L]])) {
       .frame_abort(
         "NIfTI mask dimensions do not match the source files.",
+        "fmridataset_error_space_mismatch"
+      )
+    }
+    # Equal dimensions do not make two grids the same grid.
+    if (!isTRUE(all.equal(
+      .nifti_header_affine(neuroim2::read_header(mask_uri)), affines[[1L]],
+      tolerance = 1e-7, check.attributes = FALSE
+    ))) {
+      .frame_abort(
+        "NIfTI mask affine does not match the source files.",
         "fmridataset_error_space_mismatch"
       )
     }
@@ -260,7 +273,7 @@ nifti_array_source <- function(paths, mask, chunks = NULL) {
 #' @examples
 #' path <- system.file("extdata", "global_mask_v4.nii", package = "neuroim2")
 #' if (nzchar(path)) {
-#'   src <- nifti_array_source(path, path)
+#'   src <- nifti_source(path, path)
 #'   spatial <- nifti_source_space(src, template = "fixture")
 #'   n_features(spatial)
 #' }

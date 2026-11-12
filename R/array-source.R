@@ -221,11 +221,12 @@ source_close <- function(x, ...) UseMethod("source_close")
   }
   if (inherits(x, "row_sharded_source") && length(x$sources)) {
     # A composition is only as cheap as its most expensive shard: one
-    # compressed shard needs a decompression buffer, and only an all-memory
-    # composition avoids the selection buffer.
+    # compressed shard needs a decompression buffer.
     traits <- lapply(x$sources, .source_cost_traits)
     return(list(
-      already_realized = all(vapply(traits, function(t) isTRUE(t$already_realized), logical(1))),
+      # A sharded read always fills an output matrix from per-shard reads, so
+      # it holds a second buffer even when every shard is already in memory.
+      already_realized = FALSE,
       compressed = any(vapply(traits, function(t) isTRUE(t$compressed), logical(1)))
     ))
   }
@@ -631,10 +632,12 @@ memory_source <- function(data, dtype = NULL, chunks = NULL, revision = NULL,
     .frame_abort("A frame ArraySource must be two dimensional.", "fmridataset_error_alignment")
   }
   d <- as.integer(d)
-  chunks <- as.integer(chunks %||% pmax(1L, d))
-  if (length(chunks) != 2L || any(chunks <= 0L)) {
+  chunks <- chunks %||% pmax(1L, d)
+  if (!is.numeric(chunks) || length(chunks) != 2L || anyNA(chunks) ||
+    any(chunks <= 0) || any(chunks != trunc(chunks))) {
     .frame_abort("Source chunks must contain two positive integers.", "fmridataset_error_alignment")
   }
+  chunks <- as.integer(chunks)
   if (!is.null(revision) && (!is.character(revision) || length(revision) != 1L ||
     is.na(revision) || !nzchar(revision))) {
     .frame_abort(
@@ -1369,8 +1372,8 @@ source_read_native.row_sharded_source <- function(x, observations = NULL, ...) {
 #' @export
 source_close.row_sharded_source <- function(x, ...) invisible(TRUE)
 
-#' @importFrom delarr delarr_provider_pull
-#' @export
+# delarr is a suggested package, so the method is registered when delarr loads.
+#' @exportS3Method delarr::delarr_provider_pull
 delarr_provider_pull.array_source <- function(provider, indices, ...) {
   if (length(indices) != 2L) {
     .frame_abort(
@@ -1400,13 +1403,6 @@ delarr_provider_pull.array_source <- function(provider, indices, ...) {
 as_delarr.array_source <- function(x, memory_budget = Inf, ...) {
   backend <- x
   .ensure_delarr()
-  if (!"delarr_provider" %in% getNamespaceExports("delarr")) {
-    .frame_abort(
-      "The installed delarr lacks reconstructible provider seeds.",
-      "fmridataset_error_backend_io",
-      operation = "as_delarr"
-    )
-  }
   shape <- source_shape(backend)
   chunks <- source_chunks(backend)
   # memory_budget bounds a single pull, not the whole source: a lazy array over

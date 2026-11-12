@@ -255,7 +255,7 @@ test_that("validity relations survive FDS and HDF5 round trips", {
 
   invalid <- manifest
   invalid$relations$subject_feature_validity$bank$space$namespace <- "tampered"
-  expect_error(validate_fds_manifest(invalid), class = "fmridataset_error_schema")
+  expect_error(validate_fds_frame_manifest(invalid), class = "fmridataset_error_schema")
 
   skip_if_not_installed("fmristore")
   skip_if_not("write_frame_h5" %in% getNamespaceExports("fmristore"))

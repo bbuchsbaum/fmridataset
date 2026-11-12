@@ -9,7 +9,7 @@
 \alias{observations}
 \alias{features}
 \alias{observation_ids}
-\alias{obs_blocks}
+\alias{observation_blocks}
 \alias{feature_blocks}
 \alias{dim.fmri_frame}
 \alias{dim.fmri_view}
@@ -29,7 +29,7 @@ features(x, ...)
 
 observation_ids(x, ...)
 
-obs_blocks(x, resolve = FALSE, ...)
+observation_blocks(x, resolve = FALSE, ...)
 
 feature_blocks(x, ...)
 
@@ -54,7 +54,7 @@ one \code{aligned_assay} from it. \code{active_assay()} returns a single assay
 name. \code{observation_axis()} returns an \code{axis_frame}; \code{observations()} and
 \code{features()} return a data frame of the corresponding metadata.
 \code{observation_ids()} and \code{feature_ids()} return character vectors of
-stable IDs. \code{obs_blocks()} and \code{feature_blocks()} return named lists of
+stable IDs. \code{observation_blocks()} and \code{feature_blocks()} return named lists of
 \code{axis_block}s. \code{dim()} returns a length-2 integer vector, and \code{nrow()}
 and \code{ncol()} return single integers.
 }

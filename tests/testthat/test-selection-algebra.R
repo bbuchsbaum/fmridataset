@@ -257,8 +257,8 @@ test_that("equal selections agree in fingerprint however they were expressed", {
   expect_length(unique(plans), 1L)
   expect_false(identical(plans[[1L]], plan_blocks(x[4:2, ])$selection_fingerprint))
   expect_identical(
-    fds_manifest_digest(fds_frame_manifest(by_id)),
-    fds_manifest_digest(fds_frame_manifest(by_nesting))
+    fds_frame_manifest_digest(fds_frame_manifest(by_id)),
+    fds_frame_manifest_digest(fds_frame_manifest(by_nesting))
   )
 })
 
@@ -267,16 +267,16 @@ test_that("semantic digests are unaffected by how a selection is stored", {
   second <- make_frame_fixture()$frame
 
   expect_identical(
-    fds_manifest_digest(fds_frame_manifest(first)),
-    fds_manifest_digest(fds_frame_manifest(second))
+    fds_frame_manifest_digest(fds_frame_manifest(first)),
+    fds_frame_manifest_digest(fds_frame_manifest(second))
   )
   expect_identical(
-    fds_manifest_digest(fds_frame_manifest(first[, ])),
-    fds_manifest_digest(fds_frame_manifest(first))
+    fds_frame_manifest_digest(fds_frame_manifest(first[, ])),
+    fds_frame_manifest_digest(fds_frame_manifest(first))
   )
   expect_identical(
-    fds_manifest_digest(fds_frame_manifest(first[c(3L, 1L), 2:4])),
-    fds_manifest_digest(fds_frame_manifest(second[c(3L, 1L), 2:4]))
+    fds_frame_manifest_digest(fds_frame_manifest(first[c(3L, 1L), 2:4])),
+    fds_frame_manifest_digest(fds_frame_manifest(second[c(3L, 1L), 2:4]))
   )
 })
 
@@ -319,11 +319,11 @@ test_that("explain reports the normalized selection without expanding it", {
 test_that("select-all and range views do not scale with the axis length", {
   # A Zarr descriptor declares its shape without touching a store, so it is a
   # memory-free virtual array of any size.
-  small <- zarr_array_source(
+  small <- zarr_source(
     "virtual-small.zarr",
     shape = c(10L, 10L), dtype = "float64", chunks = c(10L, 10L)
   )
-  large <- zarr_array_source(
+  large <- zarr_source(
     "virtual-large.zarr",
     shape = c(1e6, 1e6), dtype = "float64", chunks = c(1000L, 1000L)
   )
@@ -395,7 +395,7 @@ test_that("every built-in source declares its selector pushdown forms honestly",
   mapped <- feature_mapped_source(memory, feature_map(from, to, weights))
   expect_identical(forms(mapped), all_forms)
 
-  zarr <- zarr_array_source(
+  zarr <- zarr_source(
     "fixture.zarr",
     shape = c(6L, 7L), dtype = "float64", chunks = c(2L, 3L)
   )
@@ -422,7 +422,7 @@ test_that("NIfTI sources declare every pushdown form", {
   path <- system.file("extdata", "global_mask_v4.nii", package = "neuroim2")
   skip_if(!file.exists(path), "neuroim2 NIfTI fixture is unavailable")
 
-  source <- nifti_array_source(path, path)
+  source <- nifti_source(path, path)
   expect_identical(fmridataset:::.source_pushdown_forms(source), c("all", "range", "positions"))
   expect_identical(
     fmridataset:::.source_pushdown_forms(source_view(source, features = 1L)),

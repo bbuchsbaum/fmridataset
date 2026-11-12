@@ -4,6 +4,11 @@
 
 .canonical_utf8 <- function(x) {
   present <- !is.na(x)
+  # ASCII is already UTF-8 in NFC, and generated axis IDs are almost always
+  # ASCII, so the common case skips normalization and the copy it makes.
+  if (all(stringi::stri_enc_isascii(x[present]))) {
+    return(x)
+  }
   x[present] <- stringi::stri_trans_nfc(enc2utf8(x[present]))
   Encoding(x[present]) <- "UTF-8"
   x
@@ -40,7 +45,23 @@
   }
   names(values) <- .canonical_names(names_value)
   values <- values[order(names(values), method = "radix")]
-  lapply(values, .canonical_normalize)
+  out <- lapply(values, .canonical_normalize)
+  # dimnames is positional: element k labels dimension k whatever it is named.
+  # Normalizing it as a record would sort a named dimnames list by name and
+  # swap the row and column labels.
+  if (!is.null(values$dimnames)) {
+    out$dimnames <- .canonical_dimnames(values$dimnames)
+  }
+  out
+}
+
+.canonical_dimnames <- function(x) {
+  names_value <- names(x)
+  out <- lapply(unname(x), function(labels) {
+    if (is.null(labels)) NULL else .canonical_utf8(as.character(labels))
+  })
+  if (!is.null(names_value)) names(out) <- .canonical_utf8(names_value)
+  out
 }
 
 # Sparse matrices are encoded by their values, not their storage layout:
@@ -61,15 +82,21 @@
     entries <- entries[!stored_zero, , drop = FALSE]
   }
   if (nrow(entries)) entries <- entries[order(entries$j, entries$i), , drop = FALSE]
-  list(
+  out <- list(
     .canonical_type = "sparse_matrix",
     value_type = typeof(entries$x),
     dimensions = as.integer(dim(compressed)),
-    dimnames = lapply(dimnames(compressed), .canonical_names),
+    dimnames = unname(lapply(dimnames(compressed), .canonical_names)),
     i = as.integer(entries$i),
     j = as.integer(entries$j),
     x = .canonical_normalize(entries$x)
   )
+  # Added only when the dimnames list is itself named, so matrices with
+  # ordinary dimnames keep their published encoding. Kept apart from
+  # `dimnames` because a named list is a record and would be sorted by name.
+  axis_names <- names(dimnames(compressed))
+  if (!is.null(axis_names)) out$dimnames_names <- .canonical_utf8(axis_names)
+  out
 }
 
 # `.canonical_type` is a reserved record field: it marks the internal record a

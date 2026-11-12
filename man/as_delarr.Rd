@@ -27,10 +27,17 @@ to \code{delarr} without materializing the assay. The realization budget bounds
 each provider pull, not the whole source, so a lazy array may describe more
 data than the budget allows; every pull is checked before it reads.
 }
+\details{
+\code{delarr} is a suggested package. \code{as_delarr()} needs version 0.2.0 or newer
+and fails with an error of class \code{fmridataset_error_backend_io} without it.
+}
 \examples{
-src <- memory_source(matrix(seq_len(6), nrow = 2))
-lazy <- as_delarr(src)
-dim(lazy)
+if (requireNamespace("delarr", quietly = TRUE) &&
+  utils::packageVersion("delarr") >= "0.2.0") {
+  src <- memory_source(matrix(seq_len(6), nrow = 2))
+  lazy <- as_delarr(src)
+  dim(lazy)
+}
 }
 \seealso{
 \link{array-source} for the source protocol.

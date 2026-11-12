@@ -63,13 +63,13 @@ identity_descriptor <- function(
     },
     semantic = {
       if (inherits(x, "fmri_frame")) {
-        fds_manifest_digest(fds_frame_manifest(x))
+        fds_frame_manifest_digest(fds_frame_manifest(x))
       } else if (inherits(x, "fmri_collection")) {
         collection_digest(x)
       } else if (inherits(x, "fmri_study")) {
         study_digest(x)
       } else if (is.list(x) && identical(x$object_type, "fmri_frame")) {
-        fds_manifest_digest(x)
+        fds_frame_manifest_digest(x)
       } else {
         .canonical_digest(x)
       }

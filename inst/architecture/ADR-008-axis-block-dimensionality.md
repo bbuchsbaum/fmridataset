@@ -60,7 +60,7 @@ express.
   (`block`) and, for entities, the owning entity (`entity`).
 - FDS manifests declare exactly two axes for every block array: the owning
   axis and `component:<array key>`. Synthetic `dimension:` labels are no longer
-  emitted, and `validate_fds_manifest()` and `validate_fds_study_manifest()`
+  emitted, and `validate_fds_frame_manifest()` and `validate_fds_study_manifest()`
   reject block arrays that declare more than two axes with an
   `fmridataset_error_schema` error naming the block.
 - `bind_observations()` row-binds validated two-dimensional blocks. The shared

@@ -50,7 +50,7 @@ test_that("the stable-key rule is shared but each domain keeps its class", {
   manifest$axes$observation$ids[[2L]] <- manifest$axes$observation$ids[[1L]]
   manifest$axes$observation$data$.obs_id <- manifest$axes$observation$ids
   duplicated_manifest <- expect_error(
-    validate_fds_manifest(manifest),
+    validate_fds_frame_manifest(manifest),
     class = "fmridataset_error_schema"
   )
   expect_identical(duplicated_manifest$field, "axes.observation.ids")
@@ -311,9 +311,9 @@ test_that("frames with observation and feature blocks round-trip through FDS", {
   )
 
   rebuilt <- frame_from_fds_manifest(manifest, fds_frame_bindings(frame))
-  expect_identical(block_component_ids(obs_blocks(rebuilt)$motion), c("tx", "ty"))
+  expect_identical(block_component_ids(observation_blocks(rebuilt)$motion), c("tx", "ty"))
   expect_identical(block_component_ids(feature_blocks(rebuilt)$pcs), c("pc1", "pc2", "pc3"))
-  expect_equal(realized_block(obs_blocks(rebuilt)$motion), matrix(as.double(1:6), 3, 2))
+  expect_equal(realized_block(observation_blocks(rebuilt)$motion), matrix(as.double(1:6), 3, 2))
   expect_equal(realized_block(feature_blocks(rebuilt)$pcs), matrix(as.double(1:12), 4, 3))
   expect_identical(fds_frame_manifest(rebuilt), manifest)
 })
@@ -350,9 +350,9 @@ test_that("binding frames with blocks preserves component IDs and values", {
 
   bound <- bind_observations(a, b)
   expect_identical(observation_ids(bound), paste0("o", 1:5))
-  expect_identical(block_component_ids(obs_blocks(bound)$motion), c("tx", "ty"))
-  expect_equal(realized_block(obs_blocks(bound)$motion), rbind(a_values, b_values))
-  expect_identical(dim(realized_block(obs_blocks(bound)$motion)), c(5L, 2L))
+  expect_identical(block_component_ids(observation_blocks(bound)$motion), c("tx", "ty"))
+  expect_equal(realized_block(observation_blocks(bound)$motion), rbind(a_values, b_values))
+  expect_identical(dim(realized_block(observation_blocks(bound)$motion)), c(5L, 2L))
   expect_identical(block_component_ids(feature_blocks(bound)$pcs), c("pc1", "pc2"))
   expect_equal(realized_block(feature_blocks(bound)$pcs), matrix(as.double(1:8), 4, 2))
 

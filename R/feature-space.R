@@ -187,10 +187,10 @@ assert_same_space <- function(x, y, ...) {
 #' @export
 index_space <- function(n, ids = NULL, namespace = NULL, data = NULL,
                         id_policy = c("require", "deterministic", "ephemeral")) {
-  n <- as.integer(n)
-  if (length(n) != 1L || is.na(n) || n < 0L) {
+  if (!is.numeric(n) || length(n) != 1L || is.na(n) || n < 0 || n != trunc(n)) {
     .frame_abort("n must be one non-negative integer.", "fmridataset_error_space_mismatch")
   }
+  n <- as.integer(n)
   id_policy <- match.arg(id_policy)
   if (is.null(ids) && identical(id_policy, "require")) {
     .identity_abort(
@@ -233,6 +233,13 @@ index_space <- function(n, ids = NULL, namespace = NULL, data = NULL,
   data <- tibble::as_tibble(data)
   if (nrow(data) != n) {
     .frame_abort("Feature data must have n rows.", "fmridataset_error_space_mismatch")
+  }
+  if (".feature_id" %in% names(data) &&
+    !identical(as.character(data$.feature_id), ids)) {
+    .frame_abort(
+      "data$.feature_id must match the feature IDs in order.",
+      "fmridataset_error_space_mismatch"
+    )
   }
   data$.feature_id <- ids
   structure(
@@ -319,12 +326,16 @@ adjacency.index_space <- function(x, ...) NULL
 #' @export
 volume_space <- function(dim, affine = diag(4), support = NULL,
                          template = NULL, units = "mm", metadata = list()) {
-  dim <- as.integer(dim)
-  if (length(dim) != 3L || anyNA(dim) || any(dim <= 0L)) {
+  if (!is.numeric(dim) || length(dim) != 3L || anyNA(dim) || any(dim <= 0) ||
+    any(dim != trunc(dim))) {
     .frame_abort("dim must contain three positive integers.", "fmridataset_error_space_mismatch")
   }
+  dim <- as.integer(dim)
   affine <- as.matrix(affine)
   storage.mode(affine) <- "double"
+  # A row negated to flip an axis carries -0 where the literal matrix has 0;
+  # the two are the same affine and must hash the same.
+  affine <- affine + 0
   if (!identical(dim(affine), c(4L, 4L)) || any(!is.finite(affine))) {
     .frame_abort("affine must be a finite 4 by 4 matrix.", "fmridataset_error_space_mismatch")
   }
@@ -336,10 +347,11 @@ volume_space <- function(dim, affine = diag(4), support = NULL,
     }
     support <- which(support)
   }
-  support <- as.integer(support)
-  if (anyNA(support) || any(support < 1L | support > total) || anyDuplicated(support)) {
+  if (!is.numeric(support) || anyNA(support) || any(support != trunc(support)) ||
+    any(support < 1 | support > total) || anyDuplicated(support)) {
     .frame_abort("support contains invalid or duplicate indices.", "fmridataset_error_space_mismatch")
   }
+  support <- as.integer(support)
   structure(
     list(
       dim = dim,
@@ -855,7 +867,7 @@ surface_space_from_neurosurf <- function(geometry, vertex_ids = NULL,
       "fmridataset_error_space_mismatch"
     )
   }
-  entries <- Matrix::summary(Matrix::Matrix(x, sparse = TRUE))
+  entries <- Matrix::summary(.general_sparse(x))
   values <- if ("x" %in% names(entries)) entries$x else rep(1, nrow(entries))
   if (anyNA(values) || any(!is.finite(values)) || any(values < 0)) {
     .frame_abort(
@@ -869,6 +881,17 @@ surface_space_from_neurosurf <- function(geometry, vertex_ids = NULL,
     x = as.numeric(values),
     dims = as.integer(dims)
   )
+}
+
+# A general (not symmetric, triangular, or diagonal) numeric column-compressed
+# matrix without stored zeros. Matrix() picks the most specific class it can:
+# a symmetric input becomes a dsCMatrix whose summary lists one triangle only,
+# and a diagonal one a ddiMatrix with no triplet summary at all. Everything
+# that reads entries goes through this form first.
+.general_sparse <- function(x) {
+  if (!methods::is(x, "Matrix")) x <- Matrix::Matrix(x, sparse = TRUE)
+  x <- methods::as(methods::as(x, "CsparseMatrix"), "generalMatrix")
+  Matrix::drop0(methods::as(x, "dMatrix"))
 }
 
 .operator_digest_payload <- function(x) {
@@ -1258,7 +1281,13 @@ parcel_space_from_atlas <- function(atlas, parent,
       )
     }
     labels <- vectorize_space(parent, atlas$atlas)
-    matched <- match(as.character(labels), as.character(parcels$id))
+    # Voxel labels are doubles; compare as numbers when the atlas IDs are
+    # numeric so 100000 is not spelled "1e+05" on one side only.
+    matched <- if (is.numeric(parcels$id)) {
+      match(as.numeric(labels), as.numeric(parcels$id))
+    } else {
+      match(as.character(labels), as.character(parcels$id))
+    }
     keep <- which(!is.na(matched))
     rows <- keep
     cols <- matched[keep]
@@ -1309,7 +1338,7 @@ parcel_space_from_atlas <- function(atlas, parent,
   if (inherits(x, "array_source")) {
     validate_array_source(x)
   } else {
-    values <- if (methods::is(x, "sparseMatrix")) Matrix::summary(x)$x else as.numeric(x)
+    values <- if (methods::is(x, "sparseMatrix")) .general_sparse(x)@x else as.numeric(x)
     if (anyNA(values) || any(!is.finite(values))) {
       .frame_abort(
         paste(what, "must contain only finite values."),
@@ -1783,6 +1812,27 @@ basis_space_from_fmrilatent <- function(x, parent, component_ids = NULL,
       "fmrilatent loadings do not align with the parent features.",
       "fmridataset_error_space_mismatch"
     )
+  }
+  # The loading rows are the latent object's own mask voxels, in mask order.
+  # A row count that happens to match says nothing about which voxels the
+  # parent holds, so a volume parent must be that same grid and support.
+  mask <- tryCatch(methods::slot(x, "mask"), error = function(e) NULL)
+  if (inherits(parent, "volume_space") && methods::is(mask, "NeuroVol")) {
+    same_grid <- identical(as.integer(dim(mask)[1:3]), as.integer(parent$dim)) &&
+      isTRUE(all.equal(
+        unname(neuroim2::trans(neuroim2::space(mask))), unname(parent$affine),
+        tolerance = 1e-7, check.attributes = FALSE
+      ))
+    if (!same_grid ||
+      !identical(which(as.vector(mask) != 0), as.integer(parent$support))) {
+      .frame_abort(
+        paste(
+          "parent is not the latent object's own voxel space: its grid and",
+          "ordered support must equal the latent mask."
+        ),
+        "fmridataset_error_space_mismatch"
+      )
+    }
   }
   meta <- tryCatch(methods::slot(x, "meta"), error = function(e) list())
   fingerprint <- substr(

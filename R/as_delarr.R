@@ -10,23 +10,40 @@
 #' @param memory_budget Maximum realized bytes permitted for a single pull.
 #'   `Inf` disables the check.
 #' @param ... Additional arguments passed to methods.
+#' @details
+#' `delarr` is a suggested package. `as_delarr()` needs version 0.2.0 or newer
+#' and fails with an error of class `fmridataset_error_backend_io` without it.
 #' @return A `delarr` lazy array whose pulls route through [source_read()].
 #' @seealso [array-source] for the source protocol.
 #' @examples
-#' src <- memory_source(matrix(seq_len(6), nrow = 2))
-#' lazy <- as_delarr(src)
-#' dim(lazy)
+#' if (requireNamespace("delarr", quietly = TRUE) &&
+#'   utils::packageVersion("delarr") >= "0.2.0") {
+#'   src <- memory_source(matrix(seq_len(6), nrow = 2))
+#'   lazy <- as_delarr(src)
+#'   dim(lazy)
+#' }
 #' @export
 as_delarr <- function(x, memory_budget = Inf, ...) {
   UseMethod("as_delarr")
 }
 
+.delarr_min_version <- "0.2.0"
+
+.delarr_available <- function() {
+  requireNamespace("delarr", quietly = TRUE) &&
+    utils::packageVersion("delarr") >= .delarr_min_version
+}
+
 .ensure_delarr <- function() {
-  if (!requireNamespace("delarr", quietly = TRUE)) {
-    stop(
-      "Package 'delarr' is required for as_delarr(). ",
-      "Install it from https://bbuchsbaum.r-universe.dev.",
-      call. = FALSE
+  if (!.delarr_available()) {
+    .frame_abort(
+      paste0(
+        "as_delarr() requires the delarr package, version ",
+        .delarr_min_version, " or newer; install it from ",
+        "https://bbuchsbaum.r-universe.dev."
+      ),
+      "fmridataset_error_backend_io",
+      operation = "as_delarr"
     )
   }
   invisible(TRUE)

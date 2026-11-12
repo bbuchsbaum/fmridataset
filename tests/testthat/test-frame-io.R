@@ -26,6 +26,7 @@ test_that("public frame I/O delegates to lazy HDF5 storage", {
   expect_identical(space_digest(space(reopened)), space_digest(space(frame)))
   expect_equal(collect_assay(reopened, "beta"), collect_assay(frame, "beta"))
 
+  skip_if_not_installed("delarr", "0.2.0")
   plan <- as_delarr(assay(reopened, "beta")$source)
   expect_s3_class(plan$seed, "delarr_provider_seed")
   restored_plan <- unserialize(serialize(plan, NULL))

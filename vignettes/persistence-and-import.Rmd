@@ -75,12 +75,12 @@ manifest$schema$id
 manifest$assays$bold[c("name", "array", "dtype", "shape")]
 ```
 
-`fds_manifest_digest()` canonicalizes the manifest and hashes it. This is the
+`fds_frame_manifest_digest()` canonicalizes the manifest and hashes it. This is the
 frame's *semantic* identity. Because physical sources are not in the
 manifest, the same frame has the same digest however it is stored.
 
 ```{r manifest-digest}
-semantic <- fds_manifest_digest(manifest)
+semantic <- fds_frame_manifest_digest(manifest)
 substr(semantic, 1, 16)
 
 chunked <- fmri_frame(
@@ -89,7 +89,7 @@ chunked <- fmri_frame(
   space = voxels,
   metadata = list(study = "toy")
 )
-identical(fds_manifest_digest(fds_frame_manifest(chunked)), semantic)
+identical(fds_frame_manifest_digest(fds_frame_manifest(chunked)), semantic)
 ```
 
 The digest is also unchanged when the *values* change, because values are not
@@ -102,7 +102,7 @@ doubled <- fmri_frame(
   space = voxels,
   metadata = list(study = "toy")
 )
-identical(fds_manifest_digest(fds_frame_manifest(doubled)), semantic)
+identical(fds_frame_manifest_digest(fds_frame_manifest(doubled)), semantic)
 
 renamed <- fmri_frame(
   assays = list(bold = signal),
@@ -110,7 +110,7 @@ renamed <- fmri_frame(
   space = voxels,
   metadata = list(study = "toy")
 )
-identical(fds_manifest_digest(fds_frame_manifest(renamed)), semantic)
+identical(fds_frame_manifest_digest(fds_frame_manifest(renamed)), semantic)
 ```
 
 Frames with ephemeral IDs have no manifest at all: `fds_frame_manifest()`
@@ -124,7 +124,7 @@ two hexadecimal strings from different domains are never confused.
 
 | Domain | Answers | Operation |
 |---|---|---|
-| semantic | Is this the same frame, ignoring storage? | `fds_manifest_digest()` |
+| semantic | Is this the same frame, ignoring storage? | `fds_frame_manifest_digest()` |
 | schema | Do these frames have the same column and space contracts? | `frame_schema_digest()` |
 | space | Is this exactly the same feature space? | `space_digest()`, `same_space()` |
 | source | Is this the same descriptor of the same revision of the same physical thing? | `source_fingerprint()` |
@@ -228,7 +228,7 @@ The reopened frame has the same semantic identity, the same space, the same
 IDs, the same run structure, and, when you ask for it, the same values.
 
 ```{r round-trip, eval = has_fmristore}
-identical(fds_manifest_digest(fds_frame_manifest(reopened)), semantic)
+identical(fds_frame_manifest_digest(fds_frame_manifest(reopened)), semantic)
 same_space(space(reopened), space(frame))$same
 identical(observation_ids(reopened), observation_ids(frame))
 temporal_schema(reopened)$run_lengths
@@ -361,7 +361,7 @@ that run's volumes, and because the frame keeps the complete feature domain of
 its volume space, spatial maps can take the native read path.
 
 ```{r bids-read-values, eval = has_bidser}
-collect_assay(filter_obs(bold, run_id == "run-2"))
+collect_assay(filter_observations(bold, run_id == "run-2"))
 execution_path(bold, "spatial")
 ```
 

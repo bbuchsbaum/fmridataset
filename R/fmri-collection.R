@@ -14,8 +14,23 @@
   invisible(TRUE)
 }
 
+# Identity of block values without reading a lazy source: its fingerprint when
+# the block is source backed, its values when they are already in memory.
+.block_value_identity <- function(blocks) {
+  lapply(blocks, function(block) {
+    data <- axis_block_data(block)
+    if (inherits(data, "array_source")) source_fingerprint(data) else .canonical_digest(data)
+  })
+}
+
 .collection_frame_descriptor <- function(frame) {
+  graph <- .frame_container_value(frame, "provenance")
   list(
+    observation_blocks = .block_value_identity(observation_blocks(frame)),
+    feature_blocks = .block_value_identity(feature_blocks(frame)),
+    tables = lapply(.frame_container_value(frame, "tables"), unclass),
+    metadata = unclass(.frame_container_value(frame, "metadata")),
+    provenance = if (is.null(graph)) NULL else provenance_digest(graph),
     signature = frame_schema(frame),
     observation_ids = observation_ids(frame),
     feature_ids = feature_ids(frame),
