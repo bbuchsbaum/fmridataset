@@ -1,5 +1,19 @@
 # fmridataset 0.11.0 (Development)
 
+- Vignettes rewritten. "Getting started" now begins from your own data
+  (`read_nifti_bold()`, `as_fmri_frame()`), a new "Subjects, runs, and
+  studies" vignette covers entities, relations, studies, and collections,
+  "Feature spaces" adds surfaces, index spaces, and grayordinate-style
+  composites, "Importing, saving, and identity" runs on the bundled fMRIPrep
+  tree, and the storage-package vignette uses `source_error()` and
+  `check_array_source()`. A small `fmridataset.css` fixes the page width,
+  heading marks, and wrapping at phone width.
+
+- More readable printing: frame links, studies (with their frames),
+  collections, entity frames, identity descriptors, surface and composite
+  maps, and long run labels; no trailing spaces. `write_frame()` refuses a
+  frame with ephemeral IDs before checking for `fmristore`.
+
 - API changes found while rewriting the vignettes:
   - `same_space()` now returns `TRUE` or `FALSE`, so `if (same_space(a, b))`
     works. The value still carries the comparison: `$same_class`,

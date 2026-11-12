@@ -183,6 +183,14 @@ test_that("check_array_source() certifies conforming sources and names failures"
   quiet <- check_array_source(memory_source(reference), reference * 2, error = FALSE)
   expect_false(all(quiet$passed))
   expect_match(capture.output(print(quiet))[[1L]], "^<source_conformance> 3 of 7 laws pass")
+
+  leaky <- memory_source(reference)
+  leaky$loader <- function() NULL
+  broken <- check_array_source(leaky, reference, error = FALSE)
+  expect_false(broken$passed[[1L]])
+  expect_true(all(is.na(broken$passed[-1L])))
+  err <- tryCatch(check_array_source(leaky, reference), error = identity)
+  expect_match(conditionMessage(err), "fails 1 conformance law:")
 })
 
 test_that("a single hemisphere label covers a one-hemisphere mesh", {

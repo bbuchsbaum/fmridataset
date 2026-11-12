@@ -165,12 +165,12 @@ feature_map_digest <- function(x) {
 #' @export
 print.feature_map <- function(x, ...) {
   validate_feature_map(x)
-  cat(
+  .line(
     "<feature_map>", n_features(x$from), "source features ->",
-    n_features(x$to), "target features\n"
+    n_features(x$to), "target features"
   )
-  cat("  type:", x$map_type, "\n")
-  cat("  digest:", substr(feature_map_digest(x), 1L, 12L), "\n")
+  .line("  type:  ", x$map_type)
+  .line("  digest:", .short_digest(feature_map_digest(x)))
   invisible(x)
 }
 
@@ -208,10 +208,10 @@ feature_map_from_target <- function(target) {
     encoder <- basis_analysis(target)
     if (is.null(encoder)) {
       .feature_map_abort(
-        paste(
-          "target is a synthesis-only basis_space with no analysis operator,",
-          "so no canonical parent-to-basis map exists. Supply an explicit",
-          "feature_map(), or construct the basis with an encoder."
+        paste0(
+          "target is a synthesis-only basis_space: it has no encoder, so there\n",
+          "  is no canonical map from the parent space onto it. Supply an\n",
+          "  explicit feature_map(), or construct the basis with an encoder."
         ),
         field = "target",
         direction = "analysis"

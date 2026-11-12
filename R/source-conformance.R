@@ -39,7 +39,8 @@
 #'   return the report without raising.
 #' @return A `source_conformance` data frame with one row per law and columns
 #'   `law`, `passed`, and `detail`, invisibly when every law passes. It prints
-#'   as a checklist.
+#'   as a checklist. When the descriptor law fails, the other laws are not
+#'   checked (they would only repeat that failure) and `passed` is `NA`.
 #' @examples
 #' reference <- matrix(as.double(1:12), nrow = 3)
 #' check_array_source(memory_source(reference), reference)
@@ -55,19 +56,27 @@ check_array_source <- function(source, reference, error = TRUE) {
     views = function() .conformance_views(source, reference),
     content = function() .conformance_content(source, reference)
   )
-  results <- lapply(laws, function(law) {
-    tryCatch(law(), error = function(e) paste("error:", conditionMessage(e)))
-  })
+  run_law <- function(law) {
+    tryCatch(law(), error = function(e) conditionMessage(e))
+  }
+  # Every later law reads through the descriptor, so an invalid descriptor
+  # would only repeat its own failure; those laws are reported as not checked.
+  results <- list(descriptor = run_law(laws$descriptor))
+  for (name in names(laws)[-1L]) {
+    results[[name]] <- if (isTRUE(results$descriptor)) run_law(laws[[name]]) else NA
+  }
   report <- data.frame(
     law = names(laws),
-    passed = vapply(results, isTRUE, logical(1)),
-    detail = vapply(results, function(r) if (isTRUE(r)) "" else as.character(r)[[1L]], ""),
+    passed = vapply(results, function(r) if (identical(r, NA)) NA else isTRUE(r), logical(1)),
+    detail = vapply(results, function(r) {
+      if (isTRUE(r)) "" else if (identical(r, NA)) "not checked: the descriptor is invalid" else as.character(r)[[1L]]
+    }, ""),
     stringsAsFactors = FALSE,
     row.names = NULL
   )
   class(report) <- c("source_conformance", class(report))
-  if (isTRUE(error) && !all(report$passed)) {
-    failed <- report[!report$passed, , drop = FALSE]
+  if (isTRUE(error) && !isTRUE(all(report$passed))) {
+    failed <- report[report$passed %in% FALSE, , drop = FALSE]
     .frame_abort(
       paste0(
         "Array source of class '", class(source)[[1L]], "' fails ",
@@ -79,21 +88,22 @@ check_array_source <- function(source, reference, error = TRUE) {
       report = report
     )
   }
-  if (all(report$passed)) invisible(report) else report
+  if (isTRUE(all(report$passed))) invisible(report) else report
 }
 
 #' @export
 print.source_conformance <- function(x, ...) {
   .line(
-    "<source_conformance>", sum(x$passed), "of", nrow(x),
+    "<source_conformance>", sum(x$passed, na.rm = TRUE), "of", nrow(x),
     "laws pass"
   )
   width <- max(nchar(x$law))
   for (i in seq_len(nrow(x))) {
-    .line(if (x$passed[[i]]) {
+    status <- if (is.na(x$passed[[i]])) "skip" else if (x$passed[[i]]) "ok" else "FAIL"
+    .line(if (identical(status, "ok")) {
       paste("  ok  ", x$law[[i]])
     } else {
-      sprintf("  FAIL %-*s  %s", width, x$law[[i]], x$detail[[i]])
+      sprintf("  %-4s %-*s  %s", status, width, x$law[[i]], x$detail[[i]])
     })
   }
   invisible(x)

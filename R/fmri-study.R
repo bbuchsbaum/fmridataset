@@ -1100,8 +1100,24 @@ study_digest <- function(x) {
 #' @export
 print.fmri_study <- function(x, ...) {
   validate_fmri_study(x)
-  cat("<fmri_study>", length(study_ids(x)), "representations\n")
-  cat("  entities:", paste(entity_names(x), collapse = ", "), "\n")
-  cat("  links:", length(study_links(x)), "\n")
+  ids <- study_ids(x)
+  .line("<fmri_study>", .plural(length(ids), "representation"))
+  width <- max(nchar(ids)) + 1L
+  for (id in ids) {
+    value <- x$frames[[id]]
+    shape <- if (inherits(value, "fmri_collection")) {
+      .plural(length(collection_ids(value)), "frame")
+    } else {
+      paste(dim(value), collapse = " x ")
+    }
+    .line(sprintf("  %-*s", width, paste0(id, ":")), class(value)[[1L]], shape)
+  }
+  .line("  entities:", if (length(entity_names(x))) paste(entity_names(x), collapse = ", ") else "(none)")
+  links <- study_links(x)
+  if (length(links)) {
+    .line("  links:   ", paste(vapply(names(links), function(name) {
+      sprintf("%s (%s -> %s)", name, links[[name]]$source, links[[name]]$target)
+    }, ""), collapse = ", "))
+  }
   invisible(x)
 }

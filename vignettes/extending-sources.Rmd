@@ -1,19 +1,20 @@
 ---
-title: "Implementing an array source"
+title: "For storage packages: implementing an array source"
 output:
   rmarkdown::html_vignette:
     toc: yes
     toc_depth: 2
-    css: albers.css
+    css: [albers.css, fmridataset.css]
     includes:
       in_header: albers-header.txt
 vignette: >
-  %\VignetteIndexEntry{Implementing an array source}
+  %\VignetteIndexEntry{For storage packages: implementing an array source}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 resource_files:
 - albers.css
 - albers.js
+- fmridataset.css
 ---
 
 ```{r setup, include = FALSE}
@@ -23,18 +24,31 @@ knitr::opts_chunk$set(
   message = FALSE,
   warning = FALSE
 )
+options(width = 72)
+has_delarr <- requireNamespace("delarr", quietly = TRUE) &&
+  utils::packageVersion("delarr") >= "0.2.0"
+note <- function(pkg) {
+  cat(
+    '<p class="chunk-note">The next chunk needs the <code>', pkg,
+    "</code> package, which is not installed, so it was not run.</p>",
+    sep = ""
+  )
+}
 ```
 
-Every assay in a frame is backed by an *array source*. A source is a
-serializable description of a two-dimensional numerical array plus the S3
-methods that read from it. The package ships in-memory, NIfTI, HDF5 (through
-`fmristore`), and experimental Zarr sources. A storage package adds its own
-by implementing a small set of generics. It then passes the same conformance
-checks the built-in sources pass.
+*This vignette is for authors of packages that store fMRI arrays in a new
+format. You do not need it to analyse data.*
 
-This vignette implements a complete source backed by an `.rds` file, in about
-sixty lines, and validates it. The file format is deliberately trivial so the
-protocol is the whole lesson.
+Every assay in a frame is backed by an *array source*: a small, serializable
+description of a two-dimensional array, plus methods that read from it. The
+package ships in-memory, NIfTI, and experimental Zarr sources, and
+`fmristore` adds HDF5. A storage package adds its own format by implementing
+a handful of generics; frames, views, binding, block planning, persistence,
+and hashing then work with it unchanged.
+
+This vignette builds a complete source backed by an `.rds` file and checks
+it. The file format is deliberately trivial, so the protocol is the whole
+lesson.
 
 ```{r}
 library(fmridataset)
@@ -42,47 +56,46 @@ library(fmridataset)
 
 ## The protocol
 
-An array source is an S3 object with class `c("<your_class>", "array_source")`
-and methods for these generics:
+An array source is an S3 object with class `c("<your_class>",
+"array_source")` and methods for these generics:
 
 | Generic | Returns |
-|---|---|
-| `source_shape()` | Two non-negative integers: observations, features |
-| `source_dtype()` | One storage dtype such as `"float64"`, `"float32"`, `"int16"`, `"logical"` |
-| `source_chunks()` | Two positive integers bounded by the shape: the natural read grid |
-| `source_capabilities()` | Unique strings, including `"block_slice"` and `"serializable"` |
-| `source_fingerprint()` | One non-empty string identifying this descriptor and revision |
+|:--------|:--------|
+| `source_shape()` | Two integers: the number of observations and features |
+| `source_dtype()` | The storage type, such as `"float64"`, `"float32"`, `"int16"`, or `"logical"` |
+| `source_chunks()` | Two positive integers no larger than the shape: the natural read block |
+| `source_capabilities()` | Distinct strings, including `"block_slice"` and `"serializable"` |
+| `source_fingerprint()` | One string identifying this description and revision of the array |
 | `source_open()` | A handle inheriting from `"array_source_handle"` |
-| `source_read()` | An observation-by-feature matrix for integer selectors, in requested order |
+| `source_read()` | An observations-by-features matrix for the requested positions, in order |
 | `source_read_native()` | A native spatial object, or an error if the source has none |
-| `source_close()` | Releases the handle |
+| `source_close()` | Releases a handle; descriptors have a default that does nothing |
 
-The package provides `source_descriptor()`, `validate_array_source()`,
-`source_realization_cost()`, and `content_hash()` on top of these; you do not
-implement them.
+The package builds `source_descriptor()`, `validate_array_source()`,
+`source_realization_cost()`, `content_hash()`, and `check_array_source()` on
+top of these; you do not implement them.
 
-Two rules hold everything together.
+Two rules hold the design together.
 
-**A descriptor is not a handle.** The source object holds only plain
-serializable values: paths, shapes, dtypes, sizes, timestamps, tokens. It
-holds no open connections, environments, external pointers, or closures.
-`validate_array_source()` rejects a descriptor that contains any of them.
-Runtime state belongs in the handle that `source_open()` returns. It never
-becomes semantic state.
+**A descriptor is not a handle.** The source object holds only plain values
+that can be serialized: paths, shapes, types, sizes, timestamps.
+It holds no open connections, environments, external pointers, or functions,
+and `validate_array_source()` rejects one that does. Open files belong in the
+handle that `source_open()` returns.
 
 **Fingerprints are cheap and content hashes are explicit.** The fingerprint
-is computed once, at construction, and stored in the descriptor. Its inputs
-are the descriptor fields and any physical evidence you can observe without
-reading values. It must never hash the array. Value identity is
-`content_hash()`, which the package computes by streaming your
-`source_read()`.
+is computed once, when the source is created, from the descriptor's fields
+and any evidence you can observe without reading values, such as a file's
+size and modification time. It must never hash the array. Identity by value
+is `content_hash()`, which the package computes by reading through your
+`source_read()` method.
 
 ## An RDS-backed source
 
-The constructor reads the file once to learn the shape, keeps the file's size
-and modification time as revision evidence, computes the fingerprint, and
-validates itself. `canonical_sha256()` is the package's canonical hash and is
-the right tool for a fingerprint.
+The constructor reads the file once to learn its shape, records the file's
+size and modification time as revision evidence, computes the fingerprint
+with the package's canonical hash, `canonical_sha256()`, and validates the
+result.
 
 ```{r constructor}
 rds_source <- function(path, chunks = NULL) {
@@ -92,35 +105,28 @@ rds_source <- function(path, chunks = NULL) {
     stop("rds_source() requires a numeric matrix.", call. = FALSE)
   }
   shape <- as.integer(dim(values))
-  if (is.null(chunks)) chunks <- pmax(1L, shape)
+  chunks <- pmin(as.integer(chunks %||% shape), pmax(1L, shape))
   info <- file.info(path)
   out <- structure(
     list(
       path = path,
       shape = shape,
       dtype = "float64",
-      chunks = pmin(as.integer(chunks), pmax(1L, shape)),
+      chunks = chunks,
       size = as.numeric(info$size),
-      mtime = as.numeric(info$mtime),
-      schema_version = 1L
+      mtime = as.numeric(info$mtime)
     ),
     class = c("rds_source", "array_source")
   )
-  out$fingerprint <- canonical_sha256(list(
-    type = "rds_source",
-    schema_version = out$schema_version,
-    path = out$path,
-    shape = out$shape,
-    dtype = out$dtype,
-    chunks = out$chunks,
-    size = out$size,
-    mtime = out$mtime
-  ))
+  fields <- c(list(type = "rds_source"), unclass(out))
+  out$fingerprint <- canonical_sha256(fields)
   validate_array_source(out)
 }
+
+`%||%` <- function(x, y) if (is.null(x)) y else x
 ```
 
-The descriptor accessors return stored fields.
+The descriptor methods return stored fields.
 
 ```{r accessors}
 source_shape.rds_source <- function(x, ...) x$shape
@@ -132,13 +138,12 @@ source_capabilities.rds_source <- function(x, ...) {
 source_fingerprint.rds_source <- function(x, ...) x$fingerprint
 ```
 
-Opening re-observes the file and compares it with the evidence captured at
-construction. When they differ the descriptor is stale. That is not an I/O
-failure: the file opened fine, it is simply not the file the descriptor was
-made from. The package reserves `fmridataset_error_source_stale` for this
-case and `fmridataset_error_backend_io` for genuine failures. Callers rely on
-the distinction. Extension packages raise both as plain conditions with those
-classes.
+Opening checks the file against the evidence recorded at construction. If
+they differ, the descriptor is *stale*: the file opened fine, but it is not
+the file the descriptor describes. Callers distinguish that from a genuine
+I/O failure, so raise each with `source_error()`, which gives the condition
+the class callers test for: `type = "stale"` here, `type = "io"` when the
+backend fails.
 
 ```{r open}
 rds_assert_fresh <- function(x) {
@@ -146,15 +151,9 @@ rds_assert_fresh <- function(x) {
   actual <- list(size = as.numeric(info$size), mtime = as.numeric(info$mtime))
   expected <- list(size = x$size, mtime = x$mtime)
   if (!identical(actual, expected)) {
-    stop(structure(
-      list(
-        message = paste("RDS file changed since the descriptor was built:", x$path),
-        call = NULL,
-        source = list(type = "rds_source", path = x$path),
-        expected = expected,
-        actual = actual
-      ),
-      class = c("fmridataset_error_source_stale", "fmridataset_error", "error", "condition")
+    stop(source_error(
+      paste("RDS file changed since the source was created:", x$path),
+      type = "stale", source = x$path, expected = expected, actual = actual
     ))
   }
   invisible(TRUE)
@@ -167,31 +166,30 @@ source_open.rds_source <- function(x, ...) {
     class = c("rds_source_handle", "array_source_handle")
   )
 }
-source_close.rds_source <- function(x, ...) invisible(TRUE)
+source_close.rds_source_handle <- function(x, ...) invisible(TRUE)
 ```
 
-Reads take integer selectors on both axes and honor the requested order,
-and return a zero-extent matrix for an empty selection. The selection law
-(`inst/architecture/ADR-010-selection-algebra.md`) is checked at the
-`source_read()` generic before your method runs: positions arrive whole, in
-bounds, and never repeated, so a method need not defend against a repeated
-or out-of-range position, though refusing one again is harmless. Reading
-through the handle is the real implementation; reading from the descriptor
-opens, reads, and closes.
+`source_close()` is defined on the handle class because that is what gets
+closed. This handle holds only a matrix in memory, so there is nothing to
+release; a handle with an open connection would close it here.
+
+The `source_read()` generic checks every selector before your method runs,
+and passes it on in one form: `NULL` for the whole axis, otherwise distinct,
+in-range, positive positions in the requested order, possibly none. Logical
+masks, negative positions, and repeats never reach the method, so it can
+index directly. Reading from an open handle is the real implementation;
+reading from the descriptor opens, reads, and closes.
 
 ```{r read}
-source_read.rds_source_handle <- function(x, observations = NULL, features = NULL, ...) {
-  values <- x$values
-  if (is.null(observations)) observations <- seq_len(nrow(values))
-  if (is.null(features)) features <- seq_len(ncol(values))
-  if (any(observations < 1L | observations > nrow(values)) ||
-    any(features < 1L | features > ncol(values))) {
-    stop("rds_source selector is out of bounds.", call. = FALSE)
-  }
-  values[observations, features, drop = FALSE]
+source_read.rds_source_handle <- function(x, observations = NULL,
+                                          features = NULL, ...) {
+  rows <- observations %||% seq_len(nrow(x$values))
+  cols <- features %||% seq_len(ncol(x$values))
+  x$values[rows, cols, drop = FALSE]
 }
 
-source_read.rds_source <- function(x, observations = NULL, features = NULL, ...) {
+source_read.rds_source <- function(x, observations = NULL,
+                                   features = NULL, ...) {
   handle <- source_open(x)
   on.exit(source_close(handle), add = TRUE)
   source_read(handle, observations = observations, features = features, ...)
@@ -202,9 +200,9 @@ source_read_native.rds_source <- function(x, observations = NULL, ...) {
 }
 ```
 
-That is the whole source. In a package these methods would be registered in
-the `NAMESPACE` with `S3method()`; in a vignette, defining them at top level
-is enough for dispatch.
+That is the whole source. In a package, register the methods in the
+`NAMESPACE` with `S3method()`; in a vignette, defining them at top level is
+enough for dispatch.
 
 ## Try it
 
@@ -215,19 +213,21 @@ path <- file.path(tempdir(), "toy.rds")
 saveRDS(reference, path)
 
 src <- rds_source(path, chunks = c(2L, 5L))
-source_descriptor(src)
+str(source_descriptor(src)[c("shape", "dtype", "chunks")])
 ```
 
-Reads honor order and shape.
+Reads honour the requested order, and every selector form works because the
+generic normalizes it first.
 
 ```{r use-read}
 source_read(src, observations = c(6L, 1L), features = c(5L, 2L))
-reference[c(6, 1), c(5, 2)]
+odd_rows <- c(TRUE, FALSE, TRUE, FALSE, TRUE, FALSE)
+source_read(src, observations = odd_rows, features = -1)
 dim(source_read(src, observations = integer(), features = 1:2))
 ```
 
-The source drops straight into a frame. `explain()` reports it by class, and
-views over it are as lazy as any other.
+The source drops straight into a frame. `explain()` reports it, and views
+over it read only what they select.
 
 ```{r use-frame}
 frame <- fmri_frame(
@@ -235,71 +235,44 @@ frame <- fmri_frame(
   observations = data.frame(.obs_id = sprintf("t%02d", 1:6)),
   space = index_space(5L, ids = paste0("f", 1:5))
 )
-explain(frame)$assays$bold[c("source_type", "chunks")]
+explain(frame)
 collect_assay(frame[c("t02", "t01"), "f5"])
 ```
 
-The cost estimate the budget checks use comes for free from the shape and
-dtype.
+## Check it
 
-```{r use-cost}
-source_realization_cost(src, observations = 1:2)[c("storage_bytes", "estimated_peak_bytes")]
+`check_array_source()` runs the behavioural laws every source must satisfy
+against the source and the matrix it should hold: a valid descriptor, a
+serialization round trip that keeps the fingerprint, safe opening and
+closing, reads that match the reference for any selection, views that
+compose, and a content hash equal to that of an in-memory copy.
+
+```{r check}
+report <- check_array_source(src, reference)
+report
 ```
 
-## Validate it
+In a storage package, call it in the tests for every source type you ship:
 
-`validate_array_source()` checks the descriptor contract: two-dimensional
-shape, supported dtype, chunk grid bounded by the shape, the required
-capabilities, a non-empty fingerprint, and no runtime state.
-
-```{r validate}
-validate_array_source(src)
+```{r check-test, eval = FALSE}
+test_that("rds sources conform to the array-source protocol", {
+  expect_no_error(check_array_source(rds_source(path), reference))
+})
 ```
 
-A descriptor that smuggles in a function, however well-formed otherwise,
-fails.
+A broken source fails with an error naming every law it breaks. Here the
+descriptor smuggles in a function, which would not survive being saved and
+reloaded elsewhere.
 
-```{r validate-fail, error = TRUE}
+```{r check-fail, error = TRUE}
 leaky <- src
-leaky$loader <- function() readRDS(leaky$path)
-validate_array_source(leaky)
+leaky$loader <- function() readRDS(path)
+check_array_source(leaky, reference)
 ```
 
-The behavioral laws live in the package's conformance helper,
-`tests/testthat/helper-frame-conformance.R`. It is a function that takes a
-source and its reference matrix. A storage package should copy that helper
-into its own tests and call it on every source type it ships. It checks, in
-order:
-
-- the descriptor is valid and its shape matches the reference;
-- the descriptor survives `serialize()` and `unserialize()` with the same
-  fingerprint, shape, dtype, and chunks;
-- opening and closing a handle is safe and leaves the fingerprint untouched;
-- reads match the reference for full, reversed, permuted, and empty
-  selections, and are pure;
-- out-of-range and repeated selections raise an error, and views composed
-  over the source read what the equivalent flat positions read;
-- `content_hash()` equals the content hash of a memory source over the
-  reference, is accepted by `identity_descriptor()` as a content receipt, and
-  does not change the fingerprint.
-
-The last law is the one that matters most for interoperability, and the
-cheapest to check by hand.
-
-```{r conformance}
-restored <- unserialize(serialize(src, NULL))
-identical(source_fingerprint(restored), source_fingerprint(src))
-
-handle <- source_open(src)
-class(handle)
-source_close(handle)
-
-identical(content_hash(src), content_hash(memory_source(reference)))
-```
-
-`counting_source()` wraps any source and records what reaches it. That is
-how the zero-I/O laws are certified: build a frame over the wrapper, take
-views, and assert the read count is still zero.
+`counting_source()` wraps any source and records every read that reaches it,
+which is how the package certifies that views and binds read nothing until
+asked.
 
 ```{r counting}
 counted <- counting_source(src)
@@ -309,42 +282,55 @@ invisible(source_read(view))
 source_counts(counted)[c("reads", "values")]
 ```
 
-Staleness behaves as designed. Rewriting the file does not change the
-fingerprint stored in the descriptor. Every read now fails with the stale
-class, and a fresh descriptor has a new fingerprint.
+Rewriting the file makes the existing descriptor stale. Its stored
+fingerprint does not change, but every read now fails with the stale
+condition, and a new descriptor has a new fingerprint. (Setting the
+modification time explicitly avoids depending on the file system's clock
+resolution.)
 
 ```{r stale}
-Sys.sleep(1.1)
 saveRDS(reference * 2, path)
-class(tryCatch(source_read(src, 1L, 1L), error = identity))[1]
+Sys.setFileTime(path, Sys.time() + 60)
+
+tryCatch(
+  source_read(src, 1L, 1L),
+  fmridataset_error_source_stale = function(e) "stale"
+)
 identical(source_fingerprint(rds_source(path)), source_fingerprint(src))
 ```
 
-## Composition comes for free
+## Composition comes free
 
-The protocol is uniform, so the package's compositions accept the new source
-without knowing anything about it. `row_sharded_source()` presents several
-sources as one array with stable shard IDs and an inspectable manifest. That
-is how multi-run and multi-subject data are bound.
+Because the protocol is uniform, the package's compositions accept the new
+source without knowing anything about it. `row_sharded_source()` presents
+several sources as one array, with named shards, which is how runs and
+subjects stored in separate files are bound together.
 
 ```{r sharded}
-saveRDS(reference[1:2, ], run_1 <- file.path(tempdir(), "run-1.rds"))
-saveRDS(reference[3:6, ], run_2 <- file.path(tempdir(), "run-2.rds"))
+run_1 <- file.path(tempdir(), "run-1.rds")
+run_2 <- file.path(tempdir(), "run-2.rds")
+saveRDS(reference[1:2, ], run_1)
+saveRDS(reference[3:6, ], run_2)
+
 sharded <- row_sharded_source(
   list(rds_source(run_1), rds_source(run_2)),
   shard_ids = c("run-1", "run-2")
 )
 shard_manifest(sharded)[, c(".shard_id", ".start", ".end")]
-locate_source_rows(sharded, c(5L, 1L))[, c(".observation", ".shard_id", ".local_observation")]
-identical(content_hash(sharded), content_hash(memory_source(reference)))
+rows <- locate_source_rows(sharded, c(5L, 1L))
+rows[, c(".observation", ".shard_id", ".local_observation")]
+check_array_source(sharded, reference)$passed
 ```
 
-With the suggested `delarr` package (0.2.0 or newer) installed,
-`as_delarr()` wraps any source as a lazy `delarr` array, so chunk-aware
-numerical plans can pull from it through `source_read()` under the same
+```{r delarr-note, echo = FALSE, results = "asis", eval = !has_delarr}
+note("delarr (>= 0.2.0)")
+```
+
+With the suggested `delarr` package, `as_delarr()` wraps any source as a lazy
+`delarr` array, whose reads go through `source_read()` under the same memory
 budget.
 
-```{r delarr, eval = requireNamespace("delarr", quietly = TRUE) && utils::packageVersion("delarr") >= "0.2.0"}
+```{r delarr, eval = has_delarr}
 lazy <- as_delarr(sharded)
 dim(lazy)
 ```
@@ -355,12 +341,18 @@ unlink(c(path, run_1, run_2))
 
 ## Checklist for a storage package
 
-Keep the descriptor serializable and put every handle behind `source_open()`.
-Compute the fingerprint at construction from descriptor fields and cheap
-physical evidence, never from values. Raise
-`fmridataset_error_source_stale` when the evidence no longer matches. Raise
-`fmridataset_error_backend_io` when the backend fails. Return blocks in the
-requested order, non-dropping, and refuse out-of-range selectors. Run the
-conformance helper on every source type before release. The frame, view,
-binding, planning, persistence, and hashing machinery will then work without
-a single special case.
+- Keep the descriptor serializable; put open files and connections behind
+  `source_open()`, and release them in a `source_close()` method for your
+  handle class.
+- Compute the fingerprint once, at construction, from descriptor fields and
+  cheap evidence such as file size and modification time, never from values.
+- Raise `source_error(type = "stale")` when that evidence no longer matches,
+  and `source_error(type = "io")` when the backend fails.
+- Return reads in the requested order, always as a two-dimensional matrix.
+  Selectors arrive already checked.
+- Run `check_array_source()` in your tests for every source type you ship.
+
+The rules for selectors are recorded in the package's
+[selection algebra](https://github.com/bbuchsbaum/fmridataset/blob/main/inst/architecture/ADR-010-selection-algebra.md),
+and those for fingerprints and staleness in its
+[fingerprint decision record](https://github.com/bbuchsbaum/fmridataset/blob/main/inst/architecture/ADR-009-source-fingerprints-and-content-hashes.md).

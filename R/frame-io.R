@@ -84,6 +84,9 @@
 #' @export
 write_frame <- function(x, path, format = "hdf5", ...) {
   format <- match.arg(format, "hdf5")
+  # Refuse a frame that cannot be persisted (ephemeral IDs) before asking for
+  # the storage package, so the error is about the frame, not the setup.
+  fds_frame_manifest(x)
   .require_frame_store("write_frame_h5")
   # Evaluate the caller's arguments first so that only warnings raised inside
   # the store are muffled, never ones from the caller's own expressions.

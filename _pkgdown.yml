@@ -6,15 +6,15 @@ template:
 articles:
 - title: Using frames
   desc: >
-    The frame container, its feature spaces, and how frames move between
-    spaces, storage, and BIDS.
+    Start with "Getting started", then read the others in any order.
   navbar: ~
   contents:
   - fmridataset
   - feature-spaces
+  - studies
   - persistence-and-import
-- title: Extending the package
-  desc: The array-source protocol for storage-package authors.
+- title: For developers
+  desc: The array-source protocol, for authors of storage packages.
   contents:
   - extending-sources
 
@@ -27,6 +27,8 @@ reference:
   - fmri_frame
   - frame-constructors
   - frame-accessors
+  - frame-annotations
+  - as.matrix.fmri_frame
   - aligned_assay_set
   - filter_observations
   - select_features
@@ -123,6 +125,7 @@ reference:
   - matches("shard")
   - locate_source_rows
   - validate_array_source
+  - check_array_source
   - content_hash
   - content_hash_contract
   - as_delarr

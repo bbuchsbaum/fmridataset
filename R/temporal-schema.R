@@ -495,8 +495,9 @@ as_sampling_frame <- function(x, ...) {
 #' @export
 print.frame_temporal_schema <- function(x, ...) {
   cat(sprintf(
-    "<frame_temporal_schema> %d observations in %d run%s%s\n",
-    length(x$run_ids), x$n_runs, if (x$n_runs == 1L) "" else "s",
+    "<frame_temporal_schema> %d observation%s in %d run%s%s\n",
+    length(x$run_ids), if (length(x$run_ids) == 1L) "" else "s",
+    x$n_runs, if (x$n_runs == 1L) "" else "s",
     paste0(
       if (x$contiguous) "" else " (not contiguous)",
       if (isFALSE(x$ordered)) " (not in acquisition order)" else ""
@@ -504,6 +505,8 @@ print.frame_temporal_schema <- function(x, ...) {
   ))
   if (x$n_runs) {
     shown <- seq_len(min(x$n_runs, 6L))
+    labels <- .abbreviate_labels(names(x$run_lengths)[shown], 40L)
+    label_width <- max(nchar(labels))
     for (i in shown) {
       extras <- character()
       if (!is.null(x$TR)) {
@@ -516,8 +519,9 @@ print.frame_temporal_schema <- function(x, ...) {
         )
       }
       cat(sprintf(
-        "  %-16s %4d observations%s\n",
-        names(x$run_lengths)[[i]], x$run_lengths[[i]],
+        "  %-*s  %d observation%s%s\n",
+        label_width, labels[[i]], x$run_lengths[[i]],
+        if (x$run_lengths[[i]] == 1L) "" else "s",
         if (length(extras)) paste0("  ", paste(extras, collapse = "  ")) else ""
       ))
     }

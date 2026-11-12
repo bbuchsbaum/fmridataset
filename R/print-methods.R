@@ -32,6 +32,40 @@
   if (length(ids) > max) paste0(shown, ", ... (", length(ids), " in all)") else shown
 }
 
+# Shorten labels for display. Labels that are too long usually share a long
+# prefix and suffix (paths, BIDS file names), so drop what they share, cut at
+# a separator, and keep the part that tells them apart: "...run-01...". A
+# lone long label keeps its end.
+.abbreviate_labels <- function(x, width = 40L) {
+  if (!length(x) || all(nchar(x) <= width)) {
+    return(x)
+  }
+  if (length(unique(x)) < 2L) {
+    long <- nchar(x) > width
+    x[long] <- paste0("...", substring(x[long], nchar(x[long]) - width + 4L))
+    return(x)
+  }
+  common_prefix <- function(values) {
+    chars <- strsplit(values, "", fixed = TRUE)
+    n <- min(lengths(chars))
+    i <- 0L
+    while (i < n && length(unique(vapply(chars, `[[`, "", i + 1L))) == 1L) i <- i + 1L
+    substr(values[[1L]], 1L, i)
+  }
+  reverse <- function(values) {
+    vapply(strsplit(values, "", fixed = TRUE), function(ch) paste(rev(ch), collapse = ""), "")
+  }
+  prefix <- common_prefix(x)
+  prefix <- sub("[^/_]*$", "", prefix)
+  suffix <- reverse(common_prefix(reverse(x)))
+  suffix <- sub("^[^/_]*", "", suffix)
+  middle <- substring(x, nchar(prefix) + 1L, nchar(x) - nchar(suffix))
+  out <- paste0(if (nzchar(prefix)) "...", middle, if (nzchar(suffix)) "...")
+  long <- nchar(out) > width
+  out[long] <- paste0(substr(out[long], 1L, width - 3L), "...")
+  out
+}
+
 .plural <- function(n, singular, plural = paste0(singular, "s")) {
   paste(format(n, big.mark = ","), if (identical(as.numeric(n), 1)) singular else plural)
 }
@@ -59,6 +93,10 @@ print.surface_space <- function(x, ...) {
     "<surface_space>", .plural(n_features(x), "vertex", "vertices"),
     paste0("(", counts, ")")
   )
+  excluded <- length(x$vertex_ids) - n_features(x)
+  if (excluded > 0L) {
+    .line("  excluded:", .plural(excluded, "vertex", "vertices"), "(medial wall or outside the support)")
+  }
   .line("  template:", x$template %||% "(none)")
   .line("  digest:  ", .short_digest(space_digest(x)))
   invisible(x)
@@ -110,7 +148,7 @@ print.composite_space <- function(x, ...) {
   )
   width <- max(nchar(names(parts)))
   for (name in names(parts)) {
-    .line(sprintf("  %-*s ", width + 1L, paste0(name, ":")), .space_parent_line(parts[[name]]))
+    .line(sprintf("  %-*s", width + 1L, paste0(name, ":")), .space_parent_line(parts[[name]]))
   }
   .line("  digest:", .short_digest(space_digest(x)))
   invisible(x)
@@ -170,12 +208,36 @@ print.provenance_graph <- function(x, ...) {
   width <- max(c(0L, nchar(vapply(shown, function(r) r$operation, ""))))
   for (record in shown) {
     parents <- length(record$parents)
+    notes <- c(
+      if (parents) .plural(parents, "parent"),
+      if (record$id %in% tips) "(tip)"
+    )
     .line(sprintf(
-      "  %s  %-*s  %s%s",
-      .short_digest(record$id), width, record$operation,
-      if (parents) .plural(parents, "parent") else "no parents",
-      if (record$id %in% tips) "  (tip)" else ""
+      "  %s  %-*s  %s", .short_digest(record$id), width, record$operation,
+      paste(notes, collapse = ", ")
     ))
+  }
+  invisible(x)
+}
+
+#' @export
+print.surface_map <- function(x, ...) {
+  present <- sum(!is.na(x$values))
+  .line(
+    "<surface_map>", .plural(length(x$values), "vertex", "vertices"),
+    sprintf("(%d with values)", present)
+  )
+  .line("  template:", x$template %||% "(none)")
+  .line("  range:   ", if (present) paste(format(range(x$values, na.rm = TRUE)), collapse = " to ") else "(no values)")
+  invisible(x)
+}
+
+#' @export
+print.composite_map <- function(x, ...) {
+  .line("<composite_map>", .plural(length(x$parts), "part"))
+  width <- max(nchar(x$part_names)) + 1L
+  for (name in x$part_names) {
+    .line(sprintf("  %-*s", width, paste0(name, ":")), class(x$parts[[name]])[[1L]])
   }
   invisible(x)
 }
@@ -198,5 +260,25 @@ print.unaligned_record <- function(x, ...) {
     .strip_record_class(x),
     no.list = TRUE, give.attr = FALSE, comp.str = "$ ", indent.str = " "
   )
+  invisible(x)
+}
+
+#' @export
+print.fmri_identity <- function(x, ...) {
+  .line("<fmri_identity>", x$domain, .short_digest(x$digest))
+  .line("  canonicalization:", x$canonicalization$id %||% "(none)")
+  invisible(x)
+}
+
+#' @export
+print.frame_link <- function(x, ...) {
+  .line("<frame_link>", x$source, "->", x$target, sprintf("(%s)", x$type))
+  if (!is.null(x$map)) {
+    .line(
+      "  map:", .plural(nrow(x$map), "pair"),
+      sprintf("(%s IDs -> %s IDs)", x$source_axis, x$target_axis)
+    )
+  }
+  if (!is.null(x$operator)) .line("  operator:", class(x$operator)[[1L]])
   invisible(x)
 }

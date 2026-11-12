@@ -211,6 +211,9 @@
 # Numeric selectors must be whole numbers, may reorder, must not mix signs,
 # drop zero, and must be in bounds; an element may appear once. An empty
 # selection is legal on every axis.
+# An axis label at the start of a sentence: "observation" -> "Observation".
+.sentence_case <- function(x) paste0(toupper(substr(x, 1L, 1L)), substring(x, 2L))
+
 .normalize_selection <- function(index, n, ids = NULL, axis = "observation",
                                  abort = NULL) {
   n <- as.integer(n)
@@ -223,7 +226,7 @@
   if (.is_axis_selection(index)) {
     if (!identical(index$n, n)) {
       abort(
-        sprintf("%s selection addresses an axis of a different length.", axis),
+        sprintf("%s selection addresses an axis of a different length.", .sentence_case(axis)),
         axis = axis, reason = "axis_length", expected = n, actual = index$n
       )
     }
@@ -232,19 +235,19 @@
   if (is.character(index)) {
     if (is.null(ids)) {
       abort(
-        sprintf("%s axis is positional and cannot be selected by ID.", axis),
+        sprintf("%s axis is positional and cannot be selected by ID.", .sentence_case(axis)),
         axis = axis, reason = "positional_axis"
       )
     }
     if (anyNA(index)) {
       abort(
-        sprintf("%s ID selectors must be non-missing.", axis),
+        sprintf("%s ID selectors must be non-missing.", .sentence_case(axis)),
         axis = axis, reason = "missing"
       )
     }
     if (anyDuplicated(index)) {
       abort(
-        sprintf("%s ID selectors must be unique.", axis),
+        sprintf("%s ID selectors must be unique.", .sentence_case(axis)),
         axis = axis, reason = "duplicate"
       )
     }
@@ -285,7 +288,7 @@
   }
   if (anyNA(index)) {
     abort(
-      sprintf("%s positions must be non-missing.", axis),
+      sprintf("%s positions must be non-missing.", .sentence_case(axis)),
       axis = axis, reason = "missing"
     )
   }
@@ -295,20 +298,20 @@
     # both before coercion with the law's own structured reasons.
     if (any(is.infinite(index))) {
       abort(
-        sprintf("%s positions must be finite.", axis),
+        sprintf("%s positions must be finite.", .sentence_case(axis)),
         axis = axis, reason = "non_finite", actual = index[is.infinite(index)]
       )
     }
     if (any(abs(index) > .Machine$integer.max)) {
       abort(
-        sprintf("%s selector is out of bounds.", axis),
+        sprintf("%s selector is out of bounds.", .sentence_case(axis)),
         axis = axis, reason = "out_of_bounds", axis_length = n,
         actual = index[abs(index) > .Machine$integer.max]
       )
     }
     if (any(index != trunc(index))) {
       abort(
-        sprintf("%s positions must be whole numbers.", axis),
+        sprintf("%s positions must be whole numbers.", .sentence_case(axis)),
         axis = axis, reason = "non_integer"
       )
     }
@@ -318,21 +321,21 @@
   if (any(negative)) {
     if (any(index > 0L)) {
       abort(
-        sprintf("%s selectors cannot mix positive and negative positions.", axis),
+        sprintf("%s selectors cannot mix positive and negative positions.", .sentence_case(axis)),
         axis = axis, reason = "mixed_sign"
       )
     }
     dropped <- -index[negative]
     if (any(dropped > n)) {
       abort(
-        sprintf("%s selector is out of bounds.", axis),
+        sprintf("%s selector is out of bounds.", .sentence_case(axis)),
         axis = axis, reason = "out_of_bounds", axis_length = n,
         actual = -dropped[dropped > n]
       )
     }
     if (anyDuplicated(dropped)) {
       abort(
-        sprintf("%s selector repeats an element.", axis),
+        sprintf("%s selector repeats an element.", .sentence_case(axis)),
         axis = axis, reason = "duplicate"
       )
     }
@@ -341,7 +344,7 @@
   if (any(index == 0L)) index <- index[index != 0L]
   if (any(index > n)) {
     abort(
-      sprintf("%s selector is out of bounds.", axis),
+      sprintf("%s selector is out of bounds.", .sentence_case(axis)),
       axis = axis, reason = "out_of_bounds", axis_length = n,
       actual = index[index > n]
     )
@@ -352,7 +355,7 @@
   # a hash table on every read.
   if (is.unsorted(index, strictly = TRUE) && anyDuplicated(index)) {
     abort(
-      sprintf("%s selector repeats an element.", axis),
+      sprintf("%s selector repeats an element.", .sentence_case(axis)),
       axis = axis, reason = "duplicate"
     )
   }

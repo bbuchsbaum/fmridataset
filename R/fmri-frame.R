@@ -438,10 +438,10 @@ as.matrix.fmri_frame <- function(x, ...) collect_assay(x, ...)
 
 #' @export
 print.fmri_frame <- function(x, ...) {
-  cat("<fmri_frame>", dim(x)[1L], "observations x", dim(x)[2L], "features\n")
-  cat("  assays:", paste(names(assays(x)), collapse = ", "), "\n")
-  cat("  active:", active_assay(x), "\n")
-  cat("  space:", class(space(x))[1L], substr(space_digest(space(x)), 1L, 12L), "\n")
+  .line("<fmri_frame>", dim(x)[1L], "observations x", dim(x)[2L], "features")
+  .line("  assays:", paste(names(assays(x)), collapse = ", "))
+  .line("  active:", active_assay(x))
+  .line("  space: ", class(space(x))[1L], .short_digest(space_digest(space(x))))
   invisible(x)
 }
 

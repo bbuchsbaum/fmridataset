@@ -1,0 +1,97 @@
+/* fmridataset vignette overrides, loaded after albers.css.
+ *
+ * albers.css is the albersdown theme, written for pkgdown pages whose content
+ * sits in `main`/`.contents`. An html_vignette has only `body`, so the measure,
+ * heading marks, and code wrapping are set here for that context. Keep this
+ * file small: everything else comes from the theme. */
+
+/* A readable measure: about 80 characters of prose, room for 72-column code. */
+body {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1.5rem clamp(16px, 4vw, 32px) 4rem;
+}
+
+/* Sentence-case headings: uppercase turned "IDs" into "IDS" and "fMRI" into
+ * "FMRI". The dash glyph was wider than its padding and overlapped the first
+ * letter; a drawn rule has a known width. */
+h2,
+h3 {
+  text-transform: none;
+  letter-spacing: 0.005em;
+  padding-left: 0.95em;
+}
+
+h2::before,
+h3::before {
+  content: "";
+  width: 0.5em;
+  height: 0.12em;
+  top: 0.6em;
+  background: var(--A500);
+}
+
+h3::before { background: var(--A700); }
+
+/* Inline code may wrap: long paths and calls otherwise widen the whole page on
+ * a phone. Code blocks wrap on wide screens, where only long error lines need
+ * it; narrow screens keep sideways scrolling inside the block for tables. */
+:not(pre) > code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 761px) {
+  pre > code,
+  pre > code.sourceCode {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Lighter code blocks: less padding, a copy button that appears on hover (and
+ * stays visible, above the code, on touch screens), and upright output. */
+pre { padding: 0.85rem 1rem; }
+
+button.copy-code {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+pre:hover button.copy-code,
+pre:focus-within button.copy-code,
+button.copy-code:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  button.copy-code { opacity: 1; }
+  pre { padding-top: 2.4rem; }
+}
+
+pre code .co,
+.sourceCode .co {
+  font-style: normal;
+}
+
+/* Tables: space around them, cells that wrap on small screens, and code that
+ * stays on one line inside a cell. */
+table { margin-block: 1.35rem; }
+
+th,
+td { vertical-align: top; }
+
+td code { white-space: nowrap; }
+
+@media (max-width: 760px) {
+  table { white-space: normal; }
+}
+
+/* Notes about chunks that were not run because a suggested package is
+ * missing. */
+.chunk-note {
+  border-left: var(--rule-strong) solid var(--border);
+  padding: 0.4rem 0.9rem;
+  color: var(--muted);
+  font-size: 0.95em;
+}

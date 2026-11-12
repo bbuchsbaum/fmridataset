@@ -1,0 +1,218 @@
+---
+title: "Subjects, runs, and studies"
+output:
+  rmarkdown::html_vignette:
+    toc: yes
+    toc_depth: 2
+    css: [albers.css, fmridataset.css]
+    includes:
+      in_header: albers-header.txt
+vignette: >
+  %\VignetteIndexEntry{Subjects, runs, and studies}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+resource_files:
+- albers.css
+- albers.js
+- fmridataset.css
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE
+)
+options(width = 72)
+```
+
+Observations belong to things: a subject, a session, a run, a stimulus.
+Describing those things once, in their own tables, keeps covariates such as a
+subject's age or a stimulus's category in one place instead of copied onto
+every row. This vignette shows how a frame refers to such *entities*, how a
+*study* links several frames that share them, and how a *collection* holds
+frames that cannot share a feature space. It assumes the basics from
+`vignette("fmridataset")`.
+
+```{r}
+library(fmridataset)
+set.seed(5)
+```
+
+## Entities and relations
+
+An entity is a table with one row per thing and a key column that identifies
+it. Here there are two subjects and four stimuli.
+
+```{r entities}
+subjects <- entity_frame(
+  data.frame(
+    subject_id = c("sub-01", "sub-02"),
+    group = c("patient", "control"),
+    age = c(34, 29)
+  ),
+  key = "subject_id",
+  entity_type = "subject"
+)
+stimuli <- entity_frame(
+  data.frame(
+    stimulus_id = c("face-1", "face-2", "house-1", "house-2"),
+    category = c("face", "face", "house", "house")
+  ),
+  key = "stimulus_id",
+  entity_type = "stimulus"
+)
+subjects
+```
+
+A frame refers to entities through *relations*: a `key_relation()` says that
+a column of the observation table holds keys of an entity. The frame below
+holds one beta estimate per trial for three regions, and each trial names its
+subject and its stimulus.
+
+```{r betas}
+regions <- index_space(3, ids = c("FFA", "PPA", "V1"))
+trials <- data.frame(
+  .obs_id = sprintf("%s-trial-%d", rep(c("sub-01", "sub-02"), each = 4), 1:4),
+  subject_id = rep(c("sub-01", "sub-02"), each = 4),
+  stimulus_id = rep(c("face-1", "house-1", "face-2", "house-2"), 2),
+  onset = rep(c(0, 8, 16, 24), 2)
+)
+
+betas <- fmri_frame(
+  assays = list(beta = matrix(round(rnorm(8 * 3), 2), 8, 3)),
+  observations = trials,
+  space = regions,
+  entities = list(subject = subjects, stimulus = stimuli),
+  relations = list(
+    trial_subject = key_relation("subject_id", target = "subject"),
+    trial_stimulus = key_relation("stimulus_id", target = "stimulus")
+  )
+)
+```
+
+Construction checks every key: a trial that named a subject missing from the
+subject table would be an error. With `resolve = TRUE`, the observation table
+gains each entity's columns, prefixed with the entity name.
+
+```{r resolve}
+resolved <- observations(betas, resolve = TRUE)
+resolved[, c(".obs_id", "subject.group", "stimulus.category")]
+```
+
+Filters can use those columns directly.
+
+```{r filter-entity}
+faces <- filter_observations(betas, stimulus.category == "face")
+observation_ids(faces)
+```
+
+Entities can also point at each other, for example runs at subjects with
+`key_relation("subject_id", source = "run", target = "subject")`, and an
+observation then reaches its subject through its run. `read_bids_bold()`
+builds exactly this structure for every import.
+
+## Studies: several frames, shared entities
+
+An analysis rarely has one frame. The same subjects have a BOLD time series
+and the trial-wise betas estimated from it. An `fmri_study()` holds both,
+with one authoritative copy of the entities they share.
+
+```{r bold}
+volumes <- data.frame(
+  .obs_id = sprintf("%s-vol-%02d", rep(c("sub-01", "sub-02"), each = 16), 1:16),
+  subject_id = rep(c("sub-01", "sub-02"), each = 16),
+  run_id = rep(c("sub-01-run-1", "sub-02-run-1"), each = 16),
+  TR = 2
+)
+bold <- fmri_frame(
+  assays = list(bold = matrix(round(rnorm(32 * 3), 2), 32, 3)),
+  observations = volumes,
+  space = regions,
+  entities = list(subject = subjects),
+  relations = list(
+    volume_subject = key_relation("subject_id", target = "subject")
+  )
+)
+```
+
+A *link* records how the rows of one frame correspond to the rows of another.
+Here each trial maps to the volume acquired at its onset.
+
+```{r link}
+onset_volume <- frame_link(
+  "betas", "bold",
+  type = "correspondence",
+  map = data.frame(
+    .source_id = trials$.obs_id,
+    .target_id = sprintf("%s-vol-%02d", trials$subject_id, trials$onset / 2 + 1)
+  )
+)
+onset_volume
+
+study <- fmri_study(
+  list(bold = bold, betas = betas),
+  entities = list(subject = subjects, stimulus = stimuli),
+  links = list(trial_onset = onset_volume)
+)
+study
+```
+
+The study checks that every frame's entities agree with its shared copy and
+that every link names IDs that exist. `filter_entities()` then selects
+entities once and applies the selection everywhere: every frame keeps only
+the rows of the selected subjects, and the link keeps only their pairs.
+
+```{r filter-study}
+patients <- filter_entities(study, subject, group == "patient")
+n_observations(study_frame(patients, "bold"))
+n_observations(study_frame(patients, "betas"))
+study_link(patients, "trial_onset")$map
+```
+
+Nothing is read: the filtered frames are views over the original arrays.
+
+## Collections: same design, different spaces
+
+Data in each subject's native space cannot share a feature axis, because one
+subject's voxels are not another's. `bind_observations()` refuses to stack
+them.
+
+```{r native}
+native <- lapply(c("sub-01", "sub-02"), function(subject) {
+  fmri_frame(
+    assays = list(bold = matrix(rnorm(4 * 18), 4, 18)),
+    observations = data.frame(
+      .obs_id = sprintf("%s-vol-%d", subject, 1:4),
+      run_id = "run-1",
+      TR = 2
+    ),
+    space = volume_space(c(3, 3, 2), template = paste0(subject, "-native"))
+  )
+})
+names(native) <- c("sub-01", "sub-02")
+```
+
+```{r native-bind, error = TRUE}
+bind_observations(native[["sub-01"]], native[["sub-02"]])
+```
+
+An `fmri_collection()` holds such frames side by side instead. It requires
+them to share the same observation columns and assays, and it keeps each
+frame's own space.
+
+```{r collection}
+cohort <- fmri_collection(native)
+cohort
+same_space(
+  space(collection_frame(cohort, "sub-01")),
+  space(collection_frame(cohort, "sub-02"))
+)
+```
+
+A collection can be one representation of a study, alongside frames in a
+common space, so a study can hold native-space time series and
+template-space betas for the same subjects.
+
+To save any of these to disk, see `vignette("persistence-and-import")`.

@@ -168,10 +168,11 @@ entity_blocks <- function(x) {
 #' @export
 print.entity_frame <- function(x, ...) {
   label <- x$entity_type %||% "entity"
-  cat("<entity_frame>", length(x), label, "records\n")
-  cat("  key:", entity_key(x), "\n")
+  .line("<entity_frame>", .plural(length(x), paste(label, "record")))
+  .line("  key:    ", entity_key(x))
+  .line("  columns:", paste(setdiff(names(entity_data(x)), entity_key(x)), collapse = ", "))
   if (length(entity_blocks(x))) {
-    cat("  blocks:", paste(names(entity_blocks(x)), collapse = ", "), "\n")
+    .line("  blocks: ", paste(names(entity_blocks(x)), collapse = ", "))
   }
   invisible(x)
 }
@@ -352,7 +353,7 @@ entity_registry_digest <- function(x) {
 
 #' @export
 print.entity_registry <- function(x, ...) {
-  cat("<entity_registry>", length(x), "entity types\n")
-  if (length(x)) cat("  ", paste(names(x), collapse = ", "), "\n", sep = "")
+  .line("<entity_registry>", .plural(length(x), "entity type"))
+  if (length(x)) .line(" ", paste(names(x), collapse = ", "))
   invisible(x)
 }

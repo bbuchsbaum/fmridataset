@@ -309,8 +309,9 @@ collection_digest <- function(x) {
 print.fmri_collection <- function(x, ...) {
   validate_fmri_collection(x)
   spaces <- if (collection_common_space(x)) "common" else "heterogeneous"
-  cat("<fmri_collection>", length(x), "frames\n")
-  cat("  feature spaces:", spaces, "\n")
-  cat("  assays:", paste(names(assays(x$frames[[1L]])), collapse = ", "), "\n")
+  .line("<fmri_collection>", .plural(length(x), "frame"))
+  .line("  frames:        ", .format_id_sample(collection_ids(x)))
+  .line("  feature spaces:", spaces)
+  .line("  assays:        ", paste(names(assays(x$frames[[1L]])), collapse = ", "))
   invisible(x)
 }

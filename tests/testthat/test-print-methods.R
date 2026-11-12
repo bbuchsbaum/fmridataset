@@ -31,8 +31,8 @@ test_that("feature spaces print a compact summary", {
   mixed <- composite_space(list(lh = surface, vol = voxels))
   expect_identical(.print_lines(mixed)[1:3], c(
     "<composite_space> 16 features in 2 parts",
-    "  lh:   surface_space, 6 features",
-    "  vol:  volume_space, 10 features"
+    "  lh:  surface_space, 6 features",
+    "  vol: volume_space, 10 features"
   ))
 })
 
@@ -68,4 +68,77 @@ test_that("unaligned records print without their class attributes", {
   expect_identical(lines[[1L]], "<unaligned_record> 2 fields")
   expect_false(any(grepl("attr", lines)))
   expect_identical(.print_lines(unaligned_record()), "<unaligned_record> (empty)")
+})
+
+test_that("surface and composite maps print their parts", {
+  left <- surface_space(sprintf("L%d", 1:5), hemisphere = "left", medial_wall = c(rep(FALSE, 4), TRUE))
+  expect_identical(
+    .print_lines(left)[[2L]],
+    "  excluded: 1 vertex (medial wall or outside the support)"
+  )
+  mixed <- composite_space(list(lh = left, vol = volume_space(c(2, 1, 1))))
+  frame <- fmri_frame(list(b = matrix(as.double(1:6), 1)), data.frame(.obs_id = "a"), space = mixed)
+  map <- spatial_map(frame, "a")
+  expect_identical(.print_lines(map), c("<composite_map> 2 parts", "  lh:  surface_map", "  vol: DenseNeuroVol"))
+  expect_identical(.print_lines(map$parts$lh)[[1L]], "<surface_map> 5 vertices (4 with values)")
+})
+
+test_that("long run labels print by the part that tells them apart", {
+  labels <- sprintf(
+    "derivatives/fmriprep/sub-01/func/sub-01_task-memory_run-%02d_space-MNI_desc-preproc_bold", 1:2
+  )
+  expect_identical(fmridataset:::.abbreviate_labels(labels), c("...run-01...", "...run-02..."))
+  expect_identical(fmridataset:::.abbreviate_labels(c("run-1", "run-2")), c("run-1", "run-2"))
+  expect_identical(fmridataset:::.abbreviate_labels(strrep("x", 50), 10L), "...xxxxxxx")
+})
+
+test_that("identity descriptors print their domain and short digest", {
+  frame <- fmri_frame(
+    list(b = matrix(0, 2, 4)), data.frame(.obs_id = c("a", "b")),
+    space = volume_space(c(2, 2, 1))
+  )
+  identity <- identity_descriptor(frame)
+  lines <- .print_lines(identity)
+  expect_identical(lines[[1L]], paste("<fmri_identity> semantic", substr(identity$digest, 1, 12)))
+  expect_match(lines[[2L]], "^  canonicalization: ")
+})
+
+test_that("links, studies, collections, and entities print their contents", {
+  subjects <- entity_frame(
+    data.frame(subject_id = c("s1", "s2"), group = c("a", "b")),
+    key = "subject_id", entity_type = "subject"
+  )
+  expect_identical(.print_lines(subjects), c(
+    "<entity_frame> 2 subject records", "  key:     subject_id", "  columns: group"
+  ))
+  space <- index_space(2, ids = c("x", "y"))
+  make <- function(prefix) {
+    fmri_frame(
+      list(b = matrix(0, 2, 2)),
+      data.frame(.obs_id = paste0(prefix, 1:2), subject_id = c("s1", "s2")),
+      space = space, entities = list(subject = subjects),
+      relations = list(os = key_relation("subject_id", target = "subject"))
+    )
+  }
+  link <- frame_link(
+    "first", "second", type = "correspondence",
+    map = data.frame(.source_id = c("a1", "a2"), .target_id = c("b1", "b2"))
+  )
+  expect_identical(.print_lines(link), c(
+    "<frame_link> first -> second (correspondence)",
+    "  map: 2 pairs (observation IDs -> observation IDs)"
+  ))
+  study <- fmri_study(
+    list(first = make("a"), second = make("b")),
+    entities = list(subject = subjects), links = list(onset = link)
+  )
+  expect_identical(.print_lines(study), c(
+    "<fmri_study> 2 representations",
+    "  first:  fmri_frame 2 x 2",
+    "  second: fmri_frame 2 x 2",
+    "  entities: subject",
+    "  links:    onset (first -> second)"
+  ))
+  collection <- fmri_collection(list(one = make("a"), two = make("b")))
+  expect_identical(.print_lines(collection)[1:2], c("<fmri_collection> 2 frames", "  frames:         one, two"))
 })

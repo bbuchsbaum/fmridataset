@@ -634,7 +634,7 @@ relation_registry_digest <- function(x) {
 
 #' @export
 print.relation_registry <- function(x, ...) {
-  cat("<relation_registry>", length(x), "relations\n")
-  if (length(x)) cat("  ", paste(names(x), collapse = ", "), "\n", sep = "")
+  .line("<relation_registry>", .plural(length(x), "relation"))
+  if (length(x)) .line(" ", paste(names(x), collapse = ", "))
   invisible(x)
 }

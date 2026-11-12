@@ -183,9 +183,10 @@ space.fmri_view <- function(x, ...) {
 }
 #' @export
 print.fmri_view <- function(x, ...) {
-  cat("<fmri_view>", nrow(x), "observations x", ncol(x), "features\n")
-  cat("  base:", nrow(x$base), "x", ncol(x$base), "\n")
-  cat("  assays:", paste(names(assays(x)), collapse = ", "), "\n")
+  .line("<fmri_view>", nrow(x), "observations x", ncol(x), "features")
+  .line("  base:  ", nrow(x$base), "x", ncol(x$base), "frame")
+  .line("  assays:", paste(names(assays(x)), collapse = ", "))
+  .line("  active:", active_assay(x))
   invisible(x)
 }
 

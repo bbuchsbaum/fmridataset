@@ -171,12 +171,12 @@ as.list.space_comparison <- function(x, ...) {
 #' @export
 print.space_comparison <- function(x, ...) {
   if (isTRUE(x$same)) {
-    cat("<space_comparison> TRUE: the same feature space\n")
+    .line("<space_comparison> TRUE: the same feature space")
   } else {
-    cat("<space_comparison> FALSE:", sub("^Feature spaces differ: ", "", x$reason), "\n")
+    .line("<space_comparison> FALSE:", sub("^Feature spaces differ: ", "", x$reason))
     verdict <- function(same) if (same) "same" else "differs"
-    cat(sprintf(
-      "  class: %s   digest: %s   feature IDs: %s\n",
+    .line(sprintf(
+      "  class: %s   digest: %s   feature IDs: %s",
       verdict(x$same_class), verdict(x$same_digest), verdict(x$same_feature_ids)
     ))
   }
@@ -1669,11 +1669,12 @@ basis_space_from_decoder <- function(parent, component_ids, decoder,
   if (length(decomposition$d) < ncol(dense) ||
     any(decomposition$d <= rank_threshold)) {
     .frame_abort(
-      paste(
-        "decoder must have full column rank for an exact least-squares encoder.",
-        "Rank-deficient dictionaries, as ICA and dictionary learning routinely",
-        "produce, have no exact left inverse; pass encoder = \"none\" for a",
-        "synthesis-only basis that reconstructs but does not project."
+      paste0(
+        "decoder must have full column rank for an exact least-squares encoder.\n",
+        "  Rank-deficient or overcomplete dictionaries, as ICA and dictionary\n",
+        "  learning often produce, have no exact left inverse. Pass\n",
+        "  encoder = \"none\" for a synthesis-only basis, which reconstructs\n",
+        "  but does not project."
       ),
       "fmridataset_error_space_mismatch"
     )
