@@ -70,7 +70,7 @@ frame <- fmridataset::fmri_frame(
 
 # These operations inspect aligned metadata but read no assay values.
 selected <- frame |>
-  fmridataset::filter_obs(Fac1 == "A" & age >= 60) |>
+  fmridataset::filter_observations(Fac1 == "A" & age >= 60) |>
   fmridataset::select_features(parcel == "hippocampus")
 stopifnot(identical(dim(selected), c(10L, 2L)))
 

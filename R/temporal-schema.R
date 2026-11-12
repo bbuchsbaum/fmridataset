@@ -55,7 +55,7 @@
 #' Runs are numbered in order of first appearance, not by sorting, so
 #' `block_ids` is stable under any operation that preserves observation order.
 #' A frame is *contiguous* when each run occupies one unbroken stretch of
-#' observations. Frames are not required to be contiguous -- `filter_obs()` and
+#' observations. Frames are not required to be contiguous -- `filter_observations()` and
 #' ID-based reordering both produce legal interleaved views -- but a
 #' `sampling_frame` is a run-length encoding and cannot represent one, so
 #' `as_sampling_frame()` refuses a non-contiguous frame rather than silently
@@ -359,7 +359,7 @@ has_temporal_schema <- function(x, ...) {
 # A run is contiguous when it occupies one unbroken stretch. Comparing the
 # number of runs against the number of runs of equal values in the observation
 # order detects any interleaving or repetition, including the reordered views
-# that filter_obs() and ID-based selection produce.
+# that filter_observations() and ID-based selection produce.
 .temporal_contiguous <- function(block_ids, n_runs) {
   if (!length(block_ids)) {
     return(TRUE)

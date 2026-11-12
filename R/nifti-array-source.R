@@ -108,12 +108,12 @@
 #' # A small NIfTI fixture shipped with neuroim2 stands in for real data.
 #' path <- system.file("extdata", "global_mask_v4.nii", package = "neuroim2")
 #' if (nzchar(path)) {
-#'   src <- nifti_array_source(path, path)
+#'   src <- nifti_source(path, path)
 #'   source_shape(src)
 #'   source_dtype(src)
 #' }
 #' @export
-nifti_array_source <- function(paths, mask, chunks = NULL) {
+nifti_source <- function(paths, mask, chunks = NULL) {
   if (!is.character(paths) || !length(paths) || anyNA(paths) || any(!nzchar(paths))) {
     .frame_abort(
       "paths must contain one or more non-empty NIfTI file names.",
@@ -260,7 +260,7 @@ nifti_array_source <- function(paths, mask, chunks = NULL) {
 #' @examples
 #' path <- system.file("extdata", "global_mask_v4.nii", package = "neuroim2")
 #' if (nzchar(path)) {
-#'   src <- nifti_array_source(path, path)
+#'   src <- nifti_source(path, path)
 #'   spatial <- nifti_source_space(src, template = "fixture")
 #'   n_features(spatial)
 #' }

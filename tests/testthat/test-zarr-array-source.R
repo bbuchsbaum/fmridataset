@@ -11,7 +11,7 @@
 
 test_that("Zarr sources are serializable logical descriptors", {
   reference <- matrix(as.double(1:30), 5, 6)
-  source <- zarr_array_source(
+  source <- zarr_source(
     "fixture.zarr",
     shape = dim(reference),
     dtype = "float64",
@@ -43,7 +43,7 @@ test_that("Zarr sources discover physical metadata without retaining handles", {
     .zarr_provider_close = function(handle) handle$closed <- TRUE,
     .package = "fmridataset",
     {
-      source <- zarr_array_source("fixture.zarr")
+      source <- zarr_source("fixture.zarr")
       expect_identical(source_shape(source), c(3L, 4L))
       expect_identical(source_dtype(source), "int32")
       expect_identical(source_chunks(source), c(2L, 3L))
@@ -56,7 +56,7 @@ test_that("Zarr sources discover physical metadata without retaining handles", {
 test_that("Zarr source reads preserve arbitrary order and reject repeats", {
   reference <- matrix(as.double(1:42), 6, 7)
   runtime <- .fake_zarr_runtime(reference, c(2, 3))
-  source <- zarr_array_source(
+  source <- zarr_source(
     "fixture.zarr",
     shape = dim(reference),
     dtype = "float64",
@@ -109,7 +109,7 @@ test_that("Zarr source translates feature-first physical arrays", {
   logical <- matrix(as.double(1:20), 4, 5)
   physical <- t(logical)
   runtime <- .fake_zarr_runtime(physical, c(3, 2))
-  source <- zarr_array_source(
+  source <- zarr_source(
     "fixture.zarr",
     shape = dim(logical),
     dtype = "float64",
@@ -148,7 +148,7 @@ test_that("Zarr source translates feature-first physical arrays", {
 test_that("Zarr handles close and reject changed physical metadata", {
   reference <- matrix(as.double(1:12), 3, 4)
   runtime <- .fake_zarr_runtime(reference, c(2, 2))
-  source <- zarr_array_source(
+  source <- zarr_source(
     "fixture.zarr",
     shape = dim(reference),
     dtype = "float64",
@@ -205,11 +205,11 @@ test_that("Zarr handles close and reject changed physical metadata", {
 
 test_that("Zarr source validates contracts before runtime access", {
   expect_error(
-    zarr_array_source("fixture.zarr", shape = c(2, 3), dtype = "float64"),
+    zarr_source("fixture.zarr", shape = c(2, 3), dtype = "float64"),
     "provided together"
   )
   expect_error(
-    zarr_array_source(
+    zarr_source(
       "fixture.zarr",
       shape = c(2, 3), dtype = "float64",
       chunks = c(2, 3), physical_axes = c("observation", "observation")
@@ -217,7 +217,7 @@ test_that("Zarr source validates contracts before runtime access", {
     class = "fmridataset_error_source_contract"
   )
   expect_error(
-    zarr_array_source(
+    zarr_source(
       "fixture.zarr",
       shape = c(2, 3), dtype = "string",
       chunks = c(2, 3)
@@ -235,7 +235,7 @@ test_that("Zarr source validates contracts before runtime access", {
     {
       expect_error(
         source_read(
-          zarr_array_source(
+          zarr_source(
             "fixture.zarr",
             shape = c(2, 3), dtype = "float64",
             chunks = c(2, 3)
@@ -249,9 +249,10 @@ test_that("Zarr source validates contracts before runtime access", {
 })
 
 test_that("Zarr source is a reconstructible delarr provider", {
+  skip_if_not_installed("delarr", "0.2.0")
   reference <- matrix(as.double(1:20), 4, 5)
   runtime <- .fake_zarr_runtime(reference, c(2, 3))
-  source <- zarr_array_source(
+  source <- zarr_source(
     "fixture.zarr",
     shape = dim(reference),
     dtype = "float64",
@@ -295,7 +296,7 @@ test_that("Zarr source reads a real current-driver store", {
   on.exit(unlink(path, recursive = TRUE), add = TRUE)
   zarr::as_zarr(reference, location = path)
 
-  source <- zarr_array_source(path)
+  source <- zarr_source(path)
   expect_array_source_conformance(source, reference)
   rows <- c(6L, 1L, 2L, 5L)
   features <- c(7L, 2L, 1L, 4L)
@@ -304,6 +305,7 @@ test_that("Zarr source reads a real current-driver store", {
     reference[rows, features, drop = FALSE],
     tolerance = 0
   )
+  skip_if_not_installed("delarr", "0.2.0")
   expect_equal(
     delarr::collect(as_delarr(source)[rows, features]),
     reference[rows, features, drop = FALSE],
@@ -314,7 +316,7 @@ test_that("Zarr source reads a real current-driver store", {
 test_that("Zarr reads consume range selections as one chunk-aligned request", {
   reference <- matrix(as.double(1:42), 6, 7)
   runtime <- .fake_zarr_runtime(reference, c(2, 3))
-  source <- zarr_array_source(
+  source <- zarr_source(
     "fixture.zarr",
     shape = dim(reference),
     dtype = "float64",
@@ -407,7 +409,7 @@ test_that("Zarr reads coalesce scattered selections instead of one read per run 
     .zarr_provider_close = function(handle) handle$closed <- TRUE,
     .package = "fmridataset",
     {
-      source <- zarr_array_source(
+      source <- zarr_source(
         "fixture.zarr",
         physical_axes = c("feature", "observation")
       )

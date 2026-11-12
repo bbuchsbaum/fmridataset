@@ -10,7 +10,7 @@
       beta = memory_source(fx$beta + offset),
       variance = memory_source(fx$variance + offset)
     ),
-    observations = axis_frame(obs, blocks = obs_blocks(fr)),
+    observations = axis_frame(obs, blocks = observation_blocks(fr)),
     features = feature_axis(fr),
     entities = entities(fr),
     active_assay = "beta"
@@ -327,7 +327,7 @@ test_that("explain() reports durability instead of aborting on ephemeral IDs", {
   )
   summary <- explain(durable)
   expect_true(summary$ids_durable)
-  expect_identical(summary$digests$semantic, fds_manifest_digest(fds_frame_manifest(durable)))
+  expect_identical(summary$digests$semantic, fds_frame_manifest_digest(fds_frame_manifest(durable)))
 
   err <- expect_error(
     identity_descriptor(ephemeral, domain = "semantic"),

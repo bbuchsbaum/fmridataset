@@ -1,5 +1,25 @@
 # fmridataset 0.11.0 (Development)
 
+- New convenience constructors for run-structured data. `as_fmri_frame()` now
+  has methods for a matrix, a `neuroim2` `NeuroVec` (or a list of them, one per
+  run), and a `LatentNeuroVec`, and `read_nifti_bold()` builds a lazy frame
+  from NIfTI files. Each takes `TR`, `run_length`, `events`, and `censor` and
+  generates the `.obs_id`, `run_id`, and `volume_index` observation columns
+  that `temporal_schema()` expects. They replace fmrireg's `matrix_frame()`,
+  `neurovec_frame()`, `latent_frame()`, and `nifti_frame()`.
+
+- Renamed for consistency. The old names still work for one release and warn:
+  `filter_obs()` is now `filter_observations()`; `obs_blocks()` is
+  `observation_blocks()`; `nifti_array_source()` is `nifti_source()`;
+  `zarr_array_source()` is `zarr_source()`; `validate_fds_manifest()` is
+  `validate_fds_frame_manifest()`; and `fds_manifest_digest()` is
+  `fds_frame_manifest_digest()`. Source S3 classes, descriptor type strings,
+  fingerprints, and manifests are unchanged. See `?"fmridataset-deprecated"`.
+
+- `delarr` moved from Imports to Suggests. `as_delarr()` needs `delarr`
+  0.2.0 or newer and fails with an `fmridataset_error_backend_io` error
+  without it; nothing else in the package uses it.
+
 - Removed the `domains` argument of `unaligned_record()` and
   `validate_unaligned_record()`. Container metadata is never compared with
   axis or entity sizes, so the argument had no effect.

@@ -9,7 +9,7 @@ interchangeable.
 
 | Domain | Includes | Excludes | Public operation |
 |---|---|---|---|
-| Semantic | Source-free frame/study manifest, axis IDs, annotations, entities, relations, spaces, provenance | Physical paths, handles, chunks, compression | `fds_manifest_digest()`, `study_digest()`, `collection_digest()` |
+| Semantic | Source-free frame/study manifest, axis IDs, annotations, entities, relations, spaces, provenance | Physical paths, handles, chunks, compression | `fds_frame_manifest_digest()`, `study_digest()`, `collection_digest()` |
 | Schema | Types, factor levels, assay annotations, block trailing axes/components, space identity, relation/table contracts | Observation count in bind/collection projections; numerical values | `frame_schema_digest()` |
 | Space | Exact feature IDs, ordered support, geometry/topology or parent/operator identity, declared metadata | Mere dimension or feature count | `space_digest()` and `same_space()` |
 | Source | Serializable physical descriptor, selector/shard composition, relevant physical metadata | Semantic annotations and uncomputed contents | `source_fingerprint()` |

@@ -33,8 +33,8 @@ test_that("FDS v1 frame manifests are explicit and backend-neutral", {
   )))
   expect_false(any(vapply(manifest$arrays, inherits, logical(1), "array_source")))
   expect_false(contains_runtime_state(manifest))
-  expect_invisible(validate_fds_manifest(manifest))
-  expect_identical(fds_manifest_digest(manifest), fds_manifest_digest(manifest))
+  expect_invisible(validate_fds_frame_manifest(manifest))
+  expect_identical(fds_frame_manifest_digest(manifest), fds_frame_manifest_digest(manifest))
 })
 
 test_that("FDS manifests do not change with physical source layout", {
@@ -83,7 +83,7 @@ test_that("FDS manifests reject block arrays that declare trailing axes", {
   manifest$arrays[[key]]$shape <- c(manifest$arrays[[key]]$shape, 3L)
 
   error <- expect_error(
-    validate_fds_manifest(manifest),
+    validate_fds_frame_manifest(manifest),
     class = "fmridataset_error_schema"
   )
   expect_match(conditionMessage(error), "two-dimensional")
@@ -100,7 +100,7 @@ test_that("FDS manifests rebuild frames from separately bound sources", {
   expect_identical(observations(rebuilt), observations(fx$frame))
   expect_identical(feature_ids(rebuilt), feature_ids(fx$frame))
   expect_identical(space_digest(space(rebuilt)), space_digest(space(fx$frame)))
-  expect_identical(names(obs_blocks(rebuilt)), names(obs_blocks(fx$frame)))
+  expect_identical(names(observation_blocks(rebuilt)), names(observation_blocks(fx$frame)))
   expect_identical(entity_names(rebuilt), entity_names(fx$frame))
   expect_identical(
     entity_data(entity(rebuilt, "stimulus")),
@@ -147,8 +147,8 @@ test_that("FDS manifests and bindings preserve lazy frame-view selectors", {
   expect_identical(feature_ids(rebuilt), feature_ids(view))
   expect_equal(collect_assay(rebuilt, "beta"), collect_assay(view, "beta"))
   expect_equal(
-    source_read(as_array_source(axis_block_data(obs_blocks(rebuilt)$motion))),
-    source_read(as_array_source(axis_block_data(obs_blocks(view)$motion)))
+    source_read(as_array_source(axis_block_data(observation_blocks(rebuilt)$motion))),
+    source_read(as_array_source(axis_block_data(observation_blocks(view)$motion)))
   )
 })
 
@@ -157,23 +157,23 @@ test_that("FDS v1 validation rejects semantic drift", {
 
   future <- manifest
   future$schema$version <- 2L
-  expect_error(validate_fds_manifest(future), "version", class = "fmridataset_error_schema")
+  expect_error(validate_fds_frame_manifest(future), "version", class = "fmridataset_error_schema")
 
   wrong_shape <- manifest
   wrong_shape$shape <- c(8L, 6L)
-  expect_error(validate_fds_manifest(wrong_shape), "shape", class = "fmridataset_error_schema")
+  expect_error(validate_fds_frame_manifest(wrong_shape), "shape", class = "fmridataset_error_schema")
 
   duplicate_ids <- manifest
   duplicate_ids$axes$observation$ids[[2L]] <- duplicate_ids$axes$observation$ids[[1L]]
-  expect_error(validate_fds_manifest(duplicate_ids), "IDs", class = "fmridataset_error_schema")
+  expect_error(validate_fds_frame_manifest(duplicate_ids), "IDs", class = "fmridataset_error_schema")
 
   wrong_digest <- manifest
   wrong_digest$assays$beta$feature_digest <- "not-the-feature-axis"
-  expect_error(validate_fds_manifest(wrong_digest), "digest", class = "fmridataset_error_schema")
+  expect_error(validate_fds_frame_manifest(wrong_digest), "digest", class = "fmridataset_error_schema")
 
   runtime <- manifest
   runtime$metadata$loader <- function() NULL
-  expect_error(validate_fds_manifest(runtime), "runtime", class = "fmridataset_error_schema")
+  expect_error(validate_fds_frame_manifest(runtime), "runtime", class = "fmridataset_error_schema")
 })
 
 test_that("frame reconstruction rejects incompatible physical bindings", {
@@ -210,10 +210,10 @@ test_that("FDS manifests reject content the reader cannot rebuild", {
   bindings <- fds_frame_bindings(fx$frame)
   motion <- "axis/observation/blocks/motion"
   reject <- function(x, pattern) {
-    expect_error(validate_fds_manifest(x), pattern, class = "fmridataset_error_schema")
+    expect_error(validate_fds_frame_manifest(x), pattern, class = "fmridataset_error_schema")
   }
 
-  expect_invisible(validate_fds_manifest(manifest[rev(names(manifest))]))
+  expect_invisible(validate_fds_frame_manifest(manifest[rev(names(manifest))]))
 
   x <- manifest
   x$surprise <- list(a = 1)
@@ -253,7 +253,7 @@ test_that("FDS manifests reject content the reader cannot rebuild", {
   # A supported but wrong block dtype is only detectable against the payload,
   # which the reader checks when binding.
   x$arrays[[motion]]$dtype <- "int32"
-  expect_invisible(validate_fds_manifest(x))
+  expect_invisible(validate_fds_frame_manifest(x))
   expect_error(
     frame_from_fds_manifest(x, bindings), "dtype",
     class = "fmridataset_error_schema"
@@ -265,7 +265,7 @@ test_that("FDS manifest shapes and active assays fail with structured errors", {
   manifest <- fds_frame_manifest(fx$frame)
   reject <- function(x, pattern) {
     expect_no_warning(expect_error(
-      validate_fds_manifest(x), pattern,
+      validate_fds_frame_manifest(x), pattern,
       class = "fmridataset_error_schema"
     ))
   }

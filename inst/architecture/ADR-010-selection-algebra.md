@@ -128,7 +128,7 @@ range, and only a `positions` result touches a vector. Consequently:
 select-all or range view fingerprints in constant time and equal selections
 agree whether they were expressed by ID, mask, positions, negation, or
 nesting. `plan_blocks()` hashes the same form. Neither the FDS manifest nor
-`fds_manifest_digest()` changed: manifests are source-free and never carried
+`fds_frame_manifest_digest()` changed: manifests are source-free and never carried
 selectors.
 
 `explain()` reports each axis's form, count, and axis length (and range

@@ -8,7 +8,7 @@ Date: 2026-08-11
 FDS version 1 freezes the backend-neutral semantic manifest for an
 `fmri_frame`. Its identity is `org.fmridataset.fds/v1`, with integer version
 `1`. The normative executable contract is `fds_frame_manifest()` plus
-`validate_fds_manifest()`; `inst/schema/fds-v1.schema.json` describes the same
+`validate_fds_frame_manifest()`; `inst/schema/fds-v1.schema.json` describes the same
 top-level envelope for non-R codecs.
 
 The required manifest fields are:

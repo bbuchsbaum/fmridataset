@@ -7,7 +7,9 @@ This classification is normative for 1.0 review and generated namespace tests.
 
 The ordinary user surface covers:
 
-- frame, collection, and study construction;
+- frame, collection, and study construction, including the
+  `as_fmri_frame()` methods and `read_nifti_bold()` for run-structured
+  matrices, `neuroim2` volumes, latent decompositions, and NIfTI files;
 - canonical source-to-target study links and explicit link composition;
 - typed unaligned metadata records, typed event/auxiliary tables, and
   provenance graphs;
@@ -104,3 +106,13 @@ not application storage or provenance.
 
 Synthetic vignette helpers, runtime handle classes, internal registries,
 codec internals, error constructors, and `%||%` are not public API.
+
+## Deprecated names
+
+`filter_obs()`, `obs_blocks()`, `nifti_array_source()`, `zarr_array_source()`,
+`validate_fds_manifest()`, and `fds_manifest_digest()` are exported for one
+release as warning aliases of `filter_observations()`, `observation_blocks()`,
+`nifti_source()`, `zarr_source()`, `validate_fds_frame_manifest()`, and
+`fds_frame_manifest_digest()`. They are not part of the 1.0 surface and are
+removed together with the frame I/O shim that muffles their warnings when an
+older `fmristore` calls them.

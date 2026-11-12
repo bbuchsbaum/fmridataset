@@ -69,7 +69,7 @@ Runs are numbered by **first appearance**, not by sorting, so `block_ids` is
 stable under any operation that preserves observation order.
 
 A frame is *contiguous* when each run occupies one unbroken stretch of
-observations. Frames are **not required** to be contiguous: `filter_obs()` and
+observations. Frames are **not required** to be contiguous: `filter_observations()` and
 ID-based reordering both produce legal interleaved views, and the schema
 describes them correctly. But a `sampling_frame` is a run-length encoding and
 cannot represent one, so `as_sampling_frame()` refuses a non-contiguous frame

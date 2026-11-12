@@ -36,7 +36,7 @@ bind_frame <- function(ids, components, parcel = c("a", "a", "b", "b"),
 }
 
 block_matrix <- function(frame) {
-  as.matrix(source_read(as_array_source(axis_block_data(obs_blocks(frame)$motion))))
+  as.matrix(source_read(as_array_source(axis_block_data(observation_blocks(frame)$motion))))
 }
 
 test_that("bound block values follow their component IDs, not their positions", {
@@ -49,7 +49,7 @@ test_that("bound block values follow their component IDs, not their positions", 
   # b's column 1 is rotation (100, 200); column 2 is translation (300, 400).
   ab <- bind_observations(a, b)
 
-  expect_equal(block_component_ids(obs_blocks(ab)$motion), c("translation", "rotation"))
+  expect_equal(block_component_ids(observation_blocks(ab)$motion), c("translation", "rotation"))
 
   bound <- block_matrix(ab)
   # a's rows are unchanged.
@@ -104,7 +104,7 @@ test_that("bind is order-insensitive for component alignment", {
   expect_equal(unname(ba[3:4, 1]), c(3, 4)) # a rotation
   expect_equal(unname(ba[3:4, 2]), c(1, 2)) # a translation
   expect_equal(
-    block_component_ids(obs_blocks(bind_observations(b, a))$motion),
+    block_component_ids(observation_blocks(bind_observations(b, a))$motion),
     c("rotation", "translation")
   )
 })

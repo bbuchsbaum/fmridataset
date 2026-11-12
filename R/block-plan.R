@@ -76,7 +76,7 @@
   # A zero-length axis anywhere in the frame makes .plan_block_shape() return
   # c(0L, 0L), so the OTHER axis arrives here with block_size 0 and a non-zero
   # length. seq.int(1L, n, by = 0L) then raised a base-R
-  # "invalid '(to - from)/by'" for any frame that a filter_obs() or
+  # "invalid '(to - from)/by'" for any frame that a filter_observations() or
   # select_features() had emptied - legal frames that subset, collect, and
   # round-trip correctly everywhere else. There is nothing to read, so the
   # axis contributes no ranges and the plan holds no blocks.

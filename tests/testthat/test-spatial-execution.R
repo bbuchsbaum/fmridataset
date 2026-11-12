@@ -19,7 +19,7 @@ test_that("execution dispatch distinguishes matrix, native, and reconstruction p
 test_that("NIfTI spatial execution uses the native fast path in observation order", {
   path <- system.file("extdata", "global_mask_v4.nii", package = "neuroim2")
   skip_if(!file.exists(path), "neuroim2 NIfTI fixture is unavailable")
-  source <- nifti_array_source(c(path, path), path)
+  source <- nifti_source(c(path, path), path)
   counted <- counting_source(source)
   spatial <- nifti_source_space(source, template = "fixture")
   x <- fmri_frame(
@@ -58,7 +58,7 @@ test_that("NIfTI spatial execution uses the native fast path in observation orde
 test_that("feature-restricted views reconstruct instead of widening native reads", {
   path <- system.file("extdata", "global_mask_v4.nii", package = "neuroim2")
   skip_if(!file.exists(path), "neuroim2 NIfTI fixture is unavailable")
-  source <- nifti_array_source(path, path)
+  source <- nifti_source(path, path)
   counted <- counting_source(source)
   x <- fmri_frame(
     assays = list(signal = counted),

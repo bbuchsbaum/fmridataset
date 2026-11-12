@@ -214,7 +214,7 @@ test_that("row-sharded realization costs combine their shards' traits", {
   expect_true(all_memory$already_realized)
   expect_false(all_memory$compressed)
 
-  zarr <- zarr_array_source(
+  zarr <- zarr_source(
     "fixture.zarr",
     shape = c(2L, 3L), dtype = "float64", chunks = c(1L, 3L)
   )
@@ -266,6 +266,7 @@ test_that("row_sharded_source accepts extension sources reporting double shapes"
 })
 
 test_that("array sources construct runtime delarr plans", {
+  skip_if_not_installed("delarr", "0.2.0")
   m <- matrix(seq_len(12), 3, 4)
   x <- as_delarr(memory_source(m))
   expect_s3_class(x$seed, "delarr_provider_seed")

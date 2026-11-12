@@ -146,7 +146,7 @@
 
 #' Construct an experimental Zarr array source
 #'
-#' `zarr_array_source()` describes one two-dimensional Zarr array whose logical
+#' `zarr_source()` describes one two-dimensional Zarr array whose logical
 #' axes are observations and features. The descriptor contains no open store,
 #' R6 object, external pointer, or loader function. Runtime handles are opened
 #' only for metadata discovery and numerical reads.
@@ -175,14 +175,14 @@
 #' @return A serializable `zarr_array_source` descriptor.
 #' @examples
 #' # Metadata-only construction needs no Zarr store and no zarr package.
-#' src <- zarr_array_source(
+#' src <- zarr_source(
 #'   "fixture.zarr",
 #'   shape = c(5L, 6L), dtype = "float64", chunks = c(2L, 3L)
 #' )
 #' source_shape(src)
 #' source_chunks(src)
 #' @export
-zarr_array_source <- function(uri, array_path = "/", shape = NULL,
+zarr_source <- function(uri, array_path = "/", shape = NULL,
                               dtype = NULL, chunks = NULL,
                               physical_axes = c("observation", "feature")) {
   if (!is.character(uri) || length(uri) != 1L || is.na(uri) || !nzchar(uri)) {

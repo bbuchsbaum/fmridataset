@@ -5,7 +5,7 @@
 #   plan_blocks(f[, integer(0)])
 #   #> simpleError: invalid '(to - from)/by'
 #
-# Such frames are legal - any filter_obs() or select_features() that matches
+# Such frames are legal - any filter_observations() or select_features() that matches
 # nothing produces one, and they subset, collect, and round-trip correctly
 # everywhere else. There is nothing to read, so the plan holds no blocks.
 
@@ -56,7 +56,7 @@ test_that("executing an empty plan yields no results rather than erroring", {
 test_that("selections that match nothing plan cleanly", {
   frame <- empty_axis_frame()
 
-  expect_equal(plan_blocks(filter_obs(frame, rep(FALSE, 20)))$n_blocks, 0L)
+  expect_equal(plan_blocks(filter_observations(frame, rep(FALSE, 20)))$n_blocks, 0L)
   expect_equal(plan_blocks(select_features(frame, rep(FALSE, 10)))$n_blocks, 0L)
 })
 

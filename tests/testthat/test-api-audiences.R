@@ -2,6 +2,12 @@
   "counting_source", "source_counts", "reset_source_counts", "fault_source"
 )
 
+# Old names kept for one release; each warns and forwards to its replacement.
+.api_deprecated_exports <- c(
+  "filter_obs", "obs_blocks", "nifti_array_source", "zarr_array_source",
+  "validate_fds_manifest", "fds_manifest_digest"
+)
+
 .api_extension_exports <- c(
   "aligned_assay_set", "as_array_source", "as_delarr",
   "assert_same_space", "canonicalization_contract", "content_hash",
@@ -9,7 +15,7 @@
   "axis_block_data", "axis_blocks", "axis_data", "axis_ids", "block_component_ids",
   "block_components", "block_manifest", "collection_digest", "same_space",
   "entity_registry_digest", "execute_block_plan", "execution_path",
-  "fds_frame_bindings", "fds_frame_manifest", "fds_manifest_digest", "fds_schema",
+  "fds_frame_bindings", "fds_frame_manifest", "fds_frame_manifest_digest", "fds_schema",
   "fds_schema_version", "fds_study_bindings", "fds_study_manifest",
   "fds_study_manifest_digest", "fds_study_representations", "feature_map_digest",
   "frame_schema", "frame_schema_digest", "compare_frame_schema",
@@ -25,7 +31,7 @@
   "source_shape", "source_view",
   "study_digest", "study_from_fds_manifest", "validate_array_source",
     "validate_entity_feature_validity", "validate_entity_registry", "validate_event_table",
-  "validate_fds_manifest", "validate_fds_study_manifest", "validate_feature_map",
+  "validate_fds_frame_manifest", "validate_fds_study_manifest", "validate_feature_map",
   "validate_frame_schema", "validate_against_schema",
   "validate_fmri_collection", "validate_fmri_study", "validate_mask_bank",
   "validate_provenance_graph", "validate_relation_registry", "validity_masked_source"
@@ -47,16 +53,16 @@
   "entity_frame", "entity_ids", "entity_key", "entity_names", "entity_registry",
   "event_data", "event_key", "event_table", "execute_spatial", "explain",
   "feature_axis", "feature_blocks", "feature_data", "feature_ids", "feature_map",
-  "feature_map_from_target", "features", "filter_entities", "filter_obs",
+  "feature_map_from_target", "features", "filter_entities", "filter_observations",
   "fmri_collection", "fmri_frame", "fmri_study", "frame_link",
   "has_temporal_schema", "hierarchy_index", "ids_are_durable",
   "index_space", "key_relation", "map_features", "mask_bank", "mask_values",
-  "memory_source", "n_features", "n_masks", "native_shape", "nifti_array_source",
-  "nifti_source_space", "obs_blocks", "observation_axis", "observation_ids",
+  "memory_source", "n_features", "n_masks", "native_shape", "nifti_source",
+  "nifti_source_space", "observation_blocks", "observation_axis", "observation_ids",
   "observation_validity", "observations", "open_frame", "parcel_aggregation",
   "parcel_membership", "parcel_space", "parcel_space_from_atlas", "parent_space",
   "provenance_graph", "provenance_record", "provenance_records", "provenance_tips",
-  "read_bids_bold", "reconstruct_space", "relation", "relation_names", "relation_registry", "relations",
+  "read_bids_bold", "read_nifti_bold", "reconstruct_space", "relation", "relation_names", "relation_registry", "relations",
   "restrict_space", "select_features", "space", "space_digest", "sparse_relation",
   "spatial_map", "study_frame", "study_frames", "study_ids", "study_link",
   "study_links", "study_table", "study_tables", "surface_space",
@@ -64,12 +70,15 @@
   "temporal_schema", "unaligned_record", "validity_coverage",
   "validity_entity", "validity_entity_ids", "validity_mask_bank", "validity_matrix",
   "validity_space", "vectorize_space", "volume_space", "write_frame",
-  "validate_auxiliary_table", "validate_unaligned_record", "zarr_array_source"
+  "validate_auxiliary_table", "validate_unaligned_record", "zarr_source"
 )
 
 test_that("every ordinary export has one documented audience", {
   exports <- getNamespaceExports("fmridataset")
-  audiences <- c(.api_user_exports, .api_extension_exports, .api_developer_exports)
+  audiences <- c(
+    .api_user_exports, .api_extension_exports, .api_developer_exports,
+    .api_deprecated_exports
+  )
 
   expect_length(intersect(.api_developer_exports, .api_extension_exports), 0L)
   expect_length(intersect(.api_user_exports, .api_extension_exports), 0L)

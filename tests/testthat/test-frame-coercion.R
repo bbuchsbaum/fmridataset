@@ -14,7 +14,8 @@ test_that("as_fmri_frame preserves canonical frames without realization", {
 
 test_that("as_fmri_frame has an explicit unsupported-object failure", {
   expect_error(
-    as_fmri_frame(matrix(1:4, 2L)),
-    "No as_fmri_frame method"
+    as_fmri_frame("not-a-frame"),
+    "No as_fmri_frame method",
+    class = "fmridataset_error_config"
   )
 })

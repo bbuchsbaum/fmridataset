@@ -29,6 +29,21 @@
   invisible(TRUE)
 }
 
+# fmristore releases that predate the renames in fmridataset-deprecated still
+# call the old names. A user of write_frame()/open_frame() cannot act on those
+# warnings, so they are muffled on this path only; remove this with the
+# deprecated aliases.
+.muffle_store_deprecations <- function(expr) {
+  withCallingHandlers(
+    expr,
+    deprecatedWarning = function(w) {
+      if (grepl("fmridataset-deprecated", conditionMessage(w), fixed = TRUE)) {
+        invokeRestart("muffleWarning")
+      }
+    }
+  )
+}
+
 #' Persist and reopen an fmri frame
 #'
 #' `write_frame()` writes an `fmri_frame` to an HDF5 file and `open_frame()`
@@ -70,7 +85,7 @@
 write_frame <- function(x, path, format = "hdf5", ...) {
   format <- match.arg(format, "hdf5")
   .require_frame_store("write_frame_h5")
-  committed <- fmristore::write_frame_h5(x, path, ...)
+  committed <- .muffle_store_deprecations(fmristore::write_frame_h5(x, path, ...))
   invisible(normalizePath(committed, winslash = "/", mustWork = TRUE))
 }
 
@@ -79,5 +94,5 @@ write_frame <- function(x, path, format = "hdf5", ...) {
 open_frame <- function(path, format = "hdf5", ...) {
   format <- match.arg(format, "hdf5")
   .require_frame_store("open_frame_h5")
-  fmristore::open_frame_h5(path, ...)
+  .muffle_store_deprecations(fmristore::open_frame_h5(path, ...))
 }

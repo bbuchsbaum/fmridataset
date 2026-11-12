@@ -101,7 +101,7 @@ test_that("FDS manifests and live frames derive the identical canonical schema",
 
   expect_identical(from_manifest, frame_schema(frame))
   expect_identical(frame_schema_digest(from_manifest), frame_schema_digest(frame))
-  expect_invisible(validate_fds_manifest(manifest))
+  expect_invisible(validate_fds_frame_manifest(manifest))
 })
 
 test_that("explain reports the canonical schema digest without reads", {

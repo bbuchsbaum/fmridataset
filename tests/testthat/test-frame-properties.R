@@ -110,6 +110,7 @@ test_that("row-sharded descriptors serialize and append immutably", {
   expect_identical(shard_manifest(restored)$.shard_id, c("a", "b"))
   expect_identical(source_fingerprint(restored), source_fingerprint(appended))
   expect_false(contains_runtime_state(restored))
+  skip_if_not_installed("delarr", "0.2.0")
   expect_equal(delarr::collect(as_delarr(restored)), rbind(a$data, b$data))
 })
 

@@ -1369,8 +1369,8 @@ source_read_native.row_sharded_source <- function(x, observations = NULL, ...) {
 #' @export
 source_close.row_sharded_source <- function(x, ...) invisible(TRUE)
 
-#' @importFrom delarr delarr_provider_pull
-#' @export
+# delarr is a suggested package, so the method is registered when delarr loads.
+#' @exportS3Method delarr::delarr_provider_pull
 delarr_provider_pull.array_source <- function(provider, indices, ...) {
   if (length(indices) != 2L) {
     .frame_abort(
@@ -1400,13 +1400,6 @@ delarr_provider_pull.array_source <- function(provider, indices, ...) {
 as_delarr.array_source <- function(x, memory_budget = Inf, ...) {
   backend <- x
   .ensure_delarr()
-  if (!"delarr_provider" %in% getNamespaceExports("delarr")) {
-    .frame_abort(
-      "The installed delarr lacks reconstructible provider seeds.",
-      "fmridataset_error_backend_io",
-      operation = "as_delarr"
-    )
-  }
   shape <- source_shape(backend)
   chunks <- source_chunks(backend)
   # memory_budget bounds a single pull, not the whole source: a lazy array over

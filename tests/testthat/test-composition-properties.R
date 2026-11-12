@@ -171,8 +171,8 @@ test_that("partitioning the observation axis and rebinding is an identity", {
       expect_identical(feature_ids(rebound), feature_ids(frame))
       expect_equal(observations(rebound)$grp, observations(frame)$grp)
       expect_identical(
-        block_component_ids(obs_blocks(rebound)$motion),
-        block_component_ids(obs_blocks(frame)$motion)
+        block_component_ids(observation_blocks(rebound)$motion),
+        block_component_ids(observation_blocks(frame)$motion)
       )
     }
   }
@@ -183,13 +183,13 @@ test_that("rebinding a partition preserves block values against their labels", {
   # labels. Reassembling a partition must reproduce the block exactly.
   frame <- property_frame(8, 3)
   reference <- as.matrix(source_read(as_array_source(
-    axis_block_data(obs_blocks(frame)$motion)
+    axis_block_data(observation_blocks(frame)$motion)
   )))
 
   for (cut in c(1L, 4L, 7L)) {
     rebound <- bind_observations(frame[seq_len(cut), ], frame[seq(cut + 1L, 8L), ])
     bound <- as.matrix(source_read(as_array_source(
-      axis_block_data(obs_blocks(rebound)$motion)
+      axis_block_data(observation_blocks(rebound)$motion)
     )))
     expect_equal(bound, reference, info = paste("cut", cut))
   }
@@ -259,7 +259,7 @@ test_that("an FDS manifest round trip is an identity on a reordered view", {
     bindings = list(
       "assays/a" = memory_source(collect_assay(view)),
       "axis/observation/blocks/motion" = memory_source(as.matrix(source_read(
-        as_array_source(axis_block_data(obs_blocks(view)$motion))
+        as_array_source(axis_block_data(observation_blocks(view)$motion))
       )))
     )
   )

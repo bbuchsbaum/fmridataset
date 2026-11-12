@@ -265,7 +265,7 @@ fmri_frame <- function(assays, observations, features = NULL, space = NULL,
 #'   name. `observation_axis()` returns an `axis_frame`; `observations()` and
 #'   `features()` return a data frame of the corresponding metadata.
 #'   `observation_ids()` and `feature_ids()` return character vectors of
-#'   stable IDs. `obs_blocks()` and `feature_blocks()` return named lists of
+#'   stable IDs. `observation_blocks()` and `feature_blocks()` return named lists of
 #'   `axis_block`s. `dim()` returns a length-2 integer vector, and `nrow()`
 #'   and `ncol()` return single integers.
 #' @examples
@@ -353,9 +353,9 @@ ids_are_durable.fmri_frame <- function(x) {
 
 #' @rdname frame-accessors
 #' @export
-obs_blocks <- function(x, resolve = FALSE, ...) UseMethod("obs_blocks")
+observation_blocks <- function(x, resolve = FALSE, ...) UseMethod("observation_blocks")
 #' @export
-obs_blocks.fmri_frame <- function(x, resolve = FALSE, ...) {
+observation_blocks.fmri_frame <- function(x, resolve = FALSE, ...) {
   resolve <- .validate_resolve_flag(resolve)
   if (resolve) .resolved_observation_blocks(x) else axis_blocks(observation_axis(x))
 }
@@ -587,7 +587,7 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
   # rejects, so the semantic digest is reported as absent rather than
   # aborting the whole summary. identity_descriptor() still refuses.
   durable <- ids_are_durable(observation_axis(x)) && ids_are_durable(spatial)
-  semantic <- if (durable) fds_manifest_digest(fds_frame_manifest(x)) else NULL
+  semantic <- if (durable) fds_frame_manifest_digest(fds_frame_manifest(x)) else NULL
   selection <- .frame_selection(x)
   list(
     class = class(x)[1L],
@@ -601,7 +601,7 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
     ),
     counts = list(
       assays = length(assay_values),
-      observation_blocks = length(obs_blocks(x)),
+      observation_blocks = length(observation_blocks(x)),
       feature_blocks = length(feature_blocks(x)),
       entities = length(entities(x)),
       relations = length(relations(x)),

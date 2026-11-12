@@ -272,7 +272,7 @@ test_that("relations persist through FDS and HDF5 without runtime state", {
 
   invalid <- manifest
   invalid$relations$sparse$data$.to_id[[1L]] <- "unknown"
-  expect_error(validate_fds_manifest(invalid), class = "fmridataset_error_schema")
+  expect_error(validate_fds_frame_manifest(invalid), class = "fmridataset_error_schema")
 
   skip_if_not_installed("fmristore")
   skip_if_not("write_frame_h5" %in% getNamespaceExports("fmristore"))

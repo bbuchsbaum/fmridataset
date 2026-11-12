@@ -221,7 +221,7 @@ test_that("fmri_study links distinct frames through shared authoritative entitie
     c(63, 63, 71, 71)
   )
   expect_s3_class(
-    obs_blocks(study_frame(study, "bold"), resolve = TRUE)$subject.phenotype,
+    observation_blocks(study_frame(study, "bold"), resolve = TRUE)$subject.phenotype,
     "axis_block"
   )
   expect_identical(names(study_links(study)), c("betas_from_bold", "behavior_stimuli"))

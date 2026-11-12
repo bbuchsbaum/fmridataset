@@ -8,7 +8,7 @@
 
 test_that("NIfTI sources expose serializable pushdown contracts", {
   fixture <- .nifti_source_fixture()
-  source <- nifti_array_source(c(fixture$path, fixture$path), fixture$path)
+  source <- nifti_source(c(fixture$path, fixture$path), fixture$path)
 
   expect_invisible(validate_array_source(source))
   expect_identical(source_shape(source)[[1L]], 8L)
@@ -26,7 +26,7 @@ test_that("NIfTI sources expose serializable pushdown contracts", {
 
 test_that("NIfTI sources push observation and packed-feature selections", {
   fixture <- .nifti_source_fixture()
-  source <- nifti_array_source(c(fixture$path, fixture$path), fixture$path)
+  source <- nifti_source(c(fixture$path, fixture$path), fixture$path)
   observations <- c(8L, 1L, 5L, 2L)
   features <- c(3L, 1L, 2L)
 
@@ -63,6 +63,7 @@ test_that("NIfTI sources push observation and packed-feature selections", {
   expect_identical(lapply(calls, `[[`, "indices"), list(c(4L, 1L), c(1L, 2L)))
   expect_identical(vapply(calls, `[[`, integer(1), "active_features"), c(3L, 3L))
 
+  skip_if_not_installed("delarr", "0.2.0")
   plan <- as_delarr(source)
   restored <- unserialize(serialize(plan, NULL))
   expect_equal(
@@ -74,7 +75,7 @@ test_that("NIfTI sources push observation and packed-feature selections", {
 
 test_that("NIfTI native reads preserve requested observation order", {
   fixture <- .nifti_source_fixture()
-  source <- nifti_array_source(c(fixture$path, fixture$path), fixture$path)
+  source <- nifti_source(c(fixture$path, fixture$path), fixture$path)
   selected <- c(8L, 1L, 5L)
   native <- source_read_native(source, selected)
 
@@ -105,7 +106,7 @@ test_that("NIfTI sources detect stale files before numerical reads", {
   mask <- file.path(parent, "mask.nii")
   expect_true(file.copy(fixture$path, image))
   expect_true(file.copy(fixture$path, mask))
-  source <- nifti_array_source(image, mask)
+  source <- nifti_source(image, mask)
 
   Sys.setFileTime(image, Sys.time() + 2)
   condition <- expect_error(
@@ -125,19 +126,19 @@ test_that("NIfTI sources detect stale files before numerical reads", {
 
 test_that("NIfTI source validates spatial agreement and selectors", {
   fixture <- .nifti_source_fixture()
-  source <- nifti_array_source(fixture$path, fixture$path)
+  source <- nifti_source(fixture$path, fixture$path)
   incompatible <- volume_space(c(2, 2, 2), support = 1:3)
 
   expect_error(
-    nifti_array_source(fixture$path, incompatible),
+    nifti_source(fixture$path, incompatible),
     class = "fmridataset_error_space_mismatch"
   )
   expect_error(
-    nifti_array_source(fixture$path, fixture$path, chunks = 1L),
+    nifti_source(fixture$path, fixture$path, chunks = 1L),
     class = "fmridataset_error_source_contract"
   )
   expect_error(
-    nifti_array_source(fixture$path, fixture$path, chunks = c(1, NA)),
+    nifti_source(fixture$path, fixture$path, chunks = c(1, NA)),
     class = "fmridataset_error_source_contract"
   )
   expect_identical(dim(source_read(source, integer(), 1:2)), c(0L, 2L))
@@ -177,12 +178,12 @@ test_that("NIfTI storage types map to signed and unsigned dtypes explicitly", {
   path <- tempfile(fileext = ".nii")
   on.exit(unlink(path), add = TRUE)
   neuroim2::write_vec(vec, path, data_type = "UBYTE")
-  expect_identical(source_dtype(nifti_array_source(path, fixture$path)), "uint8")
+  expect_identical(source_dtype(nifti_source(path, fixture$path)), "uint8")
 })
 
 test_that("logical NIfTI sources read logical values, including empty selections", {
   fixture <- .nifti_source_fixture()
-  source <- nifti_array_source(fixture$path, fixture$path)
+  source <- nifti_source(fixture$path, fixture$path)
   # neuroim2 does not write BINARY images, so declare the mask as logical.
   source$dtype <- "logical"
 

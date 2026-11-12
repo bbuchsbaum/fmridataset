@@ -515,7 +515,7 @@
 #'   compatible `volume_space`.
 #' @param events Whether to attach matching BIDS events as a keyed event table.
 #' @param chunks Optional observation-by-feature chunk hint passed to
-#'   [nifti_array_source()].
+#'   [nifti_source()].
 #' @details
 #' Runs are ordered by session, task, and run number. Numeric run labels are
 #' compared as integers, so unpadded `run-2` precedes `run-10`.
@@ -544,7 +544,7 @@
 #'   task = "memory",
 #'   space = "MNI152NLin2009cAsym"
 #' )
-#' first_run <- filter_obs(bold, run_id == "run-1")
+#' first_run <- filter_observations(bold, run_id == "run-1")
 #' map <- spatial_map(bold, observation = 1)
 #' }
 read_bids_bold <- function(path, subject, task = NULL, session = NULL,
@@ -576,7 +576,7 @@ read_bids_bold <- function(path, subject, task = NULL, session = NULL,
   resolved <- .bids_resolve_space(
     project, path, manifest, mask, subject, session, selected_space
   )
-  source <- nifti_array_source(manifest$.path, resolved$space, chunks = chunks)
+  source <- nifti_source(manifest$.path, resolved$space, chunks = chunks)
   observation_data <- .bids_expand_observations(manifest)
 
   subject_data <- unique(manifest["subject_id"])

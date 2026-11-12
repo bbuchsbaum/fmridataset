@@ -43,7 +43,7 @@ test_that("walking skeleton filters metadata and compiles entity blocks without 
   .skip_without_walking_skeleton()
   fixture <- make_walking_skeleton_fixture(instrument = TRUE)
   selected <- fixture$frame |>
-    filter_obs(Fac1 == "A" & age >= 60) |>
+    filter_observations(Fac1 == "A" & age >= 60) |>
     select_features(parcel == "hippocampus")
 
   expect_s3_class(selected, "fmri_view")

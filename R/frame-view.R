@@ -166,7 +166,7 @@ feature_ids.fmri_view <- function(x, ...) {
   .selection_subset(feature_ids(x$base), x$feature)
 }
 #' @export
-obs_blocks.fmri_view <- function(x, resolve = FALSE, ...) {
+observation_blocks.fmri_view <- function(x, resolve = FALSE, ...) {
   resolve <- .validate_resolve_flag(resolve)
   if (resolve) .resolved_observation_blocks(x) else axis_blocks(observation_axis(x))
 }
@@ -206,9 +206,9 @@ print.fmri_view <- function(x, ...) {
 #'   ),
 #'   space = sp
 #' )
-#' filter_obs(frame, run_id == "run-1")
+#' filter_observations(frame, run_id == "run-1")
 #' @export
-filter_obs <- function(x, predicate, resolve = TRUE) {
+filter_observations <- function(x, predicate, resolve = TRUE) {
   resolve <- .validate_resolve_flag(resolve)
   keep <- rlang::eval_tidy(
     rlang::enquo(predicate),

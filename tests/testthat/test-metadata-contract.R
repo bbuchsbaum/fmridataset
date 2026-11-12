@@ -221,17 +221,17 @@ test_that("views and FDS preserve typed metadata tables and lineage", {
   malformed <- manifest
   coincident <- manifest
   coincident$metadata <- unaligned_record(list(per_observation = 1:2))
-  expect_invisible(validate_fds_manifest(coincident))
+  expect_invisible(validate_fds_frame_manifest(coincident))
   malformed <- manifest
   malformed$metadata <- structure(
     list(state = new.env()),
     class = c("unaligned_record", "list")
   )
-  expect_error(validate_fds_manifest(malformed), "runtime state")
+  expect_error(validate_fds_frame_manifest(malformed), "runtime state")
   malformed <- manifest
   malformed$provenance <- list(step = "legacy")
-  expect_error(validate_fds_manifest(malformed), "provenance_graph")
+  expect_error(validate_fds_frame_manifest(malformed), "provenance_graph")
   malformed <- manifest
   malformed$tables$files <- data.frame(file_id = "f1")
-  expect_error(validate_fds_manifest(malformed), "typed table")
+  expect_error(validate_fds_frame_manifest(malformed), "typed table")
 })

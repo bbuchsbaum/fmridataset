@@ -9,7 +9,7 @@
 #' heterogeneous frames through shared entities and typed links.
 #'
 #' Numerical values live behind serializable array sources
-#' ([memory_source()], [nifti_array_source()], [zarr_array_source()], and the
+#' ([memory_source()], [nifti_source()], [zarr_source()], and the
 #' sources provided by storage packages) and are read only on request, under a
 #' realization budget. The logical frame contract is persisted through FDS
 #' manifests ([fds_frame_manifest()]) and HDF5 via [write_frame()].

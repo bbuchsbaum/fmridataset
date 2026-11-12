@@ -135,7 +135,7 @@ test_that("FDS round trips retain explicit axis ID policies", {
   expect_identical(manifest$axes$observation$id_policy$policy, "require")
   expect_identical(manifest$axes$feature$id_policy$policy, "require")
   expect_identical(manifest$entities$stimulus$id_policy$policy, "require")
-  expect_invisible(validate_fds_manifest(manifest))
+  expect_invisible(validate_fds_frame_manifest(manifest))
 
   rebuilt <- frame_from_fds_manifest(manifest, fds_frame_bindings(fx$frame))
   expect_identical(

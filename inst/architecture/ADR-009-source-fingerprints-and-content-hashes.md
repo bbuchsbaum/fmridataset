@@ -131,7 +131,7 @@ through stale and I/O errors from the reads it issues.
 - Memory-source fingerprints are per object; consumers that compared
   fingerprints across independently constructed equal matrices must compare
   content hashes instead.
-- `fds_manifest_digest()` is source-free: two frames that differ only in
+- `fds_frame_manifest_digest()` is source-free: two frames that differ only in
   the identity tokens of their memory sources, including an entity block
   supplied as a `memory_source` rather than a matrix, have equal manifest
   digests. `entity_registry_digest()` canonicalizes the registry object

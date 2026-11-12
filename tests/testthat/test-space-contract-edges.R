@@ -99,7 +99,7 @@ test_that("collect_spatial_maps rejects duplicated observations as documented", 
     neuroim2::LogicalNeuroVol(array(TRUE, dims), neuroim2::NeuroSpace(dims)),
     mask
   )
-  nifti_array_source(image, mask)
+  nifti_source(image, mask)
 }
 
 test_that("a NIfTI source rejects a frame volume_space it does not realize", {
@@ -144,7 +144,7 @@ test_that("a NIfTI source rejects a frame volume_space it does not realize", {
 test_that("NIfTI source affines keep the header's axis orientation", {
   path <- system.file("extdata", "global_mask_v4.nii", package = "neuroim2")
   skip_if(!file.exists(path), "neuroim2 NIfTI fixture is unavailable")
-  source <- nifti_array_source(path, path)
+  source <- nifti_source(path, path)
   image <- suppressWarnings(neuroim2::read_vol(path))
   expect_equal(
     source$affine, unname(neuroim2::trans(neuroim2::space(image))),

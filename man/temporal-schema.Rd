@@ -102,7 +102,7 @@ as_sampling_frame(schema)
 Runs are numbered in order of first appearance, not by sorting, so
 \code{block_ids} is stable under any operation that preserves observation order.
 A frame is \emph{contiguous} when each run occupies one unbroken stretch of
-observations. Frames are not required to be contiguous -- \code{filter_obs()} and
+observations. Frames are not required to be contiguous -- \code{filter_observations()} and
 ID-based reordering both produce legal interleaved views -- but a
 \code{sampling_frame} is a run-length encoding and cannot represent one, so
 \code{as_sampling_frame()} refuses a non-contiguous frame rather than silently

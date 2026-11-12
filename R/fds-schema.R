@@ -150,7 +150,7 @@ fds_schema_version <- function() .fds_schema$version
 #' )
 #' manifest <- fds_frame_manifest(frame)
 #' manifest$shape
-#' validate_fds_manifest(manifest)
+#' validate_fds_frame_manifest(manifest)
 #' @export
 fds_frame_manifest <- function(x) {
   if (!inherits(x, "fmri_frame")) {
@@ -233,7 +233,7 @@ fds_frame_manifest <- function(x) {
     provenance = x$provenance %||% x$base$provenance,
     extensions = list()
   )
-  validate_fds_manifest(manifest)
+  validate_fds_frame_manifest(manifest)
   manifest
 }
 
@@ -573,7 +573,7 @@ fds_frame_manifest <- function(x) {
 #' @param manifest An FDS manifest.
 #' @rdname fds_frame_manifest
 #' @export
-validate_fds_manifest <- function(manifest) {
+validate_fds_frame_manifest <- function(manifest) {
   required <- c(
     "schema", "object_type", "shape", "axes", "arrays", "assays", "entities",
     "relations", "tables", "active_assay", "metadata", "provenance", "extensions"
@@ -820,10 +820,10 @@ fds_frame_bindings <- function(x) {
 #'   space = voxels
 #' )
 #' manifest <- fds_frame_manifest(frame)
-#' fds_manifest_digest(manifest)
+#' fds_frame_manifest_digest(manifest)
 #' @export
-fds_manifest_digest <- function(manifest) {
-  validate_fds_manifest(manifest)
+fds_frame_manifest_digest <- function(manifest) {
+  validate_fds_frame_manifest(manifest)
   .canonical_digest(manifest)
 }
 
@@ -847,7 +847,7 @@ fds_manifest_digest <- function(manifest) {
 #' identical(feature_ids(rebuilt), feature_ids(frame))
 #' @export
 frame_from_fds_manifest <- function(manifest, bindings) {
-  validate_fds_manifest(manifest)
+  validate_fds_frame_manifest(manifest)
   expected <- names(manifest$arrays)
   if (!is.list(bindings) || is.null(names(bindings)) || anyDuplicated(names(bindings)) ||
     !setequal(names(bindings), expected)) {
