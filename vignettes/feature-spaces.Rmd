@@ -283,12 +283,25 @@ round(collect_assay(scores)[1:2, ], 3)
 range(spatial_map(scores, "vol-01"), na.rm = TRUE)
 ```
 
+`map_features()` projects the values as they are stored. `prcomp()` centres
+each voxel first, so its `$x` differs from these scores by the projected
+voxel means; centre the values before building the frame if you need
+`prcomp()`'s scores exactly.
+
+```{r basis-check}
+all.equal(unname(collect_assay(scores)), bold %*% loadings)
+```
+
 Some decompositions cannot be inverted. An overcomplete dictionary has more
 components than voxels, so no encoder can recover scores from voxel values.
 
 ```{r basis-overcomplete, error = TRUE}
 dictionary <- matrix(rnorm(n_features(brain) * 10), n_features(brain), 10)
-basis_space_from_decoder(brain, sprintf("atom-%02d", 1:10), dictionary)
+basis_space_from_decoder(
+  parent = brain,
+  component_ids = sprintf("atom-%02d", 1:10),
+  decoder = dictionary
+)
 ```
 
 Ask for `encoder = "none"` and you get a *synthesis-only* basis: it can turn
@@ -298,7 +311,9 @@ that space.
 
 ```{r basis-synthesis-only}
 atoms <- basis_space_from_decoder(
-  brain, sprintf("atom-%02d", 1:10), dictionary,
+  parent = brain,
+  component_ids = sprintf("atom-%02d", 1:10),
+  decoder = dictionary,
   encoder = "none"
 )
 atoms
@@ -324,7 +339,7 @@ features.
 
 ```{r composite}
 right <- surface_space(
-  sprintf("R%d", 1:4),
+  vertex_ids = sprintf("R%d", 1:4),
   hemisphere = "right",
   template = "toy-mesh"
 )
@@ -354,8 +369,8 @@ spatial_map(cifti, "vol-01")
 ## Where the package stops
 
 `fmridataset` owns spatial identity, restriction, maps between spaces, and
-applying those maps lazily. It does not fit decompositions, choose atlases,
-or run models. `neuroatlas` supplies parcellations, `fmrilatent` supplies
+applying those maps lazily. It does not register or resample images, fit
+decompositions, choose atlases, or run models. `neuroatlas` supplies parcellations, `fmrilatent` supplies
 fitted bases through `basis_space_from_fmrilatent()`, and `neurosurf` supplies
 surface geometry through `surface_space_from_neurosurf()`. Each hands the
 package a space; the package hands back frames whose columns still mean what

@@ -211,3 +211,25 @@ test_that("the bundled fMRIPrep tree imports with a bold assay", {
   renamed <- read_bids_bold(file.path(dir, "fmriprep-toy"), subject = "01", assay = "signal")
   expect_identical(names(assays(renamed)), "signal")
 })
+
+test_that("studies and collections say how to save them", {
+  frame <- .ergonomic_frame()
+  study <- fmri_study(list(main = frame))
+  expect_error(write_frame(study, tempfile()), "fds_study_manifest", class = "fmridataset_error_backend_io")
+  expect_error(
+    write_frame(fmri_collection(list(a = frame)), tempfile()),
+    "not a fmri_collection",
+    class = "fmridataset_error_backend_io"
+  )
+})
+
+test_that("a study names the entities it needs to share", {
+  subjects <- entity_frame(data.frame(subject_id = c("s1", "s2")), key = "subject_id")
+  frame <- fmri_frame(
+    list(b = matrix(0, 2, 1)),
+    data.frame(.obs_id = c("a", "b"), subject_id = c("s1", "s2")),
+    entities = list(subject = subjects),
+    relations = list(os = key_relation("subject_id", target = "subject"))
+  )
+  expect_error(fmri_study(list(main = frame)), "entities = list\\(subject = ...\\)")
+})

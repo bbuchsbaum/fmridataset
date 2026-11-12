@@ -75,7 +75,7 @@ test_that("key relations infer unique targets and enforce referential integrity"
       entities = entities(fixture$frame),
       relations = list(observation_stimulus = key_relation("stimulus_id"))
     ),
-    "unknown target",
+    "stimulus keys that do not exist: unknown",
     class = "fmridataset_error_relation"
   )
 

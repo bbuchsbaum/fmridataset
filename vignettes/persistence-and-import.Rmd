@@ -65,7 +65,7 @@ bold <- read_bids_bold(
 
 The package ships a tiny fMRIPrep tree, with one subject, two runs of three
 volumes on a 2 by 2 by 2 grid, and one events file per run, so the rest of
-this section can run anywhere.
+this section runs anywhere `bidser` is installed.
 
 ```{r bids-note, echo = FALSE, results = "asis", eval = !has_bidser}
 note("bidser (>= 0.5.0)")
@@ -90,6 +90,23 @@ ambiguous, the import would stop and ask you to choose.
 ```{r bids-space, eval = has_bidser}
 feature_ids(bold)
 ```
+
+Because each subject's masks differ, two subjects imported this way have
+different feature spaces, and `bind_observations()` will not stack them. To
+put several subjects in one space, give every import the same mask: a group
+mask file (`mask = "group_mask.nii.gz"`), or the space of a first import.
+
+```{r bids-shared-mask, eval = has_bidser}
+again <- read_bids_bold(
+  root,
+  subject = "01", task = "memory",
+  mask = space(bold)
+)
+same_space(space(again), space(bold))
+```
+
+Data that stay in each subject's native space go in a collection instead
+(`vignette("studies")`).
 
 The observation table records each volume's run, its position in the run, its
 onset within the run, and the TR, so the run structure is ready to use.
@@ -120,7 +137,12 @@ collect_assay(run_2, dimnames = FALSE)
 The matching `events.tsv` files are attached as an event table.
 
 ```{r bids-events, eval = has_bidser}
-table_data(frame_table(bold, "events"))[, c("onset", "duration", "trial_type")]
+events <- table_data(frame_table(bold, "events"))
+events[, c("onset", "duration", "trial_type")]
+```
+
+```{r bids-cleanup, include = FALSE, eval = has_bidser}
+unlink(root, recursive = TRUE)
 ```
 
 ## Save and reopen
@@ -179,8 +201,36 @@ Views over the reopened frame read only what they select.
 collect_assay(reopened[c("vol-06", "vol-01"), c("voxel-2", "voxel-1")])
 ```
 
+A study is saved one frame at a time. `fds_study_manifest()` describes
+everything else, the shared entities, tables, and links, without reading any
+values, and `study_from_fds_manifest()` rebuilds the study from that
+description and the reopened frames.
+
+```{r save-study, eval = has_fmristore}
+runs <- split(observation_ids(frame), observations(frame)$run_id)
+study <- fmri_study(list(
+  run1 = frame[runs[["run-1"]], ],
+  run2 = frame[runs[["run-2"]], ]
+))
+
+dir <- file.path(tempdir(), "toy-study")
+dir.create(dir)
+for (id in study_ids(study)) {
+  write_frame(study_frame(study, id), file.path(dir, paste0(id, ".h5")))
+}
+saveRDS(fds_study_manifest(study), file.path(dir, "study.rds"))
+
+manifest <- readRDS(file.path(dir, "study.rds"))
+frames <- lapply(study_ids(study), function(id) {
+  open_frame(file.path(dir, paste0(id, ".h5")))
+})
+names(frames) <- study_ids(study)
+reloaded <- study_from_fds_manifest(manifest, frames)
+reloaded
+```
+
 ```{r write-cleanup, include = FALSE, eval = has_fmristore}
-unlink(path)
+unlink(c(path, dir), recursive = TRUE)
 ```
 
 ## What gets saved

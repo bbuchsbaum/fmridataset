@@ -1670,7 +1670,7 @@ basis_space_from_decoder <- function(parent, component_ids, decoder,
     any(decomposition$d <= rank_threshold)) {
     .frame_abort(
       paste0(
-        "decoder must have full column rank for an exact least-squares encoder.\n",
+        "The decoder must have full column rank for an exact least-squares encoder.\n",
         "  Rank-deficient or overcomplete dictionaries, as ICA and dictionary\n",
         "  learning often produce, have no exact left inverse. Pass\n",
         "  encoder = \"none\" for a synthesis-only basis, which reconstructs\n",

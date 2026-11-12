@@ -87,6 +87,29 @@ td code { white-space: nowrap; }
   table { white-space: normal; }
 }
 
+/* On phones, a table with several columns cannot fit; show each row as a
+ * short block, its first cell as the heading. */
+@media (max-width: 520px) {
+  table,
+  tbody,
+  tr,
+  td {
+    display: block;
+    width: auto;
+  }
+  thead { display: none; }
+  tr {
+    border-bottom: var(--rule-thin) solid var(--border);
+    padding-block: 0.4rem;
+  }
+  td {
+    border: 0 !important;
+    padding: 0.15rem 0.6rem;
+  }
+  td:first-child { font-weight: 650; }
+  td code { white-space: normal; }
+}
+
 /* Notes about chunks that were not run because a suggested package is
  * missing. */
 .chunk-note {

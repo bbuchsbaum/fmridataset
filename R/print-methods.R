@@ -32,13 +32,20 @@
   if (length(ids) > max) paste0(shown, ", ... (", length(ids), " in all)") else shown
 }
 
-# Shorten labels for display. Labels that are too long usually share a long
-# prefix and suffix (paths, BIDS file names), so drop what they share, cut at
-# a separator, and keep the part that tells them apart: "...run-01...". A
-# lone long label keeps its end.
+# Shorten labels for display. Long labels are usually paths or BIDS file
+# names: keep the file name, then drop a suffix every label shares
+# ("_space-..._bold"), then a shared prefix, cutting at separators, so what
+# remains tells the labels apart: "sub-01_task-memory_run-01". A lone long
+# label keeps its end.
 .abbreviate_labels <- function(x, width = 40L) {
   if (!length(x) || all(nchar(x) <= width)) {
     return(x)
+  }
+  if (any(grepl("/", x, fixed = TRUE)) && !anyDuplicated(basename(x))) {
+    x <- basename(x)
+    if (all(nchar(x) <= width)) {
+      return(x)
+    }
   }
   if (length(unique(x)) < 2L) {
     long <- nchar(x) > width
@@ -55,15 +62,29 @@
   reverse <- function(values) {
     vapply(strsplit(values, "", fixed = TRUE), function(ch) paste(rev(ch), collapse = ""), "")
   }
-  prefix <- common_prefix(x)
-  prefix <- sub("[^/_]*$", "", prefix)
   suffix <- reverse(common_prefix(reverse(x)))
   suffix <- sub("^[^/_]*", "", suffix)
-  middle <- substring(x, nchar(prefix) + 1L, nchar(x) - nchar(suffix))
-  out <- paste0(if (nzchar(prefix)) "...", middle, if (nzchar(suffix)) "...")
+  x <- substring(x, 1L, nchar(x) - nchar(suffix))
+  if (all(nchar(x) <= width)) {
+    return(x)
+  }
+  prefix <- common_prefix(x)
+  prefix <- sub("[^/_]*$", "", prefix)
+  middle <- substring(x, nchar(prefix) + 1L)
+  out <- paste0(if (nzchar(prefix)) "...", middle)
   long <- nchar(out) > width
   out[long] <- paste0(substr(out[long], 1L, width - 3L), "...")
   out
+}
+
+# "a" or "an" before a number as it is read aloud: an 8, an 11, an 18,
+# an 80, an 11000, but a 1, a 110, a 1800.
+.article <- function(n) {
+  digits <- format(n, scientific = FALSE, trim = TRUE)
+  group <- nchar(digits) %% 3L
+  if (group == 0L) group <- 3L
+  leading <- substr(digits, 1L, group)
+  if (startsWith(digits, "8") || leading %in% c("11", "18")) "an" else "a"
 }
 
 .plural <- function(n, singular, plural = paste0(singular, "s")) {
@@ -93,9 +114,13 @@ print.surface_space <- function(x, ...) {
     "<surface_space>", .plural(n_features(x), "vertex", "vertices"),
     paste0("(", counts, ")")
   )
-  excluded <- length(x$vertex_ids) - n_features(x)
-  if (excluded > 0L) {
-    .line("  excluded:", .plural(excluded, "vertex", "vertices"), "(medial wall or outside the support)")
+  medial <- sum(x$medial_wall %||% FALSE)
+  other <- length(x$vertex_ids) - n_features(x) - medial
+  if (medial > 0L) {
+    .line("  excluded:", .plural(medial, "medial-wall vertex", "medial-wall vertices"))
+  }
+  if (other > 0L) {
+    .line("  excluded:", .plural(other, "vertex", "vertices"), "outside the support")
   }
   .line("  template:", x$template %||% "(none)")
   .line("  digest:  ", .short_digest(space_digest(x)))
@@ -161,7 +186,14 @@ print.frame_explanation <- function(x, ...) {
   is_view <- !identical(as.integer(shape), unname(base))
   .line(
     "<frame explanation>", shape[[1L]], "x", shape[[2L]],
-    if (is_view) sprintf("view of a %d x %d frame", base[[1L]], base[[2L]]) else "frame"
+    if (is_view) {
+      sprintf(
+        "view of %s %d x %d frame",
+        .article(base[[1L]]), base[[1L]], base[[2L]]
+      )
+    } else {
+      "frame"
+    }
   )
   .line("  ids:    ", if (isTRUE(x$ids_durable)) "durable" else "not durable (ephemeral)")
   .line(

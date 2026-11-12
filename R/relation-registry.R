@@ -317,7 +317,11 @@ relation_registry <- function(relations = list(), ...) {
   unknown <- !missing & !keys %in% target_ids
   if (any(unknown)) {
     .relation_abort(
-      sprintf("Relation '%s' contains unknown target IDs.", name),
+      sprintf(
+        "Relation '%s' refers to %s that do not exist: %s.", name,
+        sub("^entity:", "", target) |> paste("keys"),
+        .format_id_sample(unique(keys[unknown]))
+      ),
       relation = name,
       field = "key",
       values = unique(keys[unknown])

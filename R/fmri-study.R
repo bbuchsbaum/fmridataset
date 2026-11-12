@@ -409,7 +409,15 @@ compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
   missing_entities <- setdiff(entity_names(local), entity_names(shared))
   if (length(missing_entities)) {
     .study_abort(
-      sprintf("Representation '%s' references an entity absent from the study.", representation),
+      sprintf(
+        paste0(
+          "Representation '%s' uses %s that the study does not share.\n",
+          "  Pass the shared tables to fmri_study(), e.g. entities = list(%s)."
+        ),
+        representation,
+        paste0("'", missing_entities, "'", collapse = ", "),
+        paste0(missing_entities, " = ...", collapse = ", ")
+      ),
       representation = representation,
       entities = missing_entities
     )
@@ -437,8 +445,17 @@ compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
     }
     for (column in names(local_data)) {
       if (!.study_vector_equal(local_data[[column]], shared_data[[column]][positions])) {
+        differs <- !mapply(
+          identical,
+          as.list(local_data[[column]]), as.list(shared_data[[column]][positions])
+        )
+        differing_ids <- entity_ids(local_value)[differs]
         .study_abort(
-          sprintf("Representation '%s' entity '%s' disagrees with shared metadata.", representation, entity_name),
+          sprintf(
+            "Representation '%s' entity '%s' disagrees with the shared entity in column '%s'%s.",
+            representation, entity_name, column,
+            if (length(differing_ids)) paste0(" for ", .format_id_sample(differing_ids)) else ""
+          ),
           representation = representation,
           entity = entity_name,
           column = column
@@ -522,7 +539,16 @@ compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
         )
         if (any(!value$map$.source_id %in% source_ids) ||
           any(!value$map$.target_id %in% target_ids)) {
-          .study_abort(sprintf("Study link '%s' map contains unknown axis IDs.", id), link = id)
+          .study_abort(
+            sprintf(
+              "Study link '%s' refers to IDs that do not exist: %s.", id,
+              .format_id_sample(unique(c(
+                setdiff(value$map$.source_id, source_ids),
+                setdiff(value$map$.target_id, target_ids)
+              )))
+            ),
+            link = id
+          )
         }
       }
       typed_map <- value$operator

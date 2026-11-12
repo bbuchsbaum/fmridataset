@@ -169,7 +169,7 @@ fds_frame_manifest <- function(x) {
     )
     .identity_abort(
       sprintf(
-        "The %s axis %s ephemeral IDs, which cannot be persisted\n  or certified. To fix:\n%s",
+        "The %s axis %s ephemeral IDs, which cannot be persisted\n  or certified.\n%s",
         paste(ephemeral, collapse = " and "),
         if (length(ephemeral) > 1L) "carry" else "carries",
         paste0("  ", remedy[ephemeral], collapse = "\n")

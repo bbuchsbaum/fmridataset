@@ -191,7 +191,13 @@ fds_study_representations <- function(x) {
       if (any(!value$map$.source_id %in% source_ids) ||
         any(!value$map$.target_id %in% target_ids)) {
         .fds_schema_abort(
-          sprintf("Study link '%s' map contains unknown axis IDs.", name),
+          sprintf(
+            "Study link '%s' refers to IDs that do not exist: %s.", name,
+            .format_id_sample(unique(c(
+              setdiff(value$map$.source_id, source_ids),
+              setdiff(value$map$.target_id, target_ids)
+            )))
+          ),
           paste0("links.", name, ".map")
         )
       }

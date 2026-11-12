@@ -209,7 +209,7 @@ feature_map_from_target <- function(target) {
     if (is.null(encoder)) {
       .feature_map_abort(
         paste0(
-          "target is a synthesis-only basis_space: it has no encoder, so there\n",
+          "The target is a synthesis-only basis_space: it has no encoder, so there\n",
           "  is no canonical map from the parent space onto it. Supply an\n",
           "  explicit feature_map(), or construct the basis with an encoder."
         ),
@@ -635,16 +635,6 @@ append_provenance <- function(x, records) {
     .feature_map_abort("records must contain provenance records.")
   }
   provenance_graph(c(x$records, additions))
-}
-
-#' @export
-print.provenance_graph <- function(x, ...) {
-  records <- provenance_records(x)
-  cat("<provenance_graph>", length(records), "records\n")
-  if (length(records)) {
-    cat("  tips:", paste(provenance_tips(x), collapse = ", "), "\n")
-  }
-  invisible(x)
 }
 
 # Coerce a lineage value to a provenance graph. `NULL` becomes an empty graph

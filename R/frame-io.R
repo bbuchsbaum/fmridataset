@@ -84,6 +84,18 @@
 #' @export
 write_frame <- function(x, path, format = "hdf5", ...) {
   format <- match.arg(format, "hdf5")
+  if (inherits(x, c("fmri_study", "fmri_collection"))) {
+    .frame_abort(
+      paste0(
+        "write_frame() saves one frame, not a ", class(x)[[1L]], ".\n",
+        "  Write each frame with write_frame() and keep the description from\n",
+        "  fds_study_manifest(); study_from_fds_manifest() rebuilds the study.\n",
+        "  See vignette(\"persistence-and-import\")."
+      ),
+      "fmridataset_error_backend_io",
+      operation = "write_frame", actual = class(x)
+    )
+  }
   # Refuse a frame that cannot be persisted (ephemeral IDs) before asking for
   # the storage package, so the error is about the frame, not the setup.
   fds_frame_manifest(x)

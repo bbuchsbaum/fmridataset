@@ -2,11 +2,33 @@
   .frame_abort(message, "fmridataset_error_collection", ...)
 }
 
+# Name what differs when the schema report points at a list of names, such as
+# observation columns or assays; otherwise fall back to the report's path.
+.collection_schema_message <- function(frame_id, report) {
+  expected <- report$expected
+  actual <- report$actual
+  if (is.character(expected) && is.character(actual)) {
+    extra <- setdiff(actual, expected)
+    missing <- setdiff(expected, actual)
+    parts <- c(
+      if (length(extra)) sprintf("has %s that the first frame lacks", .format_id_sample(extra)),
+      if (length(missing)) sprintf("lacks %s", .format_id_sample(missing))
+    )
+    if (length(parts)) {
+      return(sprintf(
+        "Frame '%s' differs from the first frame at %s: it %s.",
+        frame_id, report$path, paste(parts, collapse = " and ")
+      ))
+    }
+  }
+  sprintf("Frame '%s' has an incompatible schema at '%s'.", frame_id, report$path)
+}
+
 .assert_collection_semantics <- function(reference, candidate, frame_id) {
   report <- compare_frame_schema(candidate, reference, mode = "collection")
   if (!report$compatible) {
     .collection_abort(
-      sprintf("Frame '%s' has an incompatible schema at '%s'.", frame_id, report$path),
+      .collection_schema_message(frame_id, report),
       frame = frame_id, field = report$path,
       expected = report$expected, actual = report$actual
     )

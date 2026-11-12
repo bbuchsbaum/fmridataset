@@ -82,7 +82,7 @@ bold <- read_nifti_bold(
 For fMRIPrep output, `read_bids_bold()` finds the runs, masks, and events for
 you; `vignette("persistence-and-import")` shows it on a small example tree.
 Data already in R work too. `as_fmri_frame()` accepts a time-by-feature
-matrix, `neuroim2` `NeuroVec` volumes with a mask, or a latent decomposition.
+matrix, `neuroim2::NeuroVec` volumes with a mask, or a latent decomposition.
 
 ```{r as-fmri-frame}
 set.seed(1)
@@ -90,7 +90,8 @@ quick <- as_fmri_frame(
   matrix(rnorm(6 * 4), nrow = 6, ncol = 4),
   TR = 2,
   run_length = c(4, 2),
-  censor = 3 # exclude the third volume
+  censor = 3, # exclude the third volume
+  assay = "bold"
 )
 quick
 observations(quick)
@@ -112,13 +113,13 @@ rows are eight volumes from two runs.
 voxels <- volume_space(dim = c(3, 3, 2), template = "toy")
 voxels
 
-bold <- matrix(
+values <- matrix(
   round(rnorm(8 * n_features(voxels)), 2),
   nrow = 8, ncol = n_features(voxels)
 )
 
 frame <- fmri_frame(
-  assays = list(bold = bold),
+  assays = list(bold = values),
   observations = data.frame(
     .obs_id = sprintf("vol-%02d", 1:8),
     run_id = rep(c("run-1", "run-2"), each = 4),
@@ -138,7 +139,7 @@ coordinates. `features()` returns that table for a frame.
 head(features(frame), 3)
 ```
 
-The matrix itself is never trusted for identity. Had `bold` carried row names
+The matrix itself is never trusted for identity. Had `values` carried row names
 that disagreed with `.obs_id`, construction would have failed rather than pick
 one.
 
@@ -192,7 +193,7 @@ ask, wrap the matrix in `counting_source()`, which counts every read that
 reaches it, and build a frame over it.
 
 ```{r lazy}
-counted <- counting_source(bold)
+counted <- counting_source(values)
 lazy <- fmri_frame(
   assays = list(bold = counted),
   observations = observations(frame),
@@ -203,7 +204,7 @@ lazy_run_1 <- filter_observations(lazy, run_id == "run-1")
 run_1_pair <- lazy_run_1[, c("voxel-1", "voxel-2")]
 source_counts(counted)$reads
 
-values <- collect_assay(run_1_pair)
+pair_values <- collect_assay(run_1_pair)
 source_counts(counted)[c("reads", "values")]
 ```
 
@@ -220,7 +221,7 @@ collect_assay(frame, memory_budget = 10)
 
 ## Inspect without reading
 
-`explain()` summarises a frame or view without reading any values: its shape,
+`explain()` summarizes a frame or view without reading any values: its shape,
 whether its IDs are durable, its space, and, for each assay, the source behind
 it and what reading it would cost.
 
@@ -279,14 +280,14 @@ for them `has_temporal_schema()` is `FALSE`.
 ## IDs that last
 
 IDs you supply, like `vol-01`, and IDs the constructors and importers make
-are *durable*: the same data always gets the same IDs, so a frame can be saved
-and compared with another. For throwaway work you can ask for *ephemeral*
+are *durable*: they belong to the data, survive saving, and let frames be
+compared. For throwaway work you can ask for *ephemeral*
 IDs, which are random and visibly marked. A frame that has them cannot be
 saved until they are replaced.
 
 ```{r ephemeral, error = TRUE}
 scratch <- fmri_frame(
-  assays = list(bold = bold),
+  assays = list(bold = values),
   observations = axis_frame(data.frame(x = 1:8), id_policy = "ephemeral"),
   space = voxels
 )
@@ -314,13 +315,13 @@ records are combined, and only a genuine conflict is an error.
 
 ```{r bind-metadata, error = TRUE}
 site_a <- fmri_frame(
-  assays = list(bold = bold[1:4, ]),
+  assays = list(bold = values[1:4, ]),
   observations = observations(frame)[1:4, ],
   space = voxels,
   metadata = list(site = "A", scanner = list(vendor = "X"))
 )
 site_b <- fmri_frame(
-  assays = list(bold = bold[5:8, ]),
+  assays = list(bold = values[5:8, ]),
   observations = observations(frame)[5:8, ],
   space = voxels,
   metadata = list(site = "A", scanner = list(field = "3T"))
@@ -342,7 +343,7 @@ A frame over a different volume is refused even when the dimensions match.
 
 ```{r bind-space, error = TRUE}
 other <- fmri_frame(
-  assays = list(bold = bold[1:4, ]),
+  assays = list(bold = values[1:4, ]),
   observations = observations(frame)[1:4, ],
   space = volume_space(dim = c(3, 3, 2), template = "other")
 )

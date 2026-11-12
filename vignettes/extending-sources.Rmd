@@ -98,6 +98,8 @@ with the package's canonical hash, `canonical_sha256()`, and validates the
 result.
 
 ```{r constructor}
+`%||%` <- function(x, y) if (is.null(x)) y else x # in base R from 4.4
+
 rds_source <- function(path, chunks = NULL) {
   path <- normalizePath(path, winslash = "/", mustWork = TRUE)
   values <- readRDS(path)
@@ -122,8 +124,6 @@ rds_source <- function(path, chunks = NULL) {
   out$fingerprint <- canonical_sha256(fields)
   validate_array_source(out)
 }
-
-`%||%` <- function(x, y) if (is.null(x)) y else x
 ```
 
 The descriptor methods return stored fields.
@@ -244,7 +244,7 @@ collect_assay(frame[c("t02", "t01"), "f5"])
 `check_array_source()` runs the behavioural laws every source must satisfy
 against the source and the matrix it should hold: a valid descriptor, a
 serialization round trip that keeps the fingerprint, safe opening and
-closing, reads that match the reference for any selection, views that
+closing, reads that match the reference, every selector form, views that
 compose, and a content hash equal to that of an in-memory copy.
 
 ```{r check}
@@ -319,16 +319,16 @@ sharded <- row_sharded_source(
 shard_manifest(sharded)[, c(".shard_id", ".start", ".end")]
 rows <- locate_source_rows(sharded, c(5L, 1L))
 rows[, c(".observation", ".shard_id", ".local_observation")]
-check_array_source(sharded, reference)$passed
-```
-
-```{r delarr-note, echo = FALSE, results = "asis", eval = !has_delarr}
-note("delarr (>= 0.2.0)")
+check_array_source(sharded, reference)
 ```
 
 With the suggested `delarr` package, `as_delarr()` wraps any source as a lazy
 `delarr` array, whose reads go through `source_read()` under the same memory
 budget.
+
+```{r delarr-note, echo = FALSE, results = "asis", eval = !has_delarr}
+note("delarr (>= 0.2.0)")
+```
 
 ```{r delarr, eval = has_delarr}
 lazy <- as_delarr(sharded)

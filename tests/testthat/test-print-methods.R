@@ -74,7 +74,7 @@ test_that("surface and composite maps print their parts", {
   left <- surface_space(sprintf("L%d", 1:5), hemisphere = "left", medial_wall = c(rep(FALSE, 4), TRUE))
   expect_identical(
     .print_lines(left)[[2L]],
-    "  excluded: 1 vertex (medial wall or outside the support)"
+    "  excluded: 1 medial-wall vertex"
   )
   mixed <- composite_space(list(lh = left, vol = volume_space(c(2, 1, 1))))
   frame <- fmri_frame(list(b = matrix(as.double(1:6), 1)), data.frame(.obs_id = "a"), space = mixed)
@@ -87,7 +87,13 @@ test_that("long run labels print by the part that tells them apart", {
   labels <- sprintf(
     "derivatives/fmriprep/sub-01/func/sub-01_task-memory_run-%02d_space-MNI_desc-preproc_bold", 1:2
   )
-  expect_identical(fmridataset:::.abbreviate_labels(labels), c("...run-01...", "...run-02..."))
+  expect_identical(
+    fmridataset:::.abbreviate_labels(labels),
+    c("sub-01_task-memory_run-01", "sub-01_task-memory_run-02")
+  )
+  same_file <- c("a/ses-1/func/run-1_bold", "a/ses-2/func/run-1_bold")
+  # Repeated file names keep the directory that tells them apart.
+  expect_identical(fmridataset:::.abbreviate_labels(same_file, 10L), c("a/ses-1", "a/ses-2"))
   expect_identical(fmridataset:::.abbreviate_labels(c("run-1", "run-2")), c("run-1", "run-2"))
   expect_identical(fmridataset:::.abbreviate_labels(strrep("x", 50), 10L), "...xxxxxxx")
 })
@@ -141,4 +147,12 @@ test_that("links, studies, collections, and entities print their contents", {
   ))
   collection <- fmri_collection(list(one = make("a"), two = make("b")))
   expect_identical(.print_lines(collection)[1:2], c("<fmri_collection> 2 frames", "  frames:         one, two"))
+})
+
+test_that("numbers get the article they are read with", {
+  article <- fmridataset:::.article
+  expect_identical(
+    vapply(c(1, 8, 11, 18, 80, 110, 800, 1800, 11000, 18500, 110000), article, ""),
+    c("a", "an", "an", "an", "an", "a", "an", "a", "an", "an", "a")
+  )
 })

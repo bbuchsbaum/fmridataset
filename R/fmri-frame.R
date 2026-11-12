@@ -572,11 +572,16 @@ spatial_map <- function(x, observation, assay = active_assay(x)) {
   list(mode = mode, values = values[unique(c(leading, trailing))])
 }
 
+# The type of the source that holds the values. Wrappers that only count,
+# inject faults, or select are looked through; a selection is reported as
+# "(view)" after the type it selects from.
 .explain_source_type <- function(source) {
-  while (inherits(source, "counting_source") || inherits(source, "fault_source")) {
+  view <- FALSE
+  while (inherits(source, c("counting_source", "fault_source", "source_view"))) {
+    view <- view || inherits(source, "source_view")
     source <- source$source
   }
-  class(source)[1L]
+  paste0(class(source)[1L], if (view) " (view)")
 }
 
 #' Explain a frame without reading numerical values
