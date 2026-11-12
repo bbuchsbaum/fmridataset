@@ -63,6 +63,12 @@
     )
   }
   key_data <- as.data.frame(data[id_keys], stringsAsFactors = FALSE)
+  # An ID is a function of the row's key values. A factor would add its whole
+  # level set to the hash, so the same row would get a different ID depending
+  # on which other rows are present.
+  key_data[] <- lapply(key_data, function(column) {
+    if (is.factor(column)) as.character(column) else column
+  })
   if (any(vapply(key_data, is.list, logical(1))) || anyNA(key_data)) {
     .identity_abort(
       "Deterministic ID keys must be scalar and non-missing.",

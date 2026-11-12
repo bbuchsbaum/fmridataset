@@ -60,8 +60,12 @@
     changed <- FALSE
     for (relation_name in key_names) {
       descriptor <- registry[[relation_name]]
+      # A relation from an entity to itself (a parent pointer) says which
+      # other record each record refers to, not which record an observation
+      # belongs to, so it takes no part in resolving observations.
       if (!descriptor$source %in% names(maps) ||
-        !startsWith(descriptor$target, "entity:")) {
+        !startsWith(descriptor$target, "entity:") ||
+        identical(descriptor$source, descriptor$target)) {
         next
       }
       source_domain <- .resolution_domain(

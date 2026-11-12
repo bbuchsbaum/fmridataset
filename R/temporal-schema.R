@@ -216,7 +216,8 @@ has_temporal_schema <- function(x, ...) {
     if (!identical(relation$source, "observation") || is.null(target)) {
       return(NA_character_)
     }
-    target_entity <- entity_set[[target]]
+    # A resolved relation stores its target as "entity:<name>".
+    target_entity <- entity_set[[sub("^entity:", "", target)]]
     if (is.null(target_entity) || !identical(target_entity$entity_type, "run")) {
       return(NA_character_)
     }
@@ -303,27 +304,29 @@ has_temporal_schema <- function(x, ...) {
   # Values within a run are compared with a small relative tolerance so that
   # floating-point noise (0.1 * 3 vs 0.3) is not mistaken for a second value.
   tolerance <- sqrt(.Machine$double.eps)
-  per_run <- vapply(seq_along(levels), function(i) {
-    run_vals <- values[block_ids == i]
-    reference <- run_vals[[1L]]
-    scale <- pmax(abs(run_vals), abs(reference), 1)
-    if (any(abs(run_vals - reference) > tolerance * scale)) {
-      unique_vals <- unique(run_vals)
-      .temporal_abort(
-        sprintf(
-          "Run %s has %d different %s values (%s); a run has one %s.",
-          encodeString(levels[[i]], quote = "\""), length(unique_vals),
-          encodeString(column, quote = "\""),
-          paste(format(unique_vals, digits = 15), collapse = ", "),
-          singular_label
-        ),
-        column = column,
-        run = levels[[i]],
-        actual = unique_vals
-      )
-    }
-    as.numeric(reference)
-  }, numeric(1))
+  # Compared against each run's first value in one vectorized pass; a per-run
+  # scan of the whole column is quadratic when there are many runs.
+  first <- match(seq_along(levels), block_ids)
+  reference <- values[first][block_ids]
+  scale <- pmax(abs(values), abs(reference), 1)
+  differs <- abs(values - reference) > tolerance * scale
+  if (any(differs)) {
+    i <- min(block_ids[differs])
+    unique_vals <- unique(values[block_ids == i])
+    .temporal_abort(
+      sprintf(
+        "Run %s has %d different %s values (%s); a run has one %s.",
+        encodeString(levels[[i]], quote = "\""), length(unique_vals),
+        encodeString(column, quote = "\""),
+        paste(format(unique_vals, digits = 15), collapse = ", "),
+        singular_label
+      ),
+      column = column,
+      run = levels[[i]],
+      actual = unique_vals
+    )
+  }
+  per_run <- as.numeric(values[first])
 
   names(per_run) <- levels
   per_run
@@ -418,12 +421,11 @@ has_temporal_schema <- function(x, ...) {
       column = order_col
     )
   }
-  for (i in seq_len(n_runs)) {
-    if (any(diff(values[block_ids == i]) <= 0)) {
-      return(FALSE)
-    }
-  }
-  TRUE
+  # Group each run's observations together, keeping their order (the sort is
+  # stable), then test only the steps that stay within a run.
+  by_run <- order(block_ids)
+  within_run <- diff(block_ids[by_run]) == 0L
+  !any(diff(values[by_run])[within_run] <= 0)
 }
 
 #' @rdname temporal-schema

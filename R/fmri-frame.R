@@ -479,7 +479,7 @@ block_apply <- function(x, FUN, block_size = 4096L, assay = active_assay(x), ...
   # tripping seq.int()'s wrong-sign error on seq.int(1L, 0L, by = block_size).
   starts <- seq.int(1L, by = block_size, length.out = ceiling(length(ids) / block_size))
   lapply(starts, function(start) {
-    idx <- start:min(length(ids), start + block_size - 1L)
+    idx <- start:min(length(ids), start + (block_size - 1L))
     FUN(collect_assay(x[, idx], assay = assay), ids[idx], ...)
   })
 }
@@ -1055,7 +1055,9 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
       expected = ref_names, actual = cand_names
     )
   }
-  agrees <- function(x, y) isTRUE(all.equal(x, y))
+  # Exact, as for feature metadata: the bound frame keeps the first operand's
+  # entity values, so a tolerance would silently discard a different one.
+  agrees <- function(x, y) identical(.bind_comparable(x), .bind_comparable(y))
   for (nm in ref_names) {
     ref <- reference[[nm]]
     cand <- candidate[[nm]]

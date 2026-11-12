@@ -211,8 +211,15 @@ test_that("realization costs accept open handles", {
 test_that("row-sharded realization costs combine their shards' traits", {
   memory <- memory_source(matrix(as.double(1:6), 2))
   all_memory <- fmridataset:::.source_cost_traits(row_sharded_source(list(memory, memory)))
-  expect_true(all_memory$already_realized)
+  # A sharded read copies each shard's rows into an output matrix, so even an
+  # all-memory composition is charged a second buffer.
+  expect_false(all_memory$already_realized)
   expect_false(all_memory$compressed)
+  big <- matrix(as.double(seq_len(40)), 10)
+  expect_gte(
+    source_realization_cost(row_sharded_source(list(memory_source(big))))$estimated_peak_bytes,
+    2 * 8 * length(big)
+  )
 
   zarr <- zarr_source(
     "fixture.zarr",

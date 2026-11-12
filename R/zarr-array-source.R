@@ -111,6 +111,18 @@
       field = "metadata"
     )
   }
+  whole <- function(value) {
+    is.numeric(value) && !anyNA(value) && all(value == trunc(value)) &&
+      all(abs(value) <= .Machine$integer.max)
+  }
+  if (!whole(metadata$shape) || !whole(metadata$chunks) ||
+    !is.character(metadata$dtype) || length(metadata$dtype) != 1L) {
+    .frame_abort(
+      "Zarr shape and chunks must be whole numbers and dtype one string.",
+      "fmridataset_error_source_contract",
+      field = "metadata"
+    )
+  }
   shape <- as.integer(metadata$shape)
   chunks <- as.integer(metadata$chunks)
   if (length(shape) != 2L || anyNA(shape) || any(shape < 0L)) {
@@ -121,16 +133,18 @@
       actual = metadata$shape
     )
   }
-  if (length(chunks) != 2L || anyNA(chunks) || any(chunks <= 0L) ||
-    any(chunks > pmax(1L, shape))) {
+  if (length(chunks) != 2L || anyNA(chunks) || any(chunks <= 0L)) {
     .frame_abort(
-      "Zarr chunks must be two positive integers bounded by the physical shape.",
+      "Zarr chunks must be two positive integers.",
       "fmridataset_error_source_contract",
       field = "chunks",
       actual = metadata$chunks,
       shape = shape
     )
   }
+  # A chunk larger than the array is legal Zarr (small or appendable arrays);
+  # the effective chunk is the array extent, as other sources clamp it.
+  chunks <- pmin(chunks, pmax(1L, shape))
   dtype <- .zarr_normalize_dtype(metadata$dtype)
   .dtype_bytes(dtype)
   list(shape = shape, chunks = chunks, dtype = dtype)

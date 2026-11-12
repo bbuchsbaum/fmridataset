@@ -459,12 +459,18 @@
     task = .bids_entity_value(events, ".task"),
     run = .bids_entity_value(events, ".run")
   )
+  # NA marks an event of a run that is not among the selected BOLD runs (no
+  # derivative in this space, or an excluded run); the caller drops it. Only a
+  # row matching more than one run is ambiguous.
   vapply(seq_len(nrow(events)), function(i) {
     matched <- .bids_entity_match(
       event_entities[i, , drop = FALSE], manifest,
       c("subid", "session", "task", "run")
     )
     positions <- which(matched$keep)
+    if (!length(positions)) {
+      return(NA_character_)
+    }
     if (length(positions) != 1L) {
       .bids_abort("An event row could not be associated with exactly one selected BOLD run.",
         event_row = i
@@ -480,6 +486,10 @@
     return(NULL)
   }
   events$scan_id <- .bids_event_scan_ids(events, manifest)
+  events <- events[!is.na(events$scan_id), , drop = FALSE]
+  if (!nrow(events)) {
+    return(NULL)
+  }
   file_column <- if ("file" %in% names(events)) "file" else if (".file" %in% names(events)) ".file" else NULL
   if (is.null(file_column)) {
     event_source <- paste0(events$scan_id, "::events")

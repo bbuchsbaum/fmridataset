@@ -1,5 +1,45 @@
 # fmridataset 0.11.0 (Development)
 
+- Correctness audit before release. Fixes that change results:
+  - A square symmetric parcel membership or decoder lost its lower triangle,
+    and a diagonal one was rejected; diagonal `Matrix` operators now work in
+    `basis_space()` and `feature_map()`; complex assays map through sparse
+    operators.
+  - `temporal_schema()` now finds the run column declared by an
+    observation-to-run relation whatever the key is called. It previously
+    fell back to `scan_id`/`run_id`, which could merge distinct runs.
+  - `collection_digest()` and `study_digest()` now cover block values, frame
+    tables, frame metadata, and provenance, so these digests change.
+  - Deterministic axis IDs no longer depend on a factor key's unused levels;
+    IDs built from factor keys change and now equal those from character keys.
+  - `volume_space()` treats `-0` and `0` in an affine as the same affine.
+  - Named `dimnames` keep their positions in `canonical_bytes()`; two
+    matrices with swapped row and column labels no longer hash the same.
+    Encodings of values without named `dimnames` are unchanged.
+
+- Correctness audit, stricter or more forgiving input handling:
+  `nifti_source()` checks a mask file's affine, not only its dimensions, and
+  ignores dimnames on a `volume_space` affine; `basis_space_from_fmrilatent()`
+  requires a volume parent to be the latent object's own mask grid;
+  `index_space()` refuses `data$.feature_id` that disagrees with `ids`;
+  `volume_space()`, `index_space()`, `memory_source()`, and `zarr_source()`
+  refuse fractional sizes instead of truncating them; Zarr chunks larger than
+  the array are clamped rather than rejected; `plan_blocks()` plans one image
+  (or column) per block when it exceeds `target_block_bytes` but fits
+  `memory_budget`; row-sharded sources report the second buffer a read needs;
+  `bind_observations()` compares entity values exactly; `fmri_study()`
+  refuses in-memory entity block values that contradict the shared entity;
+  `frame_link()` formats numeric map IDs like every other key;
+  `filter_entities()` restricts frame-level tables, and refuses a filter that
+  would orphan features with a clear error; an entity may hold a key relation
+  to itself; `read_bids_bold()` drops events of runs that are not selected
+  instead of failing; `block_apply()` accepts `.Machine$integer.max`.
+
+- Faster: source reads with range selectors skip a duplicate scan (about 3x
+  faster for wide blocks), `content_hash()` is about 30% faster,
+  `temporal_schema()` is linear rather than quadratic in the number of runs,
+  and ASCII IDs skip Unicode normalization when hashed. No digest changed.
+
 - New convenience constructors for run-structured data. `as_fmri_frame()` now
   has methods for a matrix, a `neuroim2` `NeuroVec` (or a list of them, one per
   run), and a `LatentNeuroVec`, and `read_nifti_bold()` builds a lazy frame

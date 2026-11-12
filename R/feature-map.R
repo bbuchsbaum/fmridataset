@@ -397,6 +397,17 @@ source_read.feature_mapped_source <- function(x, observations = NULL,
 # and of block size. Finite blocks keep the single sparse product.
 .feature_map_apply_operator <- function(values, operator) {
   values <- as.matrix(values)
+  # Matrix has no complex sparse product. A real operator acts on the real
+  # and imaginary parts separately, which is the same linear map.
+  if (is.complex(values)) {
+    return(matrix(
+      complex(
+        real = .feature_map_apply_operator(Re(values), operator),
+        imaginary = .feature_map_apply_operator(Im(values), operator)
+      ),
+      nrow = nrow(values)
+    ))
+  }
   unusable <- !is.finite(values)
 
   if (!any(unusable)) {

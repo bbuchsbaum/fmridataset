@@ -188,12 +188,29 @@
   for (i in seq_along(runs)) {
     .assert_on_volume_grid(runs[[i]], space, sprintf("Run %d", i))
   }
+  for (i in seq_along(runs)) {
+    # A sparse NeuroVec returns zeros, not an error, for voxels outside its
+    # own mask; those would enter the frame as if they were data.
+    if (methods::is(runs[[i]], "AbstractSparseNeuroVec")) {
+      own <- which(as.vector(methods::slot(runs[[i]], "mask")) != 0)
+      if (!all(space$support %in% own)) {
+        .frame_abort(
+          sprintf("Run %d is sparse and does not cover every voxel in mask.", i),
+          "fmridataset_error_space_mismatch"
+        )
+      }
+    }
+  }
   per_run <- vapply(runs, function(run) as.integer(dim(run)[[4L]]), integer(1))
   run_length <- .run_lengths_arg(run_length, sum(per_run), default = per_run)
   # series() reads only the masked voxels, so a sparse or file-backed NeuroVec
   # is never expanded to a dense 4D array.
   values <- do.call(rbind, lapply(runs, function(run) {
-    neuroim2::series(run, space$support)
+    # series() drops to a plain vector for a single voxel; fix the shape.
+    matrix(
+      neuroim2::series(run, space$support),
+      nrow = dim(run)[[4L]], ncol = length(space$support)
+    )
   }))
   # series() labels columns by voxel index; the space names the features.
   dimnames(values) <- NULL
@@ -430,6 +447,15 @@ read_nifti_bold <- function(paths, mask, TR = NULL, run_length = NULL,
   }
   if (!is.character(mask)) mask <- .volume_space_from_neurovol(mask)
   source <- nifti_source(paths, mask, chunks = chunks)
+  # The frame's space is the mask space the caller supplied (already checked
+  # against the files), or the header grid for a mask file. It carries no
+  # source fingerprint: a space says where features are, not which file on
+  # which path holds them, so semantic digests do not depend on location.
+  space <- if (inherits(mask, "volume_space")) {
+    mask
+  } else {
+    volume_space(source$spatial_dim, affine = source$affine, support = source$support)
+  }
   run_length <- .run_lengths_arg(
     run_length, source_shape(source)[[1L]],
     default = source$time_per_file
@@ -437,7 +463,7 @@ read_nifti_bold <- function(paths, mask, TR = NULL, run_length = NULL,
   fmri_frame(
     assays = .assay_list(source, assay),
     observations = .run_observations(run_length, TR, censor),
-    space = nifti_source_space(source),
+    space = space,
     tables = .events_arg(events)
   )
 }

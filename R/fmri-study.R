@@ -184,8 +184,10 @@ frame_link <- function(source, target,
     if (!all(required %in% names(map))) {
       .study_abort("Link maps require .source_id and .target_id columns.", field = "map")
     }
-    map$.source_id <- as.character(map$.source_id)
-    map$.target_id <- as.character(map$.target_id)
+    # The same rule as every other key, so a numeric 100000 is "100000" (as
+    # the axis IDs it must match are) and a fractional ID is refused.
+    map$.source_id <- .canonical_key_values(map$.source_id, .study_abort, ".source_id")
+    map$.target_id <- .canonical_key_values(map$.target_id, .study_abort, ".target_id")
     if (anyNA(map$.source_id) || any(!nzchar(map$.source_id)) ||
       anyNA(map$.target_id) || any(!nzchar(map$.target_id)) ||
       anyDuplicated(map[required])) {
@@ -458,6 +460,27 @@ compose_frame_links <- function(first, second, type = NULL, metadata = list()) {
         !identical(x$role, y$role) || !identical(x$units, y$units)) {
         .study_abort(
           sprintf("Representation '%s' entity block '%s.%s' is incompatible.", representation, entity_name, block_name),
+          entity = entity_name,
+          block = block_name
+        )
+      }
+      # A contextual frame takes its block values from the shared entity, so a
+      # local block that disagrees would change silently. In-memory blocks are
+      # compared by value; a source-backed block is never read to validate a
+      # study, so it is checked on its declared contract only.
+      lazy <- inherits(axis_block_data(x), "array_source") ||
+        inherits(axis_block_data(y), "array_source")
+      if (!lazy && !isTRUE(all.equal(
+        .realized_block_matrix(axis_block_data(x)),
+        .realized_block_matrix(axis_block_data(y))[positions, , drop = FALSE],
+        tolerance = 0, check.attributes = FALSE
+      ))) {
+        .study_abort(
+          sprintf(
+            "Representation '%s' entity block '%s.%s' disagrees with shared values.",
+            representation, entity_name, block_name
+          ),
+          representation = representation,
           entity = entity_name,
           block = block_name
         )
@@ -879,6 +902,13 @@ study_table <- function(x, name) {
     ))
   }
   contextual <- .contextualize_study_frame(value, shared)
+  .assert_no_filtered_feature_targets(contextual, selections)
+  # Frame-level tables follow the same rule as study-level tables.
+  for (table_name in names(contextual$tables)) {
+    contextual$tables[[table_name]] <- .filter_study_table(
+      contextual$tables[[table_name]], selections, shared
+    )
+  }
   maps <- .resolve_entity_maps(contextual)
   keep <- rep(TRUE, length(observation_ids(contextual)))
   mapped_any <- FALSE
@@ -896,18 +926,56 @@ study_table <- function(x, name) {
     }
   }
   if (!mapped_any) {
-    return(value)
+    return(if (length(contextual$tables)) contextual else value)
   }
   contextual[which(keep), ]
+}
+
+# Filtering removes observations, never features. A feature-to-entity key
+# relation whose features point at a dropped record cannot be honoured by
+# dropping rows, so it is refused here rather than failing later as an
+# unknown-target error while the study is rebuilt.
+.assert_no_filtered_feature_targets <- function(frame, selections) {
+  registry <- relations(frame)
+  data <- axis_data(feature_axis(frame))
+  for (relation_name in names(registry)) {
+    descriptor <- registry[[relation_name]]
+    if (!inherits(descriptor, "key_relation") ||
+      !identical(descriptor$source, "feature")) {
+      next
+    }
+    entity_name <- sub("^entity:", "", descriptor$target)
+    if (!entity_name %in% names(selections) || !descriptor$key %in% names(data)) next
+    keys <- .canonical_key_values(data[[descriptor$key]], .study_abort, descriptor$key)
+    dropped <- unique(keys[!is.na(keys) & !keys %in% selections[[entity_name]]])
+    if (length(dropped)) {
+      .study_abort(
+        sprintf(
+          paste(
+            "Filtering entity '%s' would drop records that features reference",
+            "through relation '%s'; select the matching features first."
+          ),
+          entity_name, relation_name
+        ),
+        entity = entity_name, relation = relation_name, dropped = dropped
+      )
+    }
+  }
+  invisible(TRUE)
 }
 
 #' Filter every study representation through one shared entity selection
 #'
 #' Dropping entity records cascades: child entities whose key relation
 #' references a dropped record are dropped too, observations reaching a dropped
-#' record are removed, and sparse edges, validity rows, link maps, and table
-#' rows are restricted to the surviving IDs. Table rows without a key value are
-#' kept.
+#' record are removed, and sparse edges, validity rows, link maps, and study and
+#' frame table rows are restricted to the surviving IDs. Table rows without a
+#' key value are kept. Observations with no record of the filtered entity (a
+#' missing key) are removed, because they cannot satisfy the predicate.
+#'
+#' Features are never dropped. If features reference the filtered entity
+#' through a feature key relation and a referenced record would be dropped,
+#' the filter is refused; select the matching features first.
 #'
 #' @param x An `fmri_study`.
 #' @param entity Bare or quoted shared entity name.

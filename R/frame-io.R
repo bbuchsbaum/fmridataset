@@ -85,7 +85,14 @@
 write_frame <- function(x, path, format = "hdf5", ...) {
   format <- match.arg(format, "hdf5")
   .require_frame_store("write_frame_h5")
-  committed <- .muffle_store_deprecations(fmristore::write_frame_h5(x, path, ...))
+  # Evaluate the caller's arguments first so that only warnings raised inside
+  # the store are muffled, never ones from the caller's own expressions.
+  force(x)
+  force(path)
+  extra <- list(...)
+  committed <- .muffle_store_deprecations(
+    do.call(fmristore::write_frame_h5, c(list(x, path), extra))
+  )
   invisible(normalizePath(committed, winslash = "/", mustWork = TRUE))
 }
 
@@ -94,5 +101,7 @@ write_frame <- function(x, path, format = "hdf5", ...) {
 open_frame <- function(path, format = "hdf5", ...) {
   format <- match.arg(format, "hdf5")
   .require_frame_store("open_frame_h5")
-  .muffle_store_deprecations(fmristore::open_frame_h5(path, ...))
+  force(path)
+  extra <- list(...)
+  .muffle_store_deprecations(do.call(fmristore::open_frame_h5, c(list(path), extra)))
 }

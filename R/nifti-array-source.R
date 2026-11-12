@@ -165,7 +165,10 @@ nifti_source <- function(paths, mask, chunks = NULL) {
   mask_uri <- NA_character_
   if (inherits(mask, "volume_space")) {
     if (!identical(as.integer(mask$dim), spatial_dims[[1L]]) ||
-      !isTRUE(all.equal(mask$affine, affines[[1L]], tolerance = 1e-7))) {
+      !isTRUE(all.equal(
+        unname(mask$affine), affines[[1L]],
+        tolerance = 1e-7, check.attributes = FALSE
+      ))) {
       .frame_abort(
         "Mask volume_space is incompatible with the NIfTI files.",
         "fmridataset_error_space_mismatch"
@@ -186,6 +189,16 @@ nifti_source <- function(paths, mask, chunks = NULL) {
     if (!identical(as.integer(dim(mask_volume)), spatial_dims[[1L]])) {
       .frame_abort(
         "NIfTI mask dimensions do not match the source files.",
+        "fmridataset_error_space_mismatch"
+      )
+    }
+    # Equal dimensions do not make two grids the same grid.
+    if (!isTRUE(all.equal(
+      .nifti_header_affine(neuroim2::read_header(mask_uri)), affines[[1L]],
+      tolerance = 1e-7, check.attributes = FALSE
+    ))) {
+      .frame_abort(
+        "NIfTI mask affine does not match the source files.",
         "fmridataset_error_space_mismatch"
       )
     }
