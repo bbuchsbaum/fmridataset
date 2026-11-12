@@ -1,5 +1,10 @@
 # fmridataset 0.11.0 (Development)
 
+- Feature spaces (volume, surface, parcel, basis, index, composite), provenance
+  graphs, and unaligned metadata records now print a compact summary instead
+  of their raw fields. `explain()` returns a `frame_explanation`, still a plain
+  list underneath, that prints as a short report.
+
 - Correctness audit before release. Fixes that change results:
   - A square symmetric parcel membership or decoder lost its lower triangle,
     and a diagonal one was rejected; diagonal `Matrix` operators now work in

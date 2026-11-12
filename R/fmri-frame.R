@@ -589,7 +589,7 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
   durable <- ids_are_durable(observation_axis(x)) && ids_are_durable(spatial)
   semantic <- if (durable) fds_frame_manifest_digest(fds_frame_manifest(x)) else NULL
   selection <- .frame_selection(x)
-  list(
+  out <- list(
     class = class(x)[1L],
     schema_version = x$schema_version %||% x$base$schema_version,
     shape = stats::setNames(as.integer(dim(x)), c("observation", "feature")),
@@ -636,6 +636,10 @@ explain <- function(x, ids = c("sample", "none", "complete"), sample_size = 3L) 
       ))
     )
   )
+  # A plain list underneath, so fields are read with `$` and the summary
+  # serializes as data; the class only gives it a compact print.
+  class(out) <- c("frame_explanation", "list")
+  out
 }
 
 # A matrix passed as an assay may carry dimnames. The axis IDs are
