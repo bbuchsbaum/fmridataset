@@ -37,7 +37,7 @@ Suggests:
     fmrihrf,
     fmrilatent,
     fmrigds,
-    fmristore (>= 0.1.0.9000),
+    fmristore (>= 0.1.0.9001),
     hdf5r,
     knitr,
     neuroatlas,
@@ -51,7 +51,7 @@ Remotes: bbuchsbaum/delarr@4e0cdf6c7560d6c230d04bf0ca36c6c70179782b,
     bbuchsbaum/albersdown@54a7432e551413fd15253544d361295d3d65f2b5,
     bbuchsbaum/fmrigds@67cc585c53ecb74db3b9a405b0fcb67b26c4eb3c,
     bbuchsbaum/fmrilatent@ceaad61acea6fd6326d6978a0aad23090ec28b18,
-    bbuchsbaum/fmristore@e7fbbfca181ebd118acee150774a4f58640e039d,
+    bbuchsbaum/fmristore@2b9cd70adb4d6208292fe94535e41202ab1a3894,
     bbuchsbaum/neuroatlas@9e469f21d6c3248910d9e2d57ce18e945b8bd16c,
     bbuchsbaum/neurosurf@1c4dc595876a619545670122d1dd4244e19ae3e0
 Additional_repositories: https://bbuchsbaum.r-universe.dev

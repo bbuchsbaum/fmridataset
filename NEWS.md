@@ -7,6 +7,9 @@ storage format is settled (see ADR-011, Consequences).
   skeleton that combines fmridataset, fmristore, multidesign, and fmrigds now
   lives in `examples/walking-skeleton/` in the source repository; the package
   keeps the fmristore storage-failure test.
+- `write_frame()` and `open_frame()` no longer hide deprecation warnings
+  raised inside fmristore: fmristore 0.1.0.9001 calls the renamed functions,
+  and is now the minimum suggested version.
 
 - New `write_study()` and `open_study()` save and reopen a whole
   `fmri_study`. The saved directory is a BIDS derivative dataset

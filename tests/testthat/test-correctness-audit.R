@@ -498,13 +498,20 @@ test_that("read_nifti_bold keeps the caller's space and a location-free manifest
   expect_identical(digest(first), digest(second))
 })
 
-test_that("frame I/O leaves the caller's own deprecation warnings alone", {
-  seen <- 0L
-  result <- withCallingHandlers(
-    fmridataset:::.muffle_store_deprecations(identity("store result")),
-    deprecatedWarning = function(w) seen <<- seen + 1L
+test_that("frame I/O raises no fmridataset deprecation warnings of its own", {
+  skip_if_not_installed("fmristore", minimum_version = "0.1.0.9001")
+  frame <- fmri_frame(
+    list(beta = matrix(as.double(1:12), 4)),
+    data.frame(.obs_id = paste0("o", 1:4), run_id = rep(c("a", "b"), each = 2L)),
+    space = index_space(3L, id_policy = "deterministic", namespace = "audit")
   )
-  expect_identical(result, "store result")
+  path <- withr::local_tempfile(fileext = ".h5")
+  expect_no_warning(write_frame(frame, path))
+  expect_no_warning(reopened <- open_frame(path))
+  expect_identical(observation_ids(reopened), observation_ids(frame))
+})
+
+test_that("frame I/O leaves the caller's own deprecation warnings alone", {
   frame <- fmri_frame(
     list(beta = matrix(as.double(1:12), 4)),
     data.frame(.obs_id = paste0("o", 1:4), run_id = rep(c("a", "b"), each = 2L)),

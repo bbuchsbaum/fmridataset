@@ -69,18 +69,3 @@ test_that("deprecated source constructors keep their class and fingerprint", {
   expect_s3_class(new_zarr, "zarr_array_source")
   expect_identical(source_fingerprint(old_zarr), source_fingerprint(new_zarr))
 })
-
-test_that("frame I/O muffles only fmridataset deprecations from the store", {
-  manifest <- fds_frame_manifest(.deprecation_fixture())
-  expect_no_warning(
-    fmridataset:::.muffle_store_deprecations(fds_manifest_digest(manifest))
-  )
-  expect_warning(
-    fmridataset:::.muffle_store_deprecations(.Deprecated("other", package = "elsewhere")),
-    class = "deprecatedWarning"
-  )
-  expect_warning(
-    fmridataset:::.muffle_store_deprecations(warning("unrelated")),
-    "unrelated"
-  )
-})
