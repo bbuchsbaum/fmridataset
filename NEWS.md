@@ -1,4 +1,12 @@
-# fmridataset 0.11.0 (Development)
+# fmridataset 0.12.0
+
+First release planned for CRAN. Version 1.0.0 is reserved for when the frame
+storage format is settled (see ADR-011, Consequences).
+
+- multidesign is no longer a suggested package. The end-to-end walking
+  skeleton that combines fmridataset, fmristore, multidesign, and fmrigds now
+  lives in `examples/walking-skeleton/` in the source repository; the package
+  keeps the fmristore storage-failure test.
 
 - New `write_study()` and `open_study()` save and reopen a whole
   `fmri_study`. The saved directory is a BIDS derivative dataset

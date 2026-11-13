@@ -1,7 +1,7 @@
 Package: fmridataset
 Type: Package
 Title: Spatially Typed Annotated fMRI Datasets
-Version: 0.11.0.9001
+Version: 0.12.0
 Authors@R: person("Bradley", "Buchsbaum",
                   email = "bbuchsbaum@gmail.com",
                   role = c("aut", "cre"),
@@ -40,7 +40,6 @@ Suggests:
     fmristore (>= 0.1.0.9000),
     hdf5r,
     knitr,
-    multidesign,
     neuroatlas,
     neurosurf,
     rmarkdown,
@@ -53,7 +52,6 @@ Remotes: bbuchsbaum/delarr@4e0cdf6c7560d6c230d04bf0ca36c6c70179782b,
     bbuchsbaum/fmrigds@67cc585c53ecb74db3b9a405b0fcb67b26c4eb3c,
     bbuchsbaum/fmrilatent@ceaad61acea6fd6326d6978a0aad23090ec28b18,
     bbuchsbaum/fmristore@e7fbbfca181ebd118acee150774a4f58640e039d,
-    bbuchsbaum/multidesign@2ed3f30cdce1d96541bb84b34e0826cc0b8a298a,
     bbuchsbaum/neuroatlas@9e469f21d6c3248910d9e2d57ce18e945b8bd16c,
     bbuchsbaum/neurosurf@1c4dc595876a619545670122d1dd4244e19ae3e0
 Additional_repositories: https://bbuchsbaum.r-universe.dev
